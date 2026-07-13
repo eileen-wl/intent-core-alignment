@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          python-version: "3.12"
+
+      - name: Install Python projects
+        run: |
+          uv sync --project packages/contracts/python
+          uv sync --project apps/api
+          uv sync --project services/worker
+          uv sync --project services/ftrack-connector
+
+      - name: Lint (ruff)
+        run: |
+          uv run --project apps/api ruff check .
+          uv run --project apps/api ruff format --check .
+
+      - name: Typecheck (mypy)
+        run: |
+          uv run --project packages/contracts/python mypy packages/contracts/python/src
+          uv run --project apps/api mypy apps/api/src
+          uv run --project services/worker mypy services/worker/src
+          uv run --project services/ftrack-connector mypy services/ftrack-connector/src
+
+      - name: Test (pytest)
+        run: |
+          uv run --project packages/contracts/python pytest packages/contracts/python
+          uv run --project apps/api pytest apps/api
+          uv run --project services/worker pytest services/worker
+          uv run --project services/ftrack-connector pytest services/ftrack-connector
+
+  js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run format
+      - run: pnpm run lint
+      - run: pnpm run typecheck
+      - run: pnpm --filter web build

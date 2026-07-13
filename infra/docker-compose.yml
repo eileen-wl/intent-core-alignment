@@ -1,0 +1,124 @@
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: intent_core
+      POSTGRES_USER: intent_core
+      POSTGRES_PASSWORD: intent_core
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U intent_core"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  # S3-compatible object storage for local dev parity only. Not a
+  # commitment to any hosted provider -- see the initialization plan's
+  # risk notes in docs/decisions/.
+  minio:
+    image: minio/minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: intent_core
+      MINIO_ROOT_PASSWORD: intent_core_dev
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/api.Dockerfile
+    command:
+      [
+        "uv",
+        "run",
+        "uvicorn",
+        "intent_core_api.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--reload",
+      ]
+    env_file:
+      - ../.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://intent_core:intent_core@postgres:5432/intent_core
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../apps/api:/repo/apps/api
+      # Anonymous volume so the bind mount above doesn't shadow the
+      # .venv that `uv sync` created inside the image at build time.
+      - /repo/apps/api/.venv
+
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/worker.Dockerfile
+    env_file:
+      - ../.env
+    environment:
+      API_BASE_URL: http://api:8000
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      - redis
+      - api
+    volumes:
+      - ../services/worker:/repo/services/worker
+      # Anonymous volume so the bind mount above doesn't shadow the
+      # .venv that `uv sync` created inside the image at build time.
+      - /repo/services/worker/.venv
+
+  # Stub only -- no ftrack workspace exists yet (docs/API_AND_ACCOUNTS.md
+  # §1). Opt-in with: docker compose --profile ftrack up
+  connector:
+    build:
+      context: ..
+      dockerfile: infra/connector.Dockerfile
+    env_file:
+      - ../.env
+    profiles: ["ftrack"]
+    volumes:
+      - ../services/ftrack-connector:/repo/services/ftrack-connector
+      # Anonymous volume so the bind mount above doesn't shadow the
+      # .venv that `uv sync` created inside the image at build time.
+      - /repo/services/ftrack-connector/.venv
+
+  web:
+    build:
+      context: ..
+      dockerfile: infra/web.Dockerfile
+    env_file:
+      - ../.env
+    environment:
+      API_BASE_URL: http://api:8000
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../apps/web:/repo/apps/web
+      - /repo/apps/web/node_modules
+      - /repo/apps/web/.next
+
+volumes:
+  postgres_data:
+  minio_data:

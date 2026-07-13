@@ -1,0 +1,25 @@
+[project]
+name = "intent-core-worker"
+version = "0.1.0"
+description = "Background worker for async model, media, and reconciliation jobs."
+requires-python = ">=3.12"
+dependencies = [
+  "arq>=0.26",
+  "httpx>=0.27",
+  "pydantic-settings>=2.5",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/intent_core_worker"]
+
+[dependency-groups]
+dev = [
+  "pytest>=8.3",
+  "pytest-asyncio>=0.24",
+  "ruff>=0.7.4",
+  "mypy>=1.13",
+]

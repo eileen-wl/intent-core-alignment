@@ -23,6 +23,7 @@ dist/
 build/
 coverage/
 .pnpm-store/
+*.tsbuildinfo
 
 # IDE / OS
 .vscode/
