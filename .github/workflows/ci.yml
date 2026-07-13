@@ -15,12 +15,15 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Verify uv.lock is up to date
+        run: uv lock --check
+
       - name: Install Python projects
         run: |
-          uv sync --project packages/contracts/python
-          uv sync --project apps/api
-          uv sync --project services/worker
-          uv sync --project services/ftrack-connector
+          uv sync --project packages/contracts/python --locked
+          uv sync --project apps/api --locked
+          uv sync --project services/worker --locked
+          uv sync --project services/ftrack-connector --locked
 
       - name: Lint (ruff)
         run: |
