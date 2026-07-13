@@ -16,6 +16,12 @@ rather than writing to Postgres directly (see
 uv run arq intent_core_worker.worker_settings.WorkerSettings
 ```
 
+Config is read from the repo-root `.env` (`cp .env.example .env` at
+the repo root first) regardless of which directory you run this from
+— `intent_core_worker.config.Settings` resolves it via an absolute
+path, not the current working directory. No per-package `.env` file
+is needed or read.
+
 ## Test
 
 ```bash
