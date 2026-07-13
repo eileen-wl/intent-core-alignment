@@ -79,5 +79,15 @@ fix for each Python service (`/repo/apps/api/.venv`,
 `/repo/services/worker/.venv`,
 `/repo/services/ftrack-connector/.venv`) does not match where `uv
 sync` actually places the environment inside those containers (the
-workspace root, `/repo/.venv`) -- worth a follow-up look at that
-Compose file, tracked separately rather than changed here.
+workspace root, `/repo/.venv`).
+
+**Follow-up closed:** those three anonymous volumes guarded paths uv
+never uses and have been removed from `infra/docker-compose.yml`.
+They were unnecessary in the first place -- each service's bind mount
+only targets its own subdirectory (`/repo/apps/api`, etc.), never
+`/repo` itself or a parent of `/repo/.venv`, so the shared workspace
+venv was never actually at risk of being shadowed. No root-level
+`.venv` volume was added either, since nothing mounts over `/repo`.
+`tests/infra/test_docker_compose_volumes.py` now checks this real
+property (bind mounts don't target the workspace root or a parent of
+`/repo/.venv`) instead of asserting the incorrect per-service guards.

@@ -26,8 +26,9 @@ docker compose -f infra/docker-compose.yml --profile ftrack up connector
 - `api`, `worker`, and `connector` bind-mount only their own app
   directory for hot reload. Editing `packages/contracts/python`
   requires an image rebuild (`docker compose build`) to take effect,
-  since it is installed into each service's venv at build time via the
-  uv workspace.
+  since it is installed into the shared uv workspace venv at
+  `/repo/.venv` at build time -- not into a per-service venv (see
+  `docs/decisions/ADR-0006-uv-for-python-workspace-management.md`).
 - `minio` is for local S3-compatible parity only, not a commitment to
   a hosted object storage provider.
 - No CI runner has executed this Compose file yet (this environment

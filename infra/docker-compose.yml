@@ -64,10 +64,10 @@ services:
     ports:
       - "8000:8000"
     volumes:
+      # No anonymous .venv volume needed: the uv workspace's shared
+      # venv lives at /repo/.venv (see ADR-0006), which this mount
+      # does not overlap.
       - ../apps/api:/repo/apps/api
-      # Anonymous volume so the bind mount above doesn't shadow the
-      # .venv that `uv sync` created inside the image at build time.
-      - /repo/apps/api/.venv
 
   worker:
     build:
@@ -82,10 +82,10 @@ services:
       - redis
       - api
     volumes:
+      # No anonymous .venv volume needed: the uv workspace's shared
+      # venv lives at /repo/.venv (see ADR-0006), which this mount
+      # does not overlap.
       - ../services/worker:/repo/services/worker
-      # Anonymous volume so the bind mount above doesn't shadow the
-      # .venv that `uv sync` created inside the image at build time.
-      - /repo/services/worker/.venv
 
   # Stub only -- no ftrack workspace exists yet (docs/API_AND_ACCOUNTS.md
   # §1). Opt-in with: docker compose --profile ftrack up
@@ -97,10 +97,10 @@ services:
       - ../.env
     profiles: ["ftrack"]
     volumes:
+      # No anonymous .venv volume needed: the uv workspace's shared
+      # venv lives at /repo/.venv (see ADR-0006), which this mount
+      # does not overlap.
       - ../services/ftrack-connector:/repo/services/ftrack-connector
-      # Anonymous volume so the bind mount above doesn't shadow the
-      # .venv that `uv sync` created inside the image at build time.
-      - /repo/services/ftrack-connector/.venv
 
   web:
     build:
