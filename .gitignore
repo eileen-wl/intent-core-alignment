@@ -1,0 +1,46 @@
+# Secrets
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Node
+node_modules/
+.next/
+dist/
+build/
+coverage/
+.pnpm-store/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Local data
+*.db
+*.sqlite
+local-data/
+uploads/
+media/
+tmp/
+
+# Logs
+*.log
+logs/
+
+# Claude local/private state
+.claude/local/
