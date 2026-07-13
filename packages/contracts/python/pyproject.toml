@@ -19,4 +19,5 @@ dev = [
   "pytest>=8.3",
   "ruff>=0.7.4",
   "mypy>=1.13",
+  "hatchling>=1.25",
 ]
