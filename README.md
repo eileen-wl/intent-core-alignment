@@ -18,6 +18,16 @@ make up      # docker compose: postgres, redis, minio, api, worker, web
 make test    # per-package unit/API tests (no live infra required)
 ```
 
+The root `.env` is the single config file for `apps/api`,
+`services/worker`, `services/ftrack-connector`, and Docker Compose —
+each Python service resolves it via an absolute path, so it's read
+consistently no matter which directory you run commands from.
+`apps/web` is the one exception (see `apps/web/README.md`): Next.js
+scopes its own env loading to the app directory, so the root `.env`
+doesn't reach it — Docker Compose already sets what it needs, and
+bare local dev only ever needs an optional shell export, never a
+file.
+
 See `infra/README.md` for Docker Compose details and known limitations.
 
 ## Read first

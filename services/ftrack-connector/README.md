@@ -18,6 +18,12 @@ Kept out of the default `docker compose up` (behind the `ftrack`
 Compose profile) so its absence is explicit rather than a silent
 connection failure.
 
+`FTRACK_SERVER`/`FTRACK_API_USER`/`FTRACK_API_KEY` are read from the
+repo-root `.env` regardless of which directory this is run from —
+`intent_core_connector.config.Settings` resolves it via an absolute
+path, not the current working directory. No per-package `.env` file
+is needed or read.
+
 ## Test
 
 ```bash

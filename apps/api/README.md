@@ -19,6 +19,12 @@ uv run alembic upgrade head
 uv run uvicorn intent_core_api.main:app --reload
 ```
 
+Config is read from the repo-root `.env` (`cp .env.example .env` at
+the repo root first) regardless of which directory you run these
+commands from — `intent_core_api.config.Settings` resolves it via an
+absolute path, not the current working directory. No per-package
+`.env` file is needed or read.
+
 ## Test
 
 ```bash
