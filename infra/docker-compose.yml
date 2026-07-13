@@ -65,6 +65,9 @@ services:
       - "8000:8000"
     volumes:
       - ../apps/api:/repo/apps/api
+      # Anonymous volume so the bind mount above doesn't shadow the
+      # .venv that `uv sync` created inside the image at build time.
+      - /repo/apps/api/.venv
 
   worker:
     build:
@@ -80,6 +83,9 @@ services:
       - api
     volumes:
       - ../services/worker:/repo/services/worker
+      # Anonymous volume so the bind mount above doesn't shadow the
+      # .venv that `uv sync` created inside the image at build time.
+      - /repo/services/worker/.venv
 
   # Stub only -- no ftrack workspace exists yet (docs/API_AND_ACCOUNTS.md
   # §1). Opt-in with: docker compose --profile ftrack up
@@ -92,6 +98,9 @@ services:
     profiles: ["ftrack"]
     volumes:
       - ../services/ftrack-connector:/repo/services/ftrack-connector
+      # Anonymous volume so the bind mount above doesn't shadow the
+      # .venv that `uv sync` created inside the image at build time.
+      - /repo/services/ftrack-connector/.venv
 
   web:
     build:

@@ -29,6 +29,7 @@ test:
 	uv run --project apps/api pytest apps/api
 	uv run --project services/worker pytest services/worker
 	uv run --project services/ftrack-connector pytest services/ftrack-connector
+	uv run --project apps/api pytest tests/infra
 	pnpm -w run test
 
 up:

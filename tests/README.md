@@ -14,3 +14,5 @@ running together.
 - `e2e/` — reserved for Playwright browser tests against the running
   Dashboard. Empty until role-aware views exist
   (`docs/PRODUCT_SCOPE.md` §13) worth driving through a browser.
+- `infra/` — stdlib-only static checks on files under `infra/` (no
+  Docker or live services required). Part of `make test`.
