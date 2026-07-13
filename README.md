@@ -4,10 +4,21 @@ Independent AI-assisted intent-alignment system for animation/VFX workflows, wit
 
 ## Current project stage
 
-The team has completed the initial shared product and architecture documents.  
-This repository skeleton is the common starting point for all team members and all Claude Code sessions.
+The team has completed the initial shared product and architecture documents, and the engineering skeleton described in `docs/decisions/` has been scaffolded: a Next.js frontend, a FastAPI backend, a background worker, an ftrack connector stub, shared contracts, Docker Compose, and linting/formatting/type-checking/testing for both ecosystems.
 
-No production feature code has been generated yet.
+No product features (Anchors, Agents, Human Gates, real ftrack sync) exist yet — see each module's README for what's deliberately deferred and why.
+
+## Quick start
+
+```bash
+cp .env.example .env
+pnpm install
+uv sync --project apps/api && uv sync --project services/worker && uv sync --project services/ftrack-connector && uv sync --project packages/contracts/python
+make up      # docker compose: postgres, redis, minio, api, worker, web
+make test    # per-package unit/API tests (no live infra required)
+```
+
+See `infra/README.md` for Docker Compose details and known limitations.
 
 ## Read first
 

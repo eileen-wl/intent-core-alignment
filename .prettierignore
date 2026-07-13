@@ -1,0 +1,5 @@
+docs/
+pnpm-lock.yaml
+packages/contracts/ts/src/generated/
+.next/
+node_modules/
