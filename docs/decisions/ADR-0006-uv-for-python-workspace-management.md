@@ -54,12 +54,30 @@ parses source and needs no installed dependencies.
 
 ## Status
 
-Proposed as part of the initial engineering skeleton
-(`chore/initial-engineering-skeleton`). Verified locally without a
-`uv` binary available in this environment: dependencies, imports,
-`alembic upgrade head`, `ruff`, `mypy`, and `pytest` were all
-verified using a plain pip-installed virtualenv against the same
-`pyproject.toml`/dependency declarations uv would resolve. The uv
-workspace resolution itself (`uv sync`, `uv run --project`) has not
-been executed end to end and should be confirmed by whoever has `uv`
-installed before relying on it in CI.
+Accepted. `uv.lock` has now been generated and committed (root of
+the repo) with a real `uv` binary (0.11.28), resolving all four
+workspace members cleanly with no dependency conflicts. `uv sync
+--project <dir>` was run for all four members in order, and the CI
+python job's exact commands (`ruff check`/`ruff format --check`,
+`mypy`, `pytest`, all via `uv run --project <dir>`) were run for real
+against the generated lock -- all pass. `.github/workflows/ci.yml`
+now has a dedicated `uv lock --check` step plus `--locked` on every
+`uv sync`, both confirmed to actually fail (not just exist) when the
+lockfile is stale relative to a `pyproject.toml` change.
+
+One behavior worth recording for future readers of this ADR: **a uv
+workspace uses a single shared virtual environment at the workspace
+root (`<repo>/.venv`) by default**, not one per member directory.
+`uv sync --project X` replaces that shared venv's contents to match
+only `X`'s resolved dependencies (removing what a prior sync for a
+different member installed); `uv run --project X <cmd>` auto-syncs
+`X`'s dependencies back in immediately before running, which is why
+running all four `uv sync` calls up front in CI and then a separate
+`uv run --project X` per check still works correctly. This means the
+`.venv` path assumed by `infra/docker-compose.yml`'s anonymous-volume
+fix for each Python service (`/repo/apps/api/.venv`,
+`/repo/services/worker/.venv`,
+`/repo/services/ftrack-connector/.venv`) does not match where `uv
+sync` actually places the environment inside those containers (the
+workspace root, `/repo/.venv`) -- worth a follow-up look at that
+Compose file, tracked separately rather than changed here.
