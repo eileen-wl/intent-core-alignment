@@ -1,0 +1,73 @@
+# Line-ending normalization. Every text file is stored in the
+# repository as LF; Git converts to the platform-native ending on
+# checkout only where explicitly configured otherwise below (none
+# currently). This makes line endings consistent across contributors
+# regardless of each person's local `core.autocrlf` setting.
+
+# Auto-detect text vs. binary, default to LF for anything text.
+* text=auto eol=lf
+
+# Explicit LF for the file types this repo actually uses, as a
+# safety net against Git's binary/text auto-detection guessing wrong.
+*.py text eol=lf
+*.pyi text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.js text eol=lf
+*.jsx text eol=lf
+*.mjs text eol=lf
+*.cjs text eol=lf
+*.json text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.md text eol=lf
+*.mdx text eol=lf
+*.toml text eol=lf
+*.ini text eol=lf
+*.cfg text eol=lf
+*.mako text eol=lf
+*.lock text eol=lf
+*.typed text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Dockerfiles in this repo are named `<service>.Dockerfile`, not
+# bare `Dockerfile`; cover both conventions.
+Dockerfile text eol=lf
+*.Dockerfile text eol=lf
+Dockerfile.* text eol=lf
+
+# Dotfiles / extensionless config files used in this repo.
+.gitattributes text eol=lf
+.gitignore text eol=lf
+.dockerignore text eol=lf
+.prettierignore text eol=lf
+.nvmrc text eol=lf
+.python-version text eol=lf
+.env.example text eol=lf
+Makefile text eol=lf
+
+# Windows-only scripts: keep CRLF. None exist in this repo today;
+# kept so one added later is handled correctly without revisiting
+# this file.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Binary files: never touch line endings, don't diff as text. None
+# are tracked today; kept for when assets are added.
+*.svg text eol=lf
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.otf binary
+*.pdf binary
+*.zip binary
