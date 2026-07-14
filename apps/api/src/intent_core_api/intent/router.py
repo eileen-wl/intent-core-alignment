@@ -3,6 +3,12 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends
+from intent_core_contracts.api.execution_anchor import (
+    ExecutionAnchorRead,
+    ExecutionAnchorRevisionDraftCreate,
+    ExecutionAnchorRevisionRead,
+    ExecutionAnchorRevisionUpdate,
+)
 from intent_core_contracts.api.intent import (
     AnchorConfirmRequest,
     AnchorRejectRequest,
@@ -16,8 +22,14 @@ from intent_core_contracts.api.intent import (
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.db import get_session
-from intent_core_api.intent import brief_service, core_anchor_service
-from intent_core_api.intent.models import CoreAnchor, CoreAnchorRevision, IntentBrief
+from intent_core_api.intent import brief_service, core_anchor_service, execution_anchor_service
+from intent_core_api.intent.models import (
+    CoreAnchor,
+    CoreAnchorRevision,
+    ExecutionAnchor,
+    ExecutionAnchorRevision,
+    IntentBrief,
+)
 from intent_core_api.workflow.actors import ActorContext, get_current_actor
 from intent_core_api.workflow.exceptions import NotFoundError
 
@@ -115,3 +127,82 @@ async def reject_core_anchor_revision(
     session: AsyncSession = Depends(get_session),
 ) -> CoreAnchorRevision:
     return await core_anchor_service.reject_revision(session, actor, revision_id, payload.rationale)
+
+
+@router.post(
+    "/tasks/{task_id}/execution-anchor/drafts",
+    response_model=ExecutionAnchorRevisionRead,
+    status_code=201,
+)
+async def create_execution_anchor_draft(
+    task_id: uuid.UUID,
+    payload: ExecutionAnchorRevisionDraftCreate,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> ExecutionAnchorRevision:
+    return await execution_anchor_service.create_draft_revision(
+        session, actor, task_id, payload.model_dump()
+    )
+
+
+@router.get("/tasks/{task_id}/execution-anchor", response_model=ExecutionAnchorRead)
+async def get_execution_anchor(
+    task_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> ExecutionAnchor:
+    anchor = await execution_anchor_service.get_execution_anchor_for_task(session, task_id)
+    if anchor is None:
+        raise NotFoundError("Execution anchor not found for task")
+    return anchor
+
+
+@router.get("/execution-anchor-revisions/{revision_id}", response_model=ExecutionAnchorRevisionRead)
+async def get_execution_anchor_revision(
+    revision_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> ExecutionAnchorRevision:
+    revision = await execution_anchor_service.get_execution_revision(session, revision_id)
+    if revision is None:
+        raise NotFoundError("Execution anchor revision not found")
+    return revision
+
+
+@router.patch(
+    "/execution-anchor-revisions/{revision_id}", response_model=ExecutionAnchorRevisionRead
+)
+async def update_execution_anchor_revision(
+    revision_id: uuid.UUID,
+    payload: ExecutionAnchorRevisionUpdate,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> ExecutionAnchorRevision:
+    changes = payload.model_dump(exclude_unset=True)
+    return await execution_anchor_service.update_draft_revision(
+        session, actor, revision_id, changes
+    )
+
+
+@router.post(
+    "/execution-anchor-revisions/{revision_id}/confirm", response_model=ExecutionAnchorRevisionRead
+)
+async def confirm_execution_anchor_revision(
+    revision_id: uuid.UUID,
+    payload: AnchorConfirmRequest,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> ExecutionAnchorRevision:
+    return await execution_anchor_service.confirm_revision(
+        session, actor, revision_id, payload.rationale
+    )
+
+
+@router.post(
+    "/execution-anchor-revisions/{revision_id}/reject", response_model=ExecutionAnchorRevisionRead
+)
+async def reject_execution_anchor_revision(
+    revision_id: uuid.UUID,
+    payload: AnchorRejectRequest,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> ExecutionAnchorRevision:
+    return await execution_anchor_service.reject_revision(
+        session, actor, revision_id, payload.rationale
+    )

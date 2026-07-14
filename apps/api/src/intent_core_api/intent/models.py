@@ -1,8 +1,8 @@
-"""IntentBrief, CoreAnchor, CoreAnchorRevision (WP-A slice A1).
+"""IntentBrief, CoreAnchor, CoreAnchorRevision, ExecutionAnchor,
+ExecutionAnchorRevision (WP-A slices A1/A2).
 
-See docs/DOMAIN_MODEL.md §5-6. ExecutionAnchor(+Revision) and
-Constraint/VariationZone/DriftRisk/Reference/OpenQuestion belong to later
-WP-A slices (A2/A4) and are not defined here.
+See docs/DOMAIN_MODEL.md §5-6. Constraint/VariationZone/DriftRisk/
+Reference/OpenQuestion belong to slice A4 and are not defined here.
 """
 
 from __future__ import annotations
@@ -113,6 +113,91 @@ class CoreAnchorRevision(Base):
 
     supersedes_revision_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("core_anchor_revisions.id"), nullable=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=_utcnow, onupdate=_utcnow)
+
+
+class ExecutionAnchor(Base):
+    """Secondary Execution Anchor identity -- one per Task. Same shape as
+    ``CoreAnchor``: ``active_revision_id`` is a stored pointer, updated
+    only inside the transaction that confirms a revision. ``is_stale`` is
+    stored, never manually toggled -- it is set only by the CoreAnchor
+    confirm stale cascade and cleared only by confirming a new
+    ExecutionAnchorRevision (see intent.core_anchor_service /
+    intent.execution_anchor_service).
+    """
+
+    __tablename__ = "execution_anchors"
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tasks.id"), unique=True)
+    active_revision_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("execution_anchor_revisions.id"), nullable=True
+    )
+    is_stale: Mapped[bool] = mapped_column(default=False)
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=_utcnow, onupdate=_utcnow)
+
+
+class ExecutionAnchorRevision(Base):
+    """One draft/confirmed/superseded/rejected revision of an
+    ExecutionAnchor. ``core_anchor_revision_id`` records the exact
+    CoreAnchorRevision this translates (never null, never a draft Core
+    revision -- enforced in intent.execution_anchor_service).
+
+    Same ``UNIQUE(execution_anchor_id, revision_number)`` +
+    partial-unique-confirmed-index pattern as ``CoreAnchorRevision``.
+    """
+
+    __tablename__ = "execution_anchor_revisions"
+    __table_args__ = (
+        UniqueConstraint(
+            "execution_anchor_id",
+            "revision_number",
+            name="uq_execution_anchor_revisions_anchor_number",
+        ),
+        Index(
+            "uq_execution_anchor_revisions_one_confirmed_per_anchor",
+            "execution_anchor_id",
+            unique=True,
+            postgresql_where=text("status = 'confirmed'"),
+            sqlite_where=text("status = 'confirmed'"),
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    execution_anchor_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("execution_anchors.id"))
+    core_anchor_revision_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("core_anchor_revisions.id")
+    )
+    revision_number: Mapped[int] = mapped_column()
+    status: Mapped[str] = mapped_column(String(20), default="draft")
+
+    technical_boundaries: Mapped[str | None] = mapped_column(Text, nullable=True)
+    parameter_ranges: Mapped[str | None] = mapped_column(Text, nullable=True)
+    delivery_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    production_ready_criteria: Mapped[str | None] = mapped_column(Text, nullable=True)
+    downstream_dependencies: Mapped[str | None] = mapped_column(Text, nullable=True)
+    publish_requirements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    allowed_refinements: Mapped[str | None] = mapped_column(Text, nullable=True)
+    escalation_conditions: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    created_by_actor_kind: Mapped[str] = mapped_column(String(10))
+    created_by_actor_id: Mapped[str] = mapped_column(String(200))
+    created_by_human_role: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    created_by_agent_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    created_by_agent_run_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+
+    # Confirmation/rejection is exclusively human by rule (service-enforced) --
+    # no kind/agent-type columns are stored here, only the human identity.
+    confirmed_by_human_role: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    confirmed_by_actor_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    confirmed_at: Mapped[datetime | None] = mapped_column(nullable=True)
+
+    supersedes_revision_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("execution_anchor_revisions.id"), nullable=True
     )
 
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)

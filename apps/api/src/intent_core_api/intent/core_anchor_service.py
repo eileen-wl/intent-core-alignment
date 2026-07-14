@@ -1,6 +1,7 @@
 """CoreAnchor / CoreAnchorRevision lifecycle: draft, update, confirm, reject.
 
-Concurrency strategy (see the approved WP-A implementation plan §2.5):
+Concurrency strategy (see the approved WP-A implementation plan and the
+WP-A2 concurrency addendum):
 
 - ``get_or_create_core_anchor`` and ``create_draft_revision`` rely on
   database UNIQUE constraints (``core_anchors.shot_id``,
@@ -9,22 +10,27 @@ Concurrency strategy (see the approved WP-A implementation plan §2.5):
   the session is rolled back (restoring it to a usable state), and either
   the winning row is re-fetched (get-or-create) or a 409 ``ConflictError``
   is raised to the client (revision-number race).
-- ``confirm_revision`` additionally re-fetches the revision/anchor state
-  immediately before mutating (defeating stale in-memory reads -- via
-  ``session.refresh()`` for the revision and ``populate_existing=True`` on
-  the locked anchor re-select, both of which force a genuine reload rather
-  than returning an already-identity-mapped, potentially stale object),
-  takes a ``SELECT ... FOR UPDATE`` lock on the CoreAnchor row on dialects
-  that support it (a no-op on SQLite), and is backstopped by a partial
-  unique index (``core_anchor_revisions``, one row WHERE status='confirmed'
-  per anchor) that makes "two confirmed revisions for one anchor"
-  impossible at the database level even if the above checks are imperfect.
+- ``confirm_revision`` takes a ``SELECT ... FOR UPDATE`` lock on the
+  CoreAnchor row on dialects that support it (a no-op on SQLite) for
+  read-then-decide confidence, but the actual, dialect-portable commit
+  gate is ``core_anchor_lock.compare_and_swap_active_revision`` -- a
+  conditional ``UPDATE``, not a ``SELECT``, because a ``SELECT`` (even a
+  bare-scalar one) is not guaranteed to observe another transaction's
+  newly committed value under SQLite/PostgreSQL snapshot isolation. The
+  CAS is always the *first mutating operation* in this function -- called
+  before any other write -- and this same primitive, unmodified, is also
+  used by ``execution_anchor_service.create_draft_revision`` and
+  ``execution_anchor_service.confirm_revision`` (the global lock order is
+  CoreAnchor -> ExecutionAnchor -> revisions/lineage throughout).
 - Every mutating function performs all of its writes on one session and
   commits exactly once at the end; any ``IntegrityError`` at that commit
-  is caught, the session is rolled back, and a ``ConflictError`` (-> 409)
-  is raised -- since nothing was ever committed, no partial Decision/
+  (or at an earlier ``record_*()`` flush within the same try block) is
+  caught, the session is rolled back, and a ``ConflictError`` (-> 409) is
+  raised -- since nothing was ever committed, no partial Decision/
   WorkflowTransition/AuditEvent/status/pointer writes become visible to
-  any other transaction.
+  any other transaction. This also covers the stale cascade
+  (``execution_anchor_service.mark_stale_for_new_core_revision``), which
+  runs inside this same transaction and never commits independently.
 - Two internal-consistency invariants (a superseded/confirmed revision
   actually belonging to the anchor being mutated) are checked explicitly
   and raise ``InternalConsistencyError`` rather than relying on a bare
@@ -46,6 +52,8 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.audit import service as audit_service
+from intent_core_api.intent import execution_anchor_service
+from intent_core_api.intent.core_anchor_lock import compare_and_swap_active_revision
 from intent_core_api.intent.models import CoreAnchor, CoreAnchorRevision
 from intent_core_api.production_context.models import Shot
 from intent_core_api.workflow import decision_service, transition_service
@@ -194,6 +202,9 @@ async def update_draft_revision(
         # easily as the final commit can -- both must be caught here.
         await session.rollback()
         raise ConflictError("Concurrent update conflict") from None
+    except Exception:
+        await session.rollback()
+        raise
     await session.refresh(revision)
     return revision
 
@@ -212,15 +223,12 @@ async def confirm_revision(
         raise NotFoundError("Core anchor not found")
 
     # Postgres-only hardening: serializes concurrent confirms targeting the
-    # same anchor. A no-op on SQLite (the dialect doesn't emit FOR UPDATE);
-    # the partial unique index on core_anchor_revisions is what makes the
-    # invariant hold regardless of dialect. `populate_existing=True` is
-    # required here: `anchor` may already be present in this session's
-    # identity map from the `session.get()` call above, and without it
-    # SQLAlchemy would silently keep serving that earlier (potentially
-    # stale) object rather than the freshly locked row's column values --
-    # the lock would be acquired, but `active_revision_id` read below could
-    # still reflect data from before another transaction's commit.
+    # same anchor (global lock order step 1) and gives read-then-decide
+    # confidence. A no-op on SQLite. `populate_existing=True` is required:
+    # `anchor` may already be present in this session's identity map from
+    # the `session.get()` call above, and without it SQLAlchemy would
+    # silently keep serving that earlier (potentially stale) object rather
+    # than the freshly locked row's column values.
     lock_result = await session.execute(
         select(CoreAnchor)
         .where(CoreAnchor.id == anchor.id)
@@ -237,8 +245,9 @@ async def confirm_revision(
         raise ConflictError("Revision is not in draft status")
 
     previous: CoreAnchorRevision | None = None
-    if anchor.active_revision_id is not None:
-        previous = await session.get(CoreAnchorRevision, anchor.active_revision_id)
+    expected_active_revision_id = anchor.active_revision_id
+    if expected_active_revision_id is not None:
+        previous = await session.get(CoreAnchorRevision, expected_active_revision_id)
         if previous is not None:
             await session.refresh(previous)
 
@@ -256,14 +265,26 @@ async def confirm_revision(
             "different CoreAnchor"
         )
 
+    # CAS: the actual, dialect-portable commit gate (a SELECT, even a
+    # bare-scalar one, cannot be trusted to reflect a concurrently
+    # committed value under SQLite/PostgreSQL snapshot isolation -- see
+    # intent.core_anchor_lock). This is the first mutating operation in
+    # this function, called before any other write below.
+    await compare_and_swap_active_revision(
+        session, anchor.id, expected_active_revision_id, revision.id
+    )
+    # A Core-level UPDATE does not sync the identity-mapped `anchor`
+    # object's attributes -- refresh so later reads (e.g. anchor.shot_id
+    # below, and the caller's use of the returned anchor state) are
+    # consistent with what the CAS just wrote.
+    await session.refresh(anchor)
+
     # Every write from here on is wrapped in one try/except: `record_transition`/
-    # `record_decision`/`record_audit_event` each call `session.flush()`
-    # internally, and autoflush means ANY of those flushes -- not just the
-    # final `commit()` below -- can be the one that trips the partial unique
-    # index (e.g. when `previous` is None because another transaction's
-    # commit isn't yet visible, and this revision's own `status='confirmed'`
-    # update collides with a row that transaction already confirmed). All
-    # such failures must be caught here, not just a failure at `commit()`.
+    # `record_decision`/`record_audit_event`/the stale cascade each call
+    # `session.flush()` internally, and autoflush means ANY of those
+    # flushes -- not just the final `commit()` below -- can be the one
+    # that trips the partial unique index. All such failures must be
+    # caught here, not just a failure at `commit()`.
     try:
         if previous is not None and previous.status == "confirmed":
             previous.status = "superseded"
@@ -299,7 +320,9 @@ async def confirm_revision(
             actor=actor,
         )
 
-        anchor.active_revision_id = revision.id
+        # anchor.active_revision_id was already set to revision.id by the
+        # CAS above (and refreshed into this Python object) -- no
+        # redundant assignment needed here.
 
         await decision_service.record_decision(
             session,
@@ -320,10 +343,27 @@ async def confirm_revision(
             actor=actor,
         )
 
+        # Stale cascade: runs inside this same transaction, never commits
+        # independently. Any exception it raises (including
+        # InternalConsistencyError) propagates to this try/except, so a
+        # cascade failure rolls back the entire confirm atomically.
+        await execution_anchor_service.mark_stale_for_new_core_revision(
+            session, anchor.shot_id, revision.id
+        )
+
         await session.commit()
     except IntegrityError:
         await session.rollback()
         raise ConflictError("Concurrent confirmation conflict") from None
+    except Exception:
+        # Anything else raised in this block (e.g. InternalConsistencyError
+        # from the stale cascade) must still roll back before propagating --
+        # otherwise the flushed-but-uncommitted status/pointer changes
+        # above remain visible to further reads on this same session even
+        # though they were never durably committed. The original exception
+        # type and message are preserved (never converted to ConflictError).
+        await session.rollback()
+        raise
 
     await session.refresh(revision)
     return revision
@@ -379,5 +419,8 @@ async def reject_revision(
         # IntegrityError and must be caught here.
         await session.rollback()
         raise ConflictError("Concurrent rejection conflict") from None
+    except Exception:
+        await session.rollback()
+        raise
     await session.refresh(revision)
     return revision
