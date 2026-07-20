@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.workflow.actors import ActorContext, HumanRole
@@ -40,3 +41,14 @@ async def record_decision(
     session.add(decision)
     await session.flush()
     return decision
+
+
+async def list_decisions_for_entity(
+    session: AsyncSession, entity_type: str, entity_id: uuid.UUID
+) -> list[Decision]:
+    result = await session.execute(
+        select(Decision)
+        .where(Decision.entity_type == entity_type, Decision.entity_id == entity_id)
+        .order_by(Decision.created_at)
+    )
+    return list(result.scalars().all())

@@ -6,6 +6,7 @@ import type {
   CoreAnchorRead,
   CoreAnchorRevisionRead,
   CoreAnchorRevisionUpdate,
+  DecisionRead,
   ExecutionAnchorRead,
   ExecutionAnchorRevisionRead,
   HumanRole,
@@ -24,6 +25,7 @@ import {
   getShot,
   listBriefsForShot,
   listCoreAnchorRevisions,
+  listDecisionsForRevision,
   listTasks,
   rejectCoreAnchorRevision,
   updateCoreAnchorRevision,
@@ -52,6 +54,7 @@ interface ShotData {
   briefs: IntentBriefRead[];
   coreAnchor: CoreAnchorRead | null;
   revisions: CoreAnchorRevisionRead[];
+  confirmedRevisionDecision: DecisionRead | null;
   taskAnchors: TaskAnchorInfo[];
 }
 
@@ -60,6 +63,12 @@ type LoadState =
   | { status: "not-found" }
   | { status: "error"; message: string }
   | { status: "ready"; data: ShotData };
+
+interface LastDecision {
+  type: "confirmed" | "rejected";
+  revisionNumber: number;
+  rationale: string | null;
+}
 
 const HUMAN_ROLES: { value: HumanRole; label: string }[] = [
   { value: "vfx_supervisor", label: "VFX Supervisor" },
@@ -96,15 +105,28 @@ async function loadShotData(shotId: string): Promise<ShotData> {
     listTasks(),
   ]);
   const revisions = coreAnchor ? await listCoreAnchorRevisions(shotId) : [];
+  const confirmedRevision =
+    revisions.find((r) => r.status === "confirmed") ?? null;
+  const confirmedRevisionDecision = confirmedRevision
+    ? ((await listDecisionsForRevision(confirmedRevision.id)).at(-1) ?? null)
+    : null;
   const shotTasks = allTasks.filter((t) => t.shot_id === shotId);
   const taskAnchors = await Promise.all(shotTasks.map(loadTaskAnchor));
-  return { shot, briefs, coreAnchor, revisions, taskAnchors };
+  return {
+    shot,
+    briefs,
+    coreAnchor,
+    revisions,
+    confirmedRevisionDecision,
+    taskAnchors,
+  };
 }
 
 export function ShotAnchorPage({ shotId }: { shotId: string }) {
   const [state, setState] = useState<LoadState>({ status: "loading" });
   const [role, setRole] = useState<HumanRole>("vfx_supervisor");
   const [actorId, setActorId] = useState("vfx-1");
+  const [lastDecision, setLastDecision] = useState<LastDecision | null>(null);
 
   const reload = useCallback(() => {
     setState({ status: "loading" });
@@ -123,6 +145,15 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
   useEffect(() => {
     reload();
   }, [reload]);
+
+  function handleDecided(
+    type: "confirmed" | "rejected",
+    revisionNumber: number,
+    rationale: string | null,
+  ) {
+    setLastDecision({ type, revisionNumber, rationale });
+    reload();
+  }
 
   if (state.status === "loading") {
     return (
@@ -153,7 +184,14 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
     );
   }
 
-  const { shot, briefs, coreAnchor, revisions, taskAnchors } = state.data;
+  const {
+    shot,
+    briefs,
+    coreAnchor,
+    revisions,
+    confirmedRevisionDecision,
+    taskAnchors,
+  } = state.data;
   const latestBrief = briefs.length > 0 ? briefs[briefs.length - 1] : null;
   const confirmedRevision =
     revisions.find((r) => r.status === "confirmed") ?? null;
@@ -161,6 +199,19 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
     [...revisions].reverse().find((r) => r.status === "draft") ?? null;
 
   const actor = { role, actorId };
+
+  // A newer Core revision being confirmed marks every currently-confirmed,
+  // not-yet-stale Execution Anchor under this shot as stale (A2's cascade,
+  // intent.execution_anchor_service.mark_stale_for_new_core_revision) --
+  // only relevant if something is actually confirmed today.
+  const wouldMakeExecutionAnchorsStale =
+    confirmedRevision !== null &&
+    taskAnchors.some(
+      (info) =>
+        info.executionAnchor !== null &&
+        !info.executionAnchor.is_stale &&
+        info.executionAnchor.active_revision_id != null,
+    );
 
   return (
     <main>
@@ -177,6 +228,16 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
         onRoleChange={setRole}
         onActorIdChange={setActorId}
       />
+
+      {lastDecision && (
+        <p role="status" data-decision={lastDecision.type}>
+          {lastDecision.type === "confirmed" ? "Confirmed" : "Rejected"}{" "}
+          revision #{lastDecision.revisionNumber}.
+          {lastDecision.rationale
+            ? ` Rationale: ${lastDecision.rationale}`
+            : ""}
+        </p>
+      )}
 
       <section>
         <h2>Intent brief</h2>
@@ -201,14 +262,19 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
         ) : (
           <>
             {confirmedRevision && (
-              <ConfirmedAnchorCard revision={confirmedRevision} />
+              <ConfirmedAnchorCard
+                revision={confirmedRevision}
+                decision={confirmedRevisionDecision}
+              />
             )}
             {draftRevision ? (
-              <DraftAnchorCard
+              <CoreAnchorGate
                 key={draftRevision.id}
                 revision={draftRevision}
                 actor={actor}
-                onChanged={reload}
+                showStaleWarning={wouldMakeExecutionAnchorsStale}
+                onSaved={reload}
+                onDecided={handleDecided}
               />
             ) : (
               <>
@@ -336,8 +402,10 @@ function StatusBadge({ status }: { status: CoreAnchorRevisionRead["status"] }) {
 
 function ConfirmedAnchorCard({
   revision,
+  decision,
 }: {
   revision: CoreAnchorRevisionRead;
+  decision: DecisionRead | null;
 }) {
   return (
     <article>
@@ -359,18 +427,33 @@ function ConfirmedAnchorCard({
           {revision.confirmed_at}
         </small>
       </p>
+      {decision && (
+        <p>
+          <small>
+            Decision rationale: {decision.rationale ?? "(none given)"}
+          </small>
+        </p>
+      )}
     </article>
   );
 }
 
-function DraftAnchorCard({
+function CoreAnchorGate({
   revision,
   actor,
-  onChanged,
+  showStaleWarning,
+  onSaved,
+  onDecided,
 }: {
   revision: CoreAnchorRevisionRead;
   actor: { role: HumanRole; actorId: string };
-  onChanged: () => void;
+  showStaleWarning: boolean;
+  onSaved: () => void;
+  onDecided: (
+    type: "confirmed" | "rejected",
+    revisionNumber: number,
+    rationale: string | null,
+  ) => void;
 }) {
   const [fields, setFields] = useState<Record<CoreAnchorField, string>>(
     () =>
@@ -395,7 +478,7 @@ function DraftAnchorCard({
         fields as CoreAnchorRevisionUpdate,
         actor,
       );
-      onChanged();
+      onSaved();
     } catch (err) {
       setError(describeError(err));
     } finally {
@@ -407,14 +490,14 @@ function DraftAnchorCard({
     setPending("confirm");
     setError(null);
     try {
-      // request_write_back stays false in D1 -- ftrack write-back is out of
+      // request_write_back stays false in A3 -- ftrack write-back is out of
       // scope for this page.
       await confirmCoreAnchorRevision(
         revision.id,
         { rationale: rationale || null, request_write_back: false },
         actor,
       );
-      onChanged();
+      onDecided("confirmed", revision.revision_number, rationale || null);
     } catch (err) {
       setError(describeError(err));
     } finally {
@@ -431,7 +514,7 @@ function DraftAnchorCard({
         { rationale: rationale || null },
         actor,
       );
-      onChanged();
+      onDecided("rejected", revision.revision_number, rationale || null);
     } catch (err) {
       setError(describeError(err));
     } finally {
@@ -441,10 +524,48 @@ function DraftAnchorCard({
 
   return (
     <article aria-label={`Draft revision ${revision.revision_number}`}>
-      <h3>
+      <h3>Core Anchor Human Review Gate</h3>
+      <p>
         Revision #{revision.revision_number}{" "}
         <StatusBadge status={revision.status} />
-      </h3>
+      </p>
+      <dl>
+        <div>
+          <dt>Created by</dt>
+          <dd>
+            {revision.created_by_actor_kind}
+            {revision.created_by_actor_kind === "agent" && (
+              <>
+                {" "}
+                — agent type: {revision.created_by_agent_type ?? "unknown"},
+                agent run id: {revision.created_by_agent_run_id ?? "unknown"}
+              </>
+            )}
+            {revision.created_by_human_role && (
+              <> — {revision.created_by_human_role}</>
+            )}
+          </dd>
+        </div>
+        <div>
+          <dt>Required reviewer</dt>
+          <dd>VFX Supervisor</dd>
+        </div>
+        <div>
+          <dt>Acting as</dt>
+          <dd>
+            {actor.role} ({actor.actorId})
+          </dd>
+        </div>
+      </dl>
+
+      {showStaleWarning && (
+        <p data-warning="stale-impact">
+          Confirming this draft will mark all confirmed Execution Anchors under
+          this shot as stale. It will not modify, regenerate, or confirm any
+          Execution Anchor automatically.
+        </p>
+      )}
+
       {!canAct && (
         <p>
           <small>
@@ -452,53 +573,61 @@ function DraftAnchorCard({
           </small>
         </p>
       )}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void handleSave();
-        }}
-      >
-        {CORE_ANCHOR_FIELDS.map(([field, label]) => (
-          <div key={field}>
-            <label htmlFor={`field-${field}`}>{label}</label>
-            <textarea
-              id={`field-${field}`}
-              value={fields[field]}
-              disabled={!canAct}
-              onChange={(e) =>
-                setFields((prev) => ({ ...prev, [field]: e.target.value }))
-              }
-            />
-          </div>
-        ))}
-        <button type="submit" disabled={!canAct || pending !== null}>
-          {pending === "save" ? "Saving…" : "Save changes"}
-        </button>
-      </form>
 
-      <label htmlFor="rationale">Rationale (optional)</label>
-      <textarea
-        id="rationale"
-        value={rationale}
-        disabled={!canAct}
-        onChange={(e) => setRationale(e.target.value)}
-      />
-      <div>
-        <button
-          type="button"
-          disabled={!canAct || pending !== null}
-          onClick={() => void handleConfirm()}
+      <section aria-label="Edit draft">
+        <h4>Edit draft</h4>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            void handleSave();
+          }}
         >
-          {pending === "confirm" ? "Confirming…" : "Confirm"}
-        </button>{" "}
-        <button
-          type="button"
-          disabled={!canAct || pending !== null}
-          onClick={() => void handleReject()}
-        >
-          {pending === "reject" ? "Rejecting…" : "Reject"}
-        </button>
-      </div>
+          {CORE_ANCHOR_FIELDS.map(([field, label]) => (
+            <div key={field}>
+              <label htmlFor={`field-${field}`}>{label}</label>
+              <textarea
+                id={`field-${field}`}
+                value={fields[field]}
+                disabled={!canAct}
+                onChange={(e) =>
+                  setFields((prev) => ({ ...prev, [field]: e.target.value }))
+                }
+              />
+            </div>
+          ))}
+          <button type="submit" disabled={!canAct || pending !== null}>
+            {pending === "save" ? "Saving…" : "Save changes"}
+          </button>
+        </form>
+      </section>
+
+      <section aria-label="Gate decision">
+        <h4>Gate decision</h4>
+        <label htmlFor="rationale">Decision rationale (optional)</label>
+        <textarea
+          id="rationale"
+          value={rationale}
+          disabled={!canAct}
+          onChange={(e) => setRationale(e.target.value)}
+        />
+        <div>
+          <button
+            type="button"
+            disabled={!canAct || pending !== null}
+            onClick={() => void handleConfirm()}
+          >
+            {pending === "confirm" ? "Confirming…" : "Confirm"}
+          </button>{" "}
+          <button
+            type="button"
+            disabled={!canAct || pending !== null}
+            onClick={() => void handleReject()}
+          >
+            {pending === "reject" ? "Rejecting…" : "Reject"}
+          </button>
+        </div>
+      </section>
+
       {error && <p role="alert">{error}</p>}
     </article>
   );
@@ -517,6 +646,9 @@ function TaskAnchorRow({
     <li>
       <strong>{task.name}</strong>
       {task.department && <span> ({task.department})</span>}
+      <p>
+        <small>Required reviewer: CG Supervisor</small>
+      </p>
       {executionAnchor === null ? (
         <p>No Execution Anchor yet.</p>
       ) : (

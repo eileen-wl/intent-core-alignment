@@ -280,6 +280,23 @@ export interface paths {
         patch: operations["update_core_anchor_revision_intent_core_anchor_revisions__revision_id__patch"];
         trace?: never;
     };
+    "/intent/core-anchor-revisions/{revision_id}/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Core Anchor Revision Decisions */
+        get: operations["list_core_anchor_revision_decisions_intent_core_anchor_revisions__revision_id__decisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/intent/core-anchor-revisions/{revision_id}/confirm": {
         parameters: {
             query?: never;
@@ -595,6 +612,48 @@ export interface components {
             narrative_priority?: string | null;
             /** Core Summary */
             core_summary?: string | null;
+        };
+        /** DecisionRead */
+        DecisionRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Decision Type */
+            decision_type: string;
+            /**
+             * Owning Human Role
+             * @enum {string}
+             */
+            owning_human_role: "vfx_supervisor" | "cg_supervisor" | "artist";
+            /**
+             * Actor Kind
+             * @enum {string}
+             */
+            actor_kind: "human" | "agent" | "system";
+            /** Actor Id */
+            actor_id: string;
+            /** Actor Human Role */
+            actor_human_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
+            /** Rationale */
+            rationale: string | null;
+            /** Entity Type */
+            entity_type: string;
+            /**
+             * Entity Id
+             * Format: uuid
+             */
+            entity_id: string;
+            /** Write Back Requested */
+            write_back_requested: boolean;
+            /** Supersedes Decision Id */
+            supersedes_decision_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** ExecutionAnchorRead */
         ExecutionAnchorRead: {
@@ -1625,6 +1684,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CoreAnchorRevisionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_core_anchor_revision_decisions_intent_core_anchor_revisions__revision_id__decisions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DecisionRead"][];
                 };
             };
             /** @description Validation Error */

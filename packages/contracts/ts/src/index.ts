@@ -41,6 +41,8 @@ export type ExecutionAnchorRevisionUpdate =
 export type AnchorConfirmRequest = Schemas["AnchorConfirmRequest"];
 export type AnchorRejectRequest = Schemas["AnchorRejectRequest"];
 
+export type DecisionRead = Schemas["DecisionRead"];
+
 export type SyncCursorRead = Schemas["SyncCursorRead"];
 export type SyncCursorUpsert = Schemas["SyncCursorUpsert"];
 

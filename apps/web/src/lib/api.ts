@@ -12,6 +12,7 @@ import type {
   CoreAnchorRead,
   CoreAnchorRevisionRead,
   CoreAnchorRevisionUpdate,
+  DecisionRead,
   ExecutionAnchorRead,
   ExecutionAnchorRevisionRead,
   HumanRole,
@@ -141,6 +142,12 @@ export function listCoreAnchorRevisions(
   shotId: string,
 ): Promise<CoreAnchorRevisionRead[]> {
   return apiFetch(`/intent/shots/${shotId}/core-anchor/revisions`);
+}
+
+export function listDecisionsForRevision(
+  revisionId: string,
+): Promise<DecisionRead[]> {
+  return apiFetch(`/intent/core-anchor-revisions/${revisionId}/decisions`);
 }
 
 export function updateCoreAnchorRevision(

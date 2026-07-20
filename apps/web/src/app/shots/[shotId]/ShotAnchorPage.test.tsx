@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   CoreAnchorRead,
   CoreAnchorRevisionRead,
+  DecisionRead,
   ExecutionAnchorRead,
   ExecutionAnchorRevisionRead,
   IntentBriefRead,
@@ -148,11 +149,30 @@ function executionAnchorRevision(
   };
 }
 
+function decision(overrides: Partial<DecisionRead> = {}): DecisionRead {
+  return {
+    id: "decision-1",
+    decision_type: "confirm_core_anchor",
+    owning_human_role: "vfx_supervisor",
+    actor_kind: "human",
+    actor_id: "vfx-1",
+    actor_human_role: "vfx_supervisor",
+    rationale: "matches the brief",
+    entity_type: "core_anchor_revision",
+    entity_id: "rev-confirmed",
+    write_back_requested: false,
+    supersedes_decision_id: null,
+    created_at: NOW,
+    ...overrides,
+  };
+}
+
 interface Fixture {
   shot: ShotRead | null;
   briefs: IntentBriefRead[];
   coreAnchor: CoreAnchorRead | null;
   revisions: CoreAnchorRevisionRead[];
+  decisions: Record<string, DecisionRead[]>;
   tasks: TaskRead[];
   executionAnchors: Record<string, ExecutionAnchorRead | null>;
   executionAnchorRevisions: Record<string, ExecutionAnchorRevisionRead>;
@@ -229,6 +249,11 @@ function installFetchMock(
           : jsonResponse(404, {
               detail: "Execution anchor revision not found",
             });
+      }
+      const decisionsMatch =
+        /^\/intent\/core-anchor-revisions\/([^/]+)\/decisions$/.exec(path);
+      if (method === "GET" && decisionsMatch) {
+        return jsonResponse(200, fixture.decisions[decisionsMatch[1]] ?? []);
       }
       const patchRevisionMatch =
         /^\/intent\/core-anchor-revisions\/([^/]+)$/.exec(path);
@@ -347,6 +372,9 @@ function baseFixture(): Fixture {
         shot_objective: "Slightly louder now",
       }),
     ],
+    decisions: {
+      "rev-confirmed": [decision({ entity_id: "rev-confirmed" })],
+    },
     tasks: [task()],
     executionAnchors: {
       "task-1": executionAnchor({
@@ -641,6 +669,164 @@ describe("ShotAnchorPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       /Core Agent generation failed/,
     );
+  });
+
+  it("labels the draft as a Human Review Gate and shows agent provenance", async () => {
+    const fixture = baseFixture();
+    fixture.revisions[1] = revision({
+      id: "rev-draft",
+      revision_number: 2,
+      status: "draft",
+      shot_objective: "Generated objective",
+      created_by_actor_kind: "agent",
+      created_by_actor_id: "core_agent",
+      created_by_human_role: null,
+      created_by_agent_type: "core_agent",
+      created_by_agent_run_id: "run-123",
+    });
+    installFetchMock(fixture);
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    const gate = await screen.findByLabelText("Draft revision 2");
+    expect(
+      within(gate).getByRole("heading", {
+        name: "Core Anchor Human Review Gate",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(gate).getByText(/agent type: core_agent/),
+    ).toBeInTheDocument();
+    expect(within(gate).getByText(/agent run id: run-123/)).toBeInTheDocument();
+    expect(within(gate).getByText("Required reviewer")).toBeInTheDocument();
+    expect(within(gate).getByText("VFX Supervisor")).toBeInTheDocument();
+    expect(
+      within(gate).getByText(/vfx_supervisor \(vfx-1\)/),
+    ).toBeInTheDocument();
+  });
+
+  it("warns that confirming will make Execution Anchors stale when one is currently confirmed", async () => {
+    // baseFixture's Execution Anchor is already stale (used by the "stale
+    // status" test below) -- override it to not-yet-stale here, since
+    // that's the situation where confirming the draft would actually
+    // trigger A2's stale cascade.
+    const fixture = baseFixture();
+    fixture.executionAnchors["task-1"] = executionAnchor({
+      active_revision_id: "ea-rev-1",
+      is_stale: false,
+    });
+    installFetchMock(fixture);
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    const gate = await screen.findByLabelText("Draft revision 2");
+    expect(
+      within(gate).getByText(
+        /will mark all confirmed Execution Anchors under this shot as stale/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show the stale warning when there is no currently confirmed revision", async () => {
+    const fixture = baseFixture();
+    fixture.revisions = fixture.revisions.filter(
+      (r) => r.status !== "confirmed",
+    );
+    installFetchMock(fixture);
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    const gate = await screen.findByLabelText("Draft revision 2");
+    expect(
+      within(gate).queryByText(/will mark all confirmed Execution Anchors/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a clear success state with rationale after confirming", async () => {
+    const user = userEvent.setup();
+    const fixture = baseFixture();
+    installFetchMock(fixture);
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    const gate = await screen.findByLabelText("Draft revision 2");
+    await user.type(
+      within(gate).getByLabelText("Decision rationale (optional)"),
+      "looks aligned with the brief",
+    );
+    await user.click(within(gate).getByRole("button", { name: "Confirm" }));
+
+    const banner = await screen.findByText(/Confirmed revision #2/);
+    expect(banner).toHaveTextContent("looks aligned with the brief");
+  });
+
+  it("shows a clear success state after rejecting", async () => {
+    const user = userEvent.setup();
+    const fixture = baseFixture();
+    installFetchMock(fixture);
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    const gate = await screen.findByLabelText("Draft revision 2");
+    await user.click(within(gate).getByRole("button", { name: "Reject" }));
+
+    expect(await screen.findByText(/Rejected revision #2/)).toBeInTheDocument();
+  });
+
+  it("does not show a decision as successful before the API call resolves", async () => {
+    const user = userEvent.setup();
+    const fixture = baseFixture();
+    let resolveConfirm: ((response: Response) => void) | undefined;
+    installFetchMock(fixture, {
+      onRequest: (method, path) => {
+        if (method === "POST" && path.endsWith("/confirm")) {
+          return new Promise<Response>((resolve) => {
+            resolveConfirm = resolve;
+          });
+        }
+        return null;
+      },
+    });
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    const gate = await screen.findByLabelText("Draft revision 2");
+    await user.click(within(gate).getByRole("button", { name: "Confirm" }));
+
+    // Held open: the API call has not resolved yet, so no success state
+    // must appear -- the frontend must not pretend the Gate passed.
+    expect(screen.queryByText(/Confirmed revision #2/)).not.toBeInTheDocument();
+
+    const confirmed = { ...fixture.revisions[1], status: "confirmed" as const };
+    fixture.revisions[1] = confirmed;
+    resolveConfirm?.(jsonResponse(200, confirmed));
+    expect(
+      await screen.findByText(/Confirmed revision #2/),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the confirmed revision's recorded decision rationale", async () => {
+    installFetchMock(baseFixture());
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    expect(
+      await screen.findByText(/Decision rationale: matches the brief/),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the required reviewer role for each Task's Execution Anchor", async () => {
+    installFetchMock(baseFixture());
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    expect(
+      await screen.findByText("Required reviewer: CG Supervisor"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows an up-to-date Execution Anchor when it is not stale", async () => {
+    const fixture = baseFixture();
+    fixture.executionAnchors["task-1"] = executionAnchor({
+      active_revision_id: "ea-rev-1",
+      is_stale: false,
+    });
+    installFetchMock(fixture);
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    expect(await screen.findByText("Status: Up to date")).toBeInTheDocument();
   });
 
   it("shows a general error state with retry when the shot fetch fails outright", async () => {

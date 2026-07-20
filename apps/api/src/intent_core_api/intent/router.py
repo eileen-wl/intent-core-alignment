@@ -21,6 +21,7 @@ from intent_core_contracts.api.intent import (
     IntentBriefCreate,
     IntentBriefRead,
 )
+from intent_core_contracts.api.workflow import DecisionRead
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.agents import core_agent_service
@@ -35,8 +36,10 @@ from intent_core_api.intent.models import (
     ExecutionAnchorRevision,
     IntentBrief,
 )
+from intent_core_api.workflow import decision_service
 from intent_core_api.workflow.actors import ActorContext, get_current_actor
 from intent_core_api.workflow.exceptions import NotFoundError
+from intent_core_api.workflow.models import Decision
 
 router = APIRouter(prefix="/intent", tags=["intent"])
 
@@ -115,6 +118,15 @@ async def get_core_anchor_revision(
     if revision is None:
         raise NotFoundError("Core anchor revision not found")
     return revision
+
+
+@router.get("/core-anchor-revisions/{revision_id}/decisions", response_model=list[DecisionRead])
+async def list_core_anchor_revision_decisions(
+    revision_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> list[Decision]:
+    return await decision_service.list_decisions_for_entity(
+        session, "core_anchor_revision", revision_id
+    )
 
 
 @router.patch("/core-anchor-revisions/{revision_id}", response_model=CoreAnchorRevisionRead)
