@@ -5,6 +5,10 @@ from collections.abc import AsyncGenerator
 
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+# Force the deterministic provider for the whole suite, regardless of what a
+# developer's local .env has set for real manual DeepSeek testing -- tests
+# must never make a real model-provider network request (Step 4c scope).
+os.environ["MODEL_PROVIDER"] = "deterministic"
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient

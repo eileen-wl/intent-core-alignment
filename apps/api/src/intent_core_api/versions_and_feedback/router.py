@@ -3,21 +3,27 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends
-from intent_core_contracts.api.alignment_assessment import AlignmentAssessmentRead
+from intent_core_contracts.api.alignment_assessment import (
+    AlignmentAssessmentRead,
+    AssessmentDecisionRequest,
+)
 from intent_core_contracts.api.versions_and_feedback import (
     ReviewNoteCreate,
     ReviewNoteRead,
     VersionCreate,
     VersionRead,
 )
+from intent_core_contracts.api.workflow import DecisionRead
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.agents import alignment_assessment_service
 from intent_core_api.db import get_session
 from intent_core_api.versions_and_feedback import service as versions_and_feedback_service
 from intent_core_api.versions_and_feedback.models import AlignmentAssessment, ReviewNote, Version
+from intent_core_api.workflow import decision_service
 from intent_core_api.workflow.actors import ActorContext, get_current_actor
 from intent_core_api.workflow.exceptions import NotFoundError
+from intent_core_api.workflow.models import Decision
 
 router = APIRouter(tags=["versions_and_feedback"])
 
@@ -104,4 +110,45 @@ async def list_alignment_assessments(
 ) -> list[AlignmentAssessment]:
     return await alignment_assessment_service.list_alignment_assessments_for_version(
         session, version_id
+    )
+
+
+@router.post("/assessments/{assessment_id}/accept", response_model=DecisionRead, status_code=201)
+async def accept_alignment_assessment(
+    assessment_id: uuid.UUID,
+    payload: AssessmentDecisionRequest,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> Decision:
+    return await versions_and_feedback_service.decide_alignment_assessment(
+        session,
+        actor,
+        assessment_id,
+        decision_type=versions_and_feedback_service.DECISION_TYPE_ACCEPT_ALIGNMENT_ASSESSMENT,
+        rationale=payload.rationale,
+    )
+
+
+@router.post("/assessments/{assessment_id}/reject", response_model=DecisionRead, status_code=201)
+async def reject_alignment_assessment(
+    assessment_id: uuid.UUID,
+    payload: AssessmentDecisionRequest,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> Decision:
+    return await versions_and_feedback_service.decide_alignment_assessment(
+        session,
+        actor,
+        assessment_id,
+        decision_type=versions_and_feedback_service.DECISION_TYPE_REJECT_ALIGNMENT_ASSESSMENT,
+        rationale=payload.rationale,
+    )
+
+
+@router.get("/assessments/{assessment_id}/decisions", response_model=list[DecisionRead])
+async def list_alignment_assessment_decisions(
+    assessment_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> list[Decision]:
+    return await decision_service.list_decisions_for_entity(
+        session, "alignment_assessment", assessment_id
     )

@@ -20,6 +20,7 @@ async def record_decision(
     entity_id: uuid.UUID,
     rationale: str | None = None,
     write_back_requested: bool = False,
+    supersedes_decision_id: uuid.UUID | None = None,
 ) -> Decision:
     # Defense-in-depth: every caller already gates on require_can_confirm_or_reject
     # (or the A3 gate-resolution equivalent), but a Decision must never be
@@ -37,6 +38,7 @@ async def record_decision(
         entity_type=entity_type,
         entity_id=entity_id,
         write_back_requested=write_back_requested,
+        supersedes_decision_id=supersedes_decision_id,
     )
     session.add(decision)
     await session.flush()

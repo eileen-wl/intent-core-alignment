@@ -54,3 +54,12 @@ class AlignmentAssessmentRead(BaseModel):
     alignment_state: AlignmentState
     envelope: dict[str, Any]
     created_at: datetime
+
+
+class AssessmentDecisionRequest(BaseModel):
+    """Step 4c: the body of the accept/reject endpoints. Deliberately
+    just the optional rationale -- no ``request_write_back`` or any
+    ftrack-related field exists for this capability.
+    """
+
+    rationale: str | None = None
