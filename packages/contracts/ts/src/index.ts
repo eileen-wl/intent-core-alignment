@@ -46,6 +46,11 @@ export type DecisionRead = Schemas["DecisionRead"];
 export type ContextSnapshotRead = Schemas["ContextSnapshotRead"];
 export type AgentRunRead = Schemas["AgentRunRead"];
 
+export type VersionCreate = Schemas["VersionCreate"];
+export type VersionRead = Schemas["VersionRead"];
+export type ReviewNoteCreate = Schemas["ReviewNoteCreate"];
+export type ReviewNoteRead = Schemas["ReviewNoteRead"];
+
 export type SyncCursorRead = Schemas["SyncCursorRead"];
 export type SyncCursorUpsert = Schemas["SyncCursorUpsert"];
 

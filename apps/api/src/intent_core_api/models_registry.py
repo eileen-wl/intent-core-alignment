@@ -11,4 +11,7 @@ from intent_core_api.integrations import models as _integrations_models  # noqa:
 from intent_core_api.intent import models as _intent_models  # noqa: F401
 from intent_core_api.ops import models as _ops_models  # noqa: F401
 from intent_core_api.production_context import models as _production_context_models  # noqa: F401
+from intent_core_api.versions_and_feedback import (
+    models as _versions_and_feedback_models,  # noqa: F401
+)
 from intent_core_api.workflow import models as _workflow_models  # noqa: F401
