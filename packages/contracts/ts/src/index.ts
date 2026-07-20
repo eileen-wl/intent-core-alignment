@@ -1,6 +1,47 @@
-export type {
-  ProjectRead,
-  ShotRead,
-  TaskRead,
-  RecordSource,
-} from "./generated/api";
+export type { paths, components, operations } from "./generated/api";
+
+import type { components } from "./generated/api";
+
+type Schemas = components["schemas"];
+
+export type ProjectCreate = Schemas["ProjectCreate"];
+export type ProjectRead = Schemas["ProjectRead"];
+export type ShotCreate = Schemas["ShotCreate"];
+export type ShotRead = Schemas["ShotRead"];
+export type TaskCreate = Schemas["TaskCreate"];
+export type TaskRead = Schemas["TaskRead"];
+
+export type RecordSource = Schemas["ProjectRead"]["source"];
+
+export type IntentBriefCreate = Schemas["IntentBriefCreate"];
+export type IntentBriefRead = Schemas["IntentBriefRead"];
+
+export type CoreAnchorRead = Schemas["CoreAnchorRead"];
+export type CoreAnchorRevisionRead = Schemas["CoreAnchorRevisionRead"];
+export type CoreAnchorRevisionDraftCreate =
+  Schemas["CoreAnchorRevisionDraftCreate"];
+export type CoreAnchorRevisionUpdate = Schemas["CoreAnchorRevisionUpdate"];
+
+export type ExecutionAnchorRead = Schemas["ExecutionAnchorRead"];
+export type ExecutionAnchorRevisionRead =
+  Schemas["ExecutionAnchorRevisionRead"];
+export type ExecutionAnchorRevisionDraftCreate =
+  Schemas["ExecutionAnchorRevisionDraftCreate"];
+export type ExecutionAnchorRevisionUpdate =
+  Schemas["ExecutionAnchorRevisionUpdate"];
+
+export type AnchorConfirmRequest = Schemas["AnchorConfirmRequest"];
+export type AnchorRejectRequest = Schemas["AnchorRejectRequest"];
+
+export type SyncCursorRead = Schemas["SyncCursorRead"];
+export type SyncCursorUpsert = Schemas["SyncCursorUpsert"];
+
+export type WritebackRecordRead = Schemas["WritebackRecordRead"];
+export type WritebackRecordStatusUpdate =
+  Schemas["WritebackRecordStatusUpdate"];
+
+export type WorkerHeartbeatRead = Schemas["WorkerHeartbeatRead"];
+export type WorkerHeartbeatUpsert = Schemas["WorkerHeartbeatUpsert"];
+
+export type HTTPValidationError = Schemas["HTTPValidationError"];
+export type ValidationError = Schemas["ValidationError"];

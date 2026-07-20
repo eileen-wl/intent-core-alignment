@@ -1,4 +1,4 @@
-.PHONY: fmt lint typecheck test up down logs
+.PHONY: fmt lint typecheck test generate-contracts up down logs
 
 # Requires: uv (Python), pnpm (JS/TS), docker (local infra)
 #
@@ -31,6 +31,15 @@ test:
 	uv run --project services/ftrack-connector pytest services/ftrack-connector
 	uv run --project apps/api pytest tests/infra
 	pnpm -w run test
+
+# Regenerates packages/contracts/ts/src/generated/api.ts from apps/api's
+# live OpenAPI document. The generated file is committed (the `js` CI job
+# typechecks/builds against it without needing the Python toolchain), so
+# run this and commit the diff whenever apps/api's request/response
+# schemas change.
+generate-contracts:
+	uv run --project apps/api python -m intent_core_api.export_openapi > apps/api/openapi.json
+	pnpm run generate:contracts
 
 up:
 	docker compose -f infra/docker-compose.yml up --build
