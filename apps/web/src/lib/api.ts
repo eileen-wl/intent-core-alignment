@@ -7,8 +7,10 @@
 // convention): override via a one-off shell export if ever needed, same
 // as documented for `API_BASE_URL`.
 import type {
+  AgentRunRead,
   AnchorConfirmRequest,
   AnchorRejectRequest,
+  ContextSnapshotRead,
   CoreAnchorRead,
   CoreAnchorRevisionRead,
   CoreAnchorRevisionUpdate,
@@ -148,6 +150,16 @@ export function listDecisionsForRevision(
   revisionId: string,
 ): Promise<DecisionRead[]> {
   return apiFetch(`/intent/core-anchor-revisions/${revisionId}/decisions`);
+}
+
+export function getAgentRun(agentRunId: string): Promise<AgentRunRead> {
+  return apiFetch(`/intent/agent-runs/${agentRunId}`);
+}
+
+export function getContextSnapshot(
+  snapshotId: string,
+): Promise<ContextSnapshotRead> {
+  return apiFetch(`/intent/context-snapshots/${snapshotId}`);
 }
 
 export function updateCoreAnchorRevision(

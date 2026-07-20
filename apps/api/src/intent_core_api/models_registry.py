@@ -5,6 +5,7 @@ Used by alembic/env.py (migrations) and test fixtures that need to
 only.
 """
 
+from intent_core_api.agents import models as _agents_models  # noqa: F401
 from intent_core_api.audit import models as _audit_models  # noqa: F401
 from intent_core_api.integrations import models as _integrations_models  # noqa: F401
 from intent_core_api.intent import models as _intent_models  # noqa: F401

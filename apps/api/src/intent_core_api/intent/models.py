@@ -103,7 +103,20 @@ class CoreAnchorRevision(Base):
     created_by_actor_id: Mapped[str] = mapped_column(String(200))
     created_by_human_role: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_by_agent_type: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Points at agents.models.AgentRun.id when created_by_actor_kind ==
+    # "agent" (WP-B1.5 populates this with a real AgentRun.id; B1 only
+    # ever wrote an opaque uuid4() here, since agent_runs didn't exist
+    # yet). Deliberately not a hard FK: this column predates agent_runs,
+    # so an environment with pre-WP-B1.5 agent-authored revisions could
+    # already hold values that don't resolve to any real row -- same
+    # loose-reference pattern already used for workflow.models.Decision
+    # .entity_id and integrations.models.ExternalEntityLink.entity_id.
     created_by_agent_run_id: Mapped[uuid.UUID | None] = mapped_column(nullable=True)
+    # Points at agents.models.ContextSnapshot.id when this revision was
+    # agent-generated (WP-B1.5); null for human-authored drafts.
+    context_snapshot_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("context_snapshots.id"), nullable=True
+    )
 
     # Confirmation/rejection is exclusively human by rule (service-enforced) --
     # no kind/agent-type columns are stored here, only the human identity.

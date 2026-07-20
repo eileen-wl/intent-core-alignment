@@ -96,7 +96,12 @@ class CoreAnchorRevisionRead(BaseModel):
     created_by_actor_id: str
     created_by_human_role: HumanRole | None
     created_by_agent_type: AgentType | None
+    # WP-B1.5: for an agent-generated draft, this is the agents.AgentRun.id
+    # that produced it -- the "agent_run_id" provenance field.
     created_by_agent_run_id: UUID | None
+    # WP-B1.5: the ContextSnapshot this draft was generated from, when
+    # agent-generated; null for human-authored drafts.
+    context_snapshot_id: UUID | None
 
     confirmed_by_human_role: HumanRole | None
     confirmed_by_actor_id: str | None

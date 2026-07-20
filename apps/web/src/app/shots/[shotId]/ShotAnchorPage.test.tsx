@@ -8,6 +8,8 @@ import {
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
+  AgentRunRead,
+  ContextSnapshotRead,
   CoreAnchorRead,
   CoreAnchorRevisionRead,
   DecisionRead,
@@ -80,6 +82,7 @@ function revision(
     created_by_human_role: "vfx_supervisor",
     created_by_agent_type: null,
     created_by_agent_run_id: null,
+    context_snapshot_id: null,
     confirmed_by_human_role: null,
     confirmed_by_actor_id: null,
     confirmed_at: null,
@@ -167,6 +170,35 @@ function decision(overrides: Partial<DecisionRead> = {}): DecisionRead {
   };
 }
 
+function agentRun(overrides: Partial<AgentRunRead> = {}): AgentRunRead {
+  return {
+    id: "run-123",
+    shot_id: "shot-1",
+    context_snapshot_id: "snapshot-1",
+    agent_type: "core_agent",
+    capability: "core_anchor_drafting",
+    provider: "deterministic",
+    status: "succeeded",
+    result_revision_id: "rev-draft",
+    error: null,
+    started_at: NOW,
+    completed_at: NOW,
+    ...overrides,
+  };
+}
+
+function contextSnapshot(
+  overrides: Partial<ContextSnapshotRead> = {},
+): ContextSnapshotRead {
+  return {
+    id: "snapshot-1",
+    shot_id: "shot-1",
+    payload: { shot: { id: "shot-1", name: "SH010", source: "manual" } },
+    created_at: NOW,
+    ...overrides,
+  };
+}
+
 interface Fixture {
   shot: ShotRead | null;
   briefs: IntentBriefRead[];
@@ -176,6 +208,8 @@ interface Fixture {
   tasks: TaskRead[];
   executionAnchors: Record<string, ExecutionAnchorRead | null>;
   executionAnchorRevisions: Record<string, ExecutionAnchorRevisionRead>;
+  agentRuns: Record<string, AgentRunRead>;
+  contextSnapshots: Record<string, ContextSnapshotRead>;
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -254,6 +288,21 @@ function installFetchMock(
         /^\/intent\/core-anchor-revisions\/([^/]+)\/decisions$/.exec(path);
       if (method === "GET" && decisionsMatch) {
         return jsonResponse(200, fixture.decisions[decisionsMatch[1]] ?? []);
+      }
+      const agentRunMatch = /^\/intent\/agent-runs\/([^/]+)$/.exec(path);
+      if (method === "GET" && agentRunMatch) {
+        const run = fixture.agentRuns[agentRunMatch[1]];
+        return run
+          ? jsonResponse(200, run)
+          : jsonResponse(404, { detail: "Agent run not found" });
+      }
+      const contextSnapshotMatch =
+        /^\/intent\/context-snapshots\/([^/]+)$/.exec(path);
+      if (method === "GET" && contextSnapshotMatch) {
+        const snapshot = fixture.contextSnapshots[contextSnapshotMatch[1]];
+        return snapshot
+          ? jsonResponse(200, snapshot)
+          : jsonResponse(404, { detail: "Context snapshot not found" });
       }
       const patchRevisionMatch =
         /^\/intent\/core-anchor-revisions\/([^/]+)$/.exec(path);
@@ -387,6 +436,8 @@ function baseFixture(): Fixture {
         core_anchor_revision_id: "rev-confirmed",
       }),
     },
+    agentRuns: {},
+    contextSnapshots: {},
   };
 }
 
@@ -701,6 +752,42 @@ describe("ShotAnchorPage", () => {
     expect(within(gate).getByText("VFX Supervisor")).toBeInTheDocument();
     expect(
       within(gate).getByText(/vfx_supervisor \(vfx-1\)/),
+    ).toBeInTheDocument();
+  });
+
+  it("enriches agent provenance with the AgentRun's provider/status and the ContextSnapshot's time", async () => {
+    const fixture = baseFixture();
+    fixture.revisions[1] = revision({
+      id: "rev-draft",
+      revision_number: 2,
+      status: "draft",
+      shot_objective: "Generated objective",
+      created_by_actor_kind: "agent",
+      created_by_actor_id: "core_agent",
+      created_by_human_role: null,
+      created_by_agent_type: "core_agent",
+      created_by_agent_run_id: "run-123",
+      context_snapshot_id: "snapshot-1",
+    });
+    fixture.agentRuns["run-123"] = agentRun({
+      id: "run-123",
+      status: "succeeded",
+      provider: "deterministic",
+    });
+    fixture.contextSnapshots["snapshot-1"] = contextSnapshot({
+      id: "snapshot-1",
+      created_at: NOW,
+    });
+    installFetchMock(fixture);
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    const gate = await screen.findByLabelText("Draft revision 2");
+    expect(
+      await within(gate).findByText(/provider: deterministic/),
+    ).toBeInTheDocument();
+    expect(within(gate).getByText(/run status: succeeded/)).toBeInTheDocument();
+    expect(
+      within(gate).getByText(/context snapshot: snapshot-1/),
     ).toBeInTheDocument();
   });
 

@@ -228,6 +228,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/intent/context-snapshots/{snapshot_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Context Snapshot */
+        get: operations["get_context_snapshot_intent_context_snapshots__snapshot_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/agent-runs/{agent_run_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Agent Run */
+        get: operations["get_agent_run_intent_agent_runs__agent_run_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/intent/shots/{shot_id}/core-anchor": {
         parameters: {
             query?: never;
@@ -474,6 +508,49 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** AgentRunRead */
+        AgentRunRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /**
+             * Context Snapshot Id
+             * Format: uuid
+             */
+            context_snapshot_id: string;
+            /**
+             * Agent Type
+             * @enum {string}
+             */
+            agent_type: "core_agent" | "vfx_supervisor_agent" | "cg_supervisor_agent" | "artist_agent" | "cross_department";
+            /** Capability */
+            capability: string;
+            /** Provider */
+            provider: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "running" | "succeeded" | "failed";
+            /** Result Revision Id */
+            result_revision_id: string | null;
+            /** Error */
+            error: string | null;
+            /**
+             * Started At
+             * Format: date-time
+             */
+            started_at: string;
+            /** Completed At */
+            completed_at: string | null;
+        };
         /** AnchorConfirmRequest */
         AnchorConfirmRequest: {
             /** Rationale */
@@ -488,6 +565,28 @@ export interface components {
         AnchorRejectRequest: {
             /** Rationale */
             rationale?: string | null;
+        };
+        /** ContextSnapshotRead */
+        ContextSnapshotRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Payload */
+            payload: {
+                [key: string]: unknown;
+            };
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** CoreAnchorRead */
         CoreAnchorRead: {
@@ -577,6 +676,8 @@ export interface components {
             created_by_agent_type: ("core_agent" | "vfx_supervisor_agent" | "cg_supervisor_agent" | "artist_agent" | "cross_department") | null;
             /** Created By Agent Run Id */
             created_by_agent_run_id: string | null;
+            /** Context Snapshot Id */
+            context_snapshot_id: string | null;
             /** Confirmed By Human Role */
             confirmed_by_human_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
             /** Confirmed By Actor Id */
@@ -1553,6 +1654,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CoreAnchorRevisionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_context_snapshot_intent_context_snapshots__snapshot_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                snapshot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextSnapshotRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_agent_run_intent_agent_runs__agent_run_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                agent_run_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AgentRunRead"];
                 };
             };
             /** @description Validation Error */

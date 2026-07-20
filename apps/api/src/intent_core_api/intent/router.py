@@ -5,6 +5,7 @@ import uuid
 from arq import create_pool
 from arq.connections import RedisSettings
 from fastapi import APIRouter, Depends, HTTPException
+from intent_core_contracts.api.agent_runs import AgentRunRead, ContextSnapshotRead
 from intent_core_contracts.api.execution_anchor import (
     ExecutionAnchorRead,
     ExecutionAnchorRevisionDraftCreate,
@@ -25,6 +26,7 @@ from intent_core_contracts.api.workflow import DecisionRead
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.agents import core_agent_service
+from intent_core_api.agents.models import AgentRun, ContextSnapshot
 from intent_core_api.config import get_settings
 from intent_core_api.db import get_session
 from intent_core_api.integrations import writeback_service
@@ -91,6 +93,26 @@ async def generate_core_anchor_draft(
     shot_id: uuid.UUID, session: AsyncSession = Depends(get_session)
 ) -> CoreAnchorRevision:
     return await core_agent_service.generate_core_anchor_draft(session, shot_id)
+
+
+@router.get("/context-snapshots/{snapshot_id}", response_model=ContextSnapshotRead)
+async def get_context_snapshot(
+    snapshot_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> ContextSnapshot:
+    snapshot = await core_agent_service.get_context_snapshot(session, snapshot_id)
+    if snapshot is None:
+        raise NotFoundError("Context snapshot not found")
+    return snapshot
+
+
+@router.get("/agent-runs/{agent_run_id}", response_model=AgentRunRead)
+async def get_agent_run(
+    agent_run_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> AgentRun:
+    run = await core_agent_service.get_agent_run(session, agent_run_id)
+    if run is None:
+        raise NotFoundError("Agent run not found")
+    return run
 
 
 @router.get("/shots/{shot_id}/core-anchor", response_model=CoreAnchorRead)

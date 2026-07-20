@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type {
+  AgentRunRead,
+  ContextSnapshotRead,
   CoreAnchorRead,
   CoreAnchorRevisionRead,
   CoreAnchorRevisionUpdate,
@@ -19,6 +21,8 @@ import {
   ApiError,
   confirmCoreAnchorRevision,
   generateCoreAnchorDraft,
+  getAgentRun,
+  getContextSnapshot,
   getCoreAnchor,
   getExecutionAnchor,
   getExecutionAnchorRevision,
@@ -539,6 +543,12 @@ function CoreAnchorGate({
                 {" "}
                 — agent type: {revision.created_by_agent_type ?? "unknown"},
                 agent run id: {revision.created_by_agent_run_id ?? "unknown"}
+                {revision.created_by_agent_run_id && (
+                  <AgentProvenanceDetails
+                    agentRunId={revision.created_by_agent_run_id}
+                    contextSnapshotId={revision.context_snapshot_id}
+                  />
+                )}
               </>
             )}
             {revision.created_by_human_role && (
@@ -630,6 +640,60 @@ function CoreAnchorGate({
 
       {error && <p role="alert">{error}</p>}
     </article>
+  );
+}
+
+/** Enriches the "Created by" line with the AgentRun's provider/status and
+ * the ContextSnapshot's creation time (WP-B1.5) -- both already linked
+ * from the revision via id, fetched here rather than on every page load
+ * since they're only relevant once a draft's provenance is actually
+ * being inspected. Silently shows nothing extra if either fetch fails;
+ * the essential provenance (agent type, agent run id) is already visible
+ * without this. */
+function AgentProvenanceDetails({
+  agentRunId,
+  contextSnapshotId,
+}: {
+  agentRunId: string;
+  contextSnapshotId: string | null;
+}) {
+  const [run, setRun] = useState<AgentRunRead | null>(null);
+  const [snapshot, setSnapshot] = useState<ContextSnapshotRead | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getAgentRun(agentRunId).then(
+      (result) => {
+        if (!cancelled) setRun(result);
+      },
+      () => {},
+    );
+    if (contextSnapshotId) {
+      getContextSnapshot(contextSnapshotId).then(
+        (result) => {
+          if (!cancelled) setSnapshot(result);
+        },
+        () => {},
+      );
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [agentRunId, contextSnapshotId]);
+
+  return (
+    <>
+      {run && (
+        <>
+          , provider: {run.provider}, run status: {run.status}
+        </>
+      )}
+      {snapshot && (
+        <>
+          , context snapshot: {snapshot.id} (captured {snapshot.created_at})
+        </>
+      )}
+    </>
   );
 }
 
