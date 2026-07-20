@@ -21,10 +21,13 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./dev.db"
     redis_url: str = "redis://localhost:6379/0"
     # Core Agent model-provider selection (B1). "deterministic" is the
-    # only implemented value -- see agents.core_agent_service for what
-    # connecting a real provider (MODEL_PROVIDER/MODEL_API_KEY/MODEL_NAME
-    # in .env.example) would require.
+    # only implemented value until Step 4b, which adds "deepseek" (ADR-0013)
+    # -- see agents.core_agent_service / agents.alignment_assessment_service.
     model_provider: str = "deterministic"
+    # Only required when model_provider="deepseek" (Step 4b). Blank by
+    # default in .env.example, same as model_provider itself.
+    model_api_key: str = ""
+    model_name: str = ""
 
 
 @lru_cache

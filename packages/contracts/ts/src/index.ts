@@ -51,6 +51,9 @@ export type VersionRead = Schemas["VersionRead"];
 export type ReviewNoteCreate = Schemas["ReviewNoteCreate"];
 export type ReviewNoteRead = Schemas["ReviewNoteRead"];
 
+export type AlignmentState = Schemas["AlignmentAssessmentRead"]["alignment_state"];
+export type AlignmentAssessmentRead = Schemas["AlignmentAssessmentRead"];
+
 export type SyncCursorRead = Schemas["SyncCursorRead"];
 export type SyncCursorUpsert = Schemas["SyncCursorUpsert"];
 

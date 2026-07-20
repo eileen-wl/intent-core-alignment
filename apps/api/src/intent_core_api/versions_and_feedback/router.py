@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, Depends
+from intent_core_contracts.api.alignment_assessment import AlignmentAssessmentRead
 from intent_core_contracts.api.versions_and_feedback import (
     ReviewNoteCreate,
     ReviewNoteRead,
@@ -11,9 +12,10 @@ from intent_core_contracts.api.versions_and_feedback import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from intent_core_api.agents import alignment_assessment_service
 from intent_core_api.db import get_session
 from intent_core_api.versions_and_feedback import service as versions_and_feedback_service
-from intent_core_api.versions_and_feedback.models import ReviewNote, Version
+from intent_core_api.versions_and_feedback.models import AlignmentAssessment, ReviewNote, Version
 from intent_core_api.workflow.actors import ActorContext, get_current_actor
 from intent_core_api.workflow.exceptions import NotFoundError
 
@@ -70,3 +72,36 @@ async def list_review_notes(
     version_id: uuid.UUID, session: AsyncSession = Depends(get_session)
 ) -> list[ReviewNote]:
     return await versions_and_feedback_service.list_review_notes_for_version(session, version_id)
+
+
+@router.post(
+    "/versions/{version_id}/assessments/generate",
+    response_model=AlignmentAssessmentRead,
+    status_code=201,
+)
+async def generate_alignment_assessment(
+    version_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> AlignmentAssessment:
+    # No actor headers required, matching the existing B1 Core Agent
+    # generate endpoint: the configured provider is used, never a
+    # client-controlled one.
+    return await alignment_assessment_service.generate_alignment_assessment(session, version_id)
+
+
+@router.get("/assessments/{assessment_id}", response_model=AlignmentAssessmentRead)
+async def get_alignment_assessment(
+    assessment_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> AlignmentAssessment:
+    assessment = await alignment_assessment_service.get_alignment_assessment(session, assessment_id)
+    if assessment is None:
+        raise NotFoundError("Alignment assessment not found")
+    return assessment
+
+
+@router.get("/versions/{version_id}/assessments", response_model=list[AlignmentAssessmentRead])
+async def list_alignment_assessments(
+    version_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> list[AlignmentAssessment]:
+    return await alignment_assessment_service.list_alignment_assessments_for_version(
+        session, version_id
+    )

@@ -31,3 +31,4 @@ Initial decisions that should later be formalised here include (reserved as ADR-
 - [ADR-0010](ADR-0010-external-entity-link-as-its-own-table.md) — ExternalEntityLink as its own table
 - [ADR-0011](ADR-0011-worker-owns-ftrack-background-jobs.md) — worker owns ftrack background jobs
 - [ADR-0012](ADR-0012-writeback-record-and-request-write-back-flag.md) — WritebackRecord and the request_write_back confirm flag
+- [ADR-0013](ADR-0013-deepseek-as-alignment-assessment-model-provider.md) — DeepSeek as the Step 4b alignment_assessment real model provider

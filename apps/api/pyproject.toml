@@ -12,6 +12,14 @@ dependencies = [
   "alembic>=1.13",
   "pydantic-settings>=2.5",
   "arq>=0.26",
+  # ADR-0013: the alignment_assessment Anthropic provider was replaced
+  # with DeepSeek before anything was committed (real-account billing
+  # could not be completed). DeepSeekAlignmentAssessmentGenerator uses
+  # DeepSeek's OpenAI-compatible endpoint via the official `openai`
+  # package -- >=1.0 is the first release of the current client shape
+  # (OpenAI(api_key=..., base_url=...), response_format={"type":
+  # "json_object"}), which has been stable since the SDK's 2023 rewrite.
+  "openai>=1.0",
   "intent-core-contracts",
 ]
 
