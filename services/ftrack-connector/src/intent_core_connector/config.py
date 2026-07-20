@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     ftrack_api_user: str = ""
     ftrack_api_key: str = ""
 
+    # ADR-0008: this service never writes to Postgres directly -- it
+    # calls apps/api over HTTP, same pattern as services/worker.
+    api_base_url: str = "http://localhost:8000"
+
 
 @lru_cache
 def get_settings() -> Settings:

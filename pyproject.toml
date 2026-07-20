@@ -30,5 +30,9 @@ exclude = ["alembic/versions"]
 module = "alembic.*"
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = "ftrack_api.*"
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

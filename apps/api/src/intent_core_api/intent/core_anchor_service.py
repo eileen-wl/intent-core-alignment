@@ -210,7 +210,12 @@ async def update_draft_revision(
 
 
 async def confirm_revision(
-    session: AsyncSession, actor: ActorContext, revision_id: uuid.UUID, rationale: str | None = None
+    session: AsyncSession,
+    actor: ActorContext,
+    revision_id: uuid.UUID,
+    rationale: str | None = None,
+    *,
+    request_write_back: bool = False,
 ) -> CoreAnchorRevision:
     require_can_confirm_or_reject(actor, "vfx_supervisor")
 
@@ -332,7 +337,7 @@ async def confirm_revision(
             entity_type="core_anchor_revision",
             entity_id=revision.id,
             rationale=rationale,
-            write_back_requested=False,
+            write_back_requested=request_write_back,
         )
 
         await audit_service.record_audit_event(

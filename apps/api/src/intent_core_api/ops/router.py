@@ -32,6 +32,19 @@ async def ping_worker() -> dict[str, str]:
     return {"job_id": job.job_id}
 
 
+@router.post("/reconcile-ftrack-shots", status_code=202)
+async def reconcile_ftrack_shots() -> dict[str, str]:
+    settings = get_settings()
+    redis = await create_pool(RedisSettings.from_dsn(settings.redis_url))
+    try:
+        job = await redis.enqueue_job("reconcile_ftrack_shots")
+    finally:
+        await redis.close()
+    if job is None:
+        raise HTTPException(status_code=503, detail="Could not enqueue reconcile job")
+    return {"job_id": job.job_id}
+
+
 @router.post("/worker-heartbeat", response_model=WorkerHeartbeatRead)
 async def record_worker_heartbeat(
     payload: WorkerHeartbeatUpsert, session: AsyncSession = Depends(get_session)

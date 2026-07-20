@@ -6,6 +6,7 @@ only.
 """
 
 from intent_core_api.audit import models as _audit_models  # noqa: F401
+from intent_core_api.integrations import models as _integrations_models  # noqa: F401
 from intent_core_api.intent import models as _intent_models  # noqa: F401
 from intent_core_api.ops import models as _ops_models  # noqa: F401
 from intent_core_api.production_context import models as _production_context_models  # noqa: F401

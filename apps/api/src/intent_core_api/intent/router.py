@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends
+from arq import create_pool
+from arq.connections import RedisSettings
+from fastapi import APIRouter, Depends, HTTPException
 from intent_core_contracts.api.execution_anchor import (
     ExecutionAnchorRead,
     ExecutionAnchorRevisionDraftCreate,
@@ -21,7 +23,9 @@ from intent_core_contracts.api.intent import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from intent_core_api.config import get_settings
 from intent_core_api.db import get_session
+from intent_core_api.integrations import writeback_service
 from intent_core_api.intent import brief_service, core_anchor_service, execution_anchor_service
 from intent_core_api.intent.models import (
     CoreAnchor,
@@ -114,9 +118,28 @@ async def confirm_core_anchor_revision(
     actor: ActorContext = Depends(get_current_actor),
     session: AsyncSession = Depends(get_session),
 ) -> CoreAnchorRevision:
-    return await core_anchor_service.confirm_revision(
-        session, actor, revision_id, payload.rationale
+    revision = await core_anchor_service.confirm_revision(
+        session,
+        actor,
+        revision_id,
+        payload.rationale,
+        request_write_back=payload.request_write_back,
     )
+
+    if payload.request_write_back:
+        record = await writeback_service.request_core_anchor_writeback(
+            session, actor, revision, rationale=payload.rationale
+        )
+        settings = get_settings()
+        redis = await create_pool(RedisSettings.from_dsn(settings.redis_url))
+        try:
+            job = await redis.enqueue_job("write_back_core_anchor_confirmation", str(record.id))
+        finally:
+            await redis.close()
+        if job is None:
+            raise HTTPException(status_code=503, detail="Could not enqueue write-back job")
+
+    return revision
 
 
 @router.post("/core-anchor-revisions/{revision_id}/reject", response_model=CoreAnchorRevisionRead)

@@ -120,6 +120,10 @@ class CoreAnchorRead(BaseModel):
 
 class AnchorConfirmRequest(BaseModel):
     rationale: str | None = None
+    # ADR-0012: when true, the confirming endpoint also creates a
+    # WritebackRecord and enqueues a Note-to-ftrack job for the linked
+    # Shot. False (the default) preserves today's confirm-only behavior.
+    request_write_back: bool = False
 
 
 class AnchorRejectRequest(BaseModel):

@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from intent_core_api.config import get_settings
+from intent_core_api.integrations.router import router as integrations_router
 from intent_core_api.intent.router import router as intent_router
 from intent_core_api.ops.router import router as ops_router
 from intent_core_api.production_context.router import router as production_context_router
@@ -24,6 +25,7 @@ app.add_middleware(
 app.include_router(production_context_router)
 app.include_router(ops_router)
 app.include_router(intent_router)
+app.include_router(integrations_router)
 
 
 @app.exception_handler(ForbiddenActionError)
