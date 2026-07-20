@@ -17,6 +17,7 @@ import type {
 import {
   ApiError,
   confirmCoreAnchorRevision,
+  generateCoreAnchorDraft,
   getCoreAnchor,
   getExecutionAnchor,
   getExecutionAnchorRevision,
@@ -70,6 +71,8 @@ function describeError(err: unknown): string {
   if (err instanceof ApiError) {
     if (err.status === 403) return `Not allowed: ${err.detail}`;
     if (err.status === 409) return `Out of date: ${err.detail}`;
+    if (err.status === 502)
+      return `Core Agent generation failed: ${err.detail}`;
     if (err.status === 0) return "Could not reach the API server.";
     return err.detail || "Something went wrong. Please try again.";
   }
@@ -187,7 +190,14 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
       <section>
         <h2>Core anchor</h2>
         {coreAnchor === null ? (
-          <p>No Core Anchor yet for this shot.</p>
+          <>
+            <p>No Core Anchor yet for this shot.</p>
+            <GenerateDraftButton
+              shotId={shot.id}
+              hasBrief={latestBrief !== null}
+              onGenerated={reload}
+            />
+          </>
         ) : (
           <>
             {confirmedRevision && (
@@ -201,10 +211,14 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
                 onChanged={reload}
               />
             ) : (
-              <p>No draft revision awaiting review.</p>
-            )}
-            {!confirmedRevision && !draftRevision && (
-              <p>Core Anchor has no revisions yet.</p>
+              <>
+                <p>No draft revision awaiting review.</p>
+                <GenerateDraftButton
+                  shotId={shot.id}
+                  hasBrief={latestBrief !== null}
+                  onGenerated={reload}
+                />
+              </>
             )}
           </>
         )}
@@ -270,6 +284,49 @@ function ActorSelector({
         </small>
       </p>
     </section>
+  );
+}
+
+function GenerateDraftButton({
+  shotId,
+  hasBrief,
+  onGenerated,
+}: {
+  shotId: string;
+  hasBrief: boolean;
+  onGenerated: () => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleGenerate() {
+    setPending(true);
+    setError(null);
+    try {
+      await generateCoreAnchorDraft(shotId);
+      onGenerated();
+    } catch (err) {
+      setError(describeError(err));
+      setPending(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={!hasBrief || pending}
+        onClick={() => void handleGenerate()}
+      >
+        {pending ? "Generating…" : "Generate draft with Core Agent"}
+      </button>
+      {!hasBrief && (
+        <p>
+          <small>Add an Intent Brief first.</small>
+        </p>
+      )}
+      {error && <p role="alert">{error}</p>}
+    </div>
   );
 }
 

@@ -23,6 +23,7 @@ from intent_core_contracts.api.intent import (
 )
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from intent_core_api.agents import core_agent_service
 from intent_core_api.config import get_settings
 from intent_core_api.db import get_session
 from intent_core_api.integrations import writeback_service
@@ -78,6 +79,15 @@ async def create_core_anchor_draft(
     return await core_anchor_service.create_draft_revision(
         session, actor, shot_id, payload.model_dump()
     )
+
+
+@router.post(
+    "/shots/{shot_id}/core-anchor/generate", response_model=CoreAnchorRevisionRead, status_code=201
+)
+async def generate_core_anchor_draft(
+    shot_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> CoreAnchorRevision:
+    return await core_agent_service.generate_core_anchor_draft(session, shot_id)
 
 
 @router.get("/shots/{shot_id}/core-anchor", response_model=CoreAnchorRead)

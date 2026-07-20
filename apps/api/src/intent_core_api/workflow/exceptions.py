@@ -22,6 +22,14 @@ class NotFoundError(Exception):
     """A referenced entity does not exist."""
 
 
+class AgentGenerationError(Exception):
+    """An Agent's model/provider call failed, or no working provider is
+    configured. Distinct from ConflictError/ForbiddenActionError: this is
+    an upstream dependency failure, not a business-rule or permission
+    rejection.
+    """
+
+
 class InternalConsistencyError(Exception):
     """A data-integrity invariant that should be unreachable was violated
     (e.g. a stored pointer references a row belonging to a different

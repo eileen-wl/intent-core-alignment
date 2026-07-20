@@ -20,6 +20,11 @@ class Settings(BaseSettings):
     app_base_url: str = "http://localhost:3000"
     database_url: str = "sqlite+aiosqlite:///./dev.db"
     redis_url: str = "redis://localhost:6379/0"
+    # Core Agent model-provider selection (B1). "deterministic" is the
+    # only implemented value -- see agents.core_agent_service for what
+    # connecting a real provider (MODEL_PROVIDER/MODEL_API_KEY/MODEL_NAME
+    # in .env.example) would require.
+    model_provider: str = "deterministic"
 
 
 @lru_cache

@@ -174,7 +174,10 @@ function jsonResponse(status: number, body: unknown): Response {
 function installFetchMock(
   fixture: Fixture,
   overrides: {
-    onRequest?: (method: string, path: string) => Response | null;
+    onRequest?: (
+      method: string,
+      path: string,
+    ) => Response | Promise<Response> | null;
   } = {},
 ) {
   const fetchMock = vi.fn(
@@ -183,7 +186,7 @@ function installFetchMock(
       const path = url.pathname;
       const method = init?.method ?? "GET";
 
-      const overridden = overrides.onRequest?.(method, path);
+      const overridden = await overrides.onRequest?.(method, path);
       if (overridden) return overridden;
 
       if (method === "GET" && path === "/shots/shot-1") {
@@ -289,6 +292,30 @@ function installFetchMock(
           status: "rejected",
         };
         return jsonResponse(200, fixture.revisions[idx]);
+      }
+      if (
+        method === "POST" &&
+        path === "/intent/shots/shot-1/core-anchor/generate"
+      ) {
+        if (fixture.revisions.some((r) => r.status === "draft")) {
+          return jsonResponse(409, {
+            detail:
+              "An editable Core Anchor draft already exists for this shot",
+          });
+        }
+        const generated = revision({
+          id: "rev-generated",
+          revision_number: fixture.revisions.length + 1,
+          status: "draft",
+          shot_objective: "[Core Agent draft] generated objective",
+          created_by_actor_kind: "agent",
+          created_by_actor_id: "core_agent",
+          created_by_human_role: null,
+          created_by_agent_type: "core_agent",
+          created_by_agent_run_id: "run-1",
+        });
+        fixture.revisions.push(generated);
+        return jsonResponse(201, generated);
       }
 
       throw new Error(`Unhandled request in test: ${method} ${path}`);
@@ -485,6 +512,135 @@ describe("ShotAnchorPage", () => {
     await user.click(within(draft).getByRole("button", { name: "Reject" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/Out of date/);
+  });
+
+  it("generates a new Core Agent draft and shows it after reload", async () => {
+    const user = userEvent.setup();
+    const fixture = baseFixture();
+    fixture.revisions = fixture.revisions.filter((r) => r.status !== "draft");
+    installFetchMock(fixture);
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    expect(
+      await screen.findByText("No draft revision awaiting review."),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Generate draft with Core Agent" }),
+    );
+
+    expect(await screen.findByLabelText(/Draft revision/)).toBeInTheDocument();
+    expect(
+      screen.getByDisplayValue("[Core Agent draft] generated objective"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a loading state while a draft is being generated", async () => {
+    const user = userEvent.setup();
+    const fixture = baseFixture();
+    fixture.revisions = fixture.revisions.filter((r) => r.status !== "draft");
+    let resolveGenerate: ((response: Response) => void) | undefined;
+    installFetchMock(fixture, {
+      onRequest: (method, path) => {
+        if (
+          method === "POST" &&
+          path === "/intent/shots/shot-1/core-anchor/generate"
+        ) {
+          return new Promise<Response>((resolve) => {
+            resolveGenerate = resolve;
+          });
+        }
+        return null;
+      },
+    });
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    await screen.findByText("No draft revision awaiting review.");
+    const button = screen.getByRole("button", {
+      name: "Generate draft with Core Agent",
+    });
+    void user.click(button);
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Generating…" }),
+      ).toBeDisabled();
+    });
+    // Let the held request settle so the test doesn't leak a pending
+    // promise/timer into the next test. The generated revision must be
+    // added to the fixture too, since the reload triggered by
+    // `onGenerated()` re-fetches the revisions list from the fixture, not
+    // from this response.
+    const generated = revision({ id: "rev-generated", status: "draft" });
+    fixture.revisions.push(generated);
+    resolveGenerate?.(jsonResponse(201, generated));
+    await screen.findByLabelText(/Draft revision/);
+  });
+
+  it("disables the Generate Draft action when there is no Intent Brief yet", async () => {
+    const fixture = baseFixture();
+    fixture.revisions = fixture.revisions.filter((r) => r.status !== "draft");
+    fixture.briefs = [];
+    installFetchMock(fixture);
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    const button = await screen.findByRole("button", {
+      name: "Generate draft with Core Agent",
+    });
+    expect(button).toBeDisabled();
+    expect(screen.getByText("Add an Intent Brief first.")).toBeInTheDocument();
+  });
+
+  it("surfaces a 409 when generation conflicts with an already-existing draft", async () => {
+    const user = userEvent.setup();
+    const fixture = baseFixture();
+    fixture.revisions = fixture.revisions.filter((r) => r.status !== "draft");
+    installFetchMock(fixture, {
+      // Simulates someone else creating a draft between this page's load
+      // and the click.
+      onRequest: (method, path) =>
+        method === "POST" &&
+        path === "/intent/shots/shot-1/core-anchor/generate"
+          ? jsonResponse(409, {
+              detail:
+                "An editable Core Anchor draft already exists for this shot",
+            })
+          : null,
+    });
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Generate draft with Core Agent",
+      }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/Out of date/);
+  });
+
+  it("surfaces a 502 when the Core Agent provider fails", async () => {
+    const user = userEvent.setup();
+    const fixture = baseFixture();
+    fixture.revisions = fixture.revisions.filter((r) => r.status !== "draft");
+    installFetchMock(fixture, {
+      onRequest: (method, path) =>
+        method === "POST" &&
+        path === "/intent/shots/shot-1/core-anchor/generate"
+          ? jsonResponse(502, {
+              detail: "Core Agent draft generation failed: timeout",
+            })
+          : null,
+    });
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    await user.click(
+      await screen.findByRole("button", {
+        name: "Generate draft with Core Agent",
+      }),
+    );
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      /Core Agent generation failed/,
+    );
   });
 
   it("shows a general error state with retry when the shot fetch fails outright", async () => {

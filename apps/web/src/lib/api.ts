@@ -129,6 +129,14 @@ export function getCoreAnchor(shotId: string): Promise<CoreAnchorRead | null> {
   return fetchOrNull(`/intent/shots/${shotId}/core-anchor`);
 }
 
+export function generateCoreAnchorDraft(
+  shotId: string,
+): Promise<CoreAnchorRevisionRead> {
+  return apiFetch(`/intent/shots/${shotId}/core-anchor/generate`, {
+    method: "POST",
+  });
+}
+
 export function listCoreAnchorRevisions(
   shotId: string,
 ): Promise<CoreAnchorRevisionRead[]> {

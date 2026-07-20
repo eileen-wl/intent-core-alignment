@@ -9,7 +9,12 @@ from intent_core_api.integrations.router import router as integrations_router
 from intent_core_api.intent.router import router as intent_router
 from intent_core_api.ops.router import router as ops_router
 from intent_core_api.production_context.router import router as production_context_router
-from intent_core_api.workflow.exceptions import ConflictError, ForbiddenActionError, NotFoundError
+from intent_core_api.workflow.exceptions import (
+    AgentGenerationError,
+    ConflictError,
+    ForbiddenActionError,
+    NotFoundError,
+)
 
 app = FastAPI(title="Intent Core Alignment API", version="0.1.0")
 
@@ -41,6 +46,11 @@ async def _conflict_handler(request: Request, exc: ConflictError) -> JSONRespons
 @app.exception_handler(NotFoundError)
 async def _not_found_handler(request: Request, exc: NotFoundError) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": str(exc)})
+
+
+@app.exception_handler(AgentGenerationError)
+async def _agent_generation_handler(request: Request, exc: AgentGenerationError) -> JSONResponse:
+    return JSONResponse(status_code=502, content={"detail": str(exc)})
 
 
 @app.get("/health")
