@@ -13,6 +13,14 @@ export type TaskRead = Schemas["TaskRead"];
 
 export type RecordSource = Schemas["ProjectRead"]["source"];
 
+// Derived rather than hand-declared: HumanRole has no standalone OpenAPI
+// schema of its own (it only ever appears inlined on fields like
+// `confirmed_by_human_role`), so this stays in sync with the backend's
+// literal automatically instead of duplicating it.
+export type HumanRole = NonNullable<
+  Schemas["CoreAnchorRevisionRead"]["confirmed_by_human_role"]
+>;
+
 export type IntentBriefCreate = Schemas["IntentBriefCreate"];
 export type IntentBriefRead = Schemas["IntentBriefRead"];
 

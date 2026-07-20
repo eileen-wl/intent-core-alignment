@@ -228,6 +228,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/intent/shots/{shot_id}/core-anchor/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Core Anchor Revisions */
+        get: operations["list_core_anchor_revisions_intent_shots__shot_id__core_anchor_revisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/intent/core-anchor-revisions/{revision_id}": {
         parameters: {
             query?: never;
@@ -1460,6 +1477,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CoreAnchorRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_core_anchor_revisions_intent_shots__shot_id__core_anchor_revisions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreAnchorRevisionRead"][];
                 };
             };
             /** @description Validation Error */

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { fetchShots } from "@/lib/api-client";
 
 export default async function ShotsPage() {
@@ -17,7 +19,8 @@ export default async function ShotsPage() {
         <ul>
           {shots.map((shot) => (
             <li key={shot.id}>
-              {shot.name} <small>({shot.source})</small>
+              <Link href={`/shots/${shot.id}`}>{shot.name}</Link>{" "}
+              <small>({shot.source})</small>
             </li>
           ))}
         </ul>

@@ -90,6 +90,13 @@ async def get_core_anchor(
     return anchor
 
 
+@router.get("/shots/{shot_id}/core-anchor/revisions", response_model=list[CoreAnchorRevisionRead])
+async def list_core_anchor_revisions(
+    shot_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> list[CoreAnchorRevision]:
+    return await core_anchor_service.list_revisions_for_shot(session, shot_id)
+
+
 @router.get("/core-anchor-revisions/{revision_id}", response_model=CoreAnchorRevisionRead)
 async def get_core_anchor_revision(
     revision_id: uuid.UUID, session: AsyncSession = Depends(get_session)

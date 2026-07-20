@@ -163,6 +163,28 @@ async def get_revision(session: AsyncSession, revision_id: uuid.UUID) -> CoreAnc
     return await session.get(CoreAnchorRevision, revision_id)
 
 
+async def list_revisions_for_shot(
+    session: AsyncSession, shot_id: uuid.UUID
+) -> list[CoreAnchorRevision]:
+    """All revisions of a Shot's CoreAnchor, oldest first.
+
+    ``CoreAnchorRead.active_revision_id`` only ever names the *confirmed*
+    revision, so a caller has no way to discover a draft revision's id from
+    the shot alone without this. Read-only, mirrors
+    ``brief_service.list_briefs_for_shot``: an unknown ``shot_id``, or a
+    shot with no CoreAnchor yet, both just yield an empty list.
+    """
+    anchor = await session.scalar(select(CoreAnchor).where(CoreAnchor.shot_id == shot_id))
+    if anchor is None:
+        return []
+    result = await session.execute(
+        select(CoreAnchorRevision)
+        .where(CoreAnchorRevision.core_anchor_id == anchor.id)
+        .order_by(CoreAnchorRevision.revision_number)
+    )
+    return list(result.scalars().all())
+
+
 async def update_draft_revision(
     session: AsyncSession, actor: ActorContext, revision_id: uuid.UUID, changes: dict[str, Any]
 ) -> CoreAnchorRevision:
