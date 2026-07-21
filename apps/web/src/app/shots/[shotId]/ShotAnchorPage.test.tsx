@@ -18,6 +18,7 @@ import type {
   IntentBriefRead,
   ShotRead,
   TaskRead,
+  VersionRead,
 } from "@intent-core/contracts";
 
 import { ShotAnchorPage } from "./ShotAnchorPage";
@@ -187,6 +188,22 @@ function agentRun(overrides: Partial<AgentRunRead> = {}): AgentRunRead {
   };
 }
 
+function version(overrides: Partial<VersionRead> = {}): VersionRead {
+  return {
+    id: "version-1",
+    shot_id: "shot-1",
+    name: "SH010_render_v001",
+    version_number: 1,
+    description: "First render pass.",
+    source: "manual",
+    created_by_actor_kind: "human",
+    created_by_actor_id: "vfx-1",
+    created_by_human_role: "vfx_supervisor",
+    created_at: NOW,
+    ...overrides,
+  };
+}
+
 function contextSnapshot(
   overrides: Partial<ContextSnapshotRead> = {},
 ): ContextSnapshotRead {
@@ -210,6 +227,7 @@ interface Fixture {
   executionAnchorRevisions: Record<string, ExecutionAnchorRevisionRead>;
   agentRuns: Record<string, AgentRunRead>;
   contextSnapshots: Record<string, ContextSnapshotRead>;
+  versions: VersionRead[];
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -264,6 +282,9 @@ function installFetchMock(
       }
       if (method === "GET" && path === "/tasks") {
         return jsonResponse(200, fixture.tasks);
+      }
+      if (method === "GET" && path === "/shots/shot-1/versions") {
+        return jsonResponse(200, fixture.versions);
       }
       const executionAnchorMatch =
         /^\/intent\/tasks\/([^/]+)\/execution-anchor$/.exec(path);
@@ -438,6 +459,7 @@ function baseFixture(): Fixture {
     },
     agentRuns: {},
     contextSnapshots: {},
+    versions: [],
   };
 }
 
@@ -914,6 +936,28 @@ describe("ShotAnchorPage", () => {
     render(<ShotAnchorPage shotId="shot-1" />);
 
     expect(await screen.findByText("Status: Up to date")).toBeInTheDocument();
+  });
+
+  it("shows an empty state when the shot has no Versions yet", async () => {
+    installFetchMock(baseFixture());
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    expect(await screen.findByText("No Versions yet.")).toBeInTheDocument();
+  });
+
+  it("lists a Version with a link to its detail page", async () => {
+    const fixture = baseFixture();
+    fixture.versions = [version()];
+    installFetchMock(fixture);
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    const link = await screen.findByRole("link", {
+      name: "SH010_render_v001",
+    });
+    expect(link).toHaveAttribute("href", "/shots/shot-1/versions/version-1");
+    const item = link.closest("li") as HTMLElement;
+    expect(within(item).getByText(/v1/)).toBeInTheDocument();
+    expect(within(item).getByText("(manual)")).toBeInTheDocument();
   });
 
   it("shows a general error state with retry when the shot fetch fails outright", async () => {

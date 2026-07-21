@@ -3,8 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type {
-  AgentRunRead,
-  ContextSnapshotRead,
   CoreAnchorRead,
   CoreAnchorRevisionRead,
   CoreAnchorRevisionUpdate,
@@ -15,14 +13,14 @@ import type {
   IntentBriefRead,
   ShotRead,
   TaskRead,
+  VersionRead,
 } from "@intent-core/contracts";
 
 import {
   ApiError,
   confirmCoreAnchorRevision,
+  describeError,
   generateCoreAnchorDraft,
-  getAgentRun,
-  getContextSnapshot,
   getCoreAnchor,
   getExecutionAnchor,
   getExecutionAnchorRevision,
@@ -31,9 +29,12 @@ import {
   listCoreAnchorRevisions,
   listDecisionsForRevision,
   listTasks,
+  listVersionsForShot,
   rejectCoreAnchorRevision,
   updateCoreAnchorRevision,
 } from "@/lib/api";
+import { ActorSelector } from "@/components/ActorSelector";
+import { AgentProvenanceDetails } from "@/components/AgentProvenanceDetails";
 
 const CORE_ANCHOR_FIELDS = [
   ["shot_objective", "Shot objective"],
@@ -60,6 +61,7 @@ interface ShotData {
   revisions: CoreAnchorRevisionRead[];
   confirmedRevisionDecision: DecisionRead | null;
   taskAnchors: TaskAnchorInfo[];
+  versions: VersionRead[];
 }
 
 type LoadState =
@@ -74,24 +76,6 @@ interface LastDecision {
   rationale: string | null;
 }
 
-const HUMAN_ROLES: { value: HumanRole; label: string }[] = [
-  { value: "vfx_supervisor", label: "VFX Supervisor" },
-  { value: "cg_supervisor", label: "CG Supervisor" },
-  { value: "artist", label: "Artist" },
-];
-
-function describeError(err: unknown): string {
-  if (err instanceof ApiError) {
-    if (err.status === 403) return `Not allowed: ${err.detail}`;
-    if (err.status === 409) return `Out of date: ${err.detail}`;
-    if (err.status === 502)
-      return `Core Agent generation failed: ${err.detail}`;
-    if (err.status === 0) return "Could not reach the API server.";
-    return err.detail || "Something went wrong. Please try again.";
-  }
-  return "Something went wrong. Please try again.";
-}
-
 async function loadTaskAnchor(task: TaskRead): Promise<TaskAnchorInfo> {
   const executionAnchor = await getExecutionAnchor(task.id);
   const activeRevision =
@@ -103,10 +87,11 @@ async function loadTaskAnchor(task: TaskRead): Promise<TaskAnchorInfo> {
 
 async function loadShotData(shotId: string): Promise<ShotData> {
   const shot = await getShot(shotId);
-  const [briefs, coreAnchor, allTasks] = await Promise.all([
+  const [briefs, coreAnchor, allTasks, versions] = await Promise.all([
     listBriefsForShot(shotId),
     getCoreAnchor(shotId),
     listTasks(),
+    listVersionsForShot(shotId),
   ]);
   const revisions = coreAnchor ? await listCoreAnchorRevisions(shotId) : [];
   const confirmedRevision =
@@ -123,6 +108,7 @@ async function loadShotData(shotId: string): Promise<ShotData> {
     revisions,
     confirmedRevisionDecision,
     taskAnchors,
+    versions,
   };
 }
 
@@ -195,6 +181,7 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
     revisions,
     confirmedRevisionDecision,
     taskAnchors,
+    versions,
   } = state.data;
   const latestBrief = briefs.length > 0 ? briefs[briefs.length - 1] : null;
   const confirmedRevision =
@@ -310,50 +297,28 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
           </ul>
         )}
       </section>
-    </main>
-  );
-}
 
-function ActorSelector({
-  role,
-  actorId,
-  onRoleChange,
-  onActorIdChange,
-}: {
-  role: HumanRole;
-  actorId: string;
-  onRoleChange: (role: HumanRole) => void;
-  onActorIdChange: (id: string) => void;
-}) {
-  return (
-    <section aria-label="Acting as">
-      <label>
-        Role{" "}
-        <select
-          value={role}
-          onChange={(e) => onRoleChange(e.target.value as HumanRole)}
-        >
-          {HUMAN_ROLES.map((r) => (
-            <option key={r.value} value={r.value}>
-              {r.label}
-            </option>
-          ))}
-        </select>
-      </label>{" "}
-      <label>
-        Actor id{" "}
-        <input
-          value={actorId}
-          onChange={(e) => onActorIdChange(e.target.value)}
-        />
-      </label>
-      <p>
-        <small>
-          Presentational only — the backend independently enforces who may edit,
-          confirm, or reject.
-        </small>
-      </p>
-    </section>
+      <section>
+        <h2>Versions</h2>
+        {versions.length === 0 ? (
+          <p>No Versions yet.</p>
+        ) : (
+          <ul>
+            {versions.map((version) => (
+              <li key={version.id}>
+                <Link href={`/shots/${shot.id}/versions/${version.id}`}>
+                  {version.name}
+                </Link>{" "}
+                {version.version_number != null && (
+                  <span>v{version.version_number} </span>
+                )}
+                <small>({version.source})</small>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </main>
   );
 }
 
@@ -640,60 +605,6 @@ function CoreAnchorGate({
 
       {error && <p role="alert">{error}</p>}
     </article>
-  );
-}
-
-/** Enriches the "Created by" line with the AgentRun's provider/status and
- * the ContextSnapshot's creation time (WP-B1.5) -- both already linked
- * from the revision via id, fetched here rather than on every page load
- * since they're only relevant once a draft's provenance is actually
- * being inspected. Silently shows nothing extra if either fetch fails;
- * the essential provenance (agent type, agent run id) is already visible
- * without this. */
-function AgentProvenanceDetails({
-  agentRunId,
-  contextSnapshotId,
-}: {
-  agentRunId: string;
-  contextSnapshotId: string | null;
-}) {
-  const [run, setRun] = useState<AgentRunRead | null>(null);
-  const [snapshot, setSnapshot] = useState<ContextSnapshotRead | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    getAgentRun(agentRunId).then(
-      (result) => {
-        if (!cancelled) setRun(result);
-      },
-      () => {},
-    );
-    if (contextSnapshotId) {
-      getContextSnapshot(contextSnapshotId).then(
-        (result) => {
-          if (!cancelled) setSnapshot(result);
-        },
-        () => {},
-      );
-    }
-    return () => {
-      cancelled = true;
-    };
-  }, [agentRunId, contextSnapshotId]);
-
-  return (
-    <>
-      {run && (
-        <>
-          , provider: {run.provider}, run status: {run.status}
-        </>
-      )}
-      {snapshot && (
-        <>
-          , context snapshot: {snapshot.id} (captured {snapshot.created_at})
-        </>
-      )}
-    </>
   );
 }
 

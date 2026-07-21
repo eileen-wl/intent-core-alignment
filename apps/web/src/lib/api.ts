@@ -8,8 +8,10 @@
 // as documented for `API_BASE_URL`.
 import type {
   AgentRunRead,
+  AlignmentAssessmentRead,
   AnchorConfirmRequest,
   AnchorRejectRequest,
+  AssessmentDecisionRequest,
   ContextSnapshotRead,
   CoreAnchorRead,
   CoreAnchorRevisionRead,
@@ -19,8 +21,10 @@ import type {
   ExecutionAnchorRevisionRead,
   HumanRole,
   IntentBriefRead,
+  ReviewNoteRead,
   ShotRead,
   TaskRead,
+  VersionRead,
 } from "@intent-core/contracts";
 
 const API_BASE_URL =
@@ -65,6 +69,24 @@ async function parseErrorDetail(response: Response): Promise<string> {
   } catch {
     return response.statusText;
   }
+}
+
+/** Turns an unknown thrown value (normally an `ApiError`) into a short,
+ * user-facing message. Shared by every page that renders backend errors,
+ * so the same status code always reads the same way regardless of which
+ * page triggered it. */
+export function describeError(err: unknown): string {
+  if (err instanceof ApiError) {
+    if (err.status === 401) return `Not signed in: ${err.detail}`;
+    if (err.status === 403) return `Not allowed: ${err.detail}`;
+    if (err.status === 404) return `Not found: ${err.detail}`;
+    if (err.status === 409) return `Out of date: ${err.detail}`;
+    if (err.status === 502)
+      return `Core Agent generation failed: ${err.detail}`;
+    if (err.status === 0) return "Could not reach the API server.";
+    return err.detail || "Something went wrong. Please try again.";
+  }
+  return "Something went wrong. Please try again.";
 }
 
 interface RequestOptions {
@@ -208,4 +230,66 @@ export function getExecutionAnchorRevision(
   revisionId: string,
 ): Promise<ExecutionAnchorRevisionRead> {
   return apiFetch(`/intent/execution-anchor-revisions/${revisionId}`);
+}
+
+// Step 4d: Version / ReviewNote / AlignmentAssessment read+action surface.
+// Shared across the Shot Anchor page (Versions list) and the Version
+// detail page.
+
+export function listVersionsForShot(shotId: string): Promise<VersionRead[]> {
+  return apiFetch(`/shots/${shotId}/versions`);
+}
+
+export function getVersion(versionId: string): Promise<VersionRead> {
+  return apiFetch(`/versions/${versionId}`);
+}
+
+export function listReviewNotesForVersion(
+  versionId: string,
+): Promise<ReviewNoteRead[]> {
+  return apiFetch(`/versions/${versionId}/review-notes`);
+}
+
+export function listAssessmentsForVersion(
+  versionId: string,
+): Promise<AlignmentAssessmentRead[]> {
+  return apiFetch(`/versions/${versionId}/assessments`);
+}
+
+export function generateAlignmentAssessment(
+  versionId: string,
+): Promise<AlignmentAssessmentRead> {
+  return apiFetch(`/versions/${versionId}/assessments/generate`, {
+    method: "POST",
+  });
+}
+
+export function listDecisionsForAssessment(
+  assessmentId: string,
+): Promise<DecisionRead[]> {
+  return apiFetch(`/assessments/${assessmentId}/decisions`);
+}
+
+export function acceptAlignmentAssessment(
+  assessmentId: string,
+  payload: AssessmentDecisionRequest,
+  actor: Actor,
+): Promise<DecisionRead> {
+  return apiFetch(`/assessments/${assessmentId}/accept`, {
+    method: "POST",
+    body: payload,
+    actor,
+  });
+}
+
+export function rejectAlignmentAssessment(
+  assessmentId: string,
+  payload: AssessmentDecisionRequest,
+  actor: Actor,
+): Promise<DecisionRead> {
+  return apiFetch(`/assessments/${assessmentId}/reject`, {
+    method: "POST",
+    body: payload,
+    actor,
+  });
 }
