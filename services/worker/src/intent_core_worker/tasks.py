@@ -99,9 +99,7 @@ async def write_back_core_anchor_confirmation(
     settings = get_settings()
 
     async with httpx.AsyncClient(base_url=settings.api_base_url) as client:
-        record_response = await client.get(
-            f"/integrations/writeback-records/{writeback_record_id}"
-        )
+        record_response = await client.get(f"/integrations/writeback-records/{writeback_record_id}")
         record_response.raise_for_status()
         record = record_response.json()
 

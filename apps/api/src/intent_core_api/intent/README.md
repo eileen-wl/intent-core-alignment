@@ -24,7 +24,7 @@ orientation for what exists in code today.
   `WorkflowTransition`, since `status` doesn't change. Confirming writes
   a `Decision`, a `WorkflowTransition`, and an `AuditEvent` for the
   target revision, plus (if a previous confirmed revision exists) a
-  *separate* system-attributed `WorkflowTransition` + `AuditEvent` for
+  _separate_ system-attributed `WorkflowTransition` + `AuditEvent` for
   the auto-superseded revision, and (A2) cascades to mark related
   `ExecutionAnchor`s stale (see below).
 - **`ActorContext`** (`workflow/actors.py`): `human`/`agent`/`system`
@@ -63,7 +63,7 @@ orientation for what exists in code today.
 - **Stale marking** (`execution_anchor_service.mark_stale_for_new_core_revision`,
   called only from `core_anchor_service.confirm_revision`, inside that
   same transaction): every `ExecutionAnchor` under the confirming Shot
-  whose active confirmed revision references a *different*
+  whose active confirmed revision references a _different_
   `CoreAnchorRevision` is marked stale (`is_stale: False -> True`) with
   a **system**-attributed `AuditEvent` (`execution_anchor.marked_stale`).
   Already-stale anchors are skipped entirely — never a duplicate event.
@@ -95,7 +95,7 @@ package, not part of WP-A/WP-A2).
 ## Concurrency invariants (A1 + A2)
 
 - `UNIQUE(core_anchor_id, revision_number)` / `UNIQUE(execution_anchor_id,
-  revision_number)` make concurrent draft-number allocation safe (409 on
+revision_number)` make concurrent draft-number allocation safe (409 on
   race).
 - A partial unique index per anchor type (`core_anchor_id` /
   `execution_anchor_id` WHERE `status = 'confirmed'`, dialect-aware for
