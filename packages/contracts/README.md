@@ -11,7 +11,13 @@ Changes here require architecture review because multiple modules depend on them
   - `intent_core_contracts/api/` — request/response schemas per backend module.
   - `intent_core_contracts/events/` — internal event payloads (see `docs/ARCHITECTURE.md` §6).
   - `intent_core_contracts/agents/` — the common Agent output envelope and Agent Run record (see `docs/AGENT_CONTRACTS.md` §2-3).
-- `ts/` — generated from `apps/api`'s OpenAPI document via `pnpm generate:contracts`. Nothing under `ts/src/generated` should be hand-edited.
+- `ts/` — generated from `apps/api`'s OpenAPI document via `make generate-contracts`
+  (exports `apps/api/openapi.json`, then runs `openapi-typescript` into
+  `ts/src/generated/api.ts`). Nothing under `ts/src/generated` should be
+  hand-edited; `ts/src/index.ts` re-exports the schemas apps/web actually
+  imports and needs a new line whenever a module gains a schema it should
+  expose. Run this and commit the diff whenever `apps/api`'s request/response
+  schemas change — CI does not currently regenerate or check for drift.
 
 ## Why one canonical source
 

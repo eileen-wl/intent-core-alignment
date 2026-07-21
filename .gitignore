@@ -25,6 +25,10 @@ coverage/
 .pnpm-store/
 *.tsbuildinfo
 
+# Generated OpenAPI export (intermediate input to packages/contracts/ts's
+# generate script; the TS output it produces is committed, this is not)
+apps/api/openapi.json
+
 # IDE / OS
 .vscode/
 .idea/

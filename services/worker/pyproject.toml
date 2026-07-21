@@ -7,6 +7,7 @@ dependencies = [
   "arq>=0.26",
   "httpx>=0.27",
   "pydantic-settings>=2.5",
+  "intent-core-connector",
 ]
 
 [build-system]
@@ -15,6 +16,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/intent_core_worker"]
+
+[tool.uv.sources]
+intent-core-connector = { workspace = true }
 
 [dependency-groups]
 dev = [

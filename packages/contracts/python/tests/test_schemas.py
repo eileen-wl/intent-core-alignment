@@ -1,7 +1,9 @@
 from datetime import UTC, datetime
 from uuid import uuid4
 
+import pytest
 from intent_core_contracts.agents.envelope import AgentOutputEnvelope, AgentRunRecord
+from intent_core_contracts.api.integrations import ExternalEntityLinkRead
 from intent_core_contracts.api.production_context import (
     ProjectCreate,
     ProjectRead,
@@ -9,6 +11,7 @@ from intent_core_contracts.api.production_context import (
     TaskCreate,
 )
 from intent_core_contracts.events.payloads import InternalEvent
+from pydantic import ValidationError
 
 
 def test_project_create_defaults_to_manual_source() -> None:
@@ -29,6 +32,35 @@ def test_shot_and_task_create_require_parent_ids() -> None:
     task = TaskCreate(shot_id=uuid4(), name="Lighting", department="lighting")
     assert shot.source == "manual"
     assert task.department == "lighting"
+
+
+def test_ftrack_source_requires_external_id() -> None:
+    with pytest.raises(ValidationError):
+        ProjectCreate(name="Napo", source="ftrack")
+
+
+def test_manual_source_forbids_external_id() -> None:
+    with pytest.raises(ValidationError):
+        ProjectCreate(name="Napo", source="manual", external_id="0123abcd")
+
+
+def test_ftrack_source_with_external_id_succeeds() -> None:
+    project = ProjectCreate(name="Napo", source="ftrack", external_id="0123abcd")
+    assert project.external_id == "0123abcd"
+
+
+def test_external_entity_link_read_round_trip() -> None:
+    now = datetime.now(UTC)
+    link = ExternalEntityLinkRead(
+        id=uuid4(),
+        entity_type="shot",
+        entity_id=uuid4(),
+        source="ftrack",
+        external_id="0123abcd",
+        created_at=now,
+        updated_at=now,
+    )
+    assert link.model_dump()["source"] == "ftrack"
 
 
 def test_internal_event_carries_internal_id_only() -> None:

@@ -5,6 +5,9 @@ description = "ftrack Workflow Connector: sync, events, mapping, and authorised 
 requires-python = ">=3.12"
 dependencies = [
   "pydantic-settings>=2.5",
+  "ftrack-python-api>=3.1",
+  "requests>=2.31",
+  "httpx>=0.27",
 ]
 
 [build-system]
@@ -17,6 +20,8 @@ packages = ["src/intent_core_connector"]
 [dependency-groups]
 dev = [
   "pytest>=8.3",
+  "pytest-asyncio>=0.24",
   "ruff>=0.7.4",
   "mypy>=1.13",
+  "hatchling>=1.25",
 ]
