@@ -11,6 +11,8 @@ import type {
   ExecutionAnchorRevisionRead,
   HumanRole,
   IntentBriefRead,
+  IntentDecompositionDimensions,
+  IntentDecompositionRead,
   ShotRead,
   TaskRead,
   VersionRead,
@@ -19,8 +21,10 @@ import type {
 import {
   ApiError,
   confirmCoreAnchorRevision,
+  createCoreAnchorDraftFromDecomposition,
   describeError,
   generateCoreAnchorDraft,
+  generateIntentDecomposition,
   getCoreAnchor,
   getExecutionAnchor,
   getExecutionAnchorRevision,
@@ -28,6 +32,7 @@ import {
   listBriefsForShot,
   listCoreAnchorRevisions,
   listDecisionsForRevision,
+  listIntentDecompositionsForShot,
   listTasks,
   listVersionsForShot,
   rejectCoreAnchorRevision,
@@ -106,6 +111,10 @@ function referenceFormItemsEqual(
   );
 }
 
+function shortId(id: string): string {
+  return id.slice(0, 8);
+}
+
 function moveArrayItem<T>(items: T[], index: number, direction: -1 | 1): T[] {
   const target = index + direction;
   if (target < 0 || target >= items.length) return items;
@@ -170,6 +179,7 @@ interface TaskAnchorInfo {
 interface ShotData {
   shot: ShotRead;
   briefs: IntentBriefRead[];
+  intentDecompositions: IntentDecompositionRead[];
   coreAnchor: CoreAnchorRead | null;
   revisions: CoreAnchorRevisionRead[];
   confirmedRevisionDecision: DecisionRead | null;
@@ -200,12 +210,14 @@ async function loadTaskAnchor(task: TaskRead): Promise<TaskAnchorInfo> {
 
 async function loadShotData(shotId: string): Promise<ShotData> {
   const shot = await getShot(shotId);
-  const [briefs, coreAnchor, allTasks, versions] = await Promise.all([
-    listBriefsForShot(shotId),
-    getCoreAnchor(shotId),
-    listTasks(),
-    listVersionsForShot(shotId),
-  ]);
+  const [briefs, intentDecompositions, coreAnchor, allTasks, versions] =
+    await Promise.all([
+      listBriefsForShot(shotId),
+      listIntentDecompositionsForShot(shotId),
+      getCoreAnchor(shotId),
+      listTasks(),
+      listVersionsForShot(shotId),
+    ]);
   const revisions = coreAnchor ? await listCoreAnchorRevisions(shotId) : [];
   const confirmedRevision =
     revisions.find((r) => r.status === "confirmed") ?? null;
@@ -217,6 +229,7 @@ async function loadShotData(shotId: string): Promise<ShotData> {
   return {
     shot,
     briefs,
+    intentDecompositions,
     coreAnchor,
     revisions,
     confirmedRevisionDecision,
@@ -302,6 +315,7 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
   const {
     shot,
     briefs,
+    intentDecompositions,
     coreAnchor,
     revisions,
     confirmedRevisionDecision,
@@ -364,16 +378,37 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
         )}
       </section>
 
+      <IntentDecompositionSection
+        shotId={shot.id}
+        hasBrief={latestBrief !== null}
+        hasDraft={draftRevision !== null}
+        actor={actor}
+        decompositions={intentDecompositions}
+        onGenerated={reload}
+        onApplied={reload}
+      />
+
       <section>
         <h2>Core anchor</h2>
         {coreAnchor === null ? (
           <>
             <p>No Core Anchor yet for this shot.</p>
-            <GenerateDraftButton
-              shotId={shot.id}
-              hasBrief={latestBrief !== null}
-              onGenerated={reload}
-            />
+            <p>
+              <small>
+                Generate an intent decomposition above, then use it to create a
+                Core Anchor draft.
+              </small>
+            </p>
+            <details>
+              <summary>
+                Advanced: generate a draft directly, without a decomposition
+              </summary>
+              <GenerateDraftButton
+                shotId={shot.id}
+                hasBrief={latestBrief !== null}
+                onGenerated={reload}
+              />
+            </details>
           </>
         ) : (
           <>
@@ -394,11 +429,16 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
             ) : (
               <>
                 <p>No draft revision awaiting review.</p>
-                <GenerateDraftButton
-                  shotId={shot.id}
-                  hasBrief={latestBrief !== null}
-                  onGenerated={reload}
-                />
+                <details>
+                  <summary>
+                    Advanced: generate a draft directly, without a decomposition
+                  </summary>
+                  <GenerateDraftButton
+                    shotId={shot.id}
+                    hasBrief={latestBrief !== null}
+                    onGenerated={reload}
+                  />
+                </details>
               </>
             )}
           </>
@@ -493,6 +533,286 @@ function StatusBadge({ status }: { status: CoreAnchorRevisionRead["status"] }) {
   return <span data-status={status}>[{status}]</span>;
 }
 
+// Step 1B: Intent Decomposition -- a Core Agent AI proposal generated
+// *before* Core Anchor drafting, reviewed by the Human VFX Supervisor, and
+// optionally used to create a new Core Anchor draft (see
+// agents/intent_decomposition_service.py and
+// agents/core_agent_service.create_core_anchor_draft_from_decomposition).
+
+const DIMENSION_LABELS: [keyof IntentDecompositionDimensions, string][] = [
+  ["emotional_tone", "Emotional tone"],
+  ["visual_focus", "Visual focus"],
+  ["rhythm_and_intensity", "Rhythm & intensity"],
+  ["character_relationships", "Character relationships"],
+  ["narrative_priority", "Narrative priority"],
+  ["technical_execution_requirements", "Technical execution requirements"],
+  ["visual_detail_constraints", "Visual detail constraints"],
+];
+
+function DimensionsReadOnly({
+  dimensions,
+}: {
+  dimensions: IntentDecompositionDimensions;
+}) {
+  return (
+    <div style={sectionSpacingStyle}>
+      <h4>Dimensions</h4>
+      <dl>
+        {DIMENSION_LABELS.map(([key, label]) => (
+          <div key={key}>
+            <dt>{label}</dt>
+            <dd>
+              {dimensions[key].summary}
+              <br />
+              <small>{dimensions[key].rationale}</small>
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function StringListReadOnly({
+  label,
+  items,
+}: {
+  label: string;
+  items: string[];
+}) {
+  return (
+    <div style={sectionSpacingStyle}>
+      <h4>{label}</h4>
+      {items.length === 0 ? (
+        <p>None specified.</p>
+      ) : (
+        <ul>
+          {items.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function GenerateDecompositionButton({
+  shotId,
+  hasBrief,
+  actor,
+  onGenerated,
+}: {
+  shotId: string;
+  hasBrief: boolean;
+  actor: { role: HumanRole; actorId: string };
+  onGenerated: () => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleGenerate() {
+    setPending(true);
+    setError(null);
+    try {
+      await generateIntentDecomposition(shotId, actor);
+      onGenerated();
+    } catch (err) {
+      setError(describeError(err));
+      setPending(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={!hasBrief || pending}
+        onClick={() => void handleGenerate()}
+      >
+        {pending ? "Generating…" : "Generate intent decomposition"}
+      </button>
+      {!hasBrief && (
+        <p>
+          <small>Add an Intent Brief first.</small>
+        </p>
+      )}
+      {error && <p role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function UseInCoreAnchorDraftButton({
+  decompositionId,
+  actor,
+  disabled,
+  onApplied,
+}: {
+  decompositionId: string;
+  actor: { role: HumanRole; actorId: string };
+  disabled: boolean;
+  onApplied: () => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleApply() {
+    setPending(true);
+    setError(null);
+    try {
+      await createCoreAnchorDraftFromDecomposition(decompositionId, actor);
+      onApplied();
+    } catch (err) {
+      setError(describeError(err));
+      setPending(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={disabled || pending}
+        onClick={() => void handleApply()}
+      >
+        {pending ? "Using…" : "Use in Core Anchor draft"}
+      </button>
+      {disabled && !pending && (
+        <p>
+          <small>
+            A draft is already awaiting review. Confirm, reject, or edit it
+            before applying a different decomposition.
+          </small>
+        </p>
+      )}
+      {error && <p role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function IntentDecompositionCard({
+  decomposition,
+  actor,
+  hasDraft,
+  onApplied,
+}: {
+  decomposition: IntentDecompositionRead;
+  actor: { role: HumanRole; actorId: string };
+  hasDraft: boolean;
+  onApplied: () => void;
+}) {
+  const canApply = actor.role === "vfx_supervisor";
+
+  return (
+    <article
+      aria-label={`Intent decomposition ${shortId(decomposition.id)}`}
+      style={itemWrapperStyle}
+    >
+      <p>
+        <strong>AI proposal — Core Agent</strong>
+      </p>
+      <dl>
+        <div>
+          <dt>Core intent summary</dt>
+          <dd>{decomposition.core_intent_summary}</dd>
+        </div>
+        <div>
+          <dt>Anchor-relevant content</dt>
+          <dd>{decomposition.anchor_relevant_content}</dd>
+        </div>
+      </dl>
+      <DimensionsReadOnly dimensions={decomposition.dimensions} />
+      <StringListReadOnly
+        label="Candidate must preserve"
+        items={decomposition.candidate_constraints}
+      />
+      <StringListReadOnly
+        label="Candidate allowed variation"
+        items={decomposition.candidate_variation_zones}
+      />
+      <StringListReadOnly
+        label="Contextual information"
+        items={decomposition.contextual_information}
+      />
+      <StringListReadOnly
+        label="Uncertainties"
+        items={decomposition.uncertainties}
+      />
+      <AgentProvenanceDetails
+        agentRunId={decomposition.agent_run_id}
+        contextSnapshotId={decomposition.context_snapshot_id}
+      />
+      {canApply && (
+        <UseInCoreAnchorDraftButton
+          decompositionId={decomposition.id}
+          actor={actor}
+          disabled={hasDraft}
+          onApplied={onApplied}
+        />
+      )}
+    </article>
+  );
+}
+
+function IntentDecompositionSection({
+  shotId,
+  hasBrief,
+  hasDraft,
+  actor,
+  decompositions,
+  onGenerated,
+  onApplied,
+}: {
+  shotId: string;
+  hasBrief: boolean;
+  hasDraft: boolean;
+  actor: { role: HumanRole; actorId: string };
+  decompositions: IntentDecompositionRead[];
+  onGenerated: () => void;
+  onApplied: () => void;
+}) {
+  const canGenerate = actor.role === "vfx_supervisor";
+
+  return (
+    <section aria-label="Intent decomposition">
+      <h2>Intent decomposition</h2>
+      <p>
+        <small>
+          A Core Agent AI proposal that structures the Intent Brief into
+          Anchor-relevant content, generated before the Core Anchor is drafted.
+          This is an AI proposal, not a Human Decision.
+        </small>
+      </p>
+      {canGenerate ? (
+        <GenerateDecompositionButton
+          shotId={shotId}
+          hasBrief={hasBrief}
+          actor={actor}
+          onGenerated={onGenerated}
+        />
+      ) : (
+        <p>
+          <small>
+            Only a VFX Supervisor can generate or use an intent decomposition.
+          </small>
+        </p>
+      )}
+      {decompositions.length === 0 ? (
+        <p>No intent decompositions generated yet.</p>
+      ) : (
+        decompositions.map((decomposition) => (
+          <IntentDecompositionCard
+            key={decomposition.id}
+            decomposition={decomposition}
+            actor={actor}
+            hasDraft={hasDraft}
+            onApplied={onApplied}
+          />
+        ))
+      )}
+    </section>
+  );
+}
+
 /** Read-only presentation of the seven scalar Core Anchor fields, shared by
  * the confirmed-anchor card and a non-editable draft view (CG Supervisor /
  * Artist). */
@@ -528,6 +848,14 @@ function ConfirmedAnchorCard({
       </h3>
       <ScalarFieldsReadOnly revision={revision} />
       <SemanticCollectionsReadOnly revision={revision} />
+      {revision.source_intent_decomposition_id && (
+        <p>
+          <small>
+            Based on intent decomposition{" "}
+            {shortId(revision.source_intent_decomposition_id)}
+          </small>
+        </p>
+      )}
       <p>
         <small>
           Confirmed by {revision.confirmed_by_human_role} at{" "}
@@ -1192,6 +1520,15 @@ function CoreAnchorGate({
             )}
           </dd>
         </div>
+        {revision.source_intent_decomposition_id && (
+          <div>
+            <dt>Source decomposition</dt>
+            <dd>
+              Based on intent decomposition{" "}
+              {shortId(revision.source_intent_decomposition_id)}
+            </dd>
+          </div>
+        )}
         <div>
           <dt>Required reviewer</dt>
           <dd>VFX Supervisor</dd>

@@ -21,6 +21,7 @@ import type {
   ExecutionAnchorRevisionRead,
   HumanRole,
   IntentBriefRead,
+  IntentDecompositionRead,
   ReviewNoteRead,
   ShotRead,
   TaskRead,
@@ -160,6 +161,36 @@ export function generateCoreAnchorDraft(
   return apiFetch(`/intent/shots/${shotId}/core-anchor/generate`, {
     method: "POST",
   });
+}
+
+// Step 1B: Intent Decomposition -- generated before Core Anchor drafting,
+// reviewed by the Human VFX Supervisor, then optionally used to create a
+// new Core Anchor draft.
+
+export function generateIntentDecomposition(
+  shotId: string,
+  actor: Actor,
+): Promise<IntentDecompositionRead> {
+  return apiFetch(`/intent/shots/${shotId}/intent-decompositions/generate`, {
+    method: "POST",
+    actor,
+  });
+}
+
+export function listIntentDecompositionsForShot(
+  shotId: string,
+): Promise<IntentDecompositionRead[]> {
+  return apiFetch(`/intent/shots/${shotId}/intent-decompositions`);
+}
+
+export function createCoreAnchorDraftFromDecomposition(
+  decompositionId: string,
+  actor: Actor,
+): Promise<CoreAnchorRevisionRead> {
+  return apiFetch(
+    `/intent/intent-decompositions/${decompositionId}/core-anchor-draft`,
+    { method: "POST", body: {}, actor },
+  );
 }
 
 export function listCoreAnchorRevisions(

@@ -22,10 +22,14 @@ from intent_core_contracts.api.intent import (
     IntentBriefCreate,
     IntentBriefRead,
 )
+from intent_core_contracts.api.intent_decomposition import (
+    CoreAnchorDraftFromDecompositionRequest,
+    IntentDecompositionRead,
+)
 from intent_core_contracts.api.workflow import DecisionRead
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from intent_core_api.agents import core_agent_service
+from intent_core_api.agents import core_agent_service, intent_decomposition_service
 from intent_core_api.agents.models import AgentRun, ContextSnapshot
 from intent_core_api.config import get_settings
 from intent_core_api.db import get_session
@@ -37,6 +41,7 @@ from intent_core_api.intent.models import (
     ExecutionAnchor,
     ExecutionAnchorRevision,
     IntentBrief,
+    IntentDecomposition,
 )
 from intent_core_api.workflow import decision_service
 from intent_core_api.workflow.actors import ActorContext, get_current_actor
@@ -70,6 +75,55 @@ async def list_briefs(
     shot_id: uuid.UUID, session: AsyncSession = Depends(get_session)
 ) -> list[IntentBrief]:
     return await brief_service.list_briefs_for_shot(session, shot_id)
+
+
+@router.post(
+    "/shots/{shot_id}/intent-decompositions/generate",
+    response_model=IntentDecompositionRead,
+    status_code=201,
+)
+async def generate_intent_decomposition(
+    shot_id: uuid.UUID,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> IntentDecomposition:
+    return await intent_decomposition_service.generate_intent_decomposition(session, actor, shot_id)
+
+
+@router.get("/intent-decompositions/{decomposition_id}", response_model=IntentDecompositionRead)
+async def get_intent_decomposition(
+    decomposition_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> IntentDecomposition:
+    decomposition = await intent_decomposition_service.get_intent_decomposition(
+        session, decomposition_id
+    )
+    if decomposition is None:
+        raise NotFoundError("Intent decomposition not found")
+    return decomposition
+
+
+@router.get("/shots/{shot_id}/intent-decompositions", response_model=list[IntentDecompositionRead])
+async def list_intent_decompositions(
+    shot_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> list[IntentDecomposition]:
+    return await intent_decomposition_service.list_intent_decompositions_for_shot(session, shot_id)
+
+
+@router.post(
+    "/intent-decompositions/{decomposition_id}/core-anchor-draft",
+    response_model=CoreAnchorRevisionRead,
+    status_code=201,
+)
+async def create_core_anchor_draft_from_decomposition(
+    decomposition_id: uuid.UUID,
+    payload: CoreAnchorDraftFromDecompositionRequest,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> CoreAnchorRevision:
+    del payload  # deliberately empty today -- see contract docstring
+    return await core_agent_service.create_core_anchor_draft_from_decomposition(
+        session, actor, decomposition_id
+    )
 
 
 @router.post(

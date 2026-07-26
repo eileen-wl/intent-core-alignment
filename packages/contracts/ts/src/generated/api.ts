@@ -194,6 +194,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/intent/shots/{shot_id}/intent-decompositions/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate Intent Decomposition */
+        post: operations["generate_intent_decomposition_intent_shots__shot_id__intent_decompositions_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/intent-decompositions/{decomposition_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Intent Decomposition */
+        get: operations["get_intent_decomposition_intent_intent_decompositions__decomposition_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/shots/{shot_id}/intent-decompositions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Intent Decompositions */
+        get: operations["list_intent_decompositions_intent_shots__shot_id__intent_decompositions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/intent-decompositions/{decomposition_id}/core-anchor-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Core Anchor Draft From Decomposition */
+        post: operations["create_core_anchor_draft_from_decomposition_intent_intent_decompositions__decomposition_id__core_anchor_draft_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/intent/shots/{shot_id}/core-anchor/drafts": {
         parameters: {
             query?: never;
@@ -863,6 +931,16 @@ export interface components {
              */
             created_at: string;
         };
+        /**
+         * CoreAnchorDraftFromDecompositionRequest
+         * @description Deliberately empty today -- the decomposition id is already in the
+         *     URL path, and there is no other required input for this action. A
+         *     real body (not an empty-object placeholder) keeps the endpoint
+         *     consistent with the repository's other POST-action endpoints
+         *     (``AnchorConfirmRequest``, ``AssessmentDecisionRequest``, ...), and
+         *     leaves room to add an optional field later without a breaking change.
+         */
+        CoreAnchorDraftFromDecompositionRequest: Record<string, never>;
         /** CoreAnchorRead */
         CoreAnchorRead: {
             /**
@@ -971,6 +1049,8 @@ export interface components {
             confirmed_at: string | null;
             /** Supersedes Revision Id */
             supersedes_revision_id: string | null;
+            /** Source Intent Decomposition Id */
+            source_intent_decomposition_id: string | null;
             /**
              * Created At
              * Format: date-time
@@ -1270,6 +1350,78 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * IntentDecompositionDimensions
+         * @description Exactly the seven Design Concept dimensions
+         *     (docs/PRODUCT_SCOPE.md §6.1, docs/AGENT_CONTRACTS.md §4) -- no more,
+         *     no fewer. Every dimension is required on every decomposition; an
+         *     ``IntentDimensionAnalysis`` with nothing meaningful to say still
+         *     states that plainly in ``summary``/``rationale`` rather than being
+         *     omitted (see ``uncertainties`` for how "insufficient context" is
+         *     represented instead).
+         */
+        IntentDecompositionDimensions: {
+            emotional_tone: components["schemas"]["IntentDimensionAnalysis"];
+            visual_focus: components["schemas"]["IntentDimensionAnalysis"];
+            rhythm_and_intensity: components["schemas"]["IntentDimensionAnalysis"];
+            character_relationships: components["schemas"]["IntentDimensionAnalysis"];
+            narrative_priority: components["schemas"]["IntentDimensionAnalysis"];
+            technical_execution_requirements: components["schemas"]["IntentDimensionAnalysis"];
+            visual_detail_constraints: components["schemas"]["IntentDimensionAnalysis"];
+        };
+        /** IntentDecompositionRead */
+        IntentDecompositionRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /**
+             * Intent Brief Id
+             * Format: uuid
+             */
+            intent_brief_id: string;
+            /**
+             * Context Snapshot Id
+             * Format: uuid
+             */
+            context_snapshot_id: string;
+            /**
+             * Agent Run Id
+             * Format: uuid
+             */
+            agent_run_id: string;
+            /** Core Intent Summary */
+            core_intent_summary: string;
+            /** Anchor Relevant Content */
+            anchor_relevant_content: string;
+            dimensions: components["schemas"]["IntentDecompositionDimensions"];
+            /** Candidate Constraints */
+            candidate_constraints: string[];
+            /** Candidate Variation Zones */
+            candidate_variation_zones: string[];
+            /** Contextual Information */
+            contextual_information: string[];
+            /** Uncertainties */
+            uncertainties: string[];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** IntentDimensionAnalysis */
+        IntentDimensionAnalysis: {
+            /** Summary */
+            summary: string;
+            /** Rationale */
+            rationale: string;
         };
         /** OpenQuestionInput */
         OpenQuestionInput: {
@@ -2047,6 +2199,140 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IntentBriefRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_intent_decomposition_intent_shots__shot_id__intent_decompositions_generate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntentDecompositionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_intent_decomposition_intent_intent_decompositions__decomposition_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                decomposition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntentDecompositionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_intent_decompositions_intent_shots__shot_id__intent_decompositions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntentDecompositionRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_core_anchor_draft_from_decomposition_intent_intent_decompositions__decomposition_id__core_anchor_draft_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                decomposition_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoreAnchorDraftFromDecompositionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreAnchorRevisionRead"];
                 };
             };
             /** @description Validation Error */

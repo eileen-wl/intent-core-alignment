@@ -76,6 +76,7 @@ function coreAnchorRevision(
     confirmed_by_actor_id: "vfx-1",
     confirmed_at: NOW,
     supersedes_revision_id: null,
+    source_intent_decomposition_id: null,
     created_at: NOW,
     updated_at: NOW,
     constraints: [],

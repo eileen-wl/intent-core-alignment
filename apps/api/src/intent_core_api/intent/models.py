@@ -9,8 +9,9 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from typing import Any
 
-from sqlalchemy import ForeignKey, Index, String, Text, UniqueConstraint, text
+from sqlalchemy import JSON, ForeignKey, Index, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from intent_core_api.db import Base
@@ -158,6 +159,52 @@ class OpenQuestion(Base):
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)
 
 
+class IntentDecomposition(Base):
+    """One immutable Core Agent ``intent_decomposition`` capability run
+    (Step 1B) -- structures an ``IntentBrief`` into the seven Design
+    Concept dimensions plus candidate Anchor content, for Human VFX
+    Supervisor review *before* Core Anchor drafting. No PATCH/DELETE path
+    exists anywhere in the API surface. Multiple decompositions may exist
+    for the same Shot/IntentBrief; there is no active/latest pointer --
+    the caller always names an exact decomposition id.
+
+    ``dimensions`` is a JSON object with exactly the seven keys
+    (``emotional_tone``, ``visual_focus``, ``rhythm_and_intensity``,
+    ``character_relationships``, ``narrative_priority``,
+    ``technical_execution_requirements``, ``visual_detail_constraints``),
+    each a ``{"summary": ..., "rationale": ...}`` object -- validated at
+    the contract layer (``intent_core_contracts.api.intent_decomposition``),
+    not by a database constraint. The four candidate/uncertainty columns
+    are plain JSON lists of strings.
+    """
+
+    __tablename__ = "intent_decompositions"
+    __table_args__ = (
+        Index("ix_intent_decompositions_shot_id", "shot_id"),
+        Index("ix_intent_decompositions_intent_brief_id", "intent_brief_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    shot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("shots.id"), nullable=False)
+    intent_brief_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("intent_briefs.id"), nullable=False
+    )
+    context_snapshot_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("context_snapshots.id"), nullable=False
+    )
+    agent_run_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("agent_runs.id"), nullable=False, unique=True
+    )
+    core_intent_summary: Mapped[str] = mapped_column(Text)
+    anchor_relevant_content: Mapped[str] = mapped_column(Text)
+    dimensions: Mapped[dict[str, Any]] = mapped_column(JSON)
+    candidate_constraints: Mapped[list[str]] = mapped_column(JSON, default=list)
+    candidate_variation_zones: Mapped[list[str]] = mapped_column(JSON, default=list)
+    contextual_information: Mapped[list[str]] = mapped_column(JSON, default=list)
+    uncertainties: Mapped[list[str]] = mapped_column(JSON, default=list)
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+
+
 class CoreAnchorRevision(Base):
     """One draft/confirmed/superseded/rejected revision of a CoreAnchor.
 
@@ -227,6 +274,15 @@ class CoreAnchorRevision(Base):
 
     supersedes_revision_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("core_anchor_revisions.id"), nullable=True
+    )
+
+    # Step 1B: set only when this draft was created via the explicit
+    # "apply decomposition" action (core_agent_service
+    # .create_core_anchor_draft_from_decomposition); null for every
+    # directly-generated or human-authored draft, and for every revision
+    # that predates Step 1B.
+    source_intent_decomposition_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("intent_decompositions.id"), nullable=True
     )
 
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)
