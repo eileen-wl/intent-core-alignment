@@ -774,6 +774,36 @@ export interface components {
              */
             request_write_back: boolean;
         };
+        /** AnchorReferenceInput */
+        AnchorReferenceInput: {
+            /** Label */
+            label: string;
+            /** Uri */
+            uri?: string | null;
+            /** Note */
+            note?: string | null;
+        };
+        /** AnchorReferenceRead */
+        AnchorReferenceRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Order Index */
+            order_index: number;
+            /** Label */
+            label: string;
+            /** Uri */
+            uri: string | null;
+            /** Note */
+            note: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** AnchorRejectRequest */
         AnchorRejectRequest: {
             /** Rationale */
@@ -788,6 +818,28 @@ export interface components {
         AssessmentDecisionRequest: {
             /** Rationale */
             rationale?: string | null;
+        };
+        /** ConstraintInput */
+        ConstraintInput: {
+            /** Content */
+            content: string;
+        };
+        /** ConstraintRead */
+        ConstraintRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Order Index */
+            order_index: number;
+            /** Content */
+            content: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** ContextSnapshotRead */
         ContextSnapshotRead: {
@@ -852,6 +904,16 @@ export interface components {
             narrative_priority?: string | null;
             /** Core Summary */
             core_summary?: string | null;
+            /** Constraints */
+            constraints?: components["schemas"]["ConstraintInput"][];
+            /** Variation Zones */
+            variation_zones?: components["schemas"]["VariationZoneInput"][];
+            /** Drift Risks */
+            drift_risks?: components["schemas"]["DriftRiskInput"][];
+            /** References */
+            references?: components["schemas"]["AnchorReferenceInput"][];
+            /** Open Questions */
+            open_questions?: components["schemas"]["OpenQuestionInput"][];
         };
         /** CoreAnchorRevisionRead */
         CoreAnchorRevisionRead: {
@@ -919,6 +981,16 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+            /** Constraints */
+            constraints: components["schemas"]["ConstraintRead"][];
+            /** Variation Zones */
+            variation_zones: components["schemas"]["VariationZoneRead"][];
+            /** Drift Risks */
+            drift_risks: components["schemas"]["DriftRiskRead"][];
+            /** References */
+            references: components["schemas"]["AnchorReferenceRead"][];
+            /** Open Questions */
+            open_questions: components["schemas"]["OpenQuestionRead"][];
         };
         /** CoreAnchorRevisionUpdate */
         CoreAnchorRevisionUpdate: {
@@ -936,6 +1008,16 @@ export interface components {
             narrative_priority?: string | null;
             /** Core Summary */
             core_summary?: string | null;
+            /** Constraints */
+            constraints?: components["schemas"]["ConstraintInput"][] | null;
+            /** Variation Zones */
+            variation_zones?: components["schemas"]["VariationZoneInput"][] | null;
+            /** Drift Risks */
+            drift_risks?: components["schemas"]["DriftRiskInput"][] | null;
+            /** References */
+            references?: components["schemas"]["AnchorReferenceInput"][] | null;
+            /** Open Questions */
+            open_questions?: components["schemas"]["OpenQuestionInput"][] | null;
         };
         /** DecisionRead */
         DecisionRead: {
@@ -973,6 +1055,28 @@ export interface components {
             write_back_requested: boolean;
             /** Supersedes Decision Id */
             supersedes_decision_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** DriftRiskInput */
+        DriftRiskInput: {
+            /** Description */
+            description: string;
+        };
+        /** DriftRiskRead */
+        DriftRiskRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Order Index */
+            order_index: number;
+            /** Description */
+            description: string;
             /**
              * Created At
              * Format: date-time
@@ -1161,6 +1265,28 @@ export interface components {
             created_by_human_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
             /** Source External Id */
             source_external_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** OpenQuestionInput */
+        OpenQuestionInput: {
+            /** Question */
+            question: string;
+        };
+        /** OpenQuestionRead */
+        OpenQuestionRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Order Index */
+            order_index: number;
+            /** Question */
+            question: string;
             /**
              * Created At
              * Format: date-time
@@ -1379,6 +1505,28 @@ export interface components {
             input?: unknown;
             /** Context */
             ctx?: Record<string, never>;
+        };
+        /** VariationZoneInput */
+        VariationZoneInput: {
+            /** Content */
+            content: string;
+        };
+        /** VariationZoneRead */
+        VariationZoneRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Order Index */
+            order_index: number;
+            /** Content */
+            content: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** VersionCreate */
         VersionCreate: {

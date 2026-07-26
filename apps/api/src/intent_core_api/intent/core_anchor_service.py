@@ -44,17 +44,27 @@ WP-A2 concurrency addendum):
 from __future__ import annotations
 
 import uuid
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from intent_core_api.audit import service as audit_service
 from intent_core_api.intent import execution_anchor_service
 from intent_core_api.intent.core_anchor_lock import compare_and_swap_active_revision
-from intent_core_api.intent.models import CoreAnchor, CoreAnchorRevision
+from intent_core_api.intent.models import (
+    AnchorReference,
+    Constraint,
+    CoreAnchor,
+    CoreAnchorRevision,
+    DriftRisk,
+    OpenQuestion,
+    VariationZone,
+)
 from intent_core_api.production_context.models import Shot
 from intent_core_api.workflow import decision_service, transition_service
 from intent_core_api.workflow.actors import (
@@ -86,6 +96,137 @@ CORE_ANCHOR_CONTENT_FIELDS = (
 )
 
 _DRAFT_CREATE_AGENT_TYPES: frozenset[AgentType] = frozenset({"core_agent"})
+
+# Step 1A: the five Core Anchor semantic-child collections. Each tuple is
+# (contract/relationship field name, ORM model, content field names) --
+# the relationship attribute name on CoreAnchorRevision is deliberately
+# identical to the contract field name for all five (see intent/models.py
+# CoreAnchorRevision.references) so this one table drives both the
+# replace helper below and the eager-load options.
+_SEMANTIC_COLLECTIONS: tuple[tuple[str, type[Any], tuple[str, ...]], ...] = (
+    ("constraints", Constraint, ("content",)),
+    ("variation_zones", VariationZone, ("content",)),
+    ("drift_risks", DriftRisk, ("description",)),
+    ("references", AnchorReference, ("label", "uri", "note")),
+    ("open_questions", OpenQuestion, ("question",)),
+)
+
+_SEMANTIC_RELATIONSHIP_LOAD_OPTIONS = (
+    selectinload(CoreAnchorRevision.constraints),
+    selectinload(CoreAnchorRevision.variation_zones),
+    selectinload(CoreAnchorRevision.drift_risks),
+    selectinload(CoreAnchorRevision.references),
+    selectinload(CoreAnchorRevision.open_questions),
+)
+
+
+def _normalize_orm_rows_for_audit(
+    rows: Sequence[Any], content_fields: tuple[str, ...]
+) -> list[Any]:
+    if len(content_fields) == 1:
+        field = content_fields[0]
+        return [getattr(row, field) for row in rows]
+    return [{field: getattr(row, field) for field in content_fields} for row in rows]
+
+
+def _normalize_dict_items_for_audit(
+    items: Sequence[Mapping[str, Any]], content_fields: tuple[str, ...]
+) -> list[Any]:
+    if len(content_fields) == 1:
+        field = content_fields[0]
+        return [item[field] for item in items]
+    return [{field: item[field] for field in content_fields} for item in items]
+
+
+async def _replace_semantic_collection(
+    session: AsyncSession,
+    revision_id: uuid.UUID,
+    model_cls: type[Any],
+    new_items: Sequence[Mapping[str, Any]],
+    content_fields: tuple[str, ...],
+) -> tuple[list[Any], list[Any]]:
+    """Delete-then-insert a single semantic-child collection for one
+    revision, in the caller's existing transaction (no commit here).
+    Returns ``(before, after)`` normalized content for the audit diff --
+    the caller decides whether to actually record it.
+    """
+    existing_result = await session.execute(
+        select(model_cls)
+        .where(model_cls.core_anchor_revision_id == revision_id)
+        .order_by(model_cls.order_index)
+    )
+    existing_rows = list(existing_result.scalars().all())
+    before = _normalize_orm_rows_for_audit(existing_rows, content_fields)
+
+    for row in existing_rows:
+        await session.delete(row)
+
+    for index, item in enumerate(new_items):
+        session.add(
+            model_cls(
+                core_anchor_revision_id=revision_id,
+                order_index=index,
+                **{field: item[field] for field in content_fields},
+            )
+        )
+
+    after = _normalize_dict_items_for_audit(new_items, content_fields)
+    return before, after
+
+
+async def _replace_semantic_collections_for_create(
+    session: AsyncSession, revision_id: uuid.UUID, content: Mapping[str, Any]
+) -> None:
+    """Draft creation: every collection is written from scratch (there is
+    nothing to diff against and, matching the existing convention that
+    the 7 scalar content fields are not audited on creation either, no
+    audit event is recorded here).
+    """
+    for field_name, model_cls, content_fields in _SEMANTIC_COLLECTIONS:
+        await _replace_semantic_collection(
+            session, revision_id, model_cls, content.get(field_name) or [], content_fields
+        )
+
+
+async def _replace_semantic_collections_for_update(
+    session: AsyncSession, revision_id: uuid.UUID, changes: Mapping[str, Any]
+) -> dict[str, dict[str, list[Any]]]:
+    """Draft update: only collections present in ``changes`` are touched
+    (omitted means unchanged); each replaced collection contributes a
+    before/after entry the caller merges into its audit diff.
+    """
+    diff: dict[str, dict[str, list[Any]]] = {}
+    for field_name, model_cls, content_fields in _SEMANTIC_COLLECTIONS:
+        if field_name not in changes:
+            continue
+        before, after = await _replace_semantic_collection(
+            session, revision_id, model_cls, changes[field_name] or [], content_fields
+        )
+        diff[field_name] = {"before": before, "after": after}
+    return diff
+
+
+async def _get_revision_with_semantic_children(
+    session: AsyncSession, revision_id: uuid.UUID
+) -> CoreAnchorRevision:
+    # `populate_existing=True` is required, not cosmetic: this is always
+    # called after a mutation on a revision that may already be sitting
+    # in this session's identity map with its (now stale) semantic
+    # collections eager-loaded from an earlier `session.get()` in the
+    # same function -- without it SQLAlchemy would silently keep serving
+    # those cached collections instead of the rows just written. Same
+    # pitfall `confirm_revision` already documents for `anchor`.
+    revision = await session.scalar(
+        select(CoreAnchorRevision)
+        .where(CoreAnchorRevision.id == revision_id)
+        .options(*_SEMANTIC_RELATIONSHIP_LOAD_OPTIONS)
+        .execution_options(populate_existing=True)
+    )
+    if revision is None:
+        raise InternalConsistencyError(
+            f"CoreAnchorRevision {revision_id} vanished immediately after being persisted"
+        )
+    return revision
 
 
 async def get_or_create_core_anchor(session: AsyncSession, shot_id: uuid.UUID) -> CoreAnchor:
@@ -148,14 +289,19 @@ async def create_draft_revision(
     )
     session.add(revision)
     try:
+        # Flush (not just add) before inserting semantic children: the
+        # revision's client-side uuid4() default is only materialized
+        # into `revision.id` once the flush runs, and the children's hard
+        # FK needs a real id -- see intent/README.md.
+        await session.flush()
+        await _replace_semantic_collections_for_create(session, revision.id, content)
         await session.commit()
     except IntegrityError:
         await session.rollback()
         raise ConflictError(
             "A draft was created concurrently for this anchor; retry the request"
         ) from None
-    await session.refresh(revision)
-    return revision
+    return await _get_revision_with_semantic_children(session, revision.id)
 
 
 async def get_core_anchor_for_shot(session: AsyncSession, shot_id: uuid.UUID) -> CoreAnchor | None:
@@ -166,7 +312,12 @@ async def get_core_anchor_for_shot(session: AsyncSession, shot_id: uuid.UUID) ->
 
 
 async def get_revision(session: AsyncSession, revision_id: uuid.UUID) -> CoreAnchorRevision | None:
-    return await session.get(CoreAnchorRevision, revision_id)
+    result: CoreAnchorRevision | None = await session.scalar(
+        select(CoreAnchorRevision)
+        .where(CoreAnchorRevision.id == revision_id)
+        .options(*_SEMANTIC_RELATIONSHIP_LOAD_OPTIONS)
+    )
+    return result
 
 
 async def list_revisions_for_shot(
@@ -187,6 +338,7 @@ async def list_revisions_for_shot(
         select(CoreAnchorRevision)
         .where(CoreAnchorRevision.core_anchor_id == anchor.id)
         .order_by(CoreAnchorRevision.revision_number)
+        .options(*_SEMANTIC_RELATIONSHIP_LOAD_OPTIONS)
     )
     return list(result.scalars().all())
 
@@ -214,6 +366,10 @@ async def update_draft_revision(
         setattr(revision, field, new_value)
 
     try:
+        # Only collections actually present in `changes` are touched --
+        # omitted means unchanged (see _replace_semantic_collections_for_update).
+        diff.update(await _replace_semantic_collections_for_update(session, revision.id, changes))
+
         if diff:
             await audit_service.record_audit_event(
                 session,
@@ -233,8 +389,7 @@ async def update_draft_revision(
     except Exception:
         await session.rollback()
         raise
-    await session.refresh(revision)
-    return revision
+    return await _get_revision_with_semantic_children(session, revision.id)
 
 
 async def confirm_revision(
@@ -398,8 +553,7 @@ async def confirm_revision(
         await session.rollback()
         raise
 
-    await session.refresh(revision)
-    return revision
+    return await _get_revision_with_semantic_children(session, revision.id)
 
 
 async def reject_revision(
@@ -455,5 +609,4 @@ async def reject_revision(
     except Exception:
         await session.rollback()
         raise
-    await session.refresh(revision)
-    return revision
+    return await _get_revision_with_semantic_children(session, revision.id)

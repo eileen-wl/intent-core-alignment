@@ -1,8 +1,8 @@
 """IntentBrief, CoreAnchor, CoreAnchorRevision, ExecutionAnchor,
-ExecutionAnchorRevision (WP-A slices A1/A2).
+ExecutionAnchorRevision (WP-A slices A1/A2); Constraint/VariationZone/
+DriftRisk/AnchorReference/OpenQuestion (Step 1A).
 
-See docs/DOMAIN_MODEL.md §5-6. Constraint/VariationZone/DriftRisk/
-Reference/OpenQuestion belong to slice A4 and are not defined here.
+See docs/DOMAIN_MODEL.md §5-6.
 """
 
 from __future__ import annotations
@@ -11,7 +11,7 @@ import uuid
 from datetime import UTC, datetime
 
 from sqlalchemy import ForeignKey, Index, String, Text, UniqueConstraint, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from intent_core_api.db import Base
 
@@ -55,6 +55,107 @@ class CoreAnchor(Base):
     )
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(default=_utcnow, onupdate=_utcnow)
+
+
+class Constraint(Base):
+    """Semantic child of exactly one ``CoreAnchorRevision`` (Step 1A) --
+    a boundary the revision's content must respect. Provenance is
+    inherited from the parent revision (see intent/README.md); no actor/
+    source columns are duplicated onto this row.
+    """
+
+    __tablename__ = "constraints"
+    __table_args__ = (Index("ix_constraints_core_anchor_revision_id", "core_anchor_revision_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    core_anchor_revision_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("core_anchor_revisions.id"), nullable=False
+    )
+    order_index: Mapped[int] = mapped_column()
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+
+
+class VariationZone(Base):
+    """Semantic child of exactly one ``CoreAnchorRevision`` (Step 1A) --
+    where interpretation is deliberately allowed to vary. Same provenance
+    rule as ``Constraint``.
+    """
+
+    __tablename__ = "variation_zones"
+    __table_args__ = (
+        Index("ix_variation_zones_core_anchor_revision_id", "core_anchor_revision_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    core_anchor_revision_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("core_anchor_revisions.id"), nullable=False
+    )
+    order_index: Mapped[int] = mapped_column()
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+
+
+class DriftRisk(Base):
+    """Semantic child of exactly one ``CoreAnchorRevision`` (Step 1A) --
+    a named risk of drifting away from this anchor. Same provenance rule
+    as ``Constraint``.
+    """
+
+    __tablename__ = "drift_risks"
+    __table_args__ = (Index("ix_drift_risks_core_anchor_revision_id", "core_anchor_revision_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    core_anchor_revision_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("core_anchor_revisions.id"), nullable=False
+    )
+    order_index: Mapped[int] = mapped_column()
+    description: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+
+
+class AnchorReference(Base):
+    """Semantic child of exactly one ``CoreAnchorRevision`` (Step 1A) --
+    a supporting reference (e.g. a link or note pointing at prior art).
+    Named ``AnchorReference`` rather than the generic ``Reference`` to
+    avoid ambiguity with unrelated uses of that word elsewhere in the
+    codebase. Same provenance rule as ``Constraint``.
+    """
+
+    __tablename__ = "anchor_references"
+    __table_args__ = (
+        Index("ix_anchor_references_core_anchor_revision_id", "core_anchor_revision_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    core_anchor_revision_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("core_anchor_revisions.id"), nullable=False
+    )
+    order_index: Mapped[int] = mapped_column()
+    label: Mapped[str] = mapped_column(String(500))
+    uri: Mapped[str | None] = mapped_column(Text, nullable=True)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+
+
+class OpenQuestion(Base):
+    """Semantic child of exactly one ``CoreAnchorRevision`` (Step 1A) --
+    an unresolved question this revision leaves open. Same provenance
+    rule as ``Constraint``.
+    """
+
+    __tablename__ = "open_questions"
+    __table_args__ = (
+        Index("ix_open_questions_core_anchor_revision_id", "core_anchor_revision_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    core_anchor_revision_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("core_anchor_revisions.id"), nullable=False
+    )
+    order_index: Mapped[int] = mapped_column()
+    question: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
 
 
 class CoreAnchorRevision(Base):
@@ -130,6 +231,35 @@ class CoreAnchorRevision(Base):
 
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(default=_utcnow, onupdate=_utcnow)
+
+    # Step 1A semantic children: ordered, revision-owned, draft-only-
+    # editable collections. `lazy="selectin"` is required, not cosmetic --
+    # this app uses AsyncSession throughout, and a bare `lazy="select"`
+    # (the default) would raise MissingGreenlet the first time response
+    # serialization touches one of these attributes outside an awaited
+    # call. `cascade="all, delete-orphan"` matches the existing
+    # Project.shots/Shot.tasks convention even though nothing in this
+    # codebase deletes a CoreAnchorRevision today.
+    constraints: Mapped[list[Constraint]] = relationship(
+        order_by="Constraint.order_index", cascade="all, delete-orphan", lazy="selectin"
+    )
+    variation_zones: Mapped[list[VariationZone]] = relationship(
+        order_by="VariationZone.order_index", cascade="all, delete-orphan", lazy="selectin"
+    )
+    drift_risks: Mapped[list[DriftRisk]] = relationship(
+        order_by="DriftRisk.order_index", cascade="all, delete-orphan", lazy="selectin"
+    )
+    # Attribute named `references` (not `anchor_references`) so it lines
+    # up 1:1 with the `references` field name used on the
+    # CoreAnchorRevisionDraftCreate/Update/Read contracts -- the model
+    # class is still `AnchorReference`, per the Step 1A requirement to
+    # avoid the generic class name `Reference`.
+    references: Mapped[list[AnchorReference]] = relationship(
+        order_by="AnchorReference.order_index", cascade="all, delete-orphan", lazy="selectin"
+    )
+    open_questions: Mapped[list[OpenQuestion]] = relationship(
+        order_by="OpenQuestion.order_index", cascade="all, delete-orphan", lazy="selectin"
+    )
 
 
 class ExecutionAnchor(Base):

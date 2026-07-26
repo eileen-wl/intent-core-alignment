@@ -1,11 +1,13 @@
-"""Request/response schemas for the ``intent`` module, WP-A slice A1.
+"""Request/response schemas for the ``intent`` module, WP-A slice A1,
+plus the Step 1A Core Anchor semantic objects (Constraint/VariationZone/
+DriftRisk/AnchorReference/OpenQuestion).
 
 Scope: ``IntentBrief`` (manual creation only) and CoreAnchor/
-CoreAnchorRevision lifecycle (draft/update/confirm/reject). See
-docs/DOMAIN_MODEL.md §5-6 and the approved WP-A implementation plan.
-Execution Anchors, Constraint/VariationZone/DriftRisk/Reference/
-OpenQuestion, and any workflow/audit read schemas belong to later WP-A
-slices (A2-A4) and are intentionally not defined here.
+CoreAnchorRevision lifecycle (draft/update/confirm/reject), including its
+five ordered semantic-child collections. See docs/DOMAIN_MODEL.md §5-6
+and the approved WP-A / Step 1A implementation plans. Execution Anchors
+and any workflow/audit read schemas belong to other slices and are
+intentionally not defined here.
 """
 
 from __future__ import annotations
@@ -14,7 +16,7 @@ from datetime import datetime
 from typing import Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from intent_core_contracts.actors import HumanRole
 
@@ -56,6 +58,106 @@ class IntentBriefRead(BaseModel):
     created_at: datetime
 
 
+def _require_non_blank(value: str) -> str:
+    if not value.strip():
+        raise ValueError("must not be blank")
+    return value
+
+
+class ConstraintInput(BaseModel):
+    content: str = Field(min_length=1)
+
+    @field_validator("content")
+    @classmethod
+    def _content_not_blank(cls, value: str) -> str:
+        return _require_non_blank(value)
+
+
+class ConstraintRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    order_index: int
+    content: str
+    created_at: datetime
+
+
+class VariationZoneInput(BaseModel):
+    content: str = Field(min_length=1)
+
+    @field_validator("content")
+    @classmethod
+    def _content_not_blank(cls, value: str) -> str:
+        return _require_non_blank(value)
+
+
+class VariationZoneRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    order_index: int
+    content: str
+    created_at: datetime
+
+
+class DriftRiskInput(BaseModel):
+    description: str = Field(min_length=1)
+
+    @field_validator("description")
+    @classmethod
+    def _description_not_blank(cls, value: str) -> str:
+        return _require_non_blank(value)
+
+
+class DriftRiskRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    order_index: int
+    description: str
+    created_at: datetime
+
+
+class AnchorReferenceInput(BaseModel):
+    label: str = Field(min_length=1)
+    uri: str | None = None
+    note: str | None = None
+
+    @field_validator("label")
+    @classmethod
+    def _label_not_blank(cls, value: str) -> str:
+        return _require_non_blank(value)
+
+
+class AnchorReferenceRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    order_index: int
+    label: str
+    uri: str | None
+    note: str | None
+    created_at: datetime
+
+
+class OpenQuestionInput(BaseModel):
+    question: str = Field(min_length=1)
+
+    @field_validator("question")
+    @classmethod
+    def _question_not_blank(cls, value: str) -> str:
+        return _require_non_blank(value)
+
+
+class OpenQuestionRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    order_index: int
+    question: str
+    created_at: datetime
+
+
 class CoreAnchorRevisionDraftCreate(BaseModel):
     shot_objective: str | None = None
     emotional_tone: str | None = None
@@ -64,6 +166,14 @@ class CoreAnchorRevisionDraftCreate(BaseModel):
     character_relationship: str | None = None
     narrative_priority: str | None = None
     core_summary: str | None = None
+
+    # Step 1A: the five Core Anchor semantic-child collections. Order in
+    # each input array becomes the persisted `order_index`.
+    constraints: list[ConstraintInput] = Field(default_factory=list)
+    variation_zones: list[VariationZoneInput] = Field(default_factory=list)
+    drift_risks: list[DriftRiskInput] = Field(default_factory=list)
+    references: list[AnchorReferenceInput] = Field(default_factory=list)
+    open_questions: list[OpenQuestionInput] = Field(default_factory=list)
 
 
 class CoreAnchorRevisionUpdate(BaseModel):
@@ -74,6 +184,17 @@ class CoreAnchorRevisionUpdate(BaseModel):
     character_relationship: str | None = None
     narrative_priority: str | None = None
     core_summary: str | None = None
+
+    # Step 1A: each collection is independently optional -- omitted means
+    # unchanged, an explicit `[]` means clear, a populated list means
+    # fully replace. Distinguishing "omitted" from "explicit []" requires
+    # the router to read this via `model_dump(exclude_unset=True)`, same
+    # as every other field on this model already does.
+    constraints: list[ConstraintInput] | None = None
+    variation_zones: list[VariationZoneInput] | None = None
+    drift_risks: list[DriftRiskInput] | None = None
+    references: list[AnchorReferenceInput] | None = None
+    open_questions: list[OpenQuestionInput] | None = None
 
 
 class CoreAnchorRevisionRead(BaseModel):
@@ -111,6 +232,14 @@ class CoreAnchorRevisionRead(BaseModel):
 
     created_at: datetime
     updated_at: datetime
+
+    # Step 1A: always present, ordered by order_index; a revision with no
+    # children of a given kind returns an empty array, never null.
+    constraints: list[ConstraintRead]
+    variation_zones: list[VariationZoneRead]
+    drift_risks: list[DriftRiskRead]
+    references: list[AnchorReferenceRead]
+    open_questions: list[OpenQuestionRead]
 
 
 class CoreAnchorRead(BaseModel):

@@ -90,6 +90,11 @@ function revision(
     supersedes_revision_id: null,
     created_at: NOW,
     updated_at: NOW,
+    constraints: [],
+    variation_zones: [],
+    drift_risks: [],
+    references: [],
+    open_questions: [],
     ...overrides,
   };
 }
