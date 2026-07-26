@@ -125,13 +125,13 @@ is a quick orientation for what exists in code today.
   provenance, from `AuditEvent` rows recorded for draft edits, and
   eventually from the human confirmation `Decision`.
 - **Audit**: only `update_draft_revision` records collection changes (to
-  match the existing convention that draft *creation* is not audited
+  match the existing convention that draft _creation_ is not audited
   either); a replaced collection contributes a `{"before": [...],
-  "after": [...]}` entry to the same `AuditEvent.source_context.changed_fields`
+"after": [...]}` entry to the same `AuditEvent.source_context.changed_fields`
   payload already used for the seven scalar fields -- normalized to a
   flat list of values for single-field collections (Constraint/
   VariationZone/DriftRisk/OpenQuestion), or a list of `{label, uri,
-  note}` objects for AnchorReference. No new audit table or event
+note}` objects for AnchorReference. No new audit table or event
   framework was added.
 - **Authority**: reuses the existing Core Anchor draft guards
   unchanged (`require_can_draft`/`require_can_update_draft`) -- VFX
