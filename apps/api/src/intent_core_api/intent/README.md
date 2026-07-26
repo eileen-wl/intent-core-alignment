@@ -1,11 +1,13 @@
-# Intent module — WP-A slices A1 + A2
+# Intent module — WP-A slices A1 + A2, Step 1A
 
 Implements the Primary Anchor (`IntentBrief`/`CoreAnchor`/
 `CoreAnchorRevision`, A1) and Secondary Execution Anchor
 (`ExecutionAnchor`/`ExecutionAnchorRevision`, A2) lifecycles, plus the
-stale-alignment cascade that links them. See the approved WP-A/WP-A2
-implementation plans for the full design rationale; this file is a quick
-orientation for what exists in code today.
+stale-alignment cascade that links them, plus the Core Anchor semantic
+child objects (`Constraint`/`VariationZone`/`DriftRisk`/`AnchorReference`/
+`OpenQuestion`, Step 1A). See the approved WP-A/WP-A2 implementation
+plans and `docs/STEP_1A_PLAN.md` for the full design rationale; this file
+is a quick orientation for what exists in code today.
 
 ## What's implemented (A1)
 
@@ -84,11 +86,76 @@ orientation for what exists in code today.
   for why a `SELECT` (even a bare-scalar one) cannot substitute for a
   compare-and-swap `UPDATE` under SQLite/PostgreSQL snapshot isolation.
 
+## What's implemented (Step 1A)
+
+- **`Constraint`/`VariationZone`/`DriftRisk`/`AnchorReference`/
+  `OpenQuestion`** (`intent/models.py`) — five ordered, revision-owned
+  semantic-child tables. Each row belongs to exactly one
+  `CoreAnchorRevision` via a hard, non-nullable `core_anchor_revision_id`
+  FK plus an `order_index`; none of them belong directly to a Shot,
+  IntentBrief, ContextSnapshot, AgentRun, or HumanGate. The model class is
+  named `AnchorReference` (not the generic `Reference`); its ORM
+  relationship attribute on `CoreAnchorRevision` is named `references` to
+  line up with the contract field of the same name.
+- **Ownership and editing rules**: a revision's five collections can only
+  be written while that revision is `draft` — the same lifecycle gate
+  `update_draft_revision` already enforces for the seven scalar content
+  fields applies identically here (checked once, before any collection is
+  touched). There is no independent create/update/delete endpoint for an
+  individual semantic row, and no independent lifecycle: they exist only
+  as part of `create_draft_revision`/`update_draft_revision`'s existing
+  transactions. A new revision is never seeded from a previous one — no
+  automatic copying happens anywhere in this codebase; every revision
+  (including historical ones created before Step 1A) simply reads back
+  its own five collections, empty or not.
+- **Replacement semantics** (`core_anchor_service._replace_semantic_collections_for_create`/
+  `_for_update`): each of the five collections is handled independently.
+  On create, every collection is written from whatever the caller
+  supplied (defaulting to empty). On update, a collection absent from the
+  request is left untouched; a collection present (including an explicit
+  `[]`) is fully replaced -- the current draft rows are deleted and the
+  supplied items are re-inserted with `order_index` set from array
+  position. Both paths run inside the same transaction as the parent
+  draft create/update; a failure anywhere in that transaction rolls back
+  every collection change atomically (`IntegrityError`/any other
+  exception both trigger `session.rollback()` before re-raising).
+- **Provenance**: no actor/source/agent_run_id/context_snapshot_id column
+  is duplicated onto any of the five child tables. Their provenance is
+  entirely inherited from the parent `CoreAnchorRevision`'s own creation
+  provenance, from `AuditEvent` rows recorded for draft edits, and
+  eventually from the human confirmation `Decision`.
+- **Audit**: only `update_draft_revision` records collection changes (to
+  match the existing convention that draft _creation_ is not audited
+  either); a replaced collection contributes a `{"before": [...],
+"after": [...]}` entry to the same `AuditEvent.source_context.changed_fields`
+  payload already used for the seven scalar fields -- normalized to a
+  flat list of values for single-field collections (Constraint/
+  VariationZone/DriftRisk/OpenQuestion), or a list of `{label, uri,
+note}` objects for AnchorReference. No new audit table or event
+  framework was added.
+- **Authority**: reuses the existing Core Anchor draft guards
+  unchanged (`require_can_draft`/`require_can_update_draft`) -- VFX
+  Supervisor (human) or a `core_agent` `ActorContext` (service-level
+  only, no HTTP path) may supply semantic content on a draft; CG
+  Supervisor and Artist cannot touch it; no actor can touch a non-draft
+  revision. The Core Agent's actual generator (`agents/core_agent_service.py`)
+  is unmodified in this slice -- `generate_core_anchor_draft` continues to
+  produce empty semantic collections until Step 1B Intent Decomposition.
+- **Eager loading**: `CoreAnchorRevision`'s five relationships use
+  `lazy="selectin"`, and every service function that returns a
+  `CoreAnchorRevision` for API serialization re-fetches it through
+  `_get_revision_with_semantic_children` (explicit `selectinload()`
+  options), rather than relying on `session.refresh()`'s relationship
+  semantics -- this codebase uses `AsyncSession` throughout, where an
+  un-eager-loaded relationship access outside an awaited call raises
+  `MissingGreenlet`.
+
 ## What's explicitly out of scope
 
-`HumanGate` and `Decision` supersession (A3); `Constraint`/
-`VariationZone`/`DriftRisk`/`Reference`/`OpenQuestion` and the audit/
-lineage query surface (A4); real authentication, real agent
+`HumanGate` and `Decision` supersession (A3); the audit/lineage query
+surface (A4); a UI for the five semantic-child collections (Step
+1A-UI); Intent Decomposition (Step 1B); Context Reconstruction (Step
+1C); persistent HumanGate (Step 1D); real authentication, real agent
 authentication, and assignment-based read scoping (deferred future work
 package, not part of WP-A/WP-A2).
 

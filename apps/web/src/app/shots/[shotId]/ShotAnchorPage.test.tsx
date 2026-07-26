@@ -90,8 +90,74 @@ function revision(
     supersedes_revision_id: null,
     created_at: NOW,
     updated_at: NOW,
+    constraints: [],
+    variation_zones: [],
+    drift_risks: [],
+    references: [],
+    open_questions: [],
     ...overrides,
   };
+}
+
+function constraintItem(id: string, content: string, orderIndex = 0) {
+  return { id, order_index: orderIndex, content, created_at: NOW };
+}
+
+function variationZoneItem(id: string, content: string, orderIndex = 0) {
+  return { id, order_index: orderIndex, content, created_at: NOW };
+}
+
+function driftRiskItem(id: string, description: string, orderIndex = 0) {
+  return { id, order_index: orderIndex, description, created_at: NOW };
+}
+
+function referenceItem(
+  id: string,
+  label: string,
+  uri: string | null,
+  note: string | null,
+  orderIndex = 0,
+) {
+  return { id, order_index: orderIndex, label, uri, note, created_at: NOW };
+}
+
+function openQuestionItem(id: string, question: string, orderIndex = 0) {
+  return { id, order_index: orderIndex, question, created_at: NOW };
+}
+
+/** A draft revision with all five semantic collections populated, used by
+ * the Step 1A-UI test cases below. */
+function populatedDraftRevision(
+  overrides: Partial<CoreAnchorRevisionRead> = {},
+): CoreAnchorRevisionRead {
+  return revision({
+    id: "rev-draft",
+    revision_number: 2,
+    status: "draft",
+    shot_objective: "Slightly louder now",
+    constraints: [
+      constraintItem("c1", "Preserve restrained performance", 0),
+      constraintItem("c2", "Avoid exaggerated camera movement", 1),
+    ],
+    variation_zones: [
+      variationZoneItem("vz1", "Camera speed may vary slightly", 0),
+    ],
+    drift_risks: [driftRiskItem("dr1", "Excessive shake weakens tone", 0)],
+    references: [
+      referenceItem(
+        "r1",
+        "Mood ref",
+        "https://example.invalid/ref",
+        "reference note",
+        0,
+      ),
+      referenceItem("r2", "Text-only ref", null, null, 1),
+    ],
+    open_questions: [
+      openQuestionItem("oq1", "Is tension physical or emotional?", 0),
+    ],
+    ...overrides,
+  });
 }
 
 function task(overrides: Partial<TaskRead> = {}): TaskRead {
@@ -971,5 +1037,810 @@ describe("ShotAnchorPage", () => {
 
     expect(await screen.findByText("Something went wrong")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
+  });
+
+  describe("Core Anchor semantic collections (Step 1A-UI)", () => {
+    it("renders all five semantic collections read-only for the confirmed revision, in the fixed display order", async () => {
+      const fixture = baseFixture();
+      fixture.revisions = [
+        revision({
+          id: "rev-confirmed",
+          revision_number: 1,
+          status: "confirmed",
+          shot_objective: "Keep dread quiet",
+          confirmed_by_human_role: "vfx_supervisor",
+          confirmed_by_actor_id: "vfx-1",
+          confirmed_at: NOW,
+          constraints: [
+            constraintItem("c1", "Preserve restrained performance", 0),
+          ],
+          variation_zones: [
+            variationZoneItem("vz1", "Camera speed may vary slightly", 0),
+          ],
+          drift_risks: [
+            driftRiskItem("dr1", "Excessive shake weakens tone", 0),
+          ],
+          references: [
+            referenceItem(
+              "r1",
+              "Mood ref",
+              "https://example.invalid/ref",
+              "reference note",
+              0,
+            ),
+          ],
+          open_questions: [
+            openQuestionItem("oq1", "Is tension physical or emotional?", 0),
+          ],
+        }),
+      ];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByText("Keep dread quiet");
+      const headings = await screen.findAllByRole("heading", { level: 4 });
+      expect(headings.map((h) => h.textContent)).toEqual([
+        "Must preserve",
+        "Allowed variation",
+        "High-risk drift points",
+        "References",
+        "Open questions",
+      ]);
+      expect(
+        screen.getByText("Preserve restrained performance"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Camera speed may vary slightly"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Excessive shake weakens tone"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Mood ref")).toBeInTheDocument();
+      const link = screen.getByRole("link", {
+        name: "https://example.invalid/ref",
+      });
+      expect(link).toHaveAttribute("href", "https://example.invalid/ref");
+      expect(screen.getByText("reference note")).toBeInTheDocument();
+      expect(
+        screen.getByText("Is tension physical or emotional?"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows an explicit empty state for empty semantic collections instead of hiding the section", async () => {
+      const fixture = baseFixture();
+      fixture.revisions = [
+        revision({
+          id: "rev-confirmed",
+          revision_number: 1,
+          status: "confirmed",
+          confirmed_by_human_role: "vfx_supervisor",
+          confirmed_by_actor_id: "vfx-1",
+          confirmed_at: NOW,
+        }),
+      ];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByText("No draft revision awaiting review.");
+      expect(screen.getAllByText("None specified.")).toHaveLength(5);
+      expect(
+        screen.getByRole("heading", { level: 4, name: "Must preserve" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { level: 4, name: "References" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /^Add /i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("populates the edit form with existing semantic items for the VFX Supervisor", async () => {
+      const fixture = baseFixture();
+      fixture.revisions[1] = populatedDraftRevision();
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      expect(
+        screen.getByDisplayValue("Preserve restrained performance"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue("Camera speed may vary slightly"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue("Excessive shake weakens tone"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByDisplayValue("Is tension physical or emotional?"),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Reference 1 label")).toHaveValue(
+        "Mood ref",
+      );
+      expect(screen.getByLabelText("Reference 1 URI")).toHaveValue(
+        "https://example.invalid/ref",
+      );
+      expect(screen.getByLabelText("Reference 1 note")).toHaveValue(
+        "reference note",
+      );
+      expect(screen.getByLabelText("Reference 2 label")).toHaveValue(
+        "Text-only ref",
+      );
+      expect(screen.getByLabelText("Reference 2 URI")).toHaveValue("");
+      expect(screen.getByLabelText("Reference 2 note")).toHaveValue("");
+    });
+
+    it("lets a VFX Supervisor add, edit, remove, and reorder items in a single-field collection", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.revisions[1] = populatedDraftRevision();
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      expect(
+        screen.getByRole("button", { name: "Move must-preserve item 1 up" }),
+      ).toBeDisabled();
+      expect(
+        screen.getByRole("button", {
+          name: "Move must-preserve item 2 down",
+        }),
+      ).toBeDisabled();
+
+      await user.click(
+        screen.getByRole("button", { name: "Add must-preserve item" }),
+      );
+      await user.type(
+        screen.getByLabelText("Must preserve item 3"),
+        "New constraint",
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: "Move must-preserve item 3 up" }),
+      );
+      expect(screen.getByLabelText("Must preserve item 2")).toHaveValue(
+        "New constraint",
+      );
+      expect(screen.getByLabelText("Must preserve item 3")).toHaveValue(
+        "Avoid exaggerated camera movement",
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: "Remove must-preserve item 1" }),
+      );
+      expect(screen.getByLabelText("Must preserve item 1")).toHaveValue(
+        "New constraint",
+      );
+      expect(screen.getByLabelText("Must preserve item 2")).toHaveValue(
+        "Avoid exaggerated camera movement",
+      );
+      expect(
+        screen.queryByLabelText("Must preserve item 3"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("lets a VFX Supervisor edit a reference's label, URI, and note", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.revisions[1] = populatedDraftRevision();
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      await user.click(screen.getByRole("button", { name: "Add reference" }));
+      await user.type(screen.getByLabelText("Reference 3 label"), "New ref");
+      await user.type(
+        screen.getByLabelText("Reference 3 URI"),
+        "https://example.invalid/new",
+      );
+      await user.type(screen.getByLabelText("Reference 3 note"), "new note");
+
+      expect(screen.getByLabelText("Reference 3 label")).toHaveValue("New ref");
+      expect(screen.getByLabelText("Reference 3 URI")).toHaveValue(
+        "https://example.invalid/new",
+      );
+      expect(screen.getByLabelText("Reference 3 note")).toHaveValue("new note");
+    });
+
+    it("sends an explicit empty array when every item in a collection is removed", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.revisions[1] = populatedDraftRevision();
+      const fetchMock = installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      await user.click(
+        screen.getByRole("button", {
+          name: "Remove allowed-variation item 1",
+        }),
+      );
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH"),
+        ).toBe(true);
+      });
+      const patchCall = fetchMock.mock.calls.find(
+        ([, init]) => init?.method === "PATCH",
+      );
+      const body = JSON.parse(String(patchCall?.[1]?.body)) as Record<
+        string,
+        unknown
+      >;
+      expect(body.variation_zones).toEqual([]);
+    });
+
+    it("omits unchanged collections from the PATCH payload", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.revisions[1] = populatedDraftRevision();
+      const fetchMock = installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      await user.clear(screen.getByLabelText("Must preserve item 1"));
+      await user.type(
+        screen.getByLabelText("Must preserve item 1"),
+        "Edited constraint",
+      );
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH"),
+        ).toBe(true);
+      });
+      const patchCall = fetchMock.mock.calls.find(
+        ([, init]) => init?.method === "PATCH",
+      );
+      const body = JSON.parse(String(patchCall?.[1]?.body)) as Record<
+        string,
+        unknown
+      >;
+      expect(body.constraints).toBeDefined();
+      expect(body.variation_zones).toBeUndefined();
+      expect(body.drift_risks).toBeUndefined();
+      expect(body.references).toBeUndefined();
+      expect(body.open_questions).toBeUndefined();
+    });
+
+    it("includes a reordered collection in the PATCH payload in its new order", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.revisions[1] = populatedDraftRevision({
+        open_questions: [
+          openQuestionItem("oq1", "Question A", 0),
+          openQuestionItem("oq2", "Question B", 1),
+        ],
+      });
+      const fetchMock = installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      await user.click(
+        screen.getByRole("button", { name: "Move open-question item 2 up" }),
+      );
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      await waitFor(() => {
+        expect(
+          fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH"),
+        ).toBe(true);
+      });
+      const patchCall = fetchMock.mock.calls.find(
+        ([, init]) => init?.method === "PATCH",
+      );
+      const body = JSON.parse(String(patchCall?.[1]?.body)) as Record<
+        string,
+        unknown
+      >;
+      expect(body.open_questions).toEqual([
+        { question: "Question B" },
+        { question: "Question A" },
+      ]);
+    });
+
+    it("blocks the save and shows an inline error for blank required semantic content", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.revisions[1] = populatedDraftRevision();
+      const fetchMock = installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      await user.clear(screen.getByLabelText("Must preserve item 1"));
+      await user.type(screen.getByLabelText("Must preserve item 1"), "   ");
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      expect(
+        await screen.findByText("Must-preserve item 1 cannot be blank."),
+      ).toBeInTheDocument();
+      expect(
+        fetchMock.mock.calls.some(([, init]) => init?.method === "PATCH"),
+      ).toBe(false);
+    });
+
+    it("shows semantic collections read-only to a CG Supervisor viewing a draft revision", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.revisions[1] = populatedDraftRevision();
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
+
+      expect(
+        screen.queryByRole("button", { name: "Add must-preserve item" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText("Preserve restrained performance"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows semantic collections read-only to an Artist viewing a draft revision", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.revisions[1] = populatedDraftRevision();
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      await user.selectOptions(screen.getByLabelText("Role"), "artist");
+
+      expect(
+        screen.queryByRole("button", { name: "Add must-preserve item" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText("Preserve restrained performance"),
+      ).toBeInTheDocument();
+    });
+
+    it("uses the server-returned semantic collection as the source of truth after a successful save", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.revisions[1] = populatedDraftRevision();
+      const serverConfirmedRevision = {
+        ...fixture.revisions[1],
+        constraints: [
+          constraintItem("server-c1", "Server-confirmed constraint", 0),
+          constraintItem("server-c2", "Avoid exaggerated camera movement", 1),
+        ],
+      };
+      installFetchMock(fixture, {
+        onRequest: (method, path) => {
+          if (
+            method === "PATCH" &&
+            path === "/intent/core-anchor-revisions/rev-draft"
+          ) {
+            fixture.revisions[1] = serverConfirmedRevision;
+            return jsonResponse(200, serverConfirmedRevision);
+          }
+          return null;
+        },
+      });
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      await user.clear(screen.getByLabelText("Must preserve item 1"));
+      await user.type(
+        screen.getByLabelText("Must preserve item 1"),
+        "locally typed value",
+      );
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
+      expect(
+        await screen.findByText("Server-confirmed constraint"),
+      ).toBeInTheDocument();
+      expect(screen.queryByText("locally typed value")).not.toBeInTheDocument();
+    });
+
+    it("preserves unsaved semantic form values after a failed save", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.revisions[1] = populatedDraftRevision();
+      installFetchMock(fixture, {
+        onRequest: (method, path) =>
+          method === "PATCH" &&
+          path === "/intent/core-anchor-revisions/rev-draft"
+            ? jsonResponse(500, { detail: "boom" })
+            : null,
+      });
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      await user.clear(screen.getByLabelText("Must preserve item 1"));
+      await user.type(
+        screen.getByLabelText("Must preserve item 1"),
+        "Unsaved edit",
+      );
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      expect(await screen.findByRole("alert")).toBeInTheDocument();
+      expect(screen.getByLabelText("Must preserve item 1")).toHaveValue(
+        "Unsaved edit",
+      );
+    });
+
+    it("restores original semantic values and ordering when Cancel is clicked", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.revisions[1] = populatedDraftRevision();
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      await user.clear(screen.getByLabelText("Must preserve item 1"));
+      await user.type(
+        screen.getByLabelText("Must preserve item 1"),
+        "Temporary edit",
+      );
+      await user.click(
+        screen.getByRole("button", { name: "Add must-preserve item" }),
+      );
+
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+      expect(screen.getByLabelText("Must preserve item 1")).toHaveValue(
+        "Preserve restrained performance",
+      );
+      expect(screen.getByLabelText("Must preserve item 2")).toHaveValue(
+        "Avoid exaggerated camera movement",
+      );
+      expect(
+        screen.queryByLabelText("Must preserve item 3"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("resets semantic local state when a new draft revision replaces the old one", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.revisions[1] = populatedDraftRevision();
+      installFetchMock(fixture, {
+        onRequest: (method, path) => {
+          if (
+            method === "POST" &&
+            path === "/intent/shots/shot-1/core-anchor/generate"
+          ) {
+            const generated = revision({
+              id: "rev-generated",
+              revision_number: 3,
+              status: "draft",
+              shot_objective: "[Core Agent draft] generated objective",
+              created_by_actor_kind: "agent",
+              created_by_actor_id: "core_agent",
+              created_by_human_role: null,
+              created_by_agent_type: "core_agent",
+              created_by_agent_run_id: "run-1",
+              constraints: [
+                constraintItem("gen-c1", "Fresh generated constraint", 0),
+              ],
+            });
+            fixture.revisions.push(generated);
+            return jsonResponse(201, generated);
+          }
+          return null;
+        },
+      });
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      await user.clear(screen.getByLabelText("Must preserve item 1"));
+      await user.type(
+        screen.getByLabelText("Must preserve item 1"),
+        "Unsaved leaked edit",
+      );
+
+      await user.click(screen.getByRole("button", { name: "Reject" }));
+      await screen.findByText("No draft revision awaiting review.");
+      await user.click(
+        screen.getByRole("button", { name: "Generate draft with Core Agent" }),
+      );
+
+      const gate = await screen.findByLabelText(/Draft revision/);
+      expect(
+        within(gate).queryByDisplayValue("Unsaved leaked edit"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(gate).getByDisplayValue("Fresh generated constraint"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("Step 1A-UI usability and save feedback fixes", () => {
+    it("shows 'Changes saved.' as an accessible status after a successful save", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const objectiveField = await screen.findByLabelText("Shot objective");
+      await user.clear(objectiveField);
+      await user.type(objectiveField, "Even quieter than before");
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      const status = await screen.findByText("Changes saved.");
+      expect(status).toHaveAttribute("aria-live", "polite");
+      expect(screen.getByRole("status")).toHaveTextContent("Changes saved.");
+    });
+
+    it("disables Save changes and shows 'Saving…' while a save is pending, then shows the success message", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      let resolveSave: ((response: Response) => void) | undefined;
+      installFetchMock(fixture, {
+        onRequest: (method, path) => {
+          if (
+            method === "PATCH" &&
+            path === "/intent/core-anchor-revisions/rev-draft"
+          ) {
+            return new Promise<Response>((resolve) => {
+              resolveSave = resolve;
+            });
+          }
+          return null;
+        },
+      });
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const objectiveField = await screen.findByLabelText("Shot objective");
+      await user.clear(objectiveField);
+      await user.type(objectiveField, "Even quieter than before");
+      void user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      await waitFor(() => {
+        expect(screen.getByRole("button", { name: "Saving…" })).toBeDisabled();
+      });
+      expect(screen.queryByText("Changes saved.")).not.toBeInTheDocument();
+
+      const updated = {
+        ...fixture.revisions[1],
+        shot_objective: "Even quieter than before",
+      };
+      fixture.revisions[1] = updated;
+      resolveSave?.(jsonResponse(200, updated));
+
+      expect(await screen.findByText("Changes saved.")).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Save changes" }),
+      ).not.toBeDisabled();
+    });
+
+    it("does not show the success message after a failed save and preserves form values", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      installFetchMock(fixture, {
+        onRequest: (method, path) =>
+          method === "PATCH" &&
+          path === "/intent/core-anchor-revisions/rev-draft"
+            ? jsonResponse(500, { detail: "boom" })
+            : null,
+      });
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const objectiveField = await screen.findByLabelText("Shot objective");
+      await user.clear(objectiveField);
+      await user.type(objectiveField, "Attempted edit");
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+
+      expect(await screen.findByRole("alert")).toBeInTheDocument();
+      expect(screen.queryByText("Changes saved.")).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Shot objective")).toHaveValue(
+        "Attempted edit",
+      );
+    });
+
+    it("clears the success message when the user makes a later edit", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const objectiveField = await screen.findByLabelText("Shot objective");
+      await user.clear(objectiveField);
+      await user.type(objectiveField, "First edit");
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+      await screen.findByText("Changes saved.");
+
+      await user.type(objectiveField, " more");
+      expect(screen.queryByText("Changes saved.")).not.toBeInTheDocument();
+    });
+
+    it("clears the success message when Cancel is clicked", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const objectiveField = await screen.findByLabelText("Shot objective");
+      await user.clear(objectiveField);
+      await user.type(objectiveField, "Saved edit");
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+      await screen.findByText("Changes saved.");
+
+      await user.click(screen.getByRole("button", { name: "Cancel" }));
+      expect(screen.queryByText("Changes saved.")).not.toBeInTheDocument();
+    });
+
+    it("clears the success message when the selected revision changes", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      installFetchMock(fixture, {
+        onRequest: (method, path) => {
+          if (
+            method === "POST" &&
+            path === "/intent/shots/shot-1/core-anchor/generate"
+          ) {
+            const generated = revision({
+              id: "rev-generated",
+              revision_number: 3,
+              status: "draft",
+              shot_objective: "[Core Agent draft] generated objective",
+              created_by_actor_kind: "agent",
+              created_by_actor_id: "core_agent",
+              created_by_human_role: null,
+              created_by_agent_type: "core_agent",
+              created_by_agent_run_id: "run-1",
+            });
+            fixture.revisions.push(generated);
+            return jsonResponse(201, generated);
+          }
+          return null;
+        },
+      });
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const objectiveField = await screen.findByLabelText("Shot objective");
+      await user.clear(objectiveField);
+      await user.type(objectiveField, "Saved edit");
+      await user.click(screen.getByRole("button", { name: "Save changes" }));
+      await screen.findByText("Changes saved.");
+
+      await user.click(screen.getByRole("button", { name: "Reject" }));
+      await screen.findByText("No draft revision awaiting review.");
+      await user.click(
+        screen.getByRole("button", { name: "Generate draft with Core Agent" }),
+      );
+
+      await screen.findByLabelText(/Draft revision/);
+      expect(screen.queryByText("Changes saved.")).not.toBeInTheDocument();
+    });
+
+    it("shows 'Draft details' instead of 'Edit draft' to a CG Supervisor", async () => {
+      const user = userEvent.setup();
+      installFetchMock(baseFixture());
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
+
+      expect(
+        screen.getByRole("heading", { name: "Draft details" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "Edit draft" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows 'Draft details' instead of 'Edit draft' to an Artist", async () => {
+      const user = userEvent.setup();
+      installFetchMock(baseFixture());
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      await user.selectOptions(screen.getByLabelText("Role"), "artist");
+
+      expect(
+        screen.getByRole("heading", { name: "Draft details" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "Edit draft" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("hides scalar fields, Save/Cancel, and semantic add/remove/move controls from CG Supervisor and Artist", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.revisions[1] = populatedDraftRevision();
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+
+      for (const roleValue of ["cg_supervisor", "artist"]) {
+        await user.selectOptions(screen.getByLabelText("Role"), roleValue);
+        expect(
+          screen.queryByLabelText("Shot objective"),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: "Save changes" }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: "Cancel" }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: "Add must-preserve item" }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: /Remove must-preserve item/ }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole("button", { name: /Move must-preserve item/ }),
+        ).not.toBeInTheDocument();
+      }
+    });
+
+    it("shows scalar and all five semantic sections in the CG/Artist read-only draft view", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.revisions[1] = populatedDraftRevision();
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
+
+      const gate = screen.getByLabelText("Draft revision 2");
+      expect(within(gate).getByText("Slightly louder now")).toBeInTheDocument();
+      expect(
+        within(gate).getByRole("heading", { name: "Must preserve" }),
+      ).toBeInTheDocument();
+      expect(
+        within(gate).getByRole("heading", { name: "Allowed variation" }),
+      ).toBeInTheDocument();
+      expect(
+        within(gate).getByRole("heading", { name: "High-risk drift points" }),
+      ).toBeInTheDocument();
+      expect(
+        within(gate).getByRole("heading", { name: "References" }),
+      ).toBeInTheDocument();
+      expect(
+        within(gate).getByRole("heading", { name: "Open questions" }),
+      ).toBeInTheDocument();
+      expect(
+        within(gate).getByText("Preserve restrained performance"),
+      ).toBeInTheDocument();
+    });
+
+    it("updates an untouched default Actor id to the new role's default when Role changes", async () => {
+      const user = userEvent.setup();
+      installFetchMock(baseFixture());
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      expect(screen.getByLabelText("Actor id")).toHaveValue("vfx-1");
+
+      await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
+      expect(screen.getByLabelText("Actor id")).toHaveValue("cg-1");
+
+      await user.selectOptions(screen.getByLabelText("Role"), "artist");
+      expect(screen.getByLabelText("Actor id")).toHaveValue("artist-1");
+
+      await user.selectOptions(screen.getByLabelText("Role"), "vfx_supervisor");
+      expect(screen.getByLabelText("Actor id")).toHaveValue("vfx-1");
+    });
+
+    it("preserves a manually entered custom Actor id across Role changes", async () => {
+      const user = userEvent.setup();
+      installFetchMock(baseFixture());
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      const actorIdField = screen.getByLabelText("Actor id");
+      await user.clear(actorIdField);
+      await user.type(actorIdField, "custom-reviewer-42");
+
+      await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
+      expect(screen.getByLabelText("Actor id")).toHaveValue(
+        "custom-reviewer-42",
+      );
+
+      await user.selectOptions(screen.getByLabelText("Role"), "artist");
+      expect(screen.getByLabelText("Actor id")).toHaveValue(
+        "custom-reviewer-42",
+      );
+    });
   });
 });
