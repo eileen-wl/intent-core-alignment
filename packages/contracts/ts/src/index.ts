@@ -53,6 +53,12 @@ export type DecisionRead = Schemas["DecisionRead"];
 export type ContextSnapshotRead = Schemas["ContextSnapshotRead"];
 export type AgentRunRead = Schemas["AgentRunRead"];
 
+export type ContextEvidenceReference = Schemas["ContextEvidenceReference"];
+export type ContextReconstructionItem = Schemas["ContextReconstructionItem"];
+export type ContextReconstructionOutput =
+  Schemas["ContextReconstructionOutput"];
+export type ContextReconstructionRead = Schemas["ContextReconstructionRead"];
+
 export type VersionCreate = Schemas["VersionCreate"];
 export type VersionRead = Schemas["VersionRead"];
 export type ReviewNoteCreate = Schemas["ReviewNoteCreate"];

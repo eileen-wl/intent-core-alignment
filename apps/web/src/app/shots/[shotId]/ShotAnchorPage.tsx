@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type {
+  ContextReconstructionItem,
+  ContextReconstructionRead,
   CoreAnchorRead,
   CoreAnchorRevisionRead,
   CoreAnchorRevisionUpdate,
@@ -23,6 +25,7 @@ import {
   confirmCoreAnchorRevision,
   createCoreAnchorDraftFromDecomposition,
   describeError,
+  generateContextReconstruction,
   generateCoreAnchorDraft,
   generateIntentDecomposition,
   getCoreAnchor,
@@ -30,6 +33,7 @@ import {
   getExecutionAnchorRevision,
   getShot,
   listBriefsForShot,
+  listContextReconstructionsForShot,
   listCoreAnchorRevisions,
   listDecisionsForRevision,
   listIntentDecompositionsForShot,
@@ -185,6 +189,7 @@ interface ShotData {
   confirmedRevisionDecision: DecisionRead | null;
   taskAnchors: TaskAnchorInfo[];
   versions: VersionRead[];
+  contextReconstructions: ContextReconstructionRead[];
 }
 
 type LoadState =
@@ -210,14 +215,21 @@ async function loadTaskAnchor(task: TaskRead): Promise<TaskAnchorInfo> {
 
 async function loadShotData(shotId: string): Promise<ShotData> {
   const shot = await getShot(shotId);
-  const [briefs, intentDecompositions, coreAnchor, allTasks, versions] =
-    await Promise.all([
-      listBriefsForShot(shotId),
-      listIntentDecompositionsForShot(shotId),
-      getCoreAnchor(shotId),
-      listTasks(),
-      listVersionsForShot(shotId),
-    ]);
+  const [
+    briefs,
+    intentDecompositions,
+    coreAnchor,
+    allTasks,
+    versions,
+    contextReconstructions,
+  ] = await Promise.all([
+    listBriefsForShot(shotId),
+    listIntentDecompositionsForShot(shotId),
+    getCoreAnchor(shotId),
+    listTasks(),
+    listVersionsForShot(shotId),
+    listContextReconstructionsForShot(shotId),
+  ]);
   const revisions = coreAnchor ? await listCoreAnchorRevisions(shotId) : [];
   const confirmedRevision =
     revisions.find((r) => r.status === "confirmed") ?? null;
@@ -235,6 +247,7 @@ async function loadShotData(shotId: string): Promise<ShotData> {
     confirmedRevisionDecision,
     taskAnchors,
     versions,
+    contextReconstructions,
   };
 }
 
@@ -321,6 +334,7 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
     confirmedRevisionDecision,
     taskAnchors,
     versions,
+    contextReconstructions,
   } = state.data;
   const latestBrief = briefs.length > 0 ? briefs[briefs.length - 1] : null;
   const confirmedRevision =
@@ -444,6 +458,13 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
           </>
         )}
       </section>
+
+      <ContextReconstructionSection
+        shotId={shot.id}
+        actor={actor}
+        reconstructions={contextReconstructions}
+        onGenerated={reload}
+      />
 
       <section>
         <h2>Execution anchors</h2>
@@ -806,6 +827,218 @@ function IntentDecompositionSection({
             actor={actor}
             hasDraft={hasDraft}
             onApplied={onApplied}
+          />
+        ))
+      )}
+    </section>
+  );
+}
+
+// Step 1C: Context Reconstruction -- a read-only Core Agent interpretation
+// of exactly what the ContextSnapshot recorded, answering "why are we doing
+// it this way?" (see agents/context_reconstruction_service.py). Advisory
+// only: no accept/reject/select action exists, and no "active" pointer is
+// ever shown -- every past run stays independently readable.
+
+function EvidenceReferenceListReadOnly({
+  evidence,
+}: {
+  evidence: ContextReconstructionItem["evidence"];
+}) {
+  return (
+    <ul>
+      {evidence.map((reference, i) => (
+        <li key={i}>
+          {reference.source_type} · {shortId(reference.source_id)} ·{" "}
+          {reference.label}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ContextReconstructionItemReadOnly({
+  label,
+  item,
+}: {
+  label: string;
+  item: ContextReconstructionItem;
+}) {
+  return (
+    <div style={sectionSpacingStyle}>
+      <h4>{label}</h4>
+      <p>{item.summary}</p>
+      <p>
+        <small>{item.rationale}</small>
+      </p>
+      <EvidenceReferenceListReadOnly evidence={item.evidence} />
+    </div>
+  );
+}
+
+function ContextReconstructionItemListReadOnly({
+  label,
+  items,
+}: {
+  label: string;
+  items: ContextReconstructionItem[];
+}) {
+  return (
+    <div style={sectionSpacingStyle}>
+      <h4>{label}</h4>
+      {items.length === 0 ? (
+        <p>None specified.</p>
+      ) : (
+        items.map((item, i) => (
+          <div key={i} style={itemWrapperStyle}>
+            <p>{item.summary}</p>
+            <p>
+              <small>{item.rationale}</small>
+            </p>
+            <EvidenceReferenceListReadOnly evidence={item.evidence} />
+          </div>
+        ))
+      )}
+    </div>
+  );
+}
+
+function GenerateContextReconstructionButton({
+  shotId,
+  actor,
+  onGenerated,
+}: {
+  shotId: string;
+  actor: { role: HumanRole; actorId: string };
+  onGenerated: () => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleGenerate() {
+    setPending(true);
+    setError(null);
+    try {
+      await generateContextReconstruction(shotId, actor);
+      onGenerated();
+    } catch (err) {
+      setError(describeError(err));
+      setPending(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => void handleGenerate()}
+      >
+        {pending ? "Generating…" : "Generate context reconstruction"}
+      </button>
+      {error && <p role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function ContextReconstructionCard({
+  reconstruction,
+}: {
+  reconstruction: ContextReconstructionRead;
+}) {
+  const context = reconstruction.reconstructed_context;
+  return (
+    <article
+      aria-label={`Context reconstruction ${shortId(reconstruction.id)}`}
+      style={itemWrapperStyle}
+    >
+      <p>
+        <strong>AI reconstruction — Core Agent</strong>
+      </p>
+      <div style={sectionSpacingStyle}>
+        <h4>Context summary</h4>
+        <p>{context.context_summary}</p>
+      </div>
+      <ContextReconstructionItemReadOnly
+        label="Original intent"
+        item={context.original_intent}
+      />
+      <ContextReconstructionItemReadOnly
+        label="Current creative direction"
+        item={context.current_creative_direction}
+      />
+      <ContextReconstructionItemReadOnly
+        label="Execution context"
+        item={context.execution_context}
+      />
+      <ContextReconstructionItemListReadOnly
+        label="Key decisions"
+        items={context.key_decisions}
+      />
+      <ContextReconstructionItemListReadOnly
+        label="Active constraints"
+        items={context.active_constraints}
+      />
+      <ContextReconstructionItemListReadOnly
+        label="Allowed variations"
+        items={context.allowed_variations}
+      />
+      <ContextReconstructionItemListReadOnly
+        label="Unresolved questions"
+        items={context.unresolved_questions}
+      />
+      <StringListReadOnly label="Context gaps" items={context.context_gaps} />
+      <AgentProvenanceDetails
+        agentRunId={reconstruction.agent_run_id}
+        contextSnapshotId={reconstruction.context_snapshot_id}
+      />
+    </article>
+  );
+}
+
+function ContextReconstructionSection({
+  shotId,
+  actor,
+  reconstructions,
+  onGenerated,
+}: {
+  shotId: string;
+  actor: { role: HumanRole; actorId: string };
+  reconstructions: ContextReconstructionRead[];
+  onGenerated: () => void;
+}) {
+  const canGenerate = actor.role === "vfx_supervisor";
+
+  return (
+    <section aria-label="Context reconstruction">
+      <h2>Context reconstruction</h2>
+      <p>
+        <small>
+          This is a Core Agent reconstruction of why the current production
+          context exists -- not a judgement of whether the work is aligned or
+          should pass review.
+        </small>
+      </p>
+      {canGenerate ? (
+        <GenerateContextReconstructionButton
+          shotId={shotId}
+          actor={actor}
+          onGenerated={onGenerated}
+        />
+      ) : (
+        <p>
+          <small>
+            Only a VFX Supervisor can generate a context reconstruction.
+          </small>
+        </p>
+      )}
+      {reconstructions.length === 0 ? (
+        <p>No context reconstructions generated yet.</p>
+      ) : (
+        reconstructions.map((reconstruction) => (
+          <ContextReconstructionCard
+            key={reconstruction.id}
+            reconstruction={reconstruction}
           />
         ))
       )}
