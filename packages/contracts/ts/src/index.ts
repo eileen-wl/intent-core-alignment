@@ -30,6 +30,13 @@ export type CoreAnchorRevisionDraftCreate =
   Schemas["CoreAnchorRevisionDraftCreate"];
 export type CoreAnchorRevisionUpdate = Schemas["CoreAnchorRevisionUpdate"];
 
+export type IntentDimensionAnalysis = Schemas["IntentDimensionAnalysis"];
+export type IntentDecompositionDimensions =
+  Schemas["IntentDecompositionDimensions"];
+export type IntentDecompositionRead = Schemas["IntentDecompositionRead"];
+export type CoreAnchorDraftFromDecompositionRequest =
+  Schemas["CoreAnchorDraftFromDecompositionRequest"];
+
 export type ExecutionAnchorRead = Schemas["ExecutionAnchorRead"];
 export type ExecutionAnchorRevisionRead =
   Schemas["ExecutionAnchorRevisionRead"];

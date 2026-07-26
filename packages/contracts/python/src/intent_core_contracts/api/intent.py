@@ -230,6 +230,11 @@ class CoreAnchorRevisionRead(BaseModel):
 
     supersedes_revision_id: UUID | None
 
+    # Step 1B: set only when this draft was created via the explicit
+    # "apply decomposition" action; null for every directly-generated or
+    # human-authored draft, and for every revision that predates Step 1B.
+    source_intent_decomposition_id: UUID | None
+
     created_at: datetime
     updated_at: datetime
 

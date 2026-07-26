@@ -265,6 +265,7 @@ async def create_draft_revision(
     content: dict[str, Any],
     *,
     context_snapshot_id: uuid.UUID | None = None,
+    source_intent_decomposition_id: uuid.UUID | None = None,
 ) -> CoreAnchorRevision:
     require_can_draft(actor, "vfx_supervisor", allowed_agent_types=_DRAFT_CREATE_AGENT_TYPES)
 
@@ -285,6 +286,7 @@ async def create_draft_revision(
         created_by_agent_type=actor.agent_type,
         created_by_agent_run_id=actor.agent_run_id,
         context_snapshot_id=context_snapshot_id,
+        source_intent_decomposition_id=source_intent_decomposition_id,
         **{field: content.get(field) for field in CORE_ANCHOR_CONTENT_FIELDS},
     )
     session.add(revision)

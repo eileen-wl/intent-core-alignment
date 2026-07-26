@@ -46,7 +46,12 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any, Final, Protocol
 
-from intent_core_contracts.api.intent import CoreAnchorRevisionDraftCreate
+from intent_core_contracts.api.intent import (
+    ConstraintInput,
+    CoreAnchorRevisionDraftCreate,
+    OpenQuestionInput,
+    VariationZoneInput,
+)
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -54,9 +59,15 @@ from intent_core_api.agents.models import AgentRun, ContextSnapshot
 from intent_core_api.config import get_settings
 from intent_core_api.integrations import external_link_service
 from intent_core_api.intent import brief_service, core_anchor_service
-from intent_core_api.intent.models import CoreAnchorRevision, IntentBrief
+from intent_core_api.intent.models import CoreAnchorRevision, IntentBrief, IntentDecomposition
 from intent_core_api.production_context.models import Project, Shot, Task
-from intent_core_api.workflow.actors import AgentType, build_agent_actor
+from intent_core_api.workflow.actors import (
+    ActorContext,
+    AgentType,
+    HumanRole,
+    build_agent_actor,
+    require_human_role,
+)
 from intent_core_api.workflow.exceptions import (
     AgentGenerationError,
     ConflictError,
@@ -66,6 +77,12 @@ from intent_core_api.workflow.exceptions import (
 
 _CAPABILITY_CORE_ANCHOR_DRAFTING = "core_anchor_drafting"
 _AGENT_TYPE_CORE_AGENT: Final[AgentType] = "core_agent"
+# Step 1B: applying a decomposition to a new draft is an authoritative
+# application-triggering action, not itself a draft-creation allowlist
+# entry -- only a human VFX Supervisor may invoke it (never an agent
+# actor), enforced here before anything else runs.
+_APPLY_DECOMPOSITION_ROLES: frozenset[HumanRole] = frozenset({"vfx_supervisor"})
+_PROVIDER_DETERMINISTIC_TRANSFORM = "deterministic"
 
 
 def _utcnow() -> datetime:
@@ -274,6 +291,141 @@ async def generate_core_anchor_draft(
             shot_id,
             content.model_dump(),
             context_snapshot_id=snapshot.id,
+        )
+    except Exception as exc:
+        run.status = "failed"
+        run.error = str(exc)
+        run.completed_at = _utcnow()
+        await session.commit()
+        raise
+
+    run.status = "succeeded"
+    run.result_revision_id = revision.id
+    run.completed_at = _utcnow()
+    await session.commit()
+
+    return revision
+
+
+def _draft_content_from_decomposition(
+    decomposition: IntentDecomposition,
+) -> CoreAnchorRevisionDraftCreate:
+    """Deterministic field mapping only -- no model call. See module
+    docstring and Step 1B's fixed mapping: dimensions without a scalar
+    Core Anchor field (technical_execution_requirements,
+    visual_detail_constraints) already fed into candidate_constraints at
+    decomposition time, so nothing further is done with them here.
+    """
+    dims = decomposition.dimensions
+    return CoreAnchorRevisionDraftCreate(
+        shot_objective=decomposition.anchor_relevant_content,
+        emotional_tone=dims["emotional_tone"]["summary"],
+        visual_focus=dims["visual_focus"]["summary"],
+        rhythm_intensity=dims["rhythm_and_intensity"]["summary"],
+        character_relationship=dims["character_relationships"]["summary"],
+        narrative_priority=dims["narrative_priority"]["summary"],
+        core_summary=decomposition.core_intent_summary,
+        constraints=[ConstraintInput(content=c) for c in decomposition.candidate_constraints],
+        variation_zones=[
+            VariationZoneInput(content=v) for v in decomposition.candidate_variation_zones
+        ],
+        drift_risks=[],
+        references=[],
+        open_questions=[OpenQuestionInput(question=u) for u in decomposition.uncertainties],
+    )
+
+
+async def create_core_anchor_draft_from_decomposition(
+    session: AsyncSession,
+    actor: ActorContext,
+    decomposition_id: uuid.UUID,
+) -> CoreAnchorRevision:
+    """Step 1B "Use in Core Anchor draft": a human-triggered, purely
+    deterministic transform (no second model call -- the model already
+    ran once, at decomposition time) that turns one immutable
+    IntentDecomposition into a new editable CoreAnchorRevision draft.
+
+    Never confirms, rejects, or writes back -- the only domain-mutating
+    calls here are creating a ContextSnapshot/AgentRun row and calling
+    ``core_anchor_service.create_draft_revision``, which only ever
+    creates a ``status="draft"`` revision (same guarantee as
+    ``generate_core_anchor_draft``).
+    """
+    # Human VFX Supervisor only -- never an agent actor, unlike
+    # create_draft_revision's own allowlist (which exists for a
+    # *different* caller: the Core Agent constructing the draft itself).
+    require_human_role(actor, _APPLY_DECOMPOSITION_ROLES)
+
+    decomposition = await session.get(IntentDecomposition, decomposition_id)
+    if decomposition is None:
+        raise NotFoundError("Intent decomposition not found")
+
+    shot = await session.get(Shot, decomposition.shot_id)
+    if shot is None:
+        raise InternalConsistencyError(
+            f"IntentDecomposition {decomposition_id} references missing Shot "
+            f"{decomposition.shot_id}"
+        )
+    intent_brief = await session.get(IntentBrief, decomposition.intent_brief_id)
+    if intent_brief is None:
+        raise InternalConsistencyError(
+            f"IntentDecomposition {decomposition_id} references missing IntentBrief "
+            f"{decomposition.intent_brief_id}"
+        )
+
+    # Refuse to overwrite an existing draft -- identical guard to
+    # generate_core_anchor_draft, reusing the same Core Anchor lock and
+    # conflict behaviour rather than inventing a second one.
+    existing_revisions = await core_anchor_service.list_revisions_for_shot(session, shot.id)
+    if any(revision.status == "draft" for revision in existing_revisions):
+        raise ConflictError(
+            "An editable Core Anchor draft already exists for this shot; confirm, "
+            "reject, or edit it before applying a decomposition"
+        )
+
+    # Everything above is pre-flight validation -- nothing durable is
+    # created yet, matching generate_core_anchor_draft's own convention.
+    snapshot_payload: dict[str, Any] = {
+        "source_intent_decomposition_id": str(decomposition.id),
+        "decomposition_output": {
+            "core_intent_summary": decomposition.core_intent_summary,
+            "anchor_relevant_content": decomposition.anchor_relevant_content,
+            "dimensions": decomposition.dimensions,
+            "candidate_constraints": decomposition.candidate_constraints,
+            "candidate_variation_zones": decomposition.candidate_variation_zones,
+            "contextual_information": decomposition.contextual_information,
+            "uncertainties": decomposition.uncertainties,
+        },
+        "shot": {"id": str(shot.id), "name": shot.name, "source": shot.source},
+        "intent_brief": {"id": str(intent_brief.id), "raw_text": intent_brief.raw_text},
+    }
+    snapshot = ContextSnapshot(shot_id=shot.id, payload=snapshot_payload)
+    session.add(snapshot)
+    await session.commit()
+    await session.refresh(snapshot)
+
+    run = AgentRun(
+        shot_id=shot.id,
+        context_snapshot_id=snapshot.id,
+        agent_type=_AGENT_TYPE_CORE_AGENT,
+        capability=_CAPABILITY_CORE_ANCHOR_DRAFTING,
+        provider=_PROVIDER_DETERMINISTIC_TRANSFORM,
+        status="running",
+    )
+    session.add(run)
+    await session.commit()
+    await session.refresh(run)
+
+    try:
+        content = _draft_content_from_decomposition(decomposition)
+        agent_actor = build_agent_actor(_AGENT_TYPE_CORE_AGENT, agent_run_id=run.id)
+        revision = await core_anchor_service.create_draft_revision(
+            session,
+            agent_actor,
+            shot.id,
+            content.model_dump(),
+            context_snapshot_id=snapshot.id,
+            source_intent_decomposition_id=decomposition.id,
         )
     except Exception as exc:
         run.status = "failed"

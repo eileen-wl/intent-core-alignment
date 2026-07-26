@@ -16,6 +16,7 @@ import type {
   ExecutionAnchorRead,
   ExecutionAnchorRevisionRead,
   IntentBriefRead,
+  IntentDecompositionRead,
   ShotRead,
   TaskRead,
   VersionRead,
@@ -88,6 +89,7 @@ function revision(
     confirmed_by_actor_id: null,
     confirmed_at: null,
     supersedes_revision_id: null,
+    source_intent_decomposition_id: null,
     created_at: NOW,
     updated_at: NOW,
     constraints: [],
@@ -158,6 +160,60 @@ function populatedDraftRevision(
     ],
     ...overrides,
   });
+}
+
+function dimensionAnalysis(summary: string, rationale: string) {
+  return { summary, rationale };
+}
+
+function intentDecomposition(
+  overrides: Partial<IntentDecompositionRead> = {},
+): IntentDecompositionRead {
+  return {
+    id: "decomp-1",
+    shot_id: "shot-1",
+    intent_brief_id: "brief-1",
+    context_snapshot_id: "snapshot-decomp-1",
+    agent_run_id: "run-decomp-1",
+    core_intent_summary: "Keep the dread quiet and let it build.",
+    anchor_relevant_content: "A slow, restrained build of tension.",
+    dimensions: {
+      emotional_tone: dimensionAnalysis(
+        "Quiet dread",
+        "The brief emphasizes restraint over spectacle.",
+      ),
+      visual_focus: dimensionAnalysis(
+        "Character stillness",
+        "Focus stays on the character, not the environment.",
+      ),
+      rhythm_and_intensity: dimensionAnalysis(
+        "Slow build",
+        "Intensity should rise gradually, not spike.",
+      ),
+      character_relationships: dimensionAnalysis(
+        "Distance held",
+        "The relationship stays unresolved through the shot.",
+      ),
+      narrative_priority: dimensionAnalysis(
+        "Tension over clarity",
+        "Ambiguity serves the story more than exposition.",
+      ),
+      technical_execution_requirements: dimensionAnalysis(
+        "Minimal camera movement",
+        "Movement would undercut the restraint.",
+      ),
+      visual_detail_constraints: dimensionAnalysis(
+        "Low-key lighting",
+        "Bright lighting would break the mood.",
+      ),
+    },
+    candidate_constraints: ["Preserve restrained performance"],
+    candidate_variation_zones: ["Camera speed may vary slightly"],
+    contextual_information: ["Shot precedes a dialogue-heavy sequence"],
+    uncertainties: [],
+    created_at: NOW,
+    ...overrides,
+  };
 }
 
 function task(overrides: Partial<TaskRead> = {}): TaskRead {
@@ -285,6 +341,7 @@ function contextSnapshot(
 interface Fixture {
   shot: ShotRead | null;
   briefs: IntentBriefRead[];
+  intentDecompositions: IntentDecompositionRead[];
   coreAnchor: CoreAnchorRead | null;
   revisions: CoreAnchorRevisionRead[];
   decisions: Record<string, DecisionRead[]>;
@@ -334,6 +391,60 @@ function installFetchMock(
       }
       if (method === "GET" && path === "/intent/shots/shot-1/briefs") {
         return jsonResponse(200, fixture.briefs);
+      }
+      if (
+        method === "GET" &&
+        path === "/intent/shots/shot-1/intent-decompositions"
+      ) {
+        return jsonResponse(200, fixture.intentDecompositions);
+      }
+      if (
+        method === "POST" &&
+        path === "/intent/shots/shot-1/intent-decompositions/generate"
+      ) {
+        const generated = intentDecomposition({
+          id: `decomp-${fixture.intentDecompositions.length + 1}`,
+        });
+        fixture.intentDecompositions = [
+          generated,
+          ...fixture.intentDecompositions,
+        ];
+        return jsonResponse(201, generated);
+      }
+      const applyDecompositionMatch =
+        /^\/intent\/intent-decompositions\/([^/]+)\/core-anchor-draft$/.exec(
+          path,
+        );
+      if (method === "POST" && applyDecompositionMatch) {
+        const decompositionId = applyDecompositionMatch[1];
+        const source = fixture.intentDecompositions.find(
+          (d) => d.id === decompositionId,
+        );
+        if (!source) {
+          return jsonResponse(404, {
+            detail: "Intent decomposition not found",
+          });
+        }
+        if (fixture.revisions.some((r) => r.status === "draft")) {
+          return jsonResponse(409, {
+            detail:
+              "An editable Core Anchor draft already exists for this shot",
+          });
+        }
+        const generated = revision({
+          id: "rev-from-decomp",
+          revision_number: fixture.revisions.length + 1,
+          status: "draft",
+          shot_objective: source.anchor_relevant_content,
+          created_by_actor_kind: "agent",
+          created_by_actor_id: "core_agent",
+          created_by_human_role: null,
+          created_by_agent_type: "core_agent",
+          created_by_agent_run_id: "run-apply-1",
+          source_intent_decomposition_id: source.id,
+        });
+        fixture.revisions.push(generated);
+        return jsonResponse(201, generated);
       }
       if (method === "GET" && path === "/intent/shots/shot-1/core-anchor") {
         return fixture.coreAnchor
@@ -490,6 +601,7 @@ function baseFixture(): Fixture {
   return {
     shot: shot(),
     briefs: [brief()],
+    intentDecompositions: [],
     coreAnchor: coreAnchor(),
     revisions: [
       revision({
@@ -754,7 +866,12 @@ describe("ShotAnchorPage", () => {
       name: "Generate draft with Core Agent",
     });
     expect(button).toBeDisabled();
-    expect(screen.getByText("Add an Intent Brief first.")).toBeInTheDocument();
+    expect(button.parentElement).not.toBeNull();
+    expect(
+      within(button.parentElement as HTMLElement).getByText(
+        "Add an Intent Brief first.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("surfaces a 409 when generation conflicts with an already-existing draft", async () => {
@@ -1841,6 +1958,364 @@ describe("ShotAnchorPage", () => {
       expect(screen.getByLabelText("Actor id")).toHaveValue(
         "custom-reviewer-42",
       );
+    });
+  });
+
+  describe("Step 1B: Intent decomposition", () => {
+    it("shows the empty state when no decomposition has been generated yet", async () => {
+      installFetchMock(baseFixture());
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const section = await screen.findByRole("region", {
+        name: "Intent decomposition",
+      });
+      expect(
+        within(section).getByText("No intent decompositions generated yet."),
+      ).toBeInTheDocument();
+    });
+
+    it("lets a VFX Supervisor generate a decomposition and shows it after reload", async () => {
+      const user = userEvent.setup();
+      installFetchMock(baseFixture());
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByRole("region", { name: "Intent decomposition" });
+      await user.click(
+        screen.getByRole("button", { name: "Generate intent decomposition" }),
+      );
+
+      const card = await screen.findByLabelText(/Intent decomposition decomp-/);
+      expect(
+        within(card).getByText("AI proposal — Core Agent"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows a loading state while a decomposition is being generated", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      let resolveGenerate: ((response: Response) => void) | undefined;
+      installFetchMock(fixture, {
+        onRequest: (method, path) => {
+          if (
+            method === "POST" &&
+            path === "/intent/shots/shot-1/intent-decompositions/generate"
+          ) {
+            return new Promise<Response>((resolve) => {
+              resolveGenerate = resolve;
+            });
+          }
+          return null;
+        },
+      });
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByRole("region", { name: "Intent decomposition" });
+      void user.click(
+        screen.getByRole("button", { name: "Generate intent decomposition" }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Generating…" }),
+        ).toBeDisabled();
+      });
+      // The held request settles independently of the fixture, so (as with
+      // the equivalent Core Anchor draft generation test above) the
+      // generated decomposition must be added to the fixture too -- the
+      // reload triggered by `onGenerated()` re-fetches the list from the
+      // fixture, not from this response.
+      const generated = intentDecomposition();
+      fixture.intentDecompositions = [
+        generated,
+        ...fixture.intentDecompositions,
+      ];
+      resolveGenerate?.(jsonResponse(201, generated));
+      await screen.findByLabelText(/Intent decomposition decomp-/);
+    });
+
+    it("shows an error when generation fails", async () => {
+      const user = userEvent.setup();
+      installFetchMock(baseFixture(), {
+        onRequest: (method, path) =>
+          method === "POST" &&
+          path === "/intent/shots/shot-1/intent-decompositions/generate"
+            ? jsonResponse(502, { detail: "Deterministic generator failed" })
+            : null,
+      });
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByRole("region", { name: "Intent decomposition" });
+      await user.click(
+        screen.getByRole("button", { name: "Generate intent decomposition" }),
+      );
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        /Core Agent generation failed/,
+      );
+    });
+
+    it("disables the Generate action when there is no Intent Brief yet", async () => {
+      const fixture = baseFixture();
+      fixture.briefs = [];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const button = await screen.findByRole("button", {
+        name: "Generate intent decomposition",
+      });
+      expect(button).toBeDisabled();
+      expect(button.parentElement).not.toBeNull();
+      expect(
+        within(button.parentElement as HTMLElement).getByText(
+          "Add an Intent Brief first.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("displays all seven dimensions with summary and rationale", async () => {
+      const fixture = baseFixture();
+      fixture.intentDecompositions = [intentDecomposition()];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const card = await screen.findByLabelText(
+        "Intent decomposition decomp-1",
+      );
+      for (const [label, summary] of [
+        ["Emotional tone", "Quiet dread"],
+        ["Visual focus", "Character stillness"],
+        ["Rhythm & intensity", "Slow build"],
+        ["Character relationships", "Distance held"],
+        ["Narrative priority", "Tension over clarity"],
+        ["Technical execution requirements", "Minimal camera movement"],
+        ["Visual detail constraints", "Low-key lighting"],
+      ]) {
+        expect(within(card).getByText(label)).toBeInTheDocument();
+        expect(within(card).getByText(summary)).toBeInTheDocument();
+      }
+      expect(
+        within(card).getByText("Preserve restrained performance"),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText("Camera speed may vary slightly"),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText("Shot precedes a dialogue-heavy sequence"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows an explicit empty-list state for an empty uncertainties list", async () => {
+      const fixture = baseFixture();
+      fixture.intentDecompositions = [
+        intentDecomposition({ uncertainties: [] }),
+      ];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const card = await screen.findByLabelText(
+        "Intent decomposition decomp-1",
+      );
+      expect(
+        within(card).getByRole("heading", { name: "Uncertainties" }),
+      ).toBeInTheDocument();
+      const uncertaintiesHeading = within(card).getByRole("heading", {
+        name: "Uncertainties",
+      });
+      expect(
+        uncertaintiesHeading.parentElement &&
+          within(uncertaintiesHeading.parentElement as HTMLElement).getByText(
+            "None specified.",
+          ),
+      ).toBeInTheDocument();
+    });
+
+    it("shows Agent provenance for a decomposition", async () => {
+      const fixture = baseFixture();
+      fixture.intentDecompositions = [intentDecomposition()];
+      fixture.agentRuns = {
+        "run-decomp-1": agentRun({
+          id: "run-decomp-1",
+          capability: "intent_decomposition",
+          provider: "deterministic",
+          status: "succeeded",
+          result_revision_id: null,
+          context_snapshot_id: "snapshot-decomp-1",
+        }),
+      };
+      fixture.contextSnapshots = {
+        "snapshot-decomp-1": contextSnapshot({ id: "snapshot-decomp-1" }),
+      };
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const card = await screen.findByLabelText(
+        "Intent decomposition decomp-1",
+      );
+      await within(card).findByText(/provider: deterministic/);
+      expect(
+        within(card).getByText(/run status: succeeded/),
+      ).toBeInTheDocument();
+    });
+
+    it("lists multiple decompositions newest first", async () => {
+      // The list endpoint is the source of ordering (newest first); the
+      // page renders decompositions in the order it receives them rather
+      // than re-sorting client-side, so the fixture supplies them
+      // pre-sorted -- exactly as the real backend does.
+      const fixture = baseFixture();
+      fixture.intentDecompositions = [
+        intentDecomposition({
+          id: "decomp-n",
+          created_at: "2026-01-02T00:00:00Z",
+        }),
+        intentDecomposition({ id: "decomp-o", created_at: NOW }),
+      ];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByRole("region", { name: "Intent decomposition" });
+      const cards = screen.getAllByLabelText(/Intent decomposition decomp-/);
+      expect(cards).toHaveLength(2);
+      expect(cards[0]).toHaveAttribute(
+        "aria-label",
+        "Intent decomposition decomp-n",
+      );
+      expect(cards[1]).toHaveAttribute(
+        "aria-label",
+        "Intent decomposition decomp-o",
+      );
+    });
+
+    it("lets a VFX Supervisor use a decomposition to create a Core Anchor draft", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.revisions = fixture.revisions.filter((r) => r.status !== "draft");
+      fixture.intentDecompositions = [intentDecomposition()];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const card = await screen.findByLabelText(
+        "Intent decomposition decomp-1",
+      );
+      await user.click(
+        within(card).getByRole("button", { name: "Use in Core Anchor draft" }),
+      );
+
+      const gate = await screen.findByLabelText(/Draft revision/);
+      expect(
+        within(gate).getByText(/Based on intent decomposition decomp-1/),
+      ).toBeInTheDocument();
+    });
+
+    it("does not show Generate or Use actions for CG Supervisor or Artist", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.intentDecompositions = [intentDecomposition()];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Intent decomposition decomp-1");
+      for (const roleValue of ["cg_supervisor", "artist"]) {
+        await user.selectOptions(screen.getByLabelText("Role"), roleValue);
+
+        const section = screen.getByRole("region", {
+          name: "Intent decomposition",
+        });
+        expect(
+          within(section).queryByRole("button", {
+            name: "Generate intent decomposition",
+          }),
+        ).not.toBeInTheDocument();
+        expect(
+          within(section).getByText(
+            "Only a VFX Supervisor can generate or use an intent decomposition.",
+          ),
+        ).toBeInTheDocument();
+        const card = within(section).getByLabelText(
+          "Intent decomposition decomp-1",
+        );
+        expect(
+          within(card).queryByRole("button", {
+            name: "Use in Core Anchor draft",
+          }),
+        ).not.toBeInTheDocument();
+        // The decomposition's own content stays readable for every role.
+        expect(
+          within(card).getByText("Keep the dread quiet and let it build."),
+        ).toBeInTheDocument();
+      }
+    });
+
+    it("disables Use in Core Anchor draft while a draft is already awaiting review", async () => {
+      const fixture = baseFixture();
+      fixture.intentDecompositions = [intentDecomposition()];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const card = await screen.findByLabelText(
+        "Intent decomposition decomp-1",
+      );
+      const button = within(card).getByRole("button", {
+        name: "Use in Core Anchor draft",
+      });
+      expect(button).toBeDisabled();
+      expect(
+        within(card).getByText(/A draft is already awaiting review\./),
+      ).toBeInTheDocument();
+    });
+
+    it("surfaces a 409 when applying a decomposition conflicts with an already-existing draft", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.revisions = fixture.revisions.filter((r) => r.status !== "draft");
+      fixture.intentDecompositions = [intentDecomposition()];
+      installFetchMock(fixture, {
+        // Simulates someone else creating a draft between this page's load
+        // and the click.
+        onRequest: (method, path) =>
+          method === "POST" &&
+          path === "/intent/intent-decompositions/decomp-1/core-anchor-draft"
+            ? jsonResponse(409, {
+                detail:
+                  "An editable Core Anchor draft already exists for this shot",
+              })
+            : null,
+      });
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const card = await screen.findByLabelText(
+        "Intent decomposition decomp-1",
+      );
+      await user.click(
+        within(card).getByRole("button", { name: "Use in Core Anchor draft" }),
+      );
+
+      expect(await within(card).findByRole("alert")).toHaveTextContent(
+        /Out of date/,
+      );
+    });
+
+    it("keeps the legacy direct-generate action available but not the primary path", async () => {
+      const fixture = baseFixture();
+      fixture.revisions = fixture.revisions.filter((r) => r.status !== "draft");
+      fixture.coreAnchor = null;
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByText("No Core Anchor yet for this shot.");
+      expect(
+        screen.getByText(
+          /Generate an intent decomposition above, then use it to create/,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Advanced: generate a draft directly, without a decomposition",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Generate draft with Core Agent" }),
+      ).toBeInTheDocument();
     });
   });
 });
