@@ -262,6 +262,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/intent/shots/{shot_id}/context-reconstructions/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate Context Reconstruction */
+        post: operations["generate_context_reconstruction_intent_shots__shot_id__context_reconstructions_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/context-reconstructions/{reconstruction_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Context Reconstruction */
+        get: operations["get_context_reconstruction_intent_context_reconstructions__reconstruction_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/shots/{shot_id}/context-reconstructions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Context Reconstructions */
+        get: operations["list_context_reconstructions_intent_shots__shot_id__context_reconstructions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/intent/shots/{shot_id}/core-anchor/drafts": {
         parameters: {
             query?: never;
@@ -903,6 +954,74 @@ export interface components {
             order_index: number;
             /** Content */
             content: string;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ContextEvidenceReference */
+        ContextEvidenceReference: {
+            /**
+             * Source Type
+             * @enum {string}
+             */
+            source_type: "shot" | "intent_brief" | "intent_decomposition" | "core_anchor_revision" | "constraint" | "variation_zone" | "drift_risk" | "anchor_reference" | "open_question" | "execution_anchor_revision" | "decision" | "version" | "review_note";
+            /** Source Id */
+            source_id: string;
+            /** Label */
+            label: string;
+        };
+        /** ContextReconstructionItem */
+        ContextReconstructionItem: {
+            /** Summary */
+            summary: string;
+            /** Rationale */
+            rationale: string;
+            /** Evidence */
+            evidence: components["schemas"]["ContextEvidenceReference"][];
+        };
+        /** ContextReconstructionOutput */
+        ContextReconstructionOutput: {
+            /** Context Summary */
+            context_summary: string;
+            original_intent: components["schemas"]["ContextReconstructionItem"];
+            current_creative_direction: components["schemas"]["ContextReconstructionItem"];
+            execution_context: components["schemas"]["ContextReconstructionItem"];
+            /** Key Decisions */
+            key_decisions: components["schemas"]["ContextReconstructionItem"][];
+            /** Active Constraints */
+            active_constraints: components["schemas"]["ContextReconstructionItem"][];
+            /** Allowed Variations */
+            allowed_variations: components["schemas"]["ContextReconstructionItem"][];
+            /** Unresolved Questions */
+            unresolved_questions: components["schemas"]["ContextReconstructionItem"][];
+            /** Context Gaps */
+            context_gaps: string[];
+        };
+        /** ContextReconstructionRead */
+        ContextReconstructionRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /**
+             * Context Snapshot Id
+             * Format: uuid
+             */
+            context_snapshot_id: string;
+            /**
+             * Agent Run Id
+             * Format: uuid
+             */
+            agent_run_id: string;
+            reconstructed_context: components["schemas"]["ContextReconstructionOutput"];
             /**
              * Created At
              * Format: date-time
@@ -2333,6 +2452,102 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CoreAnchorRevisionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_context_reconstruction_intent_shots__shot_id__context_reconstructions_generate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextReconstructionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_context_reconstruction_intent_context_reconstructions__reconstruction_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                reconstruction_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextReconstructionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_context_reconstructions_intent_shots__shot_id__context_reconstructions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextReconstructionRead"][];
                 };
             };
             /** @description Validation Error */

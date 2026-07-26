@@ -9,6 +9,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   AgentRunRead,
+  ContextReconstructionRead,
   ContextSnapshotRead,
   CoreAnchorRead,
   CoreAnchorRevisionRead,
@@ -216,6 +217,59 @@ function intentDecomposition(
   };
 }
 
+function evidenceReference(
+  sourceType: ContextReconstructionRead["reconstructed_context"]["original_intent"]["evidence"][number]["source_type"],
+  sourceId: string,
+  label: string,
+) {
+  return { source_type: sourceType, source_id: sourceId, label };
+}
+
+function reconstructionItem(
+  summary: string,
+  rationale: string,
+  evidence: ReturnType<typeof evidenceReference>[] = [
+    evidenceReference("shot", "shot-1", "Shot SH010"),
+  ],
+) {
+  return { summary, rationale, evidence };
+}
+
+function contextReconstruction(
+  overrides: Partial<ContextReconstructionRead> = {},
+): ContextReconstructionRead {
+  return {
+    id: "recon-1",
+    shot_id: "shot-1",
+    context_snapshot_id: "snapshot-reconstruction-1",
+    agent_run_id: "run-reconstruction-1",
+    reconstructed_context: {
+      context_summary:
+        "Reconstructed from 1 Intent Decomposition, no confirmed Core Anchor.",
+      original_intent: reconstructionItem(
+        "Original intent recorded via Intent Brief.",
+        "Derived directly from the recorded Intent Brief text.",
+        [evidenceReference("intent_brief", "brief-1", "Intent Brief brief-1")],
+      ),
+      current_creative_direction: reconstructionItem(
+        "No Core Anchor direction has yet been established for this Shot.",
+        "No CoreAnchor row exists for this Shot.",
+      ),
+      execution_context: reconstructionItem(
+        "No Execution Anchor context is recorded for this Shot's tasks yet.",
+        "No ExecutionAnchor rows exist for this Shot's tasks.",
+      ),
+      key_decisions: [],
+      active_constraints: [],
+      allowed_variations: [],
+      unresolved_questions: [],
+      context_gaps: ["No Core Anchor has been established for this Shot."],
+    },
+    created_at: NOW,
+    ...overrides,
+  };
+}
+
 function task(overrides: Partial<TaskRead> = {}): TaskRead {
   return {
     id: "task-1",
@@ -351,6 +405,7 @@ interface Fixture {
   agentRuns: Record<string, AgentRunRead>;
   contextSnapshots: Record<string, ContextSnapshotRead>;
   versions: VersionRead[];
+  contextReconstructions: ContextReconstructionRead[];
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -444,6 +499,25 @@ function installFetchMock(
           source_intent_decomposition_id: source.id,
         });
         fixture.revisions.push(generated);
+        return jsonResponse(201, generated);
+      }
+      if (
+        method === "GET" &&
+        path === "/intent/shots/shot-1/context-reconstructions"
+      ) {
+        return jsonResponse(200, fixture.contextReconstructions);
+      }
+      if (
+        method === "POST" &&
+        path === "/intent/shots/shot-1/context-reconstructions/generate"
+      ) {
+        const generated = contextReconstruction({
+          id: `recon-${fixture.contextReconstructions.length + 1}`,
+        });
+        fixture.contextReconstructions = [
+          generated,
+          ...fixture.contextReconstructions,
+        ];
         return jsonResponse(201, generated);
       }
       if (method === "GET" && path === "/intent/shots/shot-1/core-anchor") {
@@ -638,6 +712,7 @@ function baseFixture(): Fixture {
     agentRuns: {},
     contextSnapshots: {},
     versions: [],
+    contextReconstructions: [],
   };
 }
 
@@ -2316,6 +2391,356 @@ describe("ShotAnchorPage", () => {
       expect(
         screen.getByRole("button", { name: "Generate draft with Core Agent" }),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("Step 1C: Context reconstruction", () => {
+    it("shows the empty state when no reconstruction has been generated yet", async () => {
+      installFetchMock(baseFixture());
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const section = await screen.findByRole("region", {
+        name: "Context reconstruction",
+      });
+      expect(
+        within(section).getByText("No context reconstructions generated yet."),
+      ).toBeInTheDocument();
+    });
+
+    it("lets a VFX Supervisor generate a reconstruction and shows it after reload", async () => {
+      const user = userEvent.setup();
+      installFetchMock(baseFixture());
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByRole("region", { name: "Context reconstruction" });
+      await user.click(
+        screen.getByRole("button", { name: "Generate context reconstruction" }),
+      );
+
+      const card = await screen.findByLabelText(
+        /Context reconstruction recon-/,
+      );
+      expect(
+        within(card).getByText("AI reconstruction — Core Agent"),
+      ).toBeInTheDocument();
+    });
+
+    it("shows a loading state while a reconstruction is being generated", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      let resolveGenerate: ((response: Response) => void) | undefined;
+      installFetchMock(fixture, {
+        onRequest: (method, path) => {
+          if (
+            method === "POST" &&
+            path === "/intent/shots/shot-1/context-reconstructions/generate"
+          ) {
+            return new Promise<Response>((resolve) => {
+              resolveGenerate = resolve;
+            });
+          }
+          return null;
+        },
+      });
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByRole("region", { name: "Context reconstruction" });
+      void user.click(
+        screen.getByRole("button", { name: "Generate context reconstruction" }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Generating…" }),
+        ).toBeDisabled();
+      });
+      // The held request settles independently of the fixture, so (as with
+      // the equivalent Step 1B generation test above) the generated
+      // reconstruction must be added to the fixture too -- the reload
+      // triggered by `onGenerated()` re-fetches the list from the fixture,
+      // not from this response.
+      const generated = contextReconstruction();
+      fixture.contextReconstructions = [
+        generated,
+        ...fixture.contextReconstructions,
+      ];
+      resolveGenerate?.(jsonResponse(201, generated));
+      await screen.findByLabelText(/Context reconstruction recon-/);
+    });
+
+    it("shows an error when generation fails", async () => {
+      const user = userEvent.setup();
+      installFetchMock(baseFixture(), {
+        onRequest: (method, path) =>
+          method === "POST" &&
+          path === "/intent/shots/shot-1/context-reconstructions/generate"
+            ? jsonResponse(502, { detail: "Deterministic generator failed" })
+            : null,
+      });
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByRole("region", { name: "Context reconstruction" });
+      await user.click(
+        screen.getByRole("button", { name: "Generate context reconstruction" }),
+      );
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        /Core Agent generation failed/,
+      );
+    });
+
+    it("renders all structured sections with evidence references", async () => {
+      const fixture = baseFixture();
+      fixture.contextReconstructions = [
+        contextReconstruction({
+          reconstructed_context: {
+            context_summary: "Reconstructed from a confirmed Core Anchor.",
+            original_intent: reconstructionItem(
+              "Restrained, character-led chase.",
+              "Directly stated in the Intent Brief.",
+              [
+                evidenceReference(
+                  "intent_brief",
+                  "brief-1",
+                  "Intent Brief brief-1",
+                ),
+              ],
+            ),
+            current_creative_direction: reconstructionItem(
+              "Confirmed Core Anchor revision #1: Keep dread quiet.",
+              "This is the Shot's currently confirmed Core Anchor revision.",
+              [
+                evidenceReference(
+                  "core_anchor_revision",
+                  "rev-confirmed",
+                  "Core Anchor revision rev-confirmed",
+                ),
+              ],
+            ),
+            execution_context: reconstructionItem(
+              "1 task(s) have Execution Anchor context recorded.",
+              "Derived from the recorded Execution Anchors for this Shot's tasks.",
+              [
+                evidenceReference(
+                  "execution_anchor_revision",
+                  "ea-rev-1",
+                  "Execution Anchor for task Anim block",
+                ),
+              ],
+            ),
+            key_decisions: [
+              reconstructionItem(
+                "confirm_core_anchor recorded by vfx_supervisor.",
+                "Recorded human Decision on core_anchor_revision rev-confirmed.",
+                [
+                  evidenceReference(
+                    "decision",
+                    "decision-1",
+                    "Decision decision-1",
+                  ),
+                ],
+              ),
+            ],
+            active_constraints: [
+              reconstructionItem(
+                "No jump cuts.",
+                "Recorded Constraint on Core Anchor revision rev-confirmed.",
+                [evidenceReference("constraint", "c1", "Constraint c1")],
+              ),
+            ],
+            allowed_variations: [
+              reconstructionItem(
+                "Camera speed may vary slightly.",
+                "Recorded VariationZone on Core Anchor revision rev-confirmed.",
+                [
+                  evidenceReference(
+                    "variation_zone",
+                    "vz1",
+                    "Variation zone vz1",
+                  ),
+                ],
+              ),
+            ],
+            unresolved_questions: [
+              reconstructionItem(
+                "Is the antagonist visible in frame?",
+                "Recorded OpenQuestion on Core Anchor revision rev-confirmed.",
+                [
+                  evidenceReference(
+                    "open_question",
+                    "oq1",
+                    "Open question oq1",
+                  ),
+                ],
+              ),
+            ],
+            context_gaps: [],
+          },
+        }),
+      ];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const card = await screen.findByLabelText(
+        "Context reconstruction recon-1",
+      );
+      for (const heading of [
+        "Context summary",
+        "Original intent",
+        "Current creative direction",
+        "Execution context",
+        "Key decisions",
+        "Active constraints",
+        "Allowed variations",
+        "Unresolved questions",
+        "Context gaps",
+      ]) {
+        expect(
+          within(card).getByRole("heading", { name: heading }),
+        ).toBeInTheDocument();
+      }
+      expect(
+        within(card).getByText("Restrained, character-led chase."),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(/intent_brief · brief-1 · Intent Brief brief-1/),
+      ).toBeInTheDocument();
+      expect(within(card).getByText("No jump cuts.")).toBeInTheDocument();
+      // Context gaps is an empty list here -- explicit empty state, not
+      // an omitted section.
+      expect(within(card).getByText("None specified.")).toBeInTheDocument();
+    });
+
+    it("shows a non-empty context gaps list when facts are missing", async () => {
+      const fixture = baseFixture();
+      fixture.contextReconstructions = [contextReconstruction()];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const card = await screen.findByLabelText(
+        "Context reconstruction recon-1",
+      );
+      expect(
+        within(card).getByText(
+          "No Core Anchor has been established for this Shot.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("shows Agent provenance for a reconstruction", async () => {
+      const fixture = baseFixture();
+      fixture.contextReconstructions = [contextReconstruction()];
+      fixture.agentRuns = {
+        "run-reconstruction-1": agentRun({
+          id: "run-reconstruction-1",
+          capability: "context_reconstruction",
+          provider: "deterministic",
+          status: "succeeded",
+          result_revision_id: null,
+          context_snapshot_id: "snapshot-reconstruction-1",
+        }),
+      };
+      fixture.contextSnapshots = {
+        "snapshot-reconstruction-1": contextSnapshot({
+          id: "snapshot-reconstruction-1",
+        }),
+      };
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const card = await screen.findByLabelText(
+        "Context reconstruction recon-1",
+      );
+      await within(card).findByText(/provider: deterministic/);
+      expect(
+        within(card).getByText(/run status: succeeded/),
+      ).toBeInTheDocument();
+    });
+
+    it("lists multiple reconstructions newest first", async () => {
+      // The list endpoint is the source of ordering (newest first); the
+      // page renders reconstructions in the order it receives them rather
+      // than re-sorting client-side, so the fixture supplies them
+      // pre-sorted -- exactly as the real backend does.
+      const fixture = baseFixture();
+      fixture.contextReconstructions = [
+        contextReconstruction({ id: "recon-n" }),
+        contextReconstruction({ id: "recon-o" }),
+      ];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByRole("region", { name: "Context reconstruction" });
+      const cards = screen.getAllByLabelText(/Context reconstruction recon-/);
+      expect(cards).toHaveLength(2);
+      expect(cards[0]).toHaveAttribute(
+        "aria-label",
+        "Context reconstruction recon-n",
+      );
+      expect(cards[1]).toHaveAttribute(
+        "aria-label",
+        "Context reconstruction recon-o",
+      );
+    });
+
+    it("does not show the Generate action for CG Supervisor or Artist", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.contextReconstructions = [contextReconstruction()];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Context reconstruction recon-1");
+      for (const roleValue of ["cg_supervisor", "artist"]) {
+        await user.selectOptions(screen.getByLabelText("Role"), roleValue);
+
+        const section = screen.getByRole("region", {
+          name: "Context reconstruction",
+        });
+        expect(
+          within(section).queryByRole("button", {
+            name: "Generate context reconstruction",
+          }),
+        ).not.toBeInTheDocument();
+        expect(
+          within(section).getByText(
+            "Only a VFX Supervisor can generate a context reconstruction.",
+          ),
+        ).toBeInTheDocument();
+        // The reconstruction's own content stays readable for every role.
+        const card = within(section).getByLabelText(
+          "Context reconstruction recon-1",
+        );
+        expect(
+          within(card).getByText(
+            "Reconstructed from 1 Intent Decomposition, no confirmed Core Anchor.",
+          ),
+        ).toBeInTheDocument();
+      }
+    });
+
+    it("never renders editing, accept, or reject controls on a reconstruction card", async () => {
+      const fixture = baseFixture();
+      fixture.contextReconstructions = [contextReconstruction()];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const card = await screen.findByLabelText(
+        "Context reconstruction recon-1",
+      );
+      expect(within(card).queryByRole("textbox")).not.toBeInTheDocument();
+      expect(
+        within(card).queryByRole("button", { name: /confirm/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(card).queryByRole("button", { name: /reject/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(card).queryByRole("button", { name: /accept/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(card).queryByRole("button", { name: /use/i }),
+      ).not.toBeInTheDocument();
     });
   });
 });

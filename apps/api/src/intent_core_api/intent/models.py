@@ -205,6 +205,37 @@ class IntentDecomposition(Base):
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)
 
 
+class ContextReconstruction(Base):
+    """One immutable Core Agent ``context_reconstruction`` capability run
+    (Step 1C) -- a model-generated interpretation of the exact local
+    production facts recorded in one ``ContextSnapshot``, answering "why
+    are we doing it this way?" for downstream humans and future Role
+    Agents. No PATCH/DELETE path exists anywhere in the API surface.
+    Multiple reconstructions may exist for the same Shot; there is no
+    active/latest/selected pointer -- the caller always names an exact
+    reconstruction id.
+
+    ``reconstructed_context`` is a JSON object matching
+    ``intent_core_contracts.api.context_reconstruction.ContextReconstructionOutput``
+    exactly -- validated at the contract layer, not by a database
+    constraint (same convention as ``IntentDecomposition.dimensions``).
+    """
+
+    __tablename__ = "context_reconstructions"
+    __table_args__ = (Index("ix_context_reconstructions_shot_id", "shot_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    shot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("shots.id"), nullable=False)
+    context_snapshot_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("context_snapshots.id"), nullable=False
+    )
+    agent_run_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("agent_runs.id"), nullable=False, unique=True
+    )
+    reconstructed_context: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+
+
 class CoreAnchorRevision(Base):
     """One draft/confirmed/superseded/rejected revision of a CoreAnchor.
 

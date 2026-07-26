@@ -6,6 +6,7 @@ from arq import create_pool
 from arq.connections import RedisSettings
 from fastapi import APIRouter, Depends, HTTPException
 from intent_core_contracts.api.agent_runs import AgentRunRead, ContextSnapshotRead
+from intent_core_contracts.api.context_reconstruction import ContextReconstructionRead
 from intent_core_contracts.api.execution_anchor import (
     ExecutionAnchorRead,
     ExecutionAnchorRevisionDraftCreate,
@@ -29,13 +30,18 @@ from intent_core_contracts.api.intent_decomposition import (
 from intent_core_contracts.api.workflow import DecisionRead
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from intent_core_api.agents import core_agent_service, intent_decomposition_service
+from intent_core_api.agents import (
+    context_reconstruction_service,
+    core_agent_service,
+    intent_decomposition_service,
+)
 from intent_core_api.agents.models import AgentRun, ContextSnapshot
 from intent_core_api.config import get_settings
 from intent_core_api.db import get_session
 from intent_core_api.integrations import writeback_service
 from intent_core_api.intent import brief_service, core_anchor_service, execution_anchor_service
 from intent_core_api.intent.models import (
+    ContextReconstruction,
     CoreAnchor,
     CoreAnchorRevision,
     ExecutionAnchor,
@@ -123,6 +129,46 @@ async def create_core_anchor_draft_from_decomposition(
     del payload  # deliberately empty today -- see contract docstring
     return await core_agent_service.create_core_anchor_draft_from_decomposition(
         session, actor, decomposition_id
+    )
+
+
+@router.post(
+    "/shots/{shot_id}/context-reconstructions/generate",
+    response_model=ContextReconstructionRead,
+    status_code=201,
+)
+async def generate_context_reconstruction(
+    shot_id: uuid.UUID,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> ContextReconstruction:
+    return await context_reconstruction_service.generate_context_reconstruction(
+        session, actor, shot_id
+    )
+
+
+@router.get(
+    "/context-reconstructions/{reconstruction_id}", response_model=ContextReconstructionRead
+)
+async def get_context_reconstruction(
+    reconstruction_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> ContextReconstruction:
+    reconstruction = await context_reconstruction_service.get_context_reconstruction(
+        session, reconstruction_id
+    )
+    if reconstruction is None:
+        raise NotFoundError("Context reconstruction not found")
+    return reconstruction
+
+
+@router.get(
+    "/shots/{shot_id}/context-reconstructions", response_model=list[ContextReconstructionRead]
+)
+async def list_context_reconstructions(
+    shot_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> list[ContextReconstruction]:
+    return await context_reconstruction_service.list_context_reconstructions_for_shot(
+        session, shot_id
     )
 
 

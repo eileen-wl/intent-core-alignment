@@ -12,6 +12,7 @@ import type {
   AnchorConfirmRequest,
   AnchorRejectRequest,
   AssessmentDecisionRequest,
+  ContextReconstructionRead,
   ContextSnapshotRead,
   CoreAnchorRead,
   CoreAnchorRevisionRead,
@@ -191,6 +192,28 @@ export function createCoreAnchorDraftFromDecomposition(
     `/intent/intent-decompositions/${decompositionId}/core-anchor-draft`,
     { method: "POST", body: {}, actor },
   );
+}
+
+// Step 1C: Context Reconstruction -- a read-only Core Agent interpretation
+// of the exact local production facts recorded in one ContextSnapshot,
+// generated on demand by the Human VFX Supervisor. Advisory only; never
+// creates or modifies a Core Anchor, Execution Anchor, Version, ReviewNote,
+// or Decision.
+
+export function generateContextReconstruction(
+  shotId: string,
+  actor: Actor,
+): Promise<ContextReconstructionRead> {
+  return apiFetch(`/intent/shots/${shotId}/context-reconstructions/generate`, {
+    method: "POST",
+    actor,
+  });
+}
+
+export function listContextReconstructionsForShot(
+  shotId: string,
+): Promise<ContextReconstructionRead[]> {
+  return apiFetch(`/intent/shots/${shotId}/context-reconstructions`);
 }
 
 export function listCoreAnchorRevisions(
