@@ -55,8 +55,9 @@ from intent_core_contracts.api.intent import (
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from intent_core_api.agents import model_gateway
 from intent_core_api.agents.models import AgentRun, ContextSnapshot
-from intent_core_api.config import get_settings
+from intent_core_api.agents.runtime import AgentExecutionSpec, execute_agent
 from intent_core_api.integrations import external_link_service
 from intent_core_api.intent import brief_service, core_anchor_service
 from intent_core_api.intent.models import CoreAnchorRevision, IntentBrief, IntentDecomposition
@@ -97,7 +98,7 @@ class CoreAnchorDraftGenerator(Protocol):
     validation and persistence, same as a human-authored draft.
     """
 
-    def generate(self, *, shot_name: str, brief_text: str) -> CoreAnchorRevisionDraftCreate: ...
+    def generate(self, *, snapshot_payload: dict[str, Any]) -> CoreAnchorRevisionDraftCreate: ...
 
 
 class DeterministicCoreAnchorDraftGenerator:
@@ -108,19 +109,17 @@ class DeterministicCoreAnchorDraftGenerator:
     intent brief, honest about being a placeholder that needs human
     review rather than a real analysis.
 
-    To connect a real model behind this same boundary: implement
-    ``CoreAnchorDraftGenerator.generate()`` against a real provider (this
-    project's ``claude-api`` skill -- model ``claude-opus-4-8``,
-    structured output via ``client.messages.parse()`` against
-    ``CoreAnchorRevisionDraftCreate`` directly), read
-    ``MODEL_PROVIDER``/``MODEL_API_KEY``/``MODEL_NAME`` (already reserved
-    in ``.env.example``, unused today) into ``Settings``, and add a
-    branch for it in ``_resolve_provider_name()``/``_get_generator()``
-    below. Nothing else in this module or the router needs to change.
+    To connect a real model behind this same boundary: register a
+    DeepSeek-backed generator for ``core_anchor_drafting`` (the prompt
+    and output type are already registered in ``agents.prompt_registry``)
+    and add a branch for it in ``_get_generator()`` below, matching the
+    other three capabilities' ``DeepSeek*Generator`` adapters. Nothing
+    else in this module or the router needs to change.
     """
 
-    def generate(self, *, shot_name: str, brief_text: str) -> CoreAnchorRevisionDraftCreate:
-        excerpt = brief_text.strip()
+    def generate(self, *, snapshot_payload: dict[str, Any]) -> CoreAnchorRevisionDraftCreate:
+        shot_name = snapshot_payload["shot"]["name"]
+        excerpt = snapshot_payload["intent_brief"]["raw_text"].strip()
         label = "[Core Agent draft - deterministic placeholder, review required]"
         return CoreAnchorRevisionDraftCreate(
             shot_objective=f"{label} Objective for {shot_name}, from the intent brief: {excerpt}",
@@ -133,18 +132,8 @@ class DeterministicCoreAnchorDraftGenerator:
         )
 
 
-def _resolve_provider_name() -> str:
-    settings = get_settings()
-    # An unset/blank MODEL_PROVIDER means "use the default", not "no
-    # provider configured" -- .env.example ships it blank on purpose
-    # (matches DATABASE_URL's own shape), and pydantic-settings treats an
-    # explicit blank in .env as set-to-empty-string rather than falling
-    # back to the field default, so that has to be handled here.
-    return settings.model_provider or "deterministic"
-
-
 def _get_generator() -> CoreAnchorDraftGenerator:
-    provider = _resolve_provider_name()
+    provider = model_gateway.resolve_provider_name()
     if provider == "deterministic":
         return DeterministicCoreAnchorDraftGenerator()
     raise AgentGenerationError(
@@ -252,38 +241,17 @@ async def generate_core_anchor_draft(
 
     # Everything above is pre-flight validation -- nothing durable is
     # created yet. A ContextSnapshot/AgentRun is only ever created once
-    # we're actually about to start the agent.
+    # we're actually about to start the agent (inside execute_agent).
     payload = await _build_context_snapshot_payload(
         session, shot=shot, project=project, tasks=tasks, brief=latest_brief
     )
-    snapshot = ContextSnapshot(shot_id=shot_id, payload=payload)
-    session.add(snapshot)
-    await session.commit()
-    await session.refresh(snapshot)
 
-    run = AgentRun(
-        shot_id=shot_id,
-        context_snapshot_id=snapshot.id,
-        agent_type=_AGENT_TYPE_CORE_AGENT,
-        capability=_CAPABILITY_CORE_ANCHOR_DRAFTING,
-        provider=_resolve_provider_name(),
-        status="running",
-    )
-    session.add(run)
-    await session.commit()
-    await session.refresh(run)
-
-    try:
-        active_generator = generator if generator is not None else _get_generator()
-        try:
-            content = active_generator.generate(
-                shot_name=payload["shot"]["name"], brief_text=payload["intent_brief"]["raw_text"]
-            )
-        except AgentGenerationError:
-            raise
-        except Exception as exc:  # noqa: BLE001 -- any provider/runtime failure becomes a clear 502
-            raise AgentGenerationError(f"Core Agent draft generation failed: {exc}") from exc
-
+    async def _persist(
+        session: AsyncSession,
+        snapshot: ContextSnapshot,
+        run: AgentRun,
+        content: CoreAnchorRevisionDraftCreate,
+    ) -> CoreAnchorRevision:
         agent_actor = build_agent_actor(_AGENT_TYPE_CORE_AGENT, agent_run_id=run.id)
         revision = await core_anchor_service.create_draft_revision(
             session,
@@ -292,19 +260,20 @@ async def generate_core_anchor_draft(
             content.model_dump(),
             context_snapshot_id=snapshot.id,
         )
-    except Exception as exc:
-        run.status = "failed"
-        run.error = str(exc)
-        run.completed_at = _utcnow()
-        await session.commit()
-        raise
+        run.result_revision_id = revision.id
+        return revision
 
-    run.status = "succeeded"
-    run.result_revision_id = revision.id
-    run.completed_at = _utcnow()
-    await session.commit()
-
-    return revision
+    spec = AgentExecutionSpec(
+        shot_id=shot_id,
+        agent_type=_AGENT_TYPE_CORE_AGENT,
+        capability=_CAPABILITY_CORE_ANCHOR_DRAFTING,
+        provider=model_gateway.resolve_provider_name(),
+        snapshot_payload=payload,
+        resolve_generator=lambda: generator if generator is not None else _get_generator(),
+        persist_result=_persist,
+        failure_label="Core Agent draft generation",
+    )
+    return await execute_agent(session, spec)
 
 
 def _draft_content_from_decomposition(
@@ -333,6 +302,24 @@ def _draft_content_from_decomposition(
         references=[],
         open_questions=[OpenQuestionInput(question=u) for u in decomposition.uncertainties],
     )
+
+
+class _DecompositionMappingGenerator:
+    """Adapts ``_draft_content_from_decomposition``'s pure deterministic
+    mapping to the shared runtime's ``Generator`` shape, so the
+    decomposition-to-draft transform's execution bookkeeping (snapshot,
+    AgentRun, running/succeeded/failed) goes through
+    ``agents.runtime.execute_agent`` like every other capability, while
+    still making no model call of any kind -- ``snapshot_payload`` is
+    accepted only to satisfy the shared shape and is never read; the
+    real input is the already-loaded ``IntentDecomposition`` row.
+    """
+
+    def __init__(self, decomposition: IntentDecomposition) -> None:
+        self._decomposition = decomposition
+
+    def generate(self, *, snapshot_payload: dict[str, Any]) -> CoreAnchorRevisionDraftCreate:
+        return _draft_content_from_decomposition(self._decomposition)
 
 
 async def create_core_anchor_draft_from_decomposition(
@@ -399,25 +386,13 @@ async def create_core_anchor_draft_from_decomposition(
         "shot": {"id": str(shot.id), "name": shot.name, "source": shot.source},
         "intent_brief": {"id": str(intent_brief.id), "raw_text": intent_brief.raw_text},
     }
-    snapshot = ContextSnapshot(shot_id=shot.id, payload=snapshot_payload)
-    session.add(snapshot)
-    await session.commit()
-    await session.refresh(snapshot)
 
-    run = AgentRun(
-        shot_id=shot.id,
-        context_snapshot_id=snapshot.id,
-        agent_type=_AGENT_TYPE_CORE_AGENT,
-        capability=_CAPABILITY_CORE_ANCHOR_DRAFTING,
-        provider=_PROVIDER_DETERMINISTIC_TRANSFORM,
-        status="running",
-    )
-    session.add(run)
-    await session.commit()
-    await session.refresh(run)
-
-    try:
-        content = _draft_content_from_decomposition(decomposition)
+    async def _persist(
+        session: AsyncSession,
+        snapshot: ContextSnapshot,
+        run: AgentRun,
+        content: CoreAnchorRevisionDraftCreate,
+    ) -> CoreAnchorRevision:
         agent_actor = build_agent_actor(_AGENT_TYPE_CORE_AGENT, agent_run_id=run.id)
         revision = await core_anchor_service.create_draft_revision(
             session,
@@ -427,19 +402,23 @@ async def create_core_anchor_draft_from_decomposition(
             context_snapshot_id=snapshot.id,
             source_intent_decomposition_id=decomposition.id,
         )
-    except Exception as exc:
-        run.status = "failed"
-        run.error = str(exc)
-        run.completed_at = _utcnow()
-        await session.commit()
-        raise
+        run.result_revision_id = revision.id
+        return revision
 
-    run.status = "succeeded"
-    run.result_revision_id = revision.id
-    run.completed_at = _utcnow()
-    await session.commit()
-
-    return revision
+    # provider is hardcoded to the deterministic transform regardless of
+    # MODEL_PROVIDER -- this is a fixed field mapping from an already-run
+    # decomposition, never a second model call (see module docstring).
+    spec = AgentExecutionSpec(
+        shot_id=shot.id,
+        agent_type=_AGENT_TYPE_CORE_AGENT,
+        capability=_CAPABILITY_CORE_ANCHOR_DRAFTING,
+        provider=_PROVIDER_DETERMINISTIC_TRANSFORM,
+        snapshot_payload=snapshot_payload,
+        resolve_generator=lambda: _DecompositionMappingGenerator(decomposition),
+        persist_result=_persist,
+        failure_label="Core Agent draft generation",
+    )
+    return await execute_agent(session, spec)
 
 
 async def get_context_snapshot(

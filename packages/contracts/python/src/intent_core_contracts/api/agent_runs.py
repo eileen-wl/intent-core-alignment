@@ -39,6 +39,8 @@ class AgentRunRead(BaseModel):
     agent_type: AgentType
     capability: str
     provider: str
+    model_name: str | None
+    prompt_version: str | None
     status: AgentRunStatus
     result_revision_id: UUID | None
     error: str | None

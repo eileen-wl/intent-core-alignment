@@ -841,6 +841,10 @@ export interface components {
             capability: string;
             /** Provider */
             provider: string;
+            /** Model Name */
+            model_name: string | null;
+            /** Prompt Version */
+            prompt_version: string | null;
             /**
              * Status
              * @enum {string}

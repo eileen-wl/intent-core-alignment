@@ -4,7 +4,6 @@ import uuid
 
 import pytest
 from httpx import AsyncClient
-from intent_core_api.agents import core_agent_service
 from intent_core_api.agents.core_agent_service import (
     CoreAnchorDraftGenerator,
     DeterministicCoreAnchorDraftGenerator,
@@ -134,7 +133,7 @@ async def test_generate_succeeds_again_after_the_existing_draft_is_confirmed(
 
 
 class _FailingGenerator:
-    def generate(self, *, shot_name: str, brief_text: str) -> CoreAnchorRevisionDraftCreate:
+    def generate(self, *, snapshot_payload: dict) -> CoreAnchorRevisionDraftCreate:
         raise RuntimeError("simulated provider timeout")
 
 
@@ -152,17 +151,21 @@ async def test_generate_wraps_a_generator_failure_as_agent_generation_error(
 async def test_generate_returns_agent_generation_error_for_an_unsupported_model_provider(
     client: AsyncClient, session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    from intent_core_api.config import get_settings
+
     shot_id = await _create_shot(client)
     await _create_brief(client, shot_id)
 
-    class _FakeSettings:
-        model_provider = "some-unconfigured-vendor"
-
-    monkeypatch.setattr(core_agent_service, "get_settings", lambda: _FakeSettings())
-
-    with pytest.raises(AgentGenerationError) as excinfo:
-        await generate_core_anchor_draft(session, uuid.UUID(shot_id))
-    assert "not implemented" in str(excinfo.value)
+    get_settings.cache_clear()
+    monkeypatch.setenv("MODEL_PROVIDER", "some-unconfigured-vendor")
+    get_settings.cache_clear()
+    try:
+        with pytest.raises(AgentGenerationError) as excinfo:
+            await generate_core_anchor_draft(session, uuid.UUID(shot_id))
+        assert "not implemented" in str(excinfo.value)
+    finally:
+        monkeypatch.delenv("MODEL_PROVIDER", raising=False)
+        get_settings.cache_clear()
 
 
 async def test_generate_raises_not_found_for_unknown_shot_at_service_level(
@@ -185,8 +188,9 @@ async def test_generate_raises_conflict_directly_when_draft_already_exists(
 
 def test_deterministic_generator_is_pure_and_repeatable() -> None:
     generator: CoreAnchorDraftGenerator = DeterministicCoreAnchorDraftGenerator()
-    first = generator.generate(shot_name="SH010", brief_text="Quiet dread.")
-    second = generator.generate(shot_name="SH010", brief_text="Quiet dread.")
+    payload = {"shot": {"name": "SH010"}, "intent_brief": {"raw_text": "Quiet dread."}}
+    first = generator.generate(snapshot_payload=payload)
+    second = generator.generate(snapshot_payload=payload)
     assert first == second
     for field in CORE_ANCHOR_FIELDS:
         assert "Quiet dread." in getattr(first, field)

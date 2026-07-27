@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import UTC, datetime
 from typing import Any, Final, Protocol
 
 from intent_core_contracts.api.intent_decomposition import (
@@ -32,8 +31,9 @@ from intent_core_contracts.api.intent_decomposition import (
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from intent_core_api.agents import model_gateway, prompt_registry
 from intent_core_api.agents.models import AgentRun, ContextSnapshot
-from intent_core_api.config import get_settings
+from intent_core_api.agents.runtime import AgentExecutionSpec, execute_agent
 from intent_core_api.integrations import external_link_service
 from intent_core_api.intent import brief_service
 from intent_core_api.intent.models import IntentDecomposition
@@ -48,55 +48,6 @@ from intent_core_api.workflow.exceptions import (
 _CAPABILITY_INTENT_DECOMPOSITION = "intent_decomposition"
 _AGENT_TYPE_CORE_AGENT: Final[AgentType] = "core_agent"
 _GENERATE_ROLES: frozenset[HumanRole] = frozenset({"vfx_supervisor"})
-
-# DeepSeek's OpenAI-compatible endpoint; see agents.alignment_assessment_service
-# / docs/decisions/ADR-0013 for why (no separate official DeepSeek SDK exists).
-_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
-
-_DEEPSEEK_SYSTEM_PROMPT = """\
-You are the Core Agent's intent-decomposition capability for a VFX \
-production tool. You read exactly one IntentBrief (plus its Shot and \
-Project identity) and structure it into a decomposition that a Human \
-VFX Supervisor will review before drafting a Core Anchor. Nothing else \
-exists in your context -- do not invent visual details, camera work, \
-timing, or content not described in the supplied brief text.
-
-You are strictly advisory, and this happens before any Anchor exists: \
-never judge alignment or drift, never compare Versions, never propose an \
-Intent Signal, a re-anchor action, or a Human Gate resolution -- none of \
-that is available to you at this stage.
-
-Distinguish candidate_constraints (Must-preserve items -- only \
-technical or visual-detail requirements that genuinely need to become \
-non-negotiable) from candidate_variation_zones (Allowed-variation items) \
-from contextual_information (useful background that should stay visible \
-but must never become a constraint). List missing or ambiguous context \
-in uncertainties -- an empty list means the brief was sufficient; do not \
-invent a confidence score.
-
-Respond with a single JSON object only, no text outside of it, matching \
-exactly this JSON shape (all fields required):
-{
-  "core_intent_summary": "<string>",
-  "anchor_relevant_content": "<string>",
-  "dimensions": {
-    "emotional_tone": {"summary": "<string>", "rationale": "<string>"},
-    "visual_focus": {"summary": "<string>", "rationale": "<string>"},
-    "rhythm_and_intensity": {"summary": "<string>", "rationale": "<string>"},
-    "character_relationships": {"summary": "<string>", "rationale": "<string>"},
-    "narrative_priority": {"summary": "<string>", "rationale": "<string>"},
-    "technical_execution_requirements": {"summary": "<string>", "rationale": "<string>"},
-    "visual_detail_constraints": {"summary": "<string>", "rationale": "<string>"}
-  },
-  "candidate_constraints": ["<string>", ...],
-  "candidate_variation_zones": ["<string>", ...],
-  "contextual_information": ["<string>", ...],
-  "uncertainties": ["<string>", ...]
-}"""
-
-
-def _utcnow() -> datetime:
-    return datetime.now(UTC)
 
 
 class IntentDecompositionGenerator(Protocol):
@@ -182,7 +133,8 @@ class DeepSeekIntentDecompositionGenerator:
     """Same DeepSeek integration path as
     ``DeepSeekAlignmentAssessmentGenerator`` (official ``openai`` package
     pointed at DeepSeek's OpenAI-compatible endpoint; see ADR-0013) --
-    one non-streaming JSON-mode call, validated against
+    one non-streaming JSON-mode call via the shared
+    ``agents.model_gateway``, validated against
     ``IntentDecompositionOutput`` explicitly. Model name comes from
     ``Settings.model_name`` (never hardcoded).
     """
@@ -192,55 +144,26 @@ class DeepSeekIntentDecompositionGenerator:
         self._model_name = model_name
 
     def generate(self, *, snapshot_payload: dict[str, Any]) -> IntentDecompositionOutput:
-        from openai import OpenAI
-
-        client = OpenAI(api_key=self._api_key, base_url=_DEEPSEEK_BASE_URL)
-        response = client.chat.completions.create(
-            model=self._model_name,
+        return model_gateway.generate_deepseek(
+            api_key=self._api_key,
+            model_name=self._model_name,
+            system_prompt=prompt_registry.get_registration("intent_decomposition").system_prompt,
+            user_content=(
+                "Decompose this intent brief. Respond with the JSON object described "
+                "in the system prompt. Context (JSON):\n" + json.dumps(snapshot_payload, indent=2)
+            ),
+            output_model=IntentDecompositionOutput,
             max_tokens=2048,
-            response_format={"type": "json_object"},
-            messages=[
-                {"role": "system", "content": _DEEPSEEK_SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": (
-                        "Decompose this intent brief. Respond with the JSON object described "
-                        "in the system prompt. Context (JSON):\n"
-                        + json.dumps(snapshot_payload, indent=2)
-                    ),
-                },
-            ],
         )
-        content = response.choices[0].message.content
-        if not content:
-            # Same "one explicit failure, not a retry system" convention as
-            # the alignment_assessment adapter -- see ADR-0013.
-            raise AgentGenerationError(
-                "DeepSeek response had empty content "
-                f"(finish_reason={response.choices[0].finish_reason!r})"
-            )
-        return IntentDecompositionOutput.model_validate_json(content)
-
-
-def _resolve_provider_name() -> str:
-    settings = get_settings()
-    # Same blank-.env-value footgun as core_agent_service._resolve_provider_name.
-    return settings.model_provider or "deterministic"
 
 
 def _get_generator() -> IntentDecompositionGenerator:
-    provider = _resolve_provider_name()
+    provider = model_gateway.resolve_provider_name()
     if provider == "deterministic":
         return DeterministicIntentDecompositionGenerator()
     if provider == "deepseek":
-        settings = get_settings()
-        if not settings.model_api_key:
-            raise AgentGenerationError("model_provider='deepseek' requires MODEL_API_KEY to be set")
-        if not settings.model_name:
-            raise AgentGenerationError("model_provider='deepseek' requires MODEL_NAME to be set")
-        return DeepSeekIntentDecompositionGenerator(
-            api_key=settings.model_api_key, model_name=settings.model_name
-        )
+        api_key, model_name = model_gateway.require_deepseek_settings()
+        return DeepSeekIntentDecompositionGenerator(api_key=api_key, model_name=model_name)
     raise AgentGenerationError(
         f"model_provider={provider!r} is not implemented; only 'deterministic' "
         "and 'deepseek' exist in this slice"
@@ -339,32 +262,15 @@ async def generate_intent_decomposition(
     payload = await _build_context_snapshot_payload(
         session, shot=shot, project=project, intent_brief=latest_brief, tasks=tasks
     )
-    snapshot = ContextSnapshot(shot_id=shot_id, payload=payload)
-    session.add(snapshot)
-    await session.commit()
-    await session.refresh(snapshot)
 
-    run = AgentRun(
-        shot_id=shot_id,
-        context_snapshot_id=snapshot.id,
-        agent_type=_AGENT_TYPE_CORE_AGENT,
-        capability=_CAPABILITY_INTENT_DECOMPOSITION,
-        provider=_resolve_provider_name(),
-        status="running",
-    )
-    session.add(run)
-    await session.commit()
-    await session.refresh(run)
-
-    try:
-        active_generator = generator if generator is not None else _get_generator()
-        try:
-            output = active_generator.generate(snapshot_payload=payload)
-        except AgentGenerationError:
-            raise
-        except Exception as exc:  # noqa: BLE001 -- any provider/runtime failure becomes a clear 502
-            raise AgentGenerationError(f"Intent decomposition generation failed: {exc}") from exc
-
+    async def _persist(
+        session: AsyncSession,
+        snapshot: ContextSnapshot,
+        run: AgentRun,
+        output: IntentDecompositionOutput,
+    ) -> IntentDecomposition:
+        # result_revision_id stays null -- this capability never creates
+        # a CoreAnchorRevision (same convention as Alignment Assessment).
         decomposition = IntentDecomposition(
             shot_id=shot_id,
             intent_brief_id=latest_brief.id,
@@ -381,20 +287,24 @@ async def generate_intent_decomposition(
         session.add(decomposition)
         await session.commit()
         await session.refresh(decomposition)
-    except Exception as exc:
-        # result_revision_id stays null -- this capability never creates
-        # a CoreAnchorRevision (same convention as Alignment Assessment).
-        run.status = "failed"
-        run.error = str(exc)
-        run.completed_at = _utcnow()
-        await session.commit()
-        raise
+        return decomposition
 
-    run.status = "succeeded"
-    run.completed_at = _utcnow()
-    await session.commit()
-
-    return decomposition
+    provider, model_name, prompt_version = prompt_registry.execution_metadata(
+        _CAPABILITY_INTENT_DECOMPOSITION
+    )
+    spec = AgentExecutionSpec(
+        shot_id=shot_id,
+        agent_type=_AGENT_TYPE_CORE_AGENT,
+        capability=_CAPABILITY_INTENT_DECOMPOSITION,
+        provider=provider,
+        model_name=model_name,
+        prompt_version=prompt_version,
+        snapshot_payload=payload,
+        resolve_generator=lambda: generator if generator is not None else _get_generator(),
+        persist_result=_persist,
+        failure_label="Intent decomposition generation",
+    )
+    return await execute_agent(session, spec)
 
 
 async def get_intent_decomposition(

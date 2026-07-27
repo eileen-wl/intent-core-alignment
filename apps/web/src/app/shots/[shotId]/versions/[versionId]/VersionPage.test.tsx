@@ -142,6 +142,8 @@ function agentRun(overrides: Partial<AgentRunRead> = {}): AgentRunRead {
     agent_type: "core_agent",
     capability: "alignment_assessment",
     provider: "deterministic",
+    model_name: null,
+    prompt_version: null,
     status: "succeeded",
     result_revision_id: null,
     error: null,

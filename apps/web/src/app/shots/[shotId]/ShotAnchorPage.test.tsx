@@ -377,6 +377,8 @@ function agentRun(overrides: Partial<AgentRunRead> = {}): AgentRunRead {
     agent_type: "core_agent",
     capability: "core_anchor_drafting",
     provider: "deterministic",
+    model_name: null,
+    prompt_version: null,
     status: "succeeded",
     result_revision_id: "rev-draft",
     error: null,
@@ -1119,6 +1121,77 @@ describe("ShotAnchorPage", () => {
     expect(
       within(gate).getByText(/context snapshot: snapshot-1/),
     ).toBeInTheDocument();
+  });
+
+  it("shows the model name and prompt version when present on the AgentRun", async () => {
+    const fixture = baseFixture();
+    fixture.revisions[1] = revision({
+      id: "rev-draft",
+      revision_number: 2,
+      status: "draft",
+      shot_objective: "Generated objective",
+      created_by_actor_kind: "agent",
+      created_by_actor_id: "core_agent",
+      created_by_human_role: null,
+      created_by_agent_type: "core_agent",
+      created_by_agent_run_id: "run-123",
+      context_snapshot_id: "snapshot-1",
+    });
+    fixture.agentRuns["run-123"] = agentRun({
+      id: "run-123",
+      status: "succeeded",
+      provider: "deepseek",
+      model_name: "deepseek-v4-flash",
+      prompt_version: "core_anchor_drafting.v1",
+    });
+    fixture.contextSnapshots["snapshot-1"] = contextSnapshot({
+      id: "snapshot-1",
+      created_at: NOW,
+    });
+    installFetchMock(fixture);
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    const gate = await screen.findByLabelText("Draft revision 2");
+    expect(
+      await within(gate).findByText(/model: deepseek-v4-flash/),
+    ).toBeInTheDocument();
+    expect(
+      within(gate).getByText(/prompt version: core_anchor_drafting\.v1/),
+    ).toBeInTheDocument();
+  });
+
+  it("omits model name and prompt version for a deterministic run", async () => {
+    const fixture = baseFixture();
+    fixture.revisions[1] = revision({
+      id: "rev-draft",
+      revision_number: 2,
+      status: "draft",
+      shot_objective: "Generated objective",
+      created_by_actor_kind: "agent",
+      created_by_actor_id: "core_agent",
+      created_by_human_role: null,
+      created_by_agent_type: "core_agent",
+      created_by_agent_run_id: "run-123",
+      context_snapshot_id: "snapshot-1",
+    });
+    fixture.agentRuns["run-123"] = agentRun({
+      id: "run-123",
+      status: "succeeded",
+      provider: "deterministic",
+      model_name: null,
+      prompt_version: null,
+    });
+    fixture.contextSnapshots["snapshot-1"] = contextSnapshot({
+      id: "snapshot-1",
+      created_at: NOW,
+    });
+    installFetchMock(fixture);
+    render(<ShotAnchorPage shotId="shot-1" />);
+
+    const gate = await screen.findByLabelText("Draft revision 2");
+    await within(gate).findByText(/provider: deterministic/);
+    expect(within(gate).queryByText(/model:/)).not.toBeInTheDocument();
+    expect(within(gate).queryByText(/prompt version:/)).not.toBeInTheDocument();
   });
 
   it("warns that confirming will make Execution Anchors stale when one is currently confirmed", async () => {

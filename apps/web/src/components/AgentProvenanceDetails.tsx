@@ -54,7 +54,10 @@ export function AgentProvenanceDetails({
       {run && (
         <>
           {showAgentType && <>, agent type: {run.agent_type}</>}, provider:{" "}
-          {run.provider}, run status: {run.status}
+          {run.provider}
+          {run.model_name && <>, model: {run.model_name}</>}
+          {run.prompt_version && <>, prompt version: {run.prompt_version}</>},
+          run status: {run.status}
         </>
       )}
       {snapshot && (
