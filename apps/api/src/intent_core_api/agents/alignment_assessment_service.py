@@ -25,15 +25,15 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import UTC, datetime
 from typing import Any, Final, Protocol
 
 from intent_core_contracts.api.alignment_assessment import AlignmentAssessmentOutput
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from intent_core_api.agents import model_gateway, prompt_registry
 from intent_core_api.agents.models import AgentRun, ContextSnapshot
-from intent_core_api.config import get_settings
+from intent_core_api.agents.runtime import AgentExecutionSpec, execute_agent
 from intent_core_api.integrations import external_link_service
 from intent_core_api.intent.core_anchor_service import (
     CORE_ANCHOR_CONTENT_FIELDS,
@@ -47,54 +47,6 @@ from intent_core_api.workflow.exceptions import AgentGenerationError, NotFoundEr
 
 _CAPABILITY_ALIGNMENT_ASSESSMENT = "alignment_assessment"
 _AGENT_TYPE_CORE_AGENT: Final[AgentType] = "core_agent"
-
-# DeepSeek's OpenAI-compatible endpoint; no separate official SDK exists
-# -- this is DeepSeek's own documented integration path (the `openai`
-# package with a custom `base_url`). See ADR-0013.
-_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
-
-# DeepSeek's JSON-mode docs require the word "json" to appear in the
-# prompt along with an example of the desired structure -- both are
-# present below, in addition to the same behavioural boundaries the
-# prior Anthropic prompt encoded.
-_DEEPSEEK_SYSTEM_PROMPT = """\
-You are the Core Agent's alignment-assessment capability for a VFX \
-production tool. You compare exactly three inputs supplied to you: the \
-Shot's confirmed Core Anchor (its seven intent fields), one Version's \
-description, and that Version's Review Notes. Nothing else exists in \
-your context -- do not invent unseen visual details, camera work, \
-timing, or content that was not described in the supplied text.
-
-Distinguish direct observations (what the text literally says) from \
-inferences (what you conclude from it) -- put each in its correct \
-output field. Every piece of evidence you cite must refer to a concrete \
-Core Anchor field, the Version description, or a specific Review Note \
-(quote or closely paraphrase it).
-
-You are strictly advisory. You never make a final production decision, \
-and you never edit, rewrite, or propose new wording for the Core \
-Anchor -- a human VFX Supervisor makes that call. Your output always \
-requires human review: set requires_human_gate to true.
-
-Classify the overall alignment as exactly one of: "aligned" \
-(no meaningful tension between the Version and the confirmed Core \
-Anchor), "minor_drift" (small, reconcilable tension), or \
-"significant_drift" (the Version meaningfully contradicts the confirmed \
-Core Anchor).
-
-Respond with a single JSON object only, no text outside of it, matching \
-exactly this JSON shape (all fields required):
-{
-  "alignment_state": "aligned" | "minor_drift" | "significant_drift",
-  "summary": "<string>",
-  "observations": ["<string>", ...],
-  "inferences": ["<string>", ...],
-  "evidence": ["<string>", ...],
-  "confidence": <number between 0.0 and 1.0>,
-  "open_questions": ["<string>", ...],
-  "recommended_actions": ["<string>", ...],
-  "requires_human_gate": true
-}"""
 
 
 class AlignmentAssessmentGenerator(Protocol):
@@ -174,66 +126,32 @@ class DeepSeekAlignmentAssessmentGenerator:
         self._model_name = model_name
 
     def generate(self, *, snapshot_payload: dict[str, Any]) -> AlignmentAssessmentOutput:
-        from openai import OpenAI
-
-        client = OpenAI(api_key=self._api_key, base_url=_DEEPSEEK_BASE_URL)
         context = {
             "confirmed_core_anchor_revision": snapshot_payload["confirmed_core_anchor_revision"],
             "version": snapshot_payload["version"],
             "review_notes": snapshot_payload["review_notes"],
         }
-        response = client.chat.completions.create(
-            model=self._model_name,
+        return model_gateway.generate_deepseek(
+            api_key=self._api_key,
+            model_name=self._model_name,
+            system_prompt=prompt_registry.get_registration("alignment_assessment").system_prompt,
+            user_content=(
+                "Assess this Version against the confirmed Core Anchor. "
+                "Respond with the JSON object described in the system "
+                "prompt. Context (JSON):\n" + json.dumps(context, indent=2)
+            ),
+            output_model=AlignmentAssessmentOutput,
             max_tokens=2048,
-            response_format={"type": "json_object"},
-            messages=[
-                {"role": "system", "content": _DEEPSEEK_SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": (
-                        "Assess this Version against the confirmed Core Anchor. "
-                        "Respond with the JSON object described in the system "
-                        "prompt. Context (JSON):\n" + json.dumps(context, indent=2)
-                    ),
-                },
-            ],
         )
-        content = response.choices[0].message.content
-        if not content:
-            # DeepSeek's JSON-mode docs note the API may occasionally
-            # return empty content. For this research prototype, that
-            # is treated as one explicit failure recorded on the
-            # AgentRun -- not a reason to build a retry system.
-            raise AgentGenerationError(
-                "DeepSeek response had empty content "
-                f"(finish_reason={response.choices[0].finish_reason!r})"
-            )
-        return AlignmentAssessmentOutput.model_validate_json(content)
-
-
-def _utcnow() -> datetime:
-    return datetime.now(UTC)
-
-
-def _resolve_provider_name() -> str:
-    settings = get_settings()
-    # Same blank-.env-value footgun as core_agent_service._resolve_provider_name.
-    return settings.model_provider or "deterministic"
 
 
 def _get_generator() -> AlignmentAssessmentGenerator:
-    provider = _resolve_provider_name()
+    provider = model_gateway.resolve_provider_name()
     if provider == "deterministic":
         return DeterministicAlignmentAssessmentGenerator()
     if provider == "deepseek":
-        settings = get_settings()
-        if not settings.model_api_key:
-            raise AgentGenerationError("model_provider='deepseek' requires MODEL_API_KEY to be set")
-        if not settings.model_name:
-            raise AgentGenerationError("model_provider='deepseek' requires MODEL_NAME to be set")
-        return DeepSeekAlignmentAssessmentGenerator(
-            api_key=settings.model_api_key, model_name=settings.model_name
-        )
+        api_key, model_name = model_gateway.require_deepseek_settings()
+        return DeepSeekAlignmentAssessmentGenerator(api_key=api_key, model_name=model_name)
     raise AgentGenerationError(
         f"model_provider={provider!r} is not implemented; only 'deterministic' "
         "and 'deepseek' exist in this slice"
@@ -329,7 +247,7 @@ async def generate_alignment_assessment(
     if not review_notes:
         raise NotFoundError("Version has no Review Notes; cannot generate an alignment assessment")
 
-    # (c) create and commit ContextSnapshot.
+    # (c) build the ContextSnapshot payload -- persisted inside execute_agent.
     payload = await _build_context_snapshot_payload(
         session,
         shot=shot,
@@ -337,40 +255,17 @@ async def generate_alignment_assessment(
         version=version,
         review_notes=review_notes,
     )
-    snapshot = ContextSnapshot(shot_id=shot.id, payload=payload)
-    session.add(snapshot)
-    await session.commit()
-    await session.refresh(snapshot)
 
-    # (d) create and commit AgentRun(status="running").
-    run = AgentRun(
-        shot_id=shot.id,
-        context_snapshot_id=snapshot.id,
-        agent_type=_AGENT_TYPE_CORE_AGENT,
-        capability=_CAPABILITY_ALIGNMENT_ASSESSMENT,
-        provider=_resolve_provider_name(),
-        status="running",
-    )
-    session.add(run)
-    await session.commit()
-    await session.refresh(run)
-
-    try:
-        # (e) call the selected AlignmentAssessmentGenerator using the
-        # snapshot payload. (f) validate the typed output -- the
-        # generator's return type is already the validated Pydantic
-        # model; any provider/validation failure raises here.
-        active_generator = generator if generator is not None else _get_generator()
-        try:
-            output = active_generator.generate(snapshot_payload=payload)
-        except AgentGenerationError:
-            raise
-        except Exception as exc:  # noqa: BLE001 -- any provider/runtime failure becomes a clear 502
-            raise AgentGenerationError(f"Alignment assessment generation failed: {exc}") from exc
-
-        # (g) create immutable AlignmentAssessment. `envelope` stores
-        # only the reusable AgentOutputEnvelope fields -- alignment_state
-        # is its own column, not duplicated inside the JSON blob.
+    async def _persist(
+        session: AsyncSession,
+        snapshot: ContextSnapshot,
+        run: AgentRun,
+        output: AlignmentAssessmentOutput,
+    ) -> AlignmentAssessment:
+        # `envelope` stores only the reusable AgentOutputEnvelope fields --
+        # alignment_state is its own column, not duplicated in the JSON
+        # blob. result_revision_id stays null -- this capability never
+        # creates a CoreAnchorRevision.
         envelope_data = output.model_dump(exclude={"alignment_state"}, mode="json")
         assessment = AlignmentAssessment(
             version_id=version.id,
@@ -383,23 +278,24 @@ async def generate_alignment_assessment(
         session.add(assessment)
         await session.commit()
         await session.refresh(assessment)
-    except Exception as exc:
-        # (i) on a failure after AgentRun creation, mark AgentRun
-        # failed, store a concise error, set completed_at, and re-raise.
-        # No AlignmentAssessment row is created on provider failure.
-        run.status = "failed"
-        run.error = str(exc)
-        run.completed_at = _utcnow()
-        await session.commit()
-        raise
+        return assessment
 
-    # (h) mark AgentRun succeeded and completed. result_revision_id
-    # stays null -- this capability never creates a CoreAnchorRevision.
-    run.status = "succeeded"
-    run.completed_at = _utcnow()
-    await session.commit()
-
-    return assessment
+    provider, model_name, prompt_version = prompt_registry.execution_metadata(
+        _CAPABILITY_ALIGNMENT_ASSESSMENT
+    )
+    spec = AgentExecutionSpec(
+        shot_id=shot.id,
+        agent_type=_AGENT_TYPE_CORE_AGENT,
+        capability=_CAPABILITY_ALIGNMENT_ASSESSMENT,
+        provider=provider,
+        model_name=model_name,
+        prompt_version=prompt_version,
+        snapshot_payload=payload,
+        resolve_generator=lambda: generator if generator is not None else _get_generator(),
+        persist_result=_persist,
+        failure_label="Alignment assessment generation",
+    )
+    return await execute_agent(session, spec)
 
 
 async def get_alignment_assessment(

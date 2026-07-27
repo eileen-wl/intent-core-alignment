@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import json
 import uuid
-from datetime import UTC, datetime
 from typing import Any, Final, Protocol
 
 from intent_core_contracts.api.context_reconstruction import (
@@ -40,8 +39,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.agents import intent_decomposition_service as decomposition_service
+from intent_core_api.agents import model_gateway, prompt_registry
 from intent_core_api.agents.models import AgentRun, ContextSnapshot
-from intent_core_api.config import get_settings
+from intent_core_api.agents.runtime import AgentExecutionSpec, execute_agent
 from intent_core_api.intent import brief_service, core_anchor_service, execution_anchor_service
 from intent_core_api.intent.core_anchor_service import CORE_ANCHOR_CONTENT_FIELDS
 from intent_core_api.intent.models import (
@@ -64,70 +64,6 @@ from intent_core_api.workflow.models import Decision
 _CAPABILITY_CONTEXT_RECONSTRUCTION = "context_reconstruction"
 _AGENT_TYPE_CORE_AGENT: Final[AgentType] = "core_agent"
 _GENERATE_ROLES: frozenset[HumanRole] = frozenset({"vfx_supervisor"})
-
-# DeepSeek's OpenAI-compatible endpoint; see agents.alignment_assessment_service
-# / docs/decisions/ADR-0013 for why (no separate official DeepSeek SDK exists).
-_DEEPSEEK_BASE_URL = "https://api.deepseek.com"
-
-_DEEPSEEK_SYSTEM_PROMPT = """\
-You are the Core Agent's context-reconstruction capability for a VFX \
-production tool. You read exactly one ContextSnapshot -- a recorded copy \
-of a Shot's local production facts (Project/Shot identity, IntentBrief, \
-Intent Decompositions, Core Anchor content, Execution Anchor content, \
-human Decisions, and Version/Review Note history) -- and produce a \
-structured interpretation explaining why the current production context \
-exists. Nothing else exists in your context -- do not invent facts, \
-visual details, camera work, or content not present in the supplied \
-snapshot.
-
-You are strictly advisory and read-only: you never judge whether a \
-Version is aligned or drifting, never state that a role made the wrong \
-choice, never state that a Version should pass or fail review, never \
-state that the Anchor should be replaced, never propose a re-anchor \
-action, and never produce an Intent Signal or a Human Gate resolution -- \
-none of that is available to you at this stage. You may only report \
-recorded facts and their history (e.g. "a review note requested a \
-specific change", "a Decision confirmed or rejected something", "a later \
-record superseded an earlier Decision").
-
-Every structured item you produce (original_intent, \
-current_creative_direction, execution_context, and every entry in \
-key_decisions/active_constraints/allowed_variations/unresolved_questions) \
-must cite at least one piece of evidence -- a concrete record from the \
-supplied snapshot, referenced by its exact source_id as it appears in \
-the snapshot (e.g. the "id" field of the record you are citing). Each \
-evidence reference's source_type must be exactly one of: "shot", \
-"intent_brief", "intent_decomposition", "core_anchor_revision", \
-"constraint", "variation_zone", "drift_risk", "anchor_reference", \
-"open_question", "execution_anchor_revision", "decision", "version", \
-"review_note" -- never any other value. Never state a conclusion you \
-cannot support with cited evidence. If the current Core Anchor direction \
-has not yet been established, or an optional fact is simply absent from \
-the snapshot, say so honestly rather than inventing it, and list \
-genuinely missing facts in context_gaps -- an empty list means nothing \
-meaningful is missing. Do not invent a confidence score.
-
-An <item> is {"summary": "<string>", "rationale": "<string>", \
-"evidence": [<evidence>, ...]}. An <evidence> is {"source_type": \
-"<string>", "source_id": "<string>", "label": "<string>"}.
-
-Respond with a single JSON object only, no text outside of it, matching \
-exactly this JSON shape (all fields required):
-{
-  "context_summary": "<string>",
-  "original_intent": <item>,
-  "current_creative_direction": <item>,
-  "execution_context": <item>,
-  "key_decisions": [<item>, ...],
-  "active_constraints": [<item>, ...],
-  "allowed_variations": [<item>, ...],
-  "unresolved_questions": [<item>, ...],
-  "context_gaps": ["<string>", ...]
-}"""
-
-
-def _utcnow() -> datetime:
-    return datetime.now(UTC)
 
 
 class ContextReconstructionGenerator(Protocol):
@@ -350,7 +286,8 @@ class DeepSeekContextReconstructionGenerator:
     """Same DeepSeek integration path as
     ``DeepSeekIntentDecompositionGenerator`` (official ``openai`` package
     pointed at DeepSeek's OpenAI-compatible endpoint; see ADR-0013) --
-    one non-streaming JSON-mode call, validated against
+    one non-streaming JSON-mode call via the shared
+    ``agents.model_gateway``, validated against
     ``ContextReconstructionOutput`` explicitly. Model name comes from
     ``Settings.model_name`` (never hardcoded).
     """
@@ -360,53 +297,27 @@ class DeepSeekContextReconstructionGenerator:
         self._model_name = model_name
 
     def generate(self, *, snapshot_payload: dict[str, Any]) -> ContextReconstructionOutput:
-        from openai import OpenAI
-
-        client = OpenAI(api_key=self._api_key, base_url=_DEEPSEEK_BASE_URL)
-        response = client.chat.completions.create(
-            model=self._model_name,
+        return model_gateway.generate_deepseek(
+            api_key=self._api_key,
+            model_name=self._model_name,
+            system_prompt=prompt_registry.get_registration("context_reconstruction").system_prompt,
+            user_content=(
+                "Reconstruct the context for this Shot. Respond with the JSON "
+                "object described in the system prompt. Context (JSON):\n"
+                + json.dumps(snapshot_payload, indent=2)
+            ),
+            output_model=ContextReconstructionOutput,
             max_tokens=4096,
-            response_format={"type": "json_object"},
-            messages=[
-                {"role": "system", "content": _DEEPSEEK_SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": (
-                        "Reconstruct the context for this Shot. Respond with the JSON "
-                        "object described in the system prompt. Context (JSON):\n"
-                        + json.dumps(snapshot_payload, indent=2)
-                    ),
-                },
-            ],
         )
-        content = response.choices[0].message.content
-        if not content:
-            raise AgentGenerationError(
-                "DeepSeek response had empty content "
-                f"(finish_reason={response.choices[0].finish_reason!r})"
-            )
-        return ContextReconstructionOutput.model_validate_json(content)
-
-
-def _resolve_provider_name() -> str:
-    settings = get_settings()
-    # Same blank-.env-value footgun as core_agent_service._resolve_provider_name.
-    return settings.model_provider or "deterministic"
 
 
 def _get_generator() -> ContextReconstructionGenerator:
-    provider = _resolve_provider_name()
+    provider = model_gateway.resolve_provider_name()
     if provider == "deterministic":
         return DeterministicContextReconstructionGenerator()
     if provider == "deepseek":
-        settings = get_settings()
-        if not settings.model_api_key:
-            raise AgentGenerationError("model_provider='deepseek' requires MODEL_API_KEY to be set")
-        if not settings.model_name:
-            raise AgentGenerationError("model_provider='deepseek' requires MODEL_NAME to be set")
-        return DeepSeekContextReconstructionGenerator(
-            api_key=settings.model_api_key, model_name=settings.model_name
-        )
+        api_key, model_name = model_gateway.require_deepseek_settings()
+        return DeepSeekContextReconstructionGenerator(api_key=api_key, model_name=model_name)
     raise AgentGenerationError(
         f"model_provider={provider!r} is not implemented; only 'deterministic' "
         "and 'deepseek' exist in this slice"
@@ -665,32 +576,13 @@ async def generate_context_reconstruction(
         )
 
     payload = await _build_context_snapshot_payload(session, shot=shot, project=project)
-    snapshot = ContextSnapshot(shot_id=shot_id, payload=payload)
-    session.add(snapshot)
-    await session.commit()
-    await session.refresh(snapshot)
 
-    run = AgentRun(
-        shot_id=shot_id,
-        context_snapshot_id=snapshot.id,
-        agent_type=_AGENT_TYPE_CORE_AGENT,
-        capability=_CAPABILITY_CONTEXT_RECONSTRUCTION,
-        provider=_resolve_provider_name(),
-        status="running",
-    )
-    session.add(run)
-    await session.commit()
-    await session.refresh(run)
-
-    try:
-        active_generator = generator if generator is not None else _get_generator()
-        try:
-            output = active_generator.generate(snapshot_payload=payload)
-        except AgentGenerationError:
-            raise
-        except Exception as exc:  # noqa: BLE001 -- any provider/runtime failure becomes a clear 502
-            raise AgentGenerationError(f"Context reconstruction generation failed: {exc}") from exc
-
+    async def _persist(
+        session: AsyncSession,
+        snapshot: ContextSnapshot,
+        run: AgentRun,
+        output: ContextReconstructionOutput,
+    ) -> ContextReconstruction:
         reconstruction = ContextReconstruction(
             shot_id=shot_id,
             context_snapshot_id=snapshot.id,
@@ -700,18 +592,24 @@ async def generate_context_reconstruction(
         session.add(reconstruction)
         await session.commit()
         await session.refresh(reconstruction)
-    except Exception as exc:
-        run.status = "failed"
-        run.error = str(exc)
-        run.completed_at = _utcnow()
-        await session.commit()
-        raise
+        return reconstruction
 
-    run.status = "succeeded"
-    run.completed_at = _utcnow()
-    await session.commit()
-
-    return reconstruction
+    provider, model_name, prompt_version = prompt_registry.execution_metadata(
+        _CAPABILITY_CONTEXT_RECONSTRUCTION
+    )
+    spec = AgentExecutionSpec(
+        shot_id=shot_id,
+        agent_type=_AGENT_TYPE_CORE_AGENT,
+        capability=_CAPABILITY_CONTEXT_RECONSTRUCTION,
+        provider=provider,
+        model_name=model_name,
+        prompt_version=prompt_version,
+        snapshot_payload=payload,
+        resolve_generator=lambda: generator if generator is not None else _get_generator(),
+        persist_result=_persist,
+        failure_label="Context reconstruction generation",
+    )
+    return await execute_agent(session, spec)
 
 
 async def get_context_reconstruction(

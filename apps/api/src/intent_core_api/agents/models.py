@@ -62,6 +62,13 @@ class AgentRun(Base):
     agent_type: Mapped[str] = mapped_column(String(40))
     capability: Mapped[str] = mapped_column(String(50))
     provider: Mapped[str] = mapped_column(String(50))
+    # Step 2 (shared Agent Runtime): the real model identifier and
+    # registered prompt version actually used for this run. Both null
+    # for a deterministic run or a purely deterministic transform (e.g.
+    # the decomposition-to-Core-Anchor mapping) -- see agents.runtime
+    # and agents.prompt_registry.
+    model_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    prompt_version: Mapped[str | None] = mapped_column(String(100), nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="running")
     result_revision_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("core_anchor_revisions.id"), nullable=True

@@ -174,7 +174,7 @@ async def test_generating_again_creates_a_new_snapshot_run_and_draft(
 
 
 class _FailingGenerator:
-    def generate(self, *, shot_name: str, brief_text: str) -> CoreAnchorRevisionDraftCreate:
+    def generate(self, *, snapshot_payload: dict) -> CoreAnchorRevisionDraftCreate:
         raise RuntimeError("simulated provider timeout")
 
 
