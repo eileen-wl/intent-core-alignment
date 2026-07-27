@@ -553,6 +553,40 @@ export interface paths {
         patch: operations["update_execution_anchor_revision_intent_execution_anchor_revisions__revision_id__patch"];
         trace?: never;
     };
+    "/intent/tasks/{task_id}/execution-anchor/revisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Execution Anchor Revisions */
+        get: operations["list_execution_anchor_revisions_intent_tasks__task_id__execution_anchor_revisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/execution-anchor-revisions/{revision_id}/human-gate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Execution Anchor Revision Human Gate */
+        get: operations["get_execution_anchor_revision_human_gate_intent_execution_anchor_revisions__revision_id__human_gate_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/intent/execution-anchor-revisions/{revision_id}/confirm": {
         parameters: {
             query?: never;
@@ -630,6 +664,57 @@ export interface paths {
         };
         /** List Vfx Supervisor Reviews */
         get: operations["list_vfx_supervisor_reviews_intent_versions__version_id__vfx_supervisor_reviews_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/execution-anchor-revisions/{revision_id}/cg-supervisor-reviews/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate Cg Supervisor Review */
+        post: operations["generate_cg_supervisor_review_intent_execution_anchor_revisions__revision_id__cg_supervisor_reviews_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/cg-supervisor-reviews/{review_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cg Supervisor Review */
+        get: operations["get_cg_supervisor_review_intent_cg_supervisor_reviews__review_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/execution-anchor-revisions/{revision_id}/cg-supervisor-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Cg Supervisor Reviews */
+        get: operations["list_cg_supervisor_reviews_intent_execution_anchor_revisions__revision_id__cg_supervisor_reviews_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1009,6 +1094,115 @@ export interface components {
         AssessmentDecisionRequest: {
             /** Rationale */
             rationale?: string | null;
+        };
+        /**
+         * CGProposedExecutionGuidance
+         * @description Suggested execution guidance wording only -- never persisted as a
+         *     ``ReviewNote`` row; a Human CG Supervisor decides whether and how to
+         *     actually communicate guidance to Artists.
+         */
+        CGProposedExecutionGuidance: {
+            /** Guidance */
+            guidance: string;
+            /** Underlying Intent */
+            underlying_intent: string;
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "low" | "medium" | "high";
+            /** Evidence */
+            evidence: components["schemas"]["CGReviewEvidenceReference"][];
+        };
+        /** CGReviewEvidenceReference */
+        CGReviewEvidenceReference: {
+            /**
+             * Source Type
+             * @enum {string}
+             */
+            source_type: "intent_brief" | "intent_decomposition" | "core_anchor_revision" | "constraint" | "variation_zone" | "drift_risk" | "anchor_reference" | "open_question" | "context_reconstruction" | "execution_anchor_revision" | "alignment_assessment" | "vfx_supervisor_review" | "version" | "review_note" | "decision" | "task" | "shot";
+            /** Source Id */
+            source_id: string;
+            /** Label */
+            label: string;
+        };
+        /** CGReviewItem */
+        CGReviewItem: {
+            /** Summary */
+            summary: string;
+            /** Rationale */
+            rationale: string;
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "low" | "medium" | "high";
+            /** Evidence */
+            evidence: components["schemas"]["CGReviewEvidenceReference"][];
+        };
+        /** CGSupervisorReviewOutput */
+        CGSupervisorReviewOutput: {
+            /** Executive Summary */
+            executive_summary: string;
+            execution_direction_read: components["schemas"]["CGReviewItem"];
+            /** Actionable Requirements */
+            actionable_requirements: components["schemas"]["CGReviewItem"][];
+            /** Technical Concerns */
+            technical_concerns: components["schemas"]["CGReviewItem"][];
+            /** Coordination Concerns */
+            coordination_concerns: components["schemas"]["CGReviewItem"][];
+            /** Implementation Priorities */
+            implementation_priorities: components["schemas"]["CGReviewItem"][];
+            /** Proposed Execution Guidance */
+            proposed_execution_guidance: components["schemas"]["CGProposedExecutionGuidance"][];
+            /** Questions For Human Cg Supervisor */
+            questions_for_human_cg_supervisor: string[];
+            /** Evidence Gaps */
+            evidence_gaps: string[];
+        };
+        /** CGSupervisorReviewRead */
+        CGSupervisorReviewRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /**
+             * Execution Anchor Revision Id
+             * Format: uuid
+             */
+            execution_anchor_revision_id: string;
+            /**
+             * Context Snapshot Id
+             * Format: uuid
+             */
+            context_snapshot_id: string;
+            /**
+             * Agent Run Id
+             * Format: uuid
+             */
+            agent_run_id: string;
+            review_output: components["schemas"]["CGSupervisorReviewOutput"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** ConstraintInput */
         ConstraintInput: {
@@ -1508,16 +1702,15 @@ export interface components {
              * Format: uuid
              */
             shot_id: string;
-            /**
-             * Core Anchor Revision Id
-             * Format: uuid
-             */
-            core_anchor_revision_id: string;
+            /** Core Anchor Revision Id */
+            core_anchor_revision_id: string | null;
+            /** Execution Anchor Revision Id */
+            execution_anchor_revision_id: string | null;
             /**
              * Gate Type
-             * @constant
+             * @enum {string}
              */
-            gate_type: "core_anchor_confirmation";
+            gate_type: "core_anchor_confirmation" | "execution_anchor_confirmation";
             /**
              * Required Role
              * @enum {string}
@@ -3333,6 +3526,68 @@ export interface operations {
             };
         };
     };
+    list_execution_anchor_revisions_intent_tasks__task_id__execution_anchor_revisions_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionAnchorRevisionRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_execution_anchor_revision_human_gate_intent_execution_anchor_revisions__revision_id__human_gate_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HumanGateRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     confirm_execution_anchor_revision_intent_execution_anchor_revisions__revision_id__confirm_post: {
         parameters: {
             query?: never;
@@ -3492,6 +3747,102 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VFXSupervisorReviewRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_cg_supervisor_review_intent_execution_anchor_revisions__revision_id__cg_supervisor_reviews_generate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                revision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CGSupervisorReviewRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cg_supervisor_review_intent_cg_supervisor_reviews__review_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                review_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CGSupervisorReviewRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_cg_supervisor_reviews_intent_execution_anchor_revisions__revision_id__cg_supervisor_reviews_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CGSupervisorReviewRead"][];
                 };
             };
             /** @description Validation Error */

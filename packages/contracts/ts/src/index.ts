@@ -77,6 +77,13 @@ export type VFXProposedFeedbackNote = Schemas["VFXProposedFeedbackNote"];
 export type VFXSupervisorReviewOutput = Schemas["VFXSupervisorReviewOutput"];
 export type VFXSupervisorReviewRead = Schemas["VFXSupervisorReviewRead"];
 
+export type CGReviewEvidenceReference = Schemas["CGReviewEvidenceReference"];
+export type CGReviewItem = Schemas["CGReviewItem"];
+export type CGProposedExecutionGuidance =
+  Schemas["CGProposedExecutionGuidance"];
+export type CGSupervisorReviewOutput = Schemas["CGSupervisorReviewOutput"];
+export type CGSupervisorReviewRead = Schemas["CGSupervisorReviewRead"];
+
 export type SyncCursorRead = Schemas["SyncCursorRead"];
 export type SyncCursorUpsert = Schemas["SyncCursorUpsert"];
 

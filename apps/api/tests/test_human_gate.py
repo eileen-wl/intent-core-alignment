@@ -587,6 +587,7 @@ async def test_get_gate_success(client: AsyncClient) -> None:
         "id",
         "shot_id",
         "core_anchor_revision_id",
+        "execution_anchor_revision_id",
         "gate_type",
         "required_role",
         "status",

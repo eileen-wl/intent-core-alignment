@@ -9,6 +9,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   AgentRunRead,
+  CGSupervisorReviewRead,
   ContextReconstructionRead,
   ContextSnapshotRead,
   CoreAnchorRead,
@@ -330,6 +331,61 @@ function executionAnchorRevision(
   };
 }
 
+function cgSupervisorReview(
+  overrides: Partial<CGSupervisorReviewRead> = {},
+): CGSupervisorReviewRead {
+  return {
+    id: "cg-review-1",
+    project_id: "proj-1",
+    shot_id: "shot-1",
+    task_id: "task-1",
+    execution_anchor_revision_id: "ea-rev-draft",
+    context_snapshot_id: "snapshot-cg-1",
+    agent_run_id: "run-cg-1",
+    review_output: {
+      executive_summary: "One recorded field, one constraint considered.",
+      execution_direction_read: {
+        summary: "Review against the target Execution Anchor revision.",
+        rationale: "Directly stated on the target Execution Anchor revision.",
+        priority: "high",
+        evidence: [
+          {
+            source_type: "execution_anchor_revision",
+            source_id: "ea-rev-draft",
+            label: "Execution Anchor revision",
+          },
+        ],
+      },
+      actionable_requirements: [],
+      technical_concerns: [],
+      coordination_concerns: [],
+      implementation_priorities: [],
+      proposed_execution_guidance: [
+        {
+          guidance: "Confirm the 24fps boundary is respected in the render.",
+          underlying_intent: "Recorded directly on the Execution Anchor.",
+          priority: "medium",
+          evidence: [
+            {
+              source_type: "execution_anchor_revision",
+              source_id: "ea-rev-draft",
+              label: "Execution Anchor revision",
+            },
+          ],
+        },
+      ],
+      questions_for_human_cg_supervisor: [
+        "Does the actual render match this description?",
+      ],
+      evidence_gaps: [
+        "No footage, frame, or render evidence is available to this Agent.",
+      ],
+    },
+    created_at: NOW,
+    ...overrides,
+  };
+}
+
 function decision(overrides: Partial<DecisionRead> = {}): DecisionRead {
   return {
     id: "decision-1",
@@ -353,6 +409,7 @@ function humanGate(overrides: Partial<HumanGateRead> = {}): HumanGateRead {
     id: "gate-1",
     shot_id: "shot-1",
     core_anchor_revision_id: "rev-draft",
+    execution_anchor_revision_id: null,
     gate_type: "core_anchor_confirmation",
     required_role: "vfx_supervisor",
     status: "pending",
@@ -426,6 +483,12 @@ interface Fixture {
   tasks: TaskRead[];
   executionAnchors: Record<string, ExecutionAnchorRead | null>;
   executionAnchorRevisions: Record<string, ExecutionAnchorRevisionRead>;
+  executionAnchorRevisionsForTask: Record<
+    string,
+    ExecutionAnchorRevisionRead[]
+  >;
+  executionAnchorHumanGates: Record<string, HumanGateRead>;
+  cgSupervisorReviews: Record<string, CGSupervisorReviewRead[]>;
   agentRuns: Record<string, AgentRunRead>;
   contextSnapshots: Record<string, ContextSnapshotRead>;
   versions: VersionRead[];
@@ -574,12 +637,143 @@ function installFetchMock(
       const executionRevisionMatch =
         /^\/intent\/execution-anchor-revisions\/([^/]+)$/.exec(path);
       if (method === "GET" && executionRevisionMatch) {
-        const rev = fixture.executionAnchorRevisions[executionRevisionMatch[1]];
+        const id = executionRevisionMatch[1];
+        const rev =
+          fixture.executionAnchorRevisions[id] ??
+          Object.values(fixture.executionAnchorRevisionsForTask)
+            .flat()
+            .find((r) => r.id === id);
         return rev
           ? jsonResponse(200, rev)
           : jsonResponse(404, {
               detail: "Execution anchor revision not found",
             });
+      }
+      const executionRevisionsForTaskMatch =
+        /^\/intent\/tasks\/([^/]+)\/execution-anchor\/revisions$/.exec(path);
+      if (method === "GET" && executionRevisionsForTaskMatch) {
+        return jsonResponse(
+          200,
+          fixture.executionAnchorRevisionsForTask[
+            executionRevisionsForTaskMatch[1]
+          ] ?? [],
+        );
+      }
+      const executionHumanGateMatch =
+        /^\/intent\/execution-anchor-revisions\/([^/]+)\/human-gate$/.exec(
+          path,
+        );
+      if (method === "GET" && executionHumanGateMatch) {
+        const gate =
+          fixture.executionAnchorHumanGates[executionHumanGateMatch[1]];
+        return gate
+          ? jsonResponse(200, gate)
+          : jsonResponse(404, {
+              detail: "No persisted human gate exists for this revision",
+            });
+      }
+      const cgReviewsListMatch =
+        /^\/intent\/execution-anchor-revisions\/([^/]+)\/cg-supervisor-reviews$/.exec(
+          path,
+        );
+      if (method === "GET" && cgReviewsListMatch) {
+        return jsonResponse(
+          200,
+          fixture.cgSupervisorReviews[cgReviewsListMatch[1]] ?? [],
+        );
+      }
+      const cgReviewGenerateMatch =
+        /^\/intent\/execution-anchor-revisions\/([^/]+)\/cg-supervisor-reviews\/generate$/.exec(
+          path,
+        );
+      if (method === "POST" && cgReviewGenerateMatch) {
+        const revisionId = cgReviewGenerateMatch[1];
+        const existing = fixture.cgSupervisorReviews[revisionId] ?? [];
+        const generated = cgSupervisorReview({
+          id: `cg-review-${existing.length + 1}`,
+          execution_anchor_revision_id: revisionId,
+        });
+        fixture.cgSupervisorReviews[revisionId] = [generated, ...existing];
+        return jsonResponse(201, generated);
+      }
+      const executionConfirmMatch =
+        /^\/intent\/execution-anchor-revisions\/([^/]+)\/confirm$/.exec(path);
+      if (method === "POST" && executionConfirmMatch) {
+        const id = executionConfirmMatch[1];
+        for (const [taskId, list] of Object.entries(
+          fixture.executionAnchorRevisionsForTask,
+        )) {
+          const idx = list.findIndex((r) => r.id === id);
+          if (idx === -1) continue;
+          if (list[idx].status !== "draft") {
+            return jsonResponse(409, {
+              detail: "Revision is not in draft status",
+            });
+          }
+          list[idx] = {
+            ...list[idx],
+            status: "confirmed",
+            confirmed_by_human_role: "cg_supervisor",
+            confirmed_by_actor_id: "cg-1",
+            confirmed_at: NOW,
+          };
+          const anchor = fixture.executionAnchors[taskId];
+          if (anchor) {
+            fixture.executionAnchors[taskId] = {
+              ...anchor,
+              active_revision_id: id,
+            };
+          }
+          const gate = fixture.executionAnchorHumanGates[id];
+          if (gate) {
+            fixture.executionAnchorHumanGates[id] = {
+              ...gate,
+              status: "confirmed",
+              resolved_at: NOW,
+              resolved_by_actor_id: "cg-1",
+              resolved_by_role: "cg_supervisor",
+              resolved_by_actor_type: "human",
+              decision_id: "decision-execution-confirm-1",
+            };
+          }
+          return jsonResponse(200, list[idx]);
+        }
+        return jsonResponse(404, {
+          detail: "Execution anchor revision not found",
+        });
+      }
+      const executionRejectMatch =
+        /^\/intent\/execution-anchor-revisions\/([^/]+)\/reject$/.exec(path);
+      if (method === "POST" && executionRejectMatch) {
+        const id = executionRejectMatch[1];
+        for (const list of Object.values(
+          fixture.executionAnchorRevisionsForTask,
+        )) {
+          const idx = list.findIndex((r) => r.id === id);
+          if (idx === -1) continue;
+          if (list[idx].status !== "draft") {
+            return jsonResponse(409, {
+              detail: "Revision is not in draft status",
+            });
+          }
+          list[idx] = { ...list[idx], status: "rejected" };
+          const gate = fixture.executionAnchorHumanGates[id];
+          if (gate) {
+            fixture.executionAnchorHumanGates[id] = {
+              ...gate,
+              status: "rejected",
+              resolved_at: NOW,
+              resolved_by_actor_id: "cg-1",
+              resolved_by_role: "cg_supervisor",
+              resolved_by_actor_type: "human",
+              decision_id: "decision-execution-reject-1",
+            };
+          }
+          return jsonResponse(200, list[idx]);
+        }
+        return jsonResponse(404, {
+          detail: "Execution anchor revision not found",
+        });
       }
       const decisionsMatch =
         /^\/intent\/core-anchor-revisions\/([^/]+)\/decisions$/.exec(path);
@@ -744,6 +938,16 @@ function baseFixture(): Fixture {
         core_anchor_revision_id: "rev-confirmed",
       }),
     },
+    executionAnchorRevisionsForTask: {
+      "task-1": [
+        executionAnchorRevision({
+          id: "ea-rev-1",
+          core_anchor_revision_id: "rev-confirmed",
+        }),
+      ],
+    },
+    executionAnchorHumanGates: {},
+    cgSupervisorReviews: {},
     agentRuns: {},
     contextSnapshots: {},
     versions: [],
@@ -3033,6 +3237,203 @@ describe("ShotAnchorPage", () => {
       ).not.toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: /edit gate/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Step 4: Execution Anchor Human Review Gate and CG Supervisor Agent review", () => {
+    function fixtureWithDraftExecutionRevision(): Fixture {
+      const fixture = baseFixture();
+      fixture.executionAnchorRevisionsForTask["task-1"] = [
+        ...fixture.executionAnchorRevisionsForTask["task-1"],
+        executionAnchorRevision({
+          id: "ea-rev-draft",
+          revision_number: 2,
+          status: "draft",
+          core_anchor_revision_id: "rev-confirmed",
+          technical_boundaries: "24fps, no motion blur.",
+        }),
+      ];
+      fixture.executionAnchorHumanGates["ea-rev-draft"] = humanGate({
+        id: "gate-execution-draft",
+        core_anchor_revision_id: null,
+        execution_anchor_revision_id: "ea-rev-draft",
+        gate_type: "execution_anchor_confirmation",
+        required_role: "cg_supervisor",
+        status: "pending",
+      });
+      return fixture;
+    }
+
+    it("renders the pending Execution Anchor gate with Confirm/Reject for the CG Supervisor", async () => {
+      const user = userEvent.setup();
+      installFetchMock(fixtureWithDraftExecutionRevision());
+      render(<ShotAnchorPage shotId="shot-1" />);
+      await screen.findByLabelText("Execution Anchor draft revision 2");
+      await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
+
+      const gate = screen.getByLabelText("Execution Anchor draft revision 2");
+      expect(
+        within(gate).getByText("Execution Anchor Human Review Gate"),
+      ).toBeInTheDocument();
+      const gateSection = within(gate).getByLabelText(
+        "Execution Anchor human review gate",
+      );
+      expect(within(gateSection).getByText("Pending")).toBeInTheDocument();
+      expect(
+        within(gateSection).getByText("CG Supervisor"),
+      ).toBeInTheDocument();
+      expect(
+        within(gate).getByRole("button", { name: "Confirm" }),
+      ).not.toBeDisabled();
+      expect(
+        within(gate).getByRole("button", { name: "Reject" }),
+      ).not.toBeDisabled();
+    });
+
+    it("shows the pending Execution Anchor gate read-only for VFX Supervisor and Artist", async () => {
+      const user = userEvent.setup();
+      installFetchMock(fixtureWithDraftExecutionRevision());
+      render(<ShotAnchorPage shotId="shot-1" />);
+      await screen.findByLabelText("Execution Anchor draft revision 2");
+
+      for (const roleValue of ["vfx_supervisor", "artist"]) {
+        await user.selectOptions(screen.getByLabelText("Role"), roleValue);
+        const gate = screen.getByLabelText("Execution Anchor draft revision 2");
+        expect(
+          within(gate).getByRole("button", { name: "Confirm" }),
+        ).toBeDisabled();
+        expect(
+          within(gate).getByRole("button", { name: "Reject" }),
+        ).toBeDisabled();
+        expect(
+          within(gate).getByText(
+            "Only a CG Supervisor can confirm or reject this draft.",
+          ),
+        ).toBeInTheDocument();
+      }
+    });
+
+    it("lets the CG Supervisor confirm the pending Execution Anchor gate", async () => {
+      const user = userEvent.setup();
+      installFetchMock(fixtureWithDraftExecutionRevision());
+      render(<ShotAnchorPage shotId="shot-1" />);
+      await screen.findByLabelText("Execution Anchor draft revision 2");
+      await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
+
+      const gate = screen.getByLabelText("Execution Anchor draft revision 2");
+      await user.click(within(gate).getByRole("button", { name: "Confirm" }));
+
+      await waitFor(() => {
+        const gateSection = screen.getByLabelText(
+          "Execution Anchor human review gate",
+        );
+        expect(within(gateSection).getByText("Confirmed")).toBeInTheDocument();
+      });
+    });
+
+    it("lets the CG Supervisor reject the pending Execution Anchor gate", async () => {
+      const user = userEvent.setup();
+      installFetchMock(fixtureWithDraftExecutionRevision());
+      render(<ShotAnchorPage shotId="shot-1" />);
+      await screen.findByLabelText("Execution Anchor draft revision 2");
+      await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
+
+      const gate = screen.getByLabelText("Execution Anchor draft revision 2");
+      await user.click(within(gate).getByRole("button", { name: "Reject" }));
+
+      await waitFor(() => {
+        const gateSection = screen.getByLabelText(
+          "Execution Anchor human review gate",
+        );
+        expect(within(gateSection).getByText("Rejected")).toBeInTheDocument();
+      });
+    });
+
+    it("shows the CG Supervisor Agent review section labelled as advisory AI execution review", async () => {
+      installFetchMock(baseFixture());
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      expect(
+        await screen.findByText("AI execution review — CG Supervisor Agent"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("No CG Supervisor Agent reviews generated yet."),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the Generate button only for the CG Supervisor, not VFX Supervisor or Artist", async () => {
+      const user = userEvent.setup();
+      installFetchMock(baseFixture());
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByText("AI execution review — CG Supervisor Agent");
+      expect(
+        screen.queryByRole("button", { name: "Generate CG Supervisor review" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText("Only a CG Supervisor can generate a new review."),
+      ).toBeInTheDocument();
+
+      await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
+      expect(
+        await screen.findByRole("button", {
+          name: "Generate CG Supervisor review",
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it("generates and renders a CG Supervisor review with its structured output", async () => {
+      const user = userEvent.setup();
+      installFetchMock(baseFixture());
+      render(<ShotAnchorPage shotId="shot-1" />);
+      await screen.findByText("AI execution review — CG Supervisor Agent");
+      await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
+
+      await user.click(
+        await screen.findByRole("button", {
+          name: "Generate CG Supervisor review",
+        }),
+      );
+
+      expect(
+        await screen.findByText(
+          "One recorded field, one constraint considered.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Confirm the 24fps boundary is respected in the render.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Does the actual render match this description?"),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "No footage, frame, or render evidence is available to this Agent.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("renders an existing CG Supervisor review with no edit, apply, or accept controls", async () => {
+      const fixture = baseFixture();
+      fixture.cgSupervisorReviews["ea-rev-1"] = [cgSupervisorReview()];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const review = await screen.findByLabelText(
+        "CG Supervisor review cg-review-1",
+      );
+      expect(within(review).getByText(/2026-01-01/)).toBeInTheDocument();
+      expect(
+        within(review).queryByRole("button", { name: /apply/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(review).queryByRole("button", { name: /accept/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(review).queryByRole("button", { name: /edit/i }),
       ).not.toBeInTheDocument();
     });
   });

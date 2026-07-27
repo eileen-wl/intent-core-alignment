@@ -11,7 +11,16 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, ForeignKey, Index, String, Text, UniqueConstraint, text
+from sqlalchemy import (
+    JSON,
+    CheckConstraint,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from intent_core_api.db import Base
@@ -352,33 +361,48 @@ class CoreAnchorRevision(Base):
 class HumanGate(Base):
     """Step 1D: a first-class, minimal persistent record of the human
     review requirement opened by a ``CoreAnchorRevision`` draft, and how
-    it was resolved. Exactly one ``HumanGate`` per revision
-    (``core_anchor_revision_id`` unique) -- created in the same
-    transaction as the draft (``core_anchor_service.create_draft_revision``)
-    and resolved only as a side effect of the existing confirm/reject
-    flow (``core_anchor_service.confirm_revision`` /
-    ``.reject_revision``, via ``intent.human_gate_service``). No
-    PATCH/DELETE path exists anywhere in the API surface -- a resolved
-    gate is immutable.
+    it was resolved. Step 4 extends this same table to also cover an
+    ``ExecutionAnchorRevision`` gate -- exactly one of
+    ``core_anchor_revision_id``/``execution_anchor_revision_id`` is
+    populated per row (enforced by a database CHECK constraint, migration
+    ``0020_cg_supervisor_review_and_execution_gate.py``), never a generic
+    ``target_type``/``target_id`` polymorphism. Created in the same
+    transaction as the draft it gates (``core_anchor_service.create_draft_revision``
+    or ``execution_anchor_service.create_draft_revision``) and resolved
+    only as a side effect of the existing confirm/reject flow for that
+    Anchor type, via ``intent.human_gate_service``. No PATCH/DELETE path
+    exists anywhere in the API surface -- a resolved gate is immutable.
 
     This is not an Agent and does not itself decide anything: ``Decision``
     remains the authoritative human decision record, referenced here via
     ``decision_id`` once resolution completes. Historical revisions
-    created before this migration have no row here -- see
+    created before the relevant migration have no row here -- see
     ``intent.human_gate_service`` for the legacy-compatibility path.
     """
 
     __tablename__ = "human_gates"
-    __table_args__ = (Index("ix_human_gates_shot_id", "shot_id"),)
+    __table_args__ = (
+        Index("ix_human_gates_shot_id", "shot_id"),
+        Index("ix_human_gates_execution_anchor_revision_id", "execution_anchor_revision_id"),
+        CheckConstraint(
+            "(core_anchor_revision_id IS NOT NULL) != (execution_anchor_revision_id IS NOT NULL)",
+            name="ck_human_gates_exactly_one_target",
+        ),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     shot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("shots.id"), nullable=False)
-    core_anchor_revision_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("core_anchor_revisions.id"), nullable=False, unique=True
+    # Nullable: exactly one of this and execution_anchor_revision_id is
+    # populated on any given row (see the CHECK constraint above).
+    core_anchor_revision_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("core_anchor_revisions.id"), nullable=True, unique=True
     )
-    # "core_anchor_confirmation" today -- a plain bounded string, not a
-    # generic polymorphic target_type/target_id framework (Step 1D scope
-    # is Core Anchor review only; see module docstring).
+    execution_anchor_revision_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("execution_anchor_revisions.id"), nullable=True, unique=True
+    )
+    # "core_anchor_confirmation" | "execution_anchor_confirmation" -- a
+    # plain bounded string, not a generic polymorphic target_type/target_id
+    # framework (see module docstring).
     gate_type: Mapped[str] = mapped_column(String(50))
     required_role: Mapped[str] = mapped_column(String(20))
     # "pending" | "confirmed" | "rejected" -- validated at the contract/
@@ -483,3 +507,40 @@ class ExecutionAnchorRevision(Base):
 
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(default=_utcnow, onupdate=_utcnow)
+
+
+class CGSupervisorReview(Base):
+    """One immutable, advisory CG Supervisor Agent review of a single
+    ``ExecutionAnchorRevision`` (Step 4, ``agent_type=cg_supervisor_agent``,
+    ``capability=execution_review``) -- a department/task-level
+    execution-guidance read, never an authoritative Decision, never a
+    HumanGate resolution, never a confirm/reject of the revision itself
+    (see ``agents.cg_supervisor_review_service``'s module docstring).
+    Lives here, not in ``versions_and_feedback.models``, because it is
+    fundamentally about an ExecutionAnchorRevision, mirroring
+    ``VFXSupervisorReview``'s own placement rationale for Version. No
+    update or delete path exists anywhere in the API surface; multiple
+    reviews may exist for one revision, with no active/latest pointer.
+    """
+
+    __tablename__ = "cg_supervisor_reviews"
+    __table_args__ = (
+        Index("ix_cg_supervisor_reviews_shot_id", "shot_id"),
+        Index("ix_cg_supervisor_reviews_task_id", "task_id"),
+        Index(
+            "ix_cg_supervisor_reviews_execution_anchor_revision_id",
+            "execution_anchor_revision_id",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id"))
+    shot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("shots.id"))
+    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tasks.id"))
+    execution_anchor_revision_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("execution_anchor_revisions.id")
+    )
+    context_snapshot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("context_snapshots.id"))
+    agent_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("agent_runs.id"), unique=True)
+    review_output: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)

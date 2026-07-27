@@ -3,6 +3,9 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import type {
+  CGReviewEvidenceReference,
+  CGReviewItem,
+  CGSupervisorReviewRead,
   ContextReconstructionItem,
   ContextReconstructionRead,
   CoreAnchorRead,
@@ -24,24 +27,30 @@ import type {
 import {
   ApiError,
   confirmCoreAnchorRevision,
+  confirmExecutionAnchorRevision,
   createCoreAnchorDraftFromDecomposition,
   describeError,
+  generateCgSupervisorReview,
   generateContextReconstruction,
   generateCoreAnchorDraft,
   generateIntentDecomposition,
   getCoreAnchor,
   getExecutionAnchor,
   getExecutionAnchorRevision,
+  getHumanGateForExecutionAnchorRevision,
   getHumanGateForRevision,
   getShot,
   listBriefsForShot,
+  listCgSupervisorReviewsForExecutionAnchorRevision,
   listContextReconstructionsForShot,
   listCoreAnchorRevisions,
   listDecisionsForRevision,
+  listExecutionAnchorRevisionsForTask,
   listIntentDecompositionsForShot,
   listTasks,
   listVersionsForShot,
   rejectCoreAnchorRevision,
+  rejectExecutionAnchorRevision,
   updateCoreAnchorRevision,
 } from "@/lib/api";
 import { ActorSelector } from "@/components/ActorSelector";
@@ -176,10 +185,27 @@ const itemControlsRowStyle = {
 };
 const sectionSpacingStyle = { marginTop: "1.5rem", marginBottom: "1.5rem" };
 
+// Step 4: the eight scalar Execution Anchor content fields, read-only
+// display only -- this page adds the Human Review Gate + CG Supervisor
+// Agent review surfaces, not an editor for these fields (no editing UI for
+// them existed before this change either).
+const EXECUTION_ANCHOR_FIELDS = [
+  ["technical_boundaries", "Technical boundaries"],
+  ["parameter_ranges", "Parameter ranges"],
+  ["delivery_conditions", "Delivery conditions"],
+  ["production_ready_criteria", "Production-ready criteria"],
+  ["downstream_dependencies", "Downstream dependencies"],
+  ["publish_requirements", "Publish requirements"],
+  ["allowed_refinements", "Allowed refinements"],
+  ["escalation_conditions", "Escalation conditions"],
+] as const;
+
 interface TaskAnchorInfo {
   task: TaskRead;
   executionAnchor: ExecutionAnchorRead | null;
   activeRevision: ExecutionAnchorRevisionRead | null;
+  draftRevision: ExecutionAnchorRevisionRead | null;
+  rejectedRevision: ExecutionAnchorRevisionRead | null;
 }
 
 interface ShotData {
@@ -212,7 +238,23 @@ async function loadTaskAnchor(task: TaskRead): Promise<TaskAnchorInfo> {
     executionAnchor?.active_revision_id != null
       ? await getExecutionAnchorRevision(executionAnchor.active_revision_id)
       : null;
-  return { task, executionAnchor, activeRevision };
+  const revisions = executionAnchor
+    ? await listExecutionAnchorRevisionsForTask(task.id)
+    : [];
+  const draftRevision =
+    [...revisions].reverse().find((r) => r.status === "draft") ?? null;
+  // Step 4: same convention as the Core Anchor's rejectedRevision -- the
+  // most recently rejected revision, if any, so its Human Review Gate
+  // resolution stays visible after the pending draft it replaced is gone.
+  const rejectedRevision =
+    [...revisions].reverse().find((r) => r.status === "rejected") ?? null;
+  return {
+    task,
+    executionAnchor,
+    activeRevision,
+    draftRevision,
+    rejectedRevision,
+  };
 }
 
 async function loadShotData(shotId: string): Promise<ShotData> {
@@ -486,6 +528,8 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
                 key={info.task.id}
                 info={info}
                 revisions={revisions}
+                actor={actor}
+                onChanged={reload}
               />
             ))}
           </ul>
@@ -2046,14 +2090,554 @@ function CoreAnchorGate({
   );
 }
 
+/** Step 4: same convention as HumanGateDetails above, but reads the
+ * persisted HumanGate for an ExecutionAnchorRevision instead of a
+ * CoreAnchorRevision. Kept as its own component (rather than a
+ * parameterized version of HumanGateDetails) so the Core Anchor gate's
+ * existing behavior and any tests referencing it stay untouched. */
+function ExecutionAnchorHumanGateDetails({
+  revisionId,
+}: {
+  revisionId: string;
+}) {
+  const [state, setState] = useState<
+    | { status: "loading" }
+    | { status: "none" }
+    | { status: "ready"; gate: HumanGateRead }
+  >({ status: "loading" });
+
+  useEffect(() => {
+    let cancelled = false;
+    setState({ status: "loading" });
+    getHumanGateForExecutionAnchorRevision(revisionId).then(
+      (gate) => {
+        if (cancelled) return;
+        setState(gate ? { status: "ready", gate } : { status: "none" });
+      },
+      () => {
+        if (!cancelled) setState({ status: "none" });
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [revisionId]);
+
+  if (state.status === "loading") {
+    return (
+      <p>
+        <small>Loading human review gate…</small>
+      </p>
+    );
+  }
+
+  if (state.status === "none") {
+    return (
+      <p>
+        <small>
+          No persisted HumanGate exists for this pre-Step 4 revision.
+        </small>
+      </p>
+    );
+  }
+
+  const { gate } = state;
+  const statusLabel =
+    gate.status === "pending"
+      ? "Pending"
+      : gate.status === "confirmed"
+        ? "Confirmed"
+        : "Rejected";
+
+  return (
+    <div aria-label="Execution Anchor human review gate">
+      <h5>Human review gate</h5>
+      <dl>
+        <div>
+          <dt>Gate id</dt>
+          <dd>{shortId(gate.id)}</dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd>{statusLabel}</dd>
+        </div>
+        <div>
+          <dt>Required reviewer</dt>
+          <dd>CG Supervisor</dd>
+        </div>
+        <div>
+          <dt>Opened</dt>
+          <dd>{gate.opened_at}</dd>
+        </div>
+        {gate.status === "pending" ? (
+          <div>
+            <dt>Explanation</dt>
+            <dd>This Execution Anchor revision requires a human decision.</dd>
+          </div>
+        ) : (
+          <>
+            <div>
+              <dt>Resolved by</dt>
+              <dd>
+                {gate.resolved_by_actor_id} ({gate.resolved_by_role})
+              </dd>
+            </div>
+            <div>
+              <dt>Resolved</dt>
+              <dd>{gate.resolved_at}</dd>
+            </div>
+            {gate.rationale && (
+              <div>
+                <dt>Rationale</dt>
+                <dd>{gate.rationale}</dd>
+              </div>
+            )}
+            {gate.decision_id && (
+              <div>
+                <dt>Decision</dt>
+                <dd>{shortId(gate.decision_id)}</dd>
+              </div>
+            )}
+          </>
+        )}
+      </dl>
+    </div>
+  );
+}
+
+/** Read-only presentation of the eight scalar Execution Anchor content
+ * fields -- no editor exists for this revision shape on this page. */
+function ExecutionAnchorFieldsReadOnly({
+  revision,
+}: {
+  revision: ExecutionAnchorRevisionRead;
+}) {
+  return (
+    <dl>
+      {EXECUTION_ANCHOR_FIELDS.map(([field, label]) => (
+        <div key={field}>
+          <dt>{label}</dt>
+          <dd>{revision[field] ?? "—"}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+/** Step 4: the Execution Anchor Human Review Gate for one pending draft
+ * revision -- mirrors CoreAnchorGate's gate-decision shape (rationale +
+ * Confirm/Reject, no separate Resolve button), but has no semantic-editor
+ * section since this revision shape has no editing UI on this page.
+ * Confirm/Reject is CG Supervisor only; VFX/Artist see the same content
+ * read-only, with no Confirm/Reject controls. */
+function ExecutionAnchorGate({
+  revision,
+  actor,
+  onDecided,
+}: {
+  revision: ExecutionAnchorRevisionRead;
+  actor: { role: HumanRole; actorId: string };
+  onDecided: (type: "confirmed" | "rejected", rationale: string | null) => void;
+}) {
+  const [rationale, setRationale] = useState("");
+  const [pending, setPending] = useState<"confirm" | "reject" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const canAct = actor.role === "cg_supervisor";
+
+  async function handleConfirm() {
+    setPending("confirm");
+    setError(null);
+    try {
+      // request_write_back stays false -- ftrack write-back is out of scope
+      // for Execution Anchor confirmation on this page (same as the Core
+      // Anchor gate above).
+      await confirmExecutionAnchorRevision(
+        revision.id,
+        { rationale: rationale || null, request_write_back: false },
+        actor,
+      );
+      onDecided("confirmed", rationale || null);
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setPending(null);
+    }
+  }
+
+  async function handleReject() {
+    setPending("reject");
+    setError(null);
+    try {
+      await rejectExecutionAnchorRevision(
+        revision.id,
+        { rationale: rationale || null },
+        actor,
+      );
+      onDecided("rejected", rationale || null);
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setPending(null);
+    }
+  }
+
+  return (
+    <article
+      aria-label={`Execution Anchor draft revision ${revision.revision_number}`}
+    >
+      <h3>Execution Anchor Human Review Gate</h3>
+      <p>
+        Revision #{revision.revision_number}{" "}
+        <StatusBadge status={revision.status} />
+      </p>
+      <ExecutionAnchorFieldsReadOnly revision={revision} />
+      <ExecutionAnchorHumanGateDetails revisionId={revision.id} />
+
+      {!canAct && (
+        <p>
+          <small>Only a CG Supervisor can confirm or reject this draft.</small>
+        </p>
+      )}
+
+      <section aria-label="Gate decision">
+        <label htmlFor={`execution-rationale-${revision.id}`}>
+          Decision rationale (optional)
+        </label>
+        <textarea
+          id={`execution-rationale-${revision.id}`}
+          value={rationale}
+          disabled={!canAct}
+          onChange={(e) => setRationale(e.target.value)}
+        />
+        <div>
+          <button
+            type="button"
+            disabled={!canAct || pending !== null}
+            onClick={() => void handleConfirm()}
+          >
+            {pending === "confirm" ? "Confirming…" : "Confirm"}
+          </button>{" "}
+          <button
+            type="button"
+            disabled={!canAct || pending !== null}
+            onClick={() => void handleReject()}
+          >
+            {pending === "reject" ? "Rejecting…" : "Reject"}
+          </button>
+        </div>
+      </section>
+
+      {error && <p role="alert">{error}</p>}
+    </article>
+  );
+}
+
+// Step 4: CG Supervisor Agent review section -- mirrors VersionPage.tsx's
+// VfxSupervisorReviewCard/ReviewItemView/ReviewItemList/EvidenceList/
+// StringList/GenerateVfxSupervisorReviewButton exactly, scoped to an
+// ExecutionAnchorRevision instead of a Version. Purely advisory: no
+// accept/reject/apply/edit control exists for this output.
+
+function CgEvidenceList({
+  evidence,
+}: {
+  evidence: CGReviewEvidenceReference[];
+}) {
+  return (
+    <ul>
+      {evidence.map((ref, index) => (
+        // eslint-disable-next-line react/no-array-index-key -- evidence
+        // references have no stable id of their own and are never
+        // reordered in place
+        <li key={index}>
+          <small>
+            {ref.label} ({ref.source_type}: {shortId(ref.source_id)})
+          </small>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function CgReviewItemView({ item }: { item: CGReviewItem }) {
+  return (
+    <li>
+      <p>
+        {item.summary} <em data-priority={item.priority}>[{item.priority}]</em>
+      </p>
+      <p>
+        <small>{item.rationale}</small>
+      </p>
+      <CgEvidenceList evidence={item.evidence} />
+    </li>
+  );
+}
+
+function CgReviewItemList({
+  label,
+  items,
+}: {
+  label: string;
+  items: CGReviewItem[];
+}) {
+  return (
+    <div>
+      <h4>{label}</h4>
+      {items.length === 0 ? (
+        <p>
+          <small>None.</small>
+        </p>
+      ) : (
+        <ul>
+          {items.map((item, index) => (
+            // eslint-disable-next-line react/no-array-index-key -- these
+            // items have no stable id of their own and are never
+            // reordered in place
+            <CgReviewItemView key={index} item={item} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function CgStringList({ label, items }: { label: string; items: string[] }) {
+  return (
+    <div>
+      <h4>{label}</h4>
+      {items.length === 0 ? (
+        <p>
+          <small>None.</small>
+        </p>
+      ) : (
+        <ul>
+          {items.map((item, index) => (
+            // eslint-disable-next-line react/no-array-index-key -- these
+            // strings have no stable id and are never reordered in place
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function CgSupervisorReviewCard({
+  review,
+}: {
+  review: CGSupervisorReviewRead;
+}) {
+  const output = review.review_output;
+
+  return (
+    <article aria-label={`CG Supervisor review ${review.id}`}>
+      <p>{output.executive_summary}</p>
+
+      <div>
+        <h4>Execution direction read</h4>
+        <CgReviewItemView item={output.execution_direction_read} />
+      </div>
+
+      <CgReviewItemList
+        label="Actionable requirements"
+        items={output.actionable_requirements}
+      />
+      <CgReviewItemList
+        label="Technical concerns"
+        items={output.technical_concerns}
+      />
+      <CgReviewItemList
+        label="Coordination concerns"
+        items={output.coordination_concerns}
+      />
+      <CgReviewItemList
+        label="Implementation priorities"
+        items={output.implementation_priorities}
+      />
+
+      <div>
+        <h4>Proposed execution guidance</h4>
+        {output.proposed_execution_guidance.length === 0 ? (
+          <p>
+            <small>None.</small>
+          </p>
+        ) : (
+          <ul>
+            {output.proposed_execution_guidance.map((item, index) => (
+              // eslint-disable-next-line react/no-array-index-key -- these
+              // items have no stable id of their own and are never
+              // reordered in place
+              <li key={index}>
+                <p>
+                  <strong>Guidance:</strong> {item.guidance}{" "}
+                  <em data-priority={item.priority}>[{item.priority}]</em>
+                </p>
+                <p>
+                  <strong>Why it matters:</strong> {item.underlying_intent}
+                </p>
+                <CgEvidenceList evidence={item.evidence} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <CgStringList
+        label="Questions for Human CG Supervisor"
+        items={output.questions_for_human_cg_supervisor}
+      />
+      <CgStringList label="Evidence gaps" items={output.evidence_gaps} />
+
+      <dl>
+        <div>
+          <dt>Created</dt>
+          <dd>{review.created_at}</dd>
+        </div>
+        <div>
+          <dt>Provenance</dt>
+          <dd>
+            <AgentProvenanceDetails
+              agentRunId={review.agent_run_id}
+              contextSnapshotId={review.context_snapshot_id}
+            />
+          </dd>
+        </div>
+      </dl>
+    </article>
+  );
+}
+
+function GenerateCgSupervisorReviewButton({
+  revisionId,
+  actor,
+  onGenerated,
+}: {
+  revisionId: string;
+  actor: { role: HumanRole; actorId: string };
+  onGenerated: () => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleGenerate() {
+    setPending(true);
+    setError(null);
+    try {
+      await generateCgSupervisorReview(revisionId, actor);
+      onGenerated();
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => void handleGenerate()}
+      >
+        {pending ? "Generating…" : "Generate CG Supervisor review"}
+      </button>
+      {error && <p role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function CgSupervisorReviewSection({
+  revisionId,
+  actor,
+  reload,
+}: {
+  revisionId: string;
+  actor: { role: HumanRole; actorId: string };
+  reload: () => void;
+}) {
+  const [state, setState] = useState<
+    | { status: "loading" }
+    | { status: "error"; message: string }
+    | { status: "ready"; reviews: CGSupervisorReviewRead[] }
+  >({ status: "loading" });
+
+  const loadReviews = useCallback(() => {
+    setState({ status: "loading" });
+    listCgSupervisorReviewsForExecutionAnchorRevision(revisionId).then(
+      (reviews) => setState({ status: "ready", reviews }),
+      (err: unknown) =>
+        setState({ status: "error", message: describeError(err) }),
+    );
+  }, [revisionId]);
+
+  useEffect(() => {
+    loadReviews();
+  }, [loadReviews]);
+
+  function handleGenerated() {
+    loadReviews();
+    reload();
+  }
+
+  return (
+    <section aria-label="CG Supervisor Agent review">
+      <h3>AI execution review — CG Supervisor Agent</h3>
+      <p>
+        <small>
+          Advisory only: this Agent has not inspected any footage, render, or
+          scene file for this Task -- its review is based solely on recorded
+          text metadata and existing evidence.
+        </small>
+      </p>
+      {actor.role === "cg_supervisor" && (
+        <GenerateCgSupervisorReviewButton
+          revisionId={revisionId}
+          actor={actor}
+          onGenerated={handleGenerated}
+        />
+      )}
+      {actor.role !== "cg_supervisor" && (
+        <p>
+          <small>Only a CG Supervisor can generate a new review.</small>
+        </p>
+      )}
+      {state.status === "loading" && (
+        <p>
+          <small>Loading CG Supervisor reviews…</small>
+        </p>
+      )}
+      {state.status === "error" && <p role="alert">{state.message}</p>}
+      {state.status === "ready" &&
+        (state.reviews.length === 0 ? (
+          <p>No CG Supervisor Agent reviews generated yet.</p>
+        ) : (
+          state.reviews.map((review) => (
+            <CgSupervisorReviewCard key={review.id} review={review} />
+          ))
+        ))}
+    </section>
+  );
+}
+
 function TaskAnchorRow({
   info,
   revisions,
+  actor,
+  onChanged,
 }: {
   info: TaskAnchorInfo;
   revisions: CoreAnchorRevisionRead[];
+  actor: { role: HumanRole; actorId: string };
+  onChanged: () => void;
 }) {
-  const { task, executionAnchor, activeRevision } = info;
+  const {
+    task,
+    executionAnchor,
+    activeRevision,
+    draftRevision,
+    rejectedRevision,
+  } = info;
 
   return (
     <li>
@@ -2081,6 +2665,35 @@ function TaskAnchorRow({
             </p>
           ) : (
             <p>No confirmed Execution Anchor revision yet.</p>
+          )}
+
+          {draftRevision && (
+            <ExecutionAnchorGate
+              key={draftRevision.id}
+              revision={draftRevision}
+              actor={actor}
+              onDecided={onChanged}
+            />
+          )}
+
+          {/* Step 4: a confirmed revision's gate resolution stays visible
+           * alongside a separately tracked most-recently-rejected revision's
+           * own gate resolution -- mirroring how the Core Anchor keeps both
+           * ConfirmedAnchorCard and RejectedAnchorCard visible with their
+           * own HumanGateDetails, rather than one replacing the other. */}
+          {activeRevision && (
+            <ExecutionAnchorHumanGateDetails revisionId={activeRevision.id} />
+          )}
+          {rejectedRevision && (
+            <ExecutionAnchorHumanGateDetails revisionId={rejectedRevision.id} />
+          )}
+
+          {(draftRevision ?? activeRevision) && (
+            <CgSupervisorReviewSection
+              revisionId={(draftRevision ?? activeRevision)!.id}
+              actor={actor}
+              reload={onChanged}
+            />
           )}
         </>
       )}
