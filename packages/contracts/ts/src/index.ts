@@ -84,6 +84,14 @@ export type CGProposedExecutionGuidance =
 export type CGSupervisorReviewOutput = Schemas["CGSupervisorReviewOutput"];
 export type CGSupervisorReviewRead = Schemas["CGSupervisorReviewRead"];
 
+export type ArtistEvidenceReference = Schemas["ArtistEvidenceReference"];
+export type ArtistGuidanceItem = Schemas["ArtistGuidanceItem"];
+export type ArtistFeedbackTranslation = Schemas["ArtistFeedbackTranslation"];
+export type ArtistAgentGuidanceOutput = Schemas["ArtistAgentGuidanceOutput"];
+export type ArtistAgentGuidanceRead = Schemas["ArtistAgentGuidanceRead"];
+export type ArtistGuidanceGenerateRequest =
+  Schemas["ArtistGuidanceGenerateRequest"];
+
 export type SyncCursorRead = Schemas["SyncCursorRead"];
 export type SyncCursorUpsert = Schemas["SyncCursorUpsert"];
 

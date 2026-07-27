@@ -11,6 +11,8 @@ import type {
   AlignmentAssessmentRead,
   AnchorConfirmRequest,
   AnchorRejectRequest,
+  ArtistAgentGuidanceRead,
+  ArtistGuidanceGenerateRequest,
   AssessmentDecisionRequest,
   CGSupervisorReviewRead,
   ContextReconstructionRead,
@@ -150,6 +152,15 @@ export function getShot(shotId: string): Promise<ShotRead> {
 
 export function listTasks(): Promise<TaskRead[]> {
   return apiFetch("/tasks");
+}
+
+// No shot-scoped Task listing endpoint exists yet -- filter client-side.
+// Used by the Artist Agent guidance panel to let the Human Artist choose
+// which Task a Version's guidance is for (Version has no task_id of its
+// own -- see versions_and_feedback.models.Version's module docstring).
+export async function listTasksForShot(shotId: string): Promise<TaskRead[]> {
+  const tasks = await listTasks();
+  return tasks.filter((task) => task.shot_id === shotId);
 }
 
 export function listBriefsForShot(shotId: string): Promise<IntentBriefRead[]> {
@@ -461,4 +472,28 @@ export function listCgSupervisorReviewsForExecutionAnchorRevision(
   return apiFetch(
     `/intent/execution-anchor-revisions/${revisionId}/cg-supervisor-reviews`,
   );
+}
+
+// Step 5: Artist Agent -- the third independent Role Agent's
+// `iteration_guidance` capability. Purely advisory, same read-only shape
+// as the VFX/CG Supervisor Agent reviews above: no accept/reject/apply
+// action. Generation requires an explicit task_id (Version has no
+// task_id of its own).
+
+export function generateArtistAgentGuidance(
+  versionId: string,
+  payload: ArtistGuidanceGenerateRequest,
+  actor: Actor,
+): Promise<ArtistAgentGuidanceRead> {
+  return apiFetch(`/intent/versions/${versionId}/artist-guidances/generate`, {
+    method: "POST",
+    body: payload,
+    actor,
+  });
+}
+
+export function listArtistAgentGuidancesForVersion(
+  versionId: string,
+): Promise<ArtistAgentGuidanceRead[]> {
+  return apiFetch(`/intent/versions/${versionId}/artist-guidances`);
 }

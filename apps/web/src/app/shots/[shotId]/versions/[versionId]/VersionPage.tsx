@@ -5,10 +5,14 @@ import { useCallback, useEffect, useState } from "react";
 import type {
   AlignmentAssessmentRead,
   AlignmentState,
+  ArtistAgentGuidanceRead,
+  ArtistEvidenceReference,
+  ArtistGuidanceItem,
   CoreAnchorRevisionRead,
   DecisionRead,
   HumanRole,
   ReviewNoteRead,
+  TaskRead,
   VersionRead,
   VFXReviewEvidenceReference,
   VFXReviewItem,
@@ -20,12 +24,15 @@ import {
   acceptAlignmentAssessment,
   describeError,
   generateAlignmentAssessment,
+  generateArtistAgentGuidance,
   generateVfxSupervisorReview,
   getVersion,
+  listArtistAgentGuidancesForVersion,
   listCoreAnchorRevisions,
   listDecisionsForAssessment,
   listReviewNotesForVersion,
   listAssessmentsForVersion,
+  listTasksForShot,
   listVfxSupervisorReviewsForVersion,
   rejectAlignmentAssessment,
 } from "@/lib/api";
@@ -74,6 +81,8 @@ interface VersionData {
   coreAnchorRevisions: CoreAnchorRevisionRead[];
   assessments: AssessmentData[];
   vfxSupervisorReviews: VFXSupervisorReviewRead[];
+  artistAgentGuidances: ArtistAgentGuidanceRead[];
+  tasksForShot: TaskRead[];
 }
 
 type LoadState =
@@ -87,13 +96,21 @@ async function loadVersionData(
   versionId: string,
 ): Promise<VersionData> {
   const version = await getVersion(versionId);
-  const [reviewNotes, coreAnchorRevisions, assessments, vfxSupervisorReviews] =
-    await Promise.all([
-      listReviewNotesForVersion(versionId),
-      listCoreAnchorRevisions(shotId),
-      listAssessmentsForVersion(versionId),
-      listVfxSupervisorReviewsForVersion(versionId),
-    ]);
+  const [
+    reviewNotes,
+    coreAnchorRevisions,
+    assessments,
+    vfxSupervisorReviews,
+    artistAgentGuidances,
+    tasksForShot,
+  ] = await Promise.all([
+    listReviewNotesForVersion(versionId),
+    listCoreAnchorRevisions(shotId),
+    listAssessmentsForVersion(versionId),
+    listVfxSupervisorReviewsForVersion(versionId),
+    listArtistAgentGuidancesForVersion(versionId),
+    listTasksForShot(shotId),
+  ]);
   const assessmentData = await Promise.all(
     assessments.map(async (assessment) => ({
       assessment,
@@ -106,6 +123,8 @@ async function loadVersionData(
     coreAnchorRevisions,
     assessments: assessmentData,
     vfxSupervisorReviews,
+    artistAgentGuidances,
+    tasksForShot,
   };
 }
 
@@ -176,6 +195,8 @@ export function VersionPage({
     coreAnchorRevisions,
     assessments,
     vfxSupervisorReviews,
+    artistAgentGuidances,
+    tasksForShot,
   } = state.data;
   const confirmedRevision =
     coreAnchorRevisions.find((r) => r.status === "confirmed") ?? null;
@@ -293,6 +314,32 @@ export function VersionPage({
         ) : (
           vfxSupervisorReviews.map((review) => (
             <VfxSupervisorReviewCard key={review.id} review={review} />
+          ))
+        )}
+      </section>
+
+      <section aria-label="AI iteration guidance — Artist Agent">
+        <h2>AI iteration guidance — Artist Agent</h2>
+        <p>
+          <small>
+            This guidance is based on recorded text metadata only -- it does not
+            visually inspect footage, renders, or scene files. Human supervisors
+            retain authority.
+          </small>
+        </p>
+        {actor.role === "artist" && (
+          <GenerateArtistAgentGuidancePanel
+            versionId={versionId}
+            tasksForShot={tasksForShot}
+            actor={actor}
+            onGenerated={reload}
+          />
+        )}
+        {artistAgentGuidances.length === 0 ? (
+          <p>No Artist Agent guidance generated yet.</p>
+        ) : (
+          artistAgentGuidances.map((guidance) => (
+            <ArtistAgentGuidanceCard key={guidance.id} guidance={guidance} />
           ))
         )}
       </section>
@@ -786,6 +833,245 @@ function VfxSupervisorReviewCard({
         <div>
           <dt>Context snapshot</dt>
           <dd>{review.context_snapshot_id}</dd>
+        </div>
+      </dl>
+    </article>
+  );
+}
+
+function GenerateArtistAgentGuidancePanel({
+  versionId,
+  tasksForShot,
+  actor,
+  onGenerated,
+}: {
+  versionId: string;
+  tasksForShot: TaskRead[];
+  actor: { role: HumanRole; actorId: string };
+  onGenerated: () => void;
+}) {
+  const [taskId, setTaskId] = useState(tasksForShot[0]?.id ?? "");
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleGenerate() {
+    setPending(true);
+    setError(null);
+    try {
+      await generateArtistAgentGuidance(versionId, { task_id: taskId }, actor);
+      onGenerated();
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  if (tasksForShot.length === 0) {
+    return (
+      <p>
+        <small>
+          No Tasks exist yet for this Shot -- Artist Agent guidance requires a
+          Task with a confirmed Execution Anchor.
+        </small>
+      </p>
+    );
+  }
+
+  return (
+    <div>
+      <label htmlFor="artist-guidance-task">Task</label>{" "}
+      <select
+        id="artist-guidance-task"
+        value={taskId}
+        onChange={(e) => setTaskId(e.target.value)}
+      >
+        {tasksForShot.map((task) => (
+          <option key={task.id} value={task.id}>
+            {task.name}
+            {task.department ? ` (${task.department})` : ""}
+          </option>
+        ))}
+      </select>{" "}
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => void handleGenerate()}
+      >
+        {pending ? "Generating…" : "Generate Artist guidance"}
+      </button>
+      {error && <p role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function ArtistEvidenceList({
+  evidence,
+}: {
+  evidence: ArtistEvidenceReference[];
+}) {
+  return (
+    <ul>
+      {evidence.map((ref, index) => (
+        // eslint-disable-next-line react/no-array-index-key -- evidence
+        // references have no stable id of their own and are never
+        // reordered in place
+        <li key={index}>
+          <small>
+            {ref.label} ({ref.source_type}: {shortId(ref.source_id)})
+          </small>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ArtistItemView({ item }: { item: ArtistGuidanceItem }) {
+  return (
+    <li>
+      <p>
+        {item.summary} <em data-priority={item.priority}>[{item.priority}]</em>
+      </p>
+      <p>
+        <small>{item.why_it_matters}</small>
+      </p>
+      <ArtistEvidenceList evidence={item.evidence} />
+    </li>
+  );
+}
+
+function ArtistItemList({
+  label,
+  items,
+}: {
+  label: string;
+  items: ArtistGuidanceItem[];
+}) {
+  return (
+    <div>
+      <h4>{label}</h4>
+      {items.length === 0 ? (
+        <p>
+          <small>None.</small>
+        </p>
+      ) : (
+        <ul>
+          {items.map((item, index) => (
+            // eslint-disable-next-line react/no-array-index-key -- these
+            // items have no stable id of their own and are never
+            // reordered in place
+            <ArtistItemView key={index} item={item} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function ArtistAgentGuidanceCard({
+  guidance,
+}: {
+  guidance: ArtistAgentGuidanceRead;
+}) {
+  const output = guidance.guidance_output;
+
+  return (
+    <article aria-label={`Artist Agent guidance ${guidance.id}`}>
+      <p>{output.executive_summary}</p>
+
+      <div>
+        <h4>Creative intent read</h4>
+        <ArtistItemView item={output.creative_intent_read} />
+      </div>
+
+      <div>
+        <h4>Task goal</h4>
+        <ArtistItemView item={output.task_goal} />
+      </div>
+
+      <div>
+        <h4>Current iteration read</h4>
+        <ArtistItemView item={output.current_iteration_read} />
+      </div>
+
+      <ArtistItemList label="Non-negotiables" items={output.non_negotiables} />
+      <ArtistItemList
+        label="Allowed variations"
+        items={output.allowed_variations}
+      />
+
+      <div>
+        <h4>Feedback translations</h4>
+        {output.feedback_translations.length === 0 ? (
+          <p>
+            <small>None.</small>
+          </p>
+        ) : (
+          <ul>
+            {output.feedback_translations.map((translation, index) => (
+              // eslint-disable-next-line react/no-array-index-key -- these
+              // translations have no stable id of their own and are never
+              // reordered in place
+              <li key={index}>
+                <p>
+                  <strong>Feedback/issue:</strong>{" "}
+                  {translation.feedback_or_issue}{" "}
+                  <em data-priority={translation.priority}>
+                    [{translation.priority}]
+                  </em>
+                </p>
+                <p>
+                  <strong>Practical action:</strong>{" "}
+                  {translation.practical_action}
+                </p>
+                <p>
+                  <strong>Why it matters:</strong>{" "}
+                  {translation.underlying_intent}
+                </p>
+                <p>
+                  <strong>Self-check:</strong> {translation.self_check}
+                </p>
+                <ArtistEvidenceList evidence={translation.evidence} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <ArtistItemList
+        label="Iteration priorities"
+        items={output.iteration_priorities}
+      />
+      <ArtistItemList
+        label="Cross-department dependencies"
+        items={output.cross_department_dependencies}
+      />
+
+      <StringList
+        label="Questions for Human Supervisor"
+        items={output.questions_for_human_supervisor}
+      />
+      <StringList label="Evidence gaps" items={output.evidence_gaps} />
+
+      <dl>
+        <div>
+          <dt>Created</dt>
+          <dd>{guidance.created_at}</dd>
+        </div>
+        <div>
+          <dt>Agent run</dt>
+          <dd>
+            {guidance.agent_run_id}
+            <AgentProvenanceDetails
+              agentRunId={guidance.agent_run_id}
+              contextSnapshotId={guidance.context_snapshot_id}
+              showAgentType
+            />
+          </dd>
+        </div>
+        <div>
+          <dt>Context snapshot</dt>
+          <dd>{guidance.context_snapshot_id}</dd>
         </div>
       </dl>
     </article>

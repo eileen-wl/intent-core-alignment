@@ -6,6 +6,10 @@ from arq import create_pool
 from arq.connections import RedisSettings
 from fastapi import APIRouter, Depends, HTTPException
 from intent_core_contracts.api.agent_runs import AgentRunRead, ContextSnapshotRead
+from intent_core_contracts.api.artist_agent_guidance import (
+    ArtistAgentGuidanceRead,
+    ArtistGuidanceGenerateRequest,
+)
 from intent_core_contracts.api.cg_supervisor_review import CGSupervisorReviewRead
 from intent_core_contracts.api.context_reconstruction import ContextReconstructionRead
 from intent_core_contracts.api.execution_anchor import (
@@ -34,6 +38,7 @@ from intent_core_contracts.api.workflow import DecisionRead
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.agents import (
+    artist_guidance_service,
     cg_supervisor_review_service,
     context_reconstruction_service,
     core_agent_service,
@@ -61,7 +66,7 @@ from intent_core_api.intent.models import (
     IntentBrief,
     IntentDecomposition,
 )
-from intent_core_api.versions_and_feedback.models import VFXSupervisorReview
+from intent_core_api.versions_and_feedback.models import ArtistAgentGuidance, VFXSupervisorReview
 from intent_core_api.workflow import decision_service
 from intent_core_api.workflow.actors import ActorContext, get_current_actor
 from intent_core_api.workflow.exceptions import NotFoundError
@@ -514,3 +519,46 @@ async def list_cg_supervisor_reviews(
 ) -> list[CGSupervisorReview]:
     svc = cg_supervisor_review_service
     return await svc.list_cg_supervisor_reviews_for_execution_anchor_revision(session, revision_id)
+
+
+# Step 5: Artist Agent -- the third independent Role Agent. Its guidance
+# is purely advisory, Artist-facing iteration guidance for a Human
+# Artist; it never establishes/modifies/confirms/rejects an Anchor,
+# never resolves a HumanGate, and never creates an authoritative
+# Decision or ReviewNote (see agents.artist_guidance_service's module
+# docstring).
+
+
+@router.post(
+    "/versions/{version_id}/artist-guidances/generate",
+    response_model=ArtistAgentGuidanceRead,
+    status_code=201,
+)
+async def generate_artist_agent_guidance(
+    version_id: uuid.UUID,
+    payload: ArtistGuidanceGenerateRequest,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> ArtistAgentGuidance:
+    return await artist_guidance_service.generate_artist_agent_guidance(
+        session, actor, version_id, payload.task_id
+    )
+
+
+@router.get("/artist-guidances/{guidance_id}", response_model=ArtistAgentGuidanceRead)
+async def get_artist_agent_guidance(
+    guidance_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> ArtistAgentGuidance:
+    guidance = await artist_guidance_service.get_artist_agent_guidance(session, guidance_id)
+    if guidance is None:
+        raise NotFoundError("Artist Agent guidance not found")
+    return guidance
+
+
+@router.get("/versions/{version_id}/artist-guidances", response_model=list[ArtistAgentGuidanceRead])
+async def list_artist_agent_guidances(
+    version_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> list[ArtistAgentGuidance]:
+    return await artist_guidance_service.list_artist_agent_guidances_for_version(
+        session, version_id
+    )

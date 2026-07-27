@@ -10,10 +10,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type {
   AgentRunRead,
   AlignmentAssessmentRead,
+  ArtistAgentGuidanceRead,
   ContextSnapshotRead,
   CoreAnchorRevisionRead,
   DecisionRead,
   ReviewNoteRead,
+  TaskRead,
   VersionRead,
   VFXSupervisorReviewRead,
 } from "@intent-core/contracts";
@@ -248,6 +250,160 @@ function vfxSupervisorReview(
   };
 }
 
+function task(overrides: Partial<TaskRead> = {}): TaskRead {
+  return {
+    id: "task-1",
+    shot_id: "shot-1",
+    name: "Lighting Pass",
+    department: "lighting",
+    source: "manual",
+    created_at: NOW,
+    updated_at: NOW,
+    ...overrides,
+  };
+}
+
+function artistAgentGuidance(
+  overrides: Partial<ArtistAgentGuidanceRead> = {},
+): ArtistAgentGuidanceRead {
+  return {
+    id: "artist-guidance-1",
+    project_id: "project-1",
+    shot_id: "shot-1",
+    task_id: "task-1",
+    version_id: "version-1",
+    execution_anchor_revision_id: "exec-rev-1",
+    context_snapshot_id: "snapshot-1",
+    agent_run_id: "run-artist-1",
+    guidance_output: {
+      executive_summary: "One non-negotiable and one review note considered.",
+      creative_intent_read: {
+        summary:
+          "This Shot's confirmed direction is a quiet, controlled chase.",
+        why_it_matters:
+          "This is the Shot's currently confirmed Core Anchor revision.",
+        priority: "high",
+        evidence: [
+          {
+            source_type: "core_anchor_revision",
+            source_id: "rev-confirmed",
+            label: "Confirmed Core Anchor",
+          },
+        ],
+      },
+      task_goal: {
+        summary:
+          "Lighting Pass delivers against the confirmed Execution Anchor.",
+        why_it_matters:
+          "This is the confirmed Execution Anchor revision for this Task.",
+        priority: "high",
+        evidence: [
+          {
+            source_type: "execution_anchor_revision",
+            source_id: "exec-rev-1",
+            label: "Execution Anchor revision",
+          },
+        ],
+      },
+      current_iteration_read: {
+        summary: "This Version is one iteration toward the Task's goal.",
+        why_it_matters:
+          "This is the target Version this guidance was generated for.",
+        priority: "medium",
+        evidence: [
+          { source_type: "version", source_id: "version-1", label: "Version" },
+        ],
+      },
+      non_negotiables: [
+        {
+          summary: "Must preserve: No jump cuts.",
+          why_it_matters:
+            "Recorded Constraint on the confirmed Core Anchor revision.",
+          priority: "high",
+          evidence: [
+            {
+              source_type: "constraint",
+              source_id: "constraint-1",
+              label: "Constraint",
+            },
+          ],
+        },
+      ],
+      allowed_variations: [
+        {
+          summary: "Open to variation: Camera speed may vary slightly.",
+          why_it_matters:
+            "Recorded VariationZone on the confirmed Core Anchor revision.",
+          priority: "low",
+          evidence: [
+            {
+              source_type: "variation_zone",
+              source_id: "variation-1",
+              label: "Variation zone",
+            },
+          ],
+        },
+      ],
+      feedback_translations: [
+        {
+          feedback_or_issue: "Review note: The shake feels too aggressive.",
+          practical_action: "Reduce the camera shake in the next iteration.",
+          underlying_intent:
+            "This feedback was recorded by a human reviewer for this Version.",
+          self_check: "Before submitting, confirm the shake has been reduced.",
+          priority: "medium",
+          evidence: [
+            {
+              source_type: "review_note",
+              source_id: "note-1",
+              label: "Review note",
+            },
+          ],
+        },
+      ],
+      iteration_priorities: [
+        {
+          summary: "Confirm the next iteration preserves: No jump cuts.",
+          why_it_matters:
+            "Recorded Constraint on the confirmed Core Anchor revision.",
+          priority: "high",
+          evidence: [
+            {
+              source_type: "constraint",
+              source_id: "constraint-1",
+              label: "Constraint",
+            },
+          ],
+        },
+      ],
+      cross_department_dependencies: [
+        {
+          summary:
+            "Coordinate with the Human CG Supervisor on execution guidance.",
+          why_it_matters:
+            "A CG Supervisor Agent review was recorded for this Task.",
+          priority: "medium",
+          evidence: [
+            {
+              source_type: "cg_supervisor_review",
+              source_id: "cg-review-1",
+              label: "CG Supervisor Agent review",
+            },
+          ],
+        },
+      ],
+      questions_for_human_supervisor: [
+        "Does the actual submitted work match the recorded Execution Anchor content?",
+      ],
+      evidence_gaps: [
+        "ICAS has not directly inspected footage, rendered frames, scene files, or numeric parameters.",
+      ],
+    },
+    created_at: NOW,
+    ...overrides,
+  };
+}
+
 interface Fixture {
   version: VersionRead | null;
   reviewNotes: ReviewNoteRead[];
@@ -257,6 +413,8 @@ interface Fixture {
   agentRuns: Record<string, AgentRunRead>;
   contextSnapshots: Record<string, ContextSnapshotRead>;
   vfxSupervisorReviews: VFXSupervisorReviewRead[];
+  tasks: TaskRead[];
+  artistAgentGuidances: ArtistAgentGuidanceRead[];
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -383,6 +541,34 @@ function installFetchMock(
         ];
         return jsonResponse(201, generated);
       }
+      if (method === "GET" && path === "/tasks") {
+        return jsonResponse(200, fixture.tasks);
+      }
+      if (
+        method === "GET" &&
+        path === "/intent/versions/version-1/artist-guidances"
+      ) {
+        return jsonResponse(200, fixture.artistAgentGuidances);
+      }
+      if (
+        method === "POST" &&
+        path === "/intent/versions/version-1/artist-guidances/generate"
+      ) {
+        const generated = artistAgentGuidance({
+          id: "artist-guidance-generated",
+          agent_run_id: "run-artist-generated",
+        });
+        fixture.agentRuns["run-artist-generated"] = agentRun({
+          id: "run-artist-generated",
+          agent_type: "artist_agent",
+          capability: "iteration_guidance",
+        });
+        fixture.artistAgentGuidances = [
+          generated,
+          ...fixture.artistAgentGuidances,
+        ];
+        return jsonResponse(201, generated);
+      }
 
       throw new Error(`Unhandled request in test: ${method} ${path}`);
     },
@@ -405,9 +591,16 @@ function baseFixture(): Fixture {
         agent_type: "vfx_supervisor_agent",
         capability: "creative_review",
       }),
+      "run-artist-1": agentRun({
+        id: "run-artist-1",
+        agent_type: "artist_agent",
+        capability: "iteration_guidance",
+      }),
     },
     contextSnapshots: { "snapshot-1": contextSnapshot() },
     vfxSupervisorReviews: [vfxSupervisorReview()],
+    tasks: [task()],
+    artistAgentGuidances: [artistAgentGuidance()],
   };
 }
 
@@ -430,7 +623,10 @@ describe("VersionPage", () => {
     expect(
       screen.getByText("The shake feels too aggressive."),
     ).toBeInTheDocument();
-    expect(screen.getByText(/cg_supervisor/)).toBeInTheDocument();
+    const reviewNotesSection = screen.getByLabelText("Review notes");
+    expect(
+      within(reviewNotesSection).getByText(/cg_supervisor/),
+    ).toBeInTheDocument();
   });
 
   it("shows the confirmed Core Anchor summary linking back to the shot", async () => {
@@ -990,6 +1186,258 @@ describe("VersionPage", () => {
         "VFX Supervisor review vfx-review-1",
       );
       for (const name of ["Edit", "Apply", "Accept", "Reject", "Approve"]) {
+        expect(
+          within(card).queryByRole("button", { name }),
+        ).not.toBeInTheDocument();
+      }
+    });
+  });
+
+  describe("Artist Agent guidance (Step 5)", () => {
+    it("shows an empty state when no guidance has been generated yet", async () => {
+      const fixture = baseFixture();
+      fixture.artistAgentGuidances = [];
+      installFetchMock(fixture);
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      expect(
+        await screen.findByText("No Artist Agent guidance generated yet."),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the advisory disclaimer copy", async () => {
+      installFetchMock(baseFixture());
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      expect(
+        await screen.findByText(/AI iteration guidance — Artist Agent/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/does not visually inspect footage, renders/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/Human supervisors retain authority/),
+      ).toBeInTheDocument();
+    });
+
+    it("shows a Generate control only for the Artist role", async () => {
+      const user = userEvent.setup();
+      installFetchMock(baseFixture());
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      await screen.findByLabelText("AI iteration guidance — Artist Agent");
+      await user.selectOptions(screen.getByLabelText("Role"), "artist");
+      expect(
+        await screen.findByRole("button", { name: "Generate Artist guidance" }),
+      ).toBeInTheDocument();
+
+      await user.selectOptions(screen.getByLabelText("Role"), "vfx_supervisor");
+      expect(
+        screen.queryByRole("button", { name: "Generate Artist guidance" }),
+      ).not.toBeInTheDocument();
+
+      await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
+      expect(
+        screen.queryByRole("button", { name: "Generate Artist guidance" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("lets VFX and CG Supervisor read existing guidance without a Generate control", async () => {
+      installFetchMock(baseFixture());
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      const section = await screen.findByLabelText(
+        "AI iteration guidance — Artist Agent",
+      );
+      expect(
+        within(section).getByText(
+          "One non-negotiable and one review note considered.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(section).queryByRole("button", {
+          name: "Generate Artist guidance",
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("renders every output section", async () => {
+      installFetchMock(baseFixture());
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      const card = await screen.findByLabelText(
+        "Artist Agent guidance artist-guidance-1",
+      );
+      expect(
+        within(card).getByText(
+          "This Shot's confirmed direction is a quiet, controlled chase.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          "Lighting Pass delivers against the confirmed Execution Anchor.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          "This Version is one iteration toward the Task's goal.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText("Must preserve: No jump cuts."),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          "Open to variation: Camera speed may vary slightly.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          "Confirm the next iteration preserves: No jump cuts.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          "Coordinate with the Human CG Supervisor on execution guidance.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          "Does the actual submitted work match the recorded Execution Anchor content?",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(/has not directly inspected footage/),
+      ).toBeInTheDocument();
+    });
+
+    it("renders a feedback translation's practical action, underlying intent, and self-check", async () => {
+      installFetchMock(baseFixture());
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      const card = await screen.findByLabelText(
+        "Artist Agent guidance artist-guidance-1",
+      );
+      expect(
+        within(card).getByText(/Review note: The shake feels too aggressive\./),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          /Reduce the camera shake in the next iteration\./,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          /This feedback was recorded by a human reviewer for this Version\./,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          /Before submitting, confirm the shake has been reduced\./,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("renders evidence references and Agent provenance", async () => {
+      installFetchMock(baseFixture());
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      const card = await screen.findByLabelText(
+        "Artist Agent guidance artist-guidance-1",
+      );
+      expect(
+        within(card).getByText(/Confirmed Core Anchor/),
+      ).toBeInTheDocument();
+      await waitFor(() => {
+        expect(within(card).getByText(/agent type:/)).toBeInTheDocument();
+      });
+      expect(within(card).getByText(/provider:/)).toBeInTheDocument();
+      expect(
+        within(card).getByText(/run status: succeeded/),
+      ).toBeInTheDocument();
+    });
+
+    it("generates new guidance for the selected Task and refreshes the list", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.artistAgentGuidances = [];
+      installFetchMock(fixture);
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      await screen.findByLabelText("AI iteration guidance — Artist Agent");
+      await user.selectOptions(screen.getByLabelText("Role"), "artist");
+      expect(
+        await screen.findByText("No Artist Agent guidance generated yet."),
+      ).toBeInTheDocument();
+      await user.click(
+        screen.getByRole("button", { name: "Generate Artist guidance" }),
+      );
+
+      expect(
+        await screen.findByLabelText(
+          "Artist Agent guidance artist-guidance-generated",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("shows a loading state while generating", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.artistAgentGuidances = [];
+      let resolveGenerate: ((response: Response) => void) | undefined;
+      installFetchMock(fixture, {
+        onRequest: (method, path) => {
+          if (
+            method === "POST" &&
+            path === "/intent/versions/version-1/artist-guidances/generate"
+          ) {
+            return new Promise<Response>((resolve) => {
+              resolveGenerate = resolve;
+            });
+          }
+          return null;
+        },
+      });
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      await screen.findByLabelText("AI iteration guidance — Artist Agent");
+      await user.selectOptions(screen.getByLabelText("Role"), "artist");
+      await screen.findByText("No Artist Agent guidance generated yet.");
+      const button = screen.getByRole("button", {
+        name: "Generate Artist guidance",
+      });
+      void user.click(button);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Generating…" }),
+        ).toBeDisabled();
+      });
+      const generated = artistAgentGuidance({
+        id: "artist-guidance-generated",
+      });
+      fixture.artistAgentGuidances.push(generated);
+      resolveGenerate?.(jsonResponse(201, generated));
+      await screen.findByLabelText(
+        "Artist Agent guidance artist-guidance-generated",
+      );
+    });
+
+    it("renders no edit, apply, accept, reject, approve, or ranking controls", async () => {
+      installFetchMock(baseFixture());
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      const card = await screen.findByLabelText(
+        "Artist Agent guidance artist-guidance-1",
+      );
+      for (const name of [
+        "Edit",
+        "Apply",
+        "Accept",
+        "Reject",
+        "Approve",
+        "Rank",
+      ]) {
         expect(
           within(card).queryByRole("button", { name }),
         ).not.toBeInTheDocument();
