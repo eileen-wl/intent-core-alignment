@@ -15,6 +15,7 @@ import type {
   DecisionRead,
   ReviewNoteRead,
   VersionRead,
+  VFXSupervisorReviewRead,
 } from "@intent-core/contracts";
 
 import { VersionPage } from "./VersionPage";
@@ -165,6 +166,88 @@ function contextSnapshot(
   };
 }
 
+function vfxSupervisorReview(
+  overrides: Partial<VFXSupervisorReviewRead> = {},
+): VFXSupervisorReviewRead {
+  return {
+    id: "vfx-review-1",
+    project_id: "project-1",
+    shot_id: "shot-1",
+    version_id: "version-1",
+    context_snapshot_id: "snapshot-1",
+    agent_run_id: "run-vfx-1",
+    review_output: {
+      executive_summary: "One constraint and one open question considered.",
+      creative_direction_read: {
+        summary: "Review against the confirmed restrained chase direction.",
+        rationale: "Directly stated on the confirmed Core Anchor revision.",
+        priority: "high",
+        evidence: [
+          {
+            source_type: "core_anchor_revision",
+            source_id: "rev-confirmed",
+            label: "Confirmed Core Anchor",
+          },
+        ],
+      },
+      strengths: [],
+      creative_concerns: [
+        {
+          summary: "Camera shake may depart from the restrained tone.",
+          rationale: "A Review Note flags the shake as too aggressive.",
+          priority: "medium",
+          evidence: [
+            {
+              source_type: "review_note",
+              source_id: "note-1",
+              label: "Review note",
+            },
+          ],
+        },
+      ],
+      review_priorities: [
+        {
+          summary: "Confirm the submission preserves: No jump cuts.",
+          rationale:
+            "Recorded Constraint on the confirmed Core Anchor revision.",
+          priority: "high",
+          evidence: [
+            {
+              source_type: "constraint",
+              source_id: "constraint-1",
+              label: "Constraint",
+            },
+          ],
+        },
+      ],
+      proposed_feedback_notes: [
+        {
+          feedback:
+            "Reduce the camera shake back toward the restrained direction.",
+          underlying_intent:
+            "The confirmed Core Anchor calls for a quiet, controlled chase.",
+          priority: "high",
+          evidence: [
+            {
+              source_type: "core_anchor_revision",
+              source_id: "rev-confirmed",
+              label: "Confirmed Core Anchor",
+            },
+          ],
+        },
+      ],
+      questions_for_human_supervisor: [
+        "Does the actual footage match the recorded description?",
+      ],
+      evidence_gaps: [
+        "No image, video, or frame evidence is available to this Agent.",
+      ],
+    },
+    created_at: NOW,
+    ...overrides,
+  };
+}
+
 interface Fixture {
   version: VersionRead | null;
   reviewNotes: ReviewNoteRead[];
@@ -173,6 +256,7 @@ interface Fixture {
   decisions: Record<string, DecisionRead[]>;
   agentRuns: Record<string, AgentRunRead>;
   contextSnapshots: Record<string, ContextSnapshotRead>;
+  vfxSupervisorReviews: VFXSupervisorReviewRead[];
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -274,6 +358,31 @@ function installFetchMock(
         fixture.decisions[id] = [...(fixture.decisions[id] ?? []), created];
         return jsonResponse(201, created);
       }
+      if (
+        method === "GET" &&
+        path === "/intent/versions/version-1/vfx-supervisor-reviews"
+      ) {
+        return jsonResponse(200, fixture.vfxSupervisorReviews);
+      }
+      if (
+        method === "POST" &&
+        path === "/intent/versions/version-1/vfx-supervisor-reviews/generate"
+      ) {
+        const generated = vfxSupervisorReview({
+          id: "vfx-review-generated",
+          agent_run_id: "run-vfx-generated",
+        });
+        fixture.agentRuns["run-vfx-generated"] = agentRun({
+          id: "run-vfx-generated",
+          agent_type: "vfx_supervisor_agent",
+          capability: "creative_review",
+        });
+        fixture.vfxSupervisorReviews = [
+          generated,
+          ...fixture.vfxSupervisorReviews,
+        ];
+        return jsonResponse(201, generated);
+      }
 
       throw new Error(`Unhandled request in test: ${method} ${path}`);
     },
@@ -289,8 +398,16 @@ function baseFixture(): Fixture {
     coreAnchorRevisions: [coreAnchorRevision()],
     assessments: [assessment()],
     decisions: { "assessment-1": [] },
-    agentRuns: { "run-1": agentRun() },
+    agentRuns: {
+      "run-1": agentRun(),
+      "run-vfx-1": agentRun({
+        id: "run-vfx-1",
+        agent_type: "vfx_supervisor_agent",
+        capability: "creative_review",
+      }),
+    },
     contextSnapshots: { "snapshot-1": contextSnapshot() },
+    vfxSupervisorReviews: [vfxSupervisorReview()],
   };
 }
 
@@ -601,5 +718,282 @@ describe("VersionPage", () => {
     render(<VersionPage shotId="shot-1" versionId="version-1" />);
 
     expect(await screen.findByText("Version not found")).toBeInTheDocument();
+  });
+
+  describe("VFX Supervisor Agent review (Step 3)", () => {
+    it("shows an empty state when no reviews have been generated yet", async () => {
+      const fixture = baseFixture();
+      fixture.vfxSupervisorReviews = [];
+      installFetchMock(fixture);
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      expect(
+        await screen.findByText(
+          "No VFX Supervisor Agent reviews generated yet.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("shows the advisory disclaimer copy", async () => {
+      installFetchMock(baseFixture());
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      expect(
+        await screen.findByText(/AI creative review — VFX Supervisor Agent/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/has not visually inspected any media/),
+      ).toBeInTheDocument();
+    });
+
+    it("shows a Generate button only for the VFX Supervisor role", async () => {
+      const user = userEvent.setup();
+      installFetchMock(baseFixture());
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      await screen.findByLabelText("VFX Supervisor Agent review");
+      expect(
+        screen.getByRole("button", { name: "Generate VFX Supervisor review" }),
+      ).toBeInTheDocument();
+
+      await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
+      expect(
+        screen.queryByRole("button", {
+          name: "Generate VFX Supervisor review",
+        }),
+      ).not.toBeInTheDocument();
+
+      await user.selectOptions(screen.getByLabelText("Role"), "artist");
+      expect(
+        screen.queryByRole("button", {
+          name: "Generate VFX Supervisor review",
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("lets CG Supervisor and Artist read existing reviews without a Generate button", async () => {
+      const user = userEvent.setup();
+      installFetchMock(baseFixture());
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      await screen.findByLabelText("VFX Supervisor Agent review");
+      await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
+      const section = screen.getByLabelText("VFX Supervisor Agent review");
+      expect(
+        within(section).getByText(
+          "Review against the confirmed restrained chase direction.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(section).queryByRole("button", {
+          name: "Generate VFX Supervisor review",
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("generates a new review and refreshes the list", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.vfxSupervisorReviews = [];
+      installFetchMock(fixture);
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      expect(
+        await screen.findByText(
+          "No VFX Supervisor Agent reviews generated yet.",
+        ),
+      ).toBeInTheDocument();
+      await user.click(
+        screen.getByRole("button", { name: "Generate VFX Supervisor review" }),
+      );
+
+      expect(
+        await screen.findByLabelText(
+          "VFX Supervisor review vfx-review-generated",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("shows a loading state while generating", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.vfxSupervisorReviews = [];
+      let resolveGenerate: ((response: Response) => void) | undefined;
+      installFetchMock(fixture, {
+        onRequest: (method, path) => {
+          if (
+            method === "POST" &&
+            path ===
+              "/intent/versions/version-1/vfx-supervisor-reviews/generate"
+          ) {
+            return new Promise<Response>((resolve) => {
+              resolveGenerate = resolve;
+            });
+          }
+          return null;
+        },
+      });
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      await screen.findByText("No VFX Supervisor Agent reviews generated yet.");
+      const button = screen.getByRole("button", {
+        name: "Generate VFX Supervisor review",
+      });
+      void user.click(button);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Generating…" }),
+        ).toBeDisabled();
+      });
+      const generated = vfxSupervisorReview({ id: "vfx-review-generated" });
+      fixture.vfxSupervisorReviews.push(generated);
+      resolveGenerate?.(jsonResponse(201, generated));
+      await screen.findByLabelText(
+        "VFX Supervisor review vfx-review-generated",
+      );
+    });
+
+    it("shows an error when generation fails", async () => {
+      const user = userEvent.setup();
+      installFetchMock(baseFixture(), {
+        onRequest: (method, path) =>
+          method === "POST" &&
+          path === "/intent/versions/version-1/vfx-supervisor-reviews/generate"
+            ? jsonResponse(403, { detail: "Not allowed" })
+            : null,
+      });
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      await user.click(
+        await screen.findByRole("button", {
+          name: "Generate VFX Supervisor review",
+        }),
+      );
+
+      expect(await screen.findByRole("alert")).toHaveTextContent("Not allowed");
+    });
+
+    it("renders every structured section of a generated review", async () => {
+      installFetchMock(baseFixture());
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      const card = await screen.findByLabelText(
+        "VFX Supervisor review vfx-review-1",
+      );
+      expect(
+        within(card).getByText(
+          "One constraint and one open question considered.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          "Review against the confirmed restrained chase direction.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          "Camera shake may depart from the restrained tone.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          "Confirm the submission preserves: No jump cuts.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          "Reduce the camera shake back toward the restrained direction.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          "The confirmed Core Anchor calls for a quiet, controlled chase.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          "Does the actual footage match the recorded description?",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          "No image, video, or frame evidence is available to this Agent.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("renders priority markers on review items and feedback notes", async () => {
+      installFetchMock(baseFixture());
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      const card = await screen.findByLabelText(
+        "VFX Supervisor review vfx-review-1",
+      );
+      expect(within(card).getAllByText("[high]").length).toBeGreaterThan(0);
+      expect(within(card).getByText("[medium]")).toBeInTheDocument();
+    });
+
+    it("renders evidence references for review items", async () => {
+      installFetchMock(baseFixture());
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      const card = await screen.findByLabelText(
+        "VFX Supervisor review vfx-review-1",
+      );
+      expect(
+        within(card).getAllByText(
+          /Confirmed Core Anchor \(core_anchor_revision/,
+        ).length,
+      ).toBeGreaterThan(0);
+      expect(
+        within(card).getByText(/Review note \(review_note/),
+      ).toBeInTheDocument();
+    });
+
+    it("shows an explicit empty state for an empty strengths list", async () => {
+      installFetchMock(baseFixture());
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      const card = await screen.findByLabelText(
+        "VFX Supervisor review vfx-review-1",
+      );
+      const strengthsHeading = within(card).getByRole("heading", {
+        name: "Strengths",
+      });
+      expect(strengthsHeading.nextElementSibling).toHaveTextContent("None.");
+    });
+
+    it("shows Agent provenance with vfx_supervisor_agent run metadata", async () => {
+      installFetchMock(baseFixture());
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      const card = await screen.findByLabelText(
+        "VFX Supervisor review vfx-review-1",
+      );
+      expect(
+        await within(card).findByText(/agent type: vfx_supervisor_agent/),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(/provider: deterministic/),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(/run status: succeeded/),
+      ).toBeInTheDocument();
+    });
+
+    it("renders no edit, apply, accept, or reject controls", async () => {
+      installFetchMock(baseFixture());
+      render(<VersionPage shotId="shot-1" versionId="version-1" />);
+
+      const card = await screen.findByLabelText(
+        "VFX Supervisor review vfx-review-1",
+      );
+      for (const name of ["Edit", "Apply", "Accept", "Reject", "Approve"]) {
+        expect(
+          within(card).queryByRole("button", { name }),
+        ).not.toBeInTheDocument();
+      }
+    });
   });
 });

@@ -28,6 +28,7 @@ import type {
   ShotRead,
   TaskRead,
   VersionRead,
+  VFXSupervisorReviewRead,
 } from "@intent-core/contracts";
 
 const API_BASE_URL =
@@ -356,4 +357,28 @@ export function rejectAlignmentAssessment(
     body: payload,
     actor,
   });
+}
+
+// Step 3: VFX Supervisor Agent -- the first independent Role Agent's
+// `creative_review` capability. Purely advisory: no accept/reject/apply
+// action exists for this output, matching the read-only Context
+// Reconstruction surface, not the Alignment Assessment Human Gate.
+
+export function generateVfxSupervisorReview(
+  versionId: string,
+  actor: Actor,
+): Promise<VFXSupervisorReviewRead> {
+  return apiFetch(
+    `/intent/versions/${versionId}/vfx-supervisor-reviews/generate`,
+    {
+      method: "POST",
+      actor,
+    },
+  );
+}
+
+export function listVfxSupervisorReviewsForVersion(
+  versionId: string,
+): Promise<VFXSupervisorReviewRead[]> {
+  return apiFetch(`/intent/versions/${versionId}/vfx-supervisor-reviews`);
 }

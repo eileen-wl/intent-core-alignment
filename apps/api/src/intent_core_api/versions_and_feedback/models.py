@@ -25,7 +25,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import JSON, ForeignKey, String, Text
+from sqlalchemy import JSON, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from intent_core_api.db import Base
@@ -77,6 +77,36 @@ class AlignmentAssessment(Base):
     # table has no dependency on the contracts Literal.
     alignment_state: Mapped[str] = mapped_column(String(30))
     envelope: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+
+
+class VFXSupervisorReview(Base):
+    """One immutable, advisory VFX Supervisor Agent review of a single
+    Version (Step 3, ``agent_type=vfx_supervisor_agent``,
+    ``capability=creative_review``) -- a high-level creative/intent-
+    preservation read, never an authoritative Decision, never a
+    HumanGate resolution, never a confirm/reject/pass/fail of the
+    Version itself (see ``agents.vfx_supervisor_review_service``'s
+    module docstring). Lives here, not in ``intent.models``, for the
+    same reason ``AlignmentAssessment`` does: it is fundamentally about
+    a Version. No update or delete path exists anywhere in the API
+    surface; multiple reviews may exist for one Version, with no
+    active/latest pointer -- same convention as ``ContextReconstruction``.
+    """
+
+    __tablename__ = "vfx_supervisor_reviews"
+    __table_args__ = (
+        Index("ix_vfx_supervisor_reviews_shot_id", "shot_id"),
+        Index("ix_vfx_supervisor_reviews_version_id", "version_id"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id"))
+    shot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("shots.id"))
+    version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("versions.id"))
+    context_snapshot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("context_snapshots.id"))
+    agent_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("agent_runs.id"), unique=True)
+    review_output: Mapped[dict[str, Any]] = mapped_column(JSON)
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)
 
 

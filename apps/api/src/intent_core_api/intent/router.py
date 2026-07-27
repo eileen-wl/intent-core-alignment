@@ -28,6 +28,7 @@ from intent_core_contracts.api.intent_decomposition import (
     CoreAnchorDraftFromDecompositionRequest,
     IntentDecompositionRead,
 )
+from intent_core_contracts.api.vfx_supervisor_review import VFXSupervisorReviewRead
 from intent_core_contracts.api.workflow import DecisionRead
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -35,6 +36,7 @@ from intent_core_api.agents import (
     context_reconstruction_service,
     core_agent_service,
     intent_decomposition_service,
+    vfx_supervisor_review_service,
 )
 from intent_core_api.agents.models import AgentRun, ContextSnapshot
 from intent_core_api.config import get_settings
@@ -56,6 +58,7 @@ from intent_core_api.intent.models import (
     IntentBrief,
     IntentDecomposition,
 )
+from intent_core_api.versions_and_feedback.models import VFXSupervisorReview
 from intent_core_api.workflow import decision_service
 from intent_core_api.workflow.actors import ActorContext, get_current_actor
 from intent_core_api.workflow.exceptions import NotFoundError
@@ -399,4 +402,47 @@ async def reject_execution_anchor_revision(
 ) -> ExecutionAnchorRevision:
     return await execution_anchor_service.reject_revision(
         session, actor, revision_id, payload.rationale
+    )
+
+
+# Step 3: VFX Supervisor Agent -- the first independent Role Agent. Its
+# review is purely advisory evidence for a Human VFX Supervisor; it
+# never confirms/rejects/passes/fails/approves/publishes the Version and
+# never resolves a HumanGate or creates an authoritative Decision (see
+# agents.vfx_supervisor_review_service's module docstring).
+
+
+@router.post(
+    "/versions/{version_id}/vfx-supervisor-reviews/generate",
+    response_model=VFXSupervisorReviewRead,
+    status_code=201,
+)
+async def generate_vfx_supervisor_review(
+    version_id: uuid.UUID,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> VFXSupervisorReview:
+    return await vfx_supervisor_review_service.generate_vfx_supervisor_review(
+        session, actor, version_id
+    )
+
+
+@router.get("/vfx-supervisor-reviews/{review_id}", response_model=VFXSupervisorReviewRead)
+async def get_vfx_supervisor_review(
+    review_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> VFXSupervisorReview:
+    review = await vfx_supervisor_review_service.get_vfx_supervisor_review(session, review_id)
+    if review is None:
+        raise NotFoundError("VFX Supervisor review not found")
+    return review
+
+
+@router.get(
+    "/versions/{version_id}/vfx-supervisor-reviews", response_model=list[VFXSupervisorReviewRead]
+)
+async def list_vfx_supervisor_reviews(
+    version_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> list[VFXSupervisorReview]:
+    return await vfx_supervisor_review_service.list_vfx_supervisor_reviews_for_version(
+        session, version_id
     )
