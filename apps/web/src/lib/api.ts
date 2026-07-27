@@ -12,6 +12,7 @@ import type {
   AnchorConfirmRequest,
   AnchorRejectRequest,
   AssessmentDecisionRequest,
+  CGSupervisorReviewRead,
   ContextReconstructionRead,
   ContextSnapshotRead,
   CoreAnchorRead,
@@ -19,6 +20,7 @@ import type {
   CoreAnchorRevisionUpdate,
   DecisionRead,
   ExecutionAnchorRead,
+  ExecutionAnchorRevisionDraftCreate,
   ExecutionAnchorRevisionRead,
   HumanGateRead,
   HumanRole,
@@ -297,6 +299,59 @@ export function getExecutionAnchorRevision(
   return apiFetch(`/intent/execution-anchor-revisions/${revisionId}`);
 }
 
+export function listExecutionAnchorRevisionsForTask(
+  taskId: string,
+): Promise<ExecutionAnchorRevisionRead[]> {
+  return apiFetch(`/intent/tasks/${taskId}/execution-anchor/revisions`);
+}
+
+export function createExecutionAnchorDraft(
+  taskId: string,
+  payload: ExecutionAnchorRevisionDraftCreate,
+  actor: Actor,
+): Promise<ExecutionAnchorRevisionRead> {
+  return apiFetch(`/intent/tasks/${taskId}/execution-anchor/drafts`, {
+    method: "POST",
+    body: payload,
+    actor,
+  });
+}
+
+export function confirmExecutionAnchorRevision(
+  revisionId: string,
+  payload: AnchorConfirmRequest,
+  actor: Actor,
+): Promise<ExecutionAnchorRevisionRead> {
+  return apiFetch(`/intent/execution-anchor-revisions/${revisionId}/confirm`, {
+    method: "POST",
+    body: payload,
+    actor,
+  });
+}
+
+export function rejectExecutionAnchorRevision(
+  revisionId: string,
+  payload: AnchorRejectRequest,
+  actor: Actor,
+): Promise<ExecutionAnchorRevisionRead> {
+  return apiFetch(`/intent/execution-anchor-revisions/${revisionId}/reject`, {
+    method: "POST",
+    body: payload,
+    actor,
+  });
+}
+
+// Step 4: the persisted HumanGate for an Execution Anchor revision. `null`
+// for a legacy, pre-Step-4 draft that has no gate row -- same
+// legacy-compatibility convention as getHumanGateForRevision above.
+export function getHumanGateForExecutionAnchorRevision(
+  revisionId: string,
+): Promise<HumanGateRead | null> {
+  return fetchOrNull(
+    `/intent/execution-anchor-revisions/${revisionId}/human-gate`,
+  );
+}
+
 // Step 4d: Version / ReviewNote / AlignmentAssessment read+action surface.
 // Shared across the Shot Anchor page (Versions list) and the Version
 // detail page.
@@ -381,4 +436,29 @@ export function listVfxSupervisorReviewsForVersion(
   versionId: string,
 ): Promise<VFXSupervisorReviewRead[]> {
   return apiFetch(`/intent/versions/${versionId}/vfx-supervisor-reviews`);
+}
+
+// Step 4: CG Supervisor Agent -- the second independent Role Agent's
+// `execution_review` capability. Purely advisory, same read-only shape as
+// the VFX Supervisor Agent review above: no accept/reject/apply action.
+
+export function generateCgSupervisorReview(
+  revisionId: string,
+  actor: Actor,
+): Promise<CGSupervisorReviewRead> {
+  return apiFetch(
+    `/intent/execution-anchor-revisions/${revisionId}/cg-supervisor-reviews/generate`,
+    {
+      method: "POST",
+      actor,
+    },
+  );
+}
+
+export function listCgSupervisorReviewsForExecutionAnchorRevision(
+  revisionId: string,
+): Promise<CGSupervisorReviewRead[]> {
+  return apiFetch(
+    `/intent/execution-anchor-revisions/${revisionId}/cg-supervisor-reviews`,
+  );
 }

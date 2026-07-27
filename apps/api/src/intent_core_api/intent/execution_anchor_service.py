@@ -37,6 +37,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.audit import service as audit_service
+from intent_core_api.intent import human_gate_service
 from intent_core_api.intent.core_anchor_lock import compare_and_swap_active_revision
 from intent_core_api.intent.models import (
     CoreAnchor,
@@ -163,14 +164,58 @@ async def create_draft_revision(
     )
     session.add(revision)
     try:
+        # Flush (not just add) so the revision's client-side uuid4()
+        # default is materialized into revision.id before the gate's
+        # hard FK needs it -- same pattern as
+        # core_anchor_service.create_draft_revision.
+        await session.flush()
+
+        # Step 4: exactly one pending HumanGate is opened per draft, in
+        # this same transaction -- a draft and its gate always succeed or
+        # fail together (see intent.human_gate_service module docstring).
+        gate = await human_gate_service.create_pending_gate(
+            session, shot_id=task.shot_id, execution_anchor_revision_id=revision.id
+        )
+        await audit_service.record_audit_event(
+            session,
+            entity_type="human_gate",
+            entity_id=gate.id,
+            action="human_gate.opened",
+            actor=actor,
+            source_context={"gate_type": gate.gate_type, "required_role": gate.required_role},
+            related_entity_type="execution_anchor_revision",
+            related_entity_id=revision.id,
+        )
+
         await session.commit()
     except IntegrityError:
         await session.rollback()
         raise ConflictError(
             "A draft was created concurrently for this Task; retry the request"
         ) from None
+    except Exception:
+        # A draft and its pending gate must succeed or fail together --
+        # any failure past the flush above (including one from gate/audit
+        # persistence) must roll back the revision too, not just an
+        # IntegrityError.
+        await session.rollback()
+        raise
     await session.refresh(revision)
     return revision
+
+
+async def list_revisions_for_task(
+    session: AsyncSession, task_id: uuid.UUID
+) -> list[ExecutionAnchorRevision]:
+    execution_anchor = await get_execution_anchor_for_task(session, task_id)
+    if execution_anchor is None:
+        return []
+    result = await session.execute(
+        select(ExecutionAnchorRevision)
+        .where(ExecutionAnchorRevision.execution_anchor_id == execution_anchor.id)
+        .order_by(ExecutionAnchorRevision.revision_number)
+    )
+    return list(result.scalars().all())
 
 
 async def get_execution_anchor_for_task(
@@ -314,6 +359,14 @@ async def confirm_revision(
         )
 
     try:
+        # Step 4: load the persisted gate, or -- for a legacy,
+        # pre-Step-4 draft -- create the missing pending one inside this
+        # same transaction, so it is resolved atomically with everything
+        # below rather than ever being left pending on its own.
+        gate = await human_gate_service.get_or_create_pending_gate_for_resolution(
+            session, shot_id=task.shot_id, execution_anchor_revision_id=revision.id
+        )
+
         if previous is not None and previous.status == "confirmed":
             previous.status = "superseded"
             system_actor = ActorContext.system()
@@ -364,7 +417,7 @@ async def confirm_revision(
                 actor=actor,
             )
 
-        await decision_service.record_decision(
+        decision = await decision_service.record_decision(
             session,
             decision_type="confirm_execution_anchor",
             owning_human_role="cg_supervisor",
@@ -381,6 +434,22 @@ async def confirm_revision(
             entity_id=revision.id,
             action="execution_anchor_revision.confirmed",
             actor=actor,
+        )
+
+        # Step 4: the gate is resolved atomically alongside the Decision
+        # it links to -- never confirmed/rejected independently.
+        human_gate_service.resolve_gate(
+            gate, status="confirmed", actor=actor, rationale=rationale, decision_id=decision.id
+        )
+        await audit_service.record_audit_event(
+            session,
+            entity_type="human_gate",
+            entity_id=gate.id,
+            action="human_gate.confirmed",
+            actor=actor,
+            source_context={"decision_id": str(decision.id)},
+            related_entity_type="execution_anchor_revision",
+            related_entity_id=revision.id,
         )
 
         await session.commit()
@@ -407,9 +476,23 @@ async def reject_revision(
     if revision.status != "draft":
         raise ConflictError("Revision is not in draft status")
 
+    execution_anchor = await session.get(ExecutionAnchor, revision.execution_anchor_id)
+    if execution_anchor is None:
+        raise InternalConsistencyError("ExecutionAnchor referenced by revision no longer exists")
+    task = await session.get(Task, execution_anchor.task_id)
+    if task is None:
+        raise InternalConsistencyError("ExecutionAnchor references a Task that no longer exists")
+
     revision.status = "rejected"
 
     try:
+        # Step 4: load the persisted gate, or -- for a legacy, pre-Step-4
+        # draft -- create the missing pending one inside this same
+        # transaction (see confirm_revision's identical pattern).
+        gate = await human_gate_service.get_or_create_pending_gate_for_resolution(
+            session, shot_id=task.shot_id, execution_anchor_revision_id=revision.id
+        )
+
         await transition_service.record_transition(
             session,
             entity_type="execution_anchor_revision",
@@ -418,7 +501,7 @@ async def reject_revision(
             to_state="rejected",
             actor=actor,
         )
-        await decision_service.record_decision(
+        decision = await decision_service.record_decision(
             session,
             decision_type="reject_execution_anchor",
             owning_human_role="cg_supervisor",
@@ -435,6 +518,23 @@ async def reject_revision(
             action="execution_anchor_revision.rejected",
             actor=actor,
         )
+
+        # Step 4: the gate is resolved atomically alongside the Decision
+        # it links to -- never confirmed/rejected independently.
+        human_gate_service.resolve_gate(
+            gate, status="rejected", actor=actor, rationale=rationale, decision_id=decision.id
+        )
+        await audit_service.record_audit_event(
+            session,
+            entity_type="human_gate",
+            entity_id=gate.id,
+            action="human_gate.rejected",
+            actor=actor,
+            source_context={"decision_id": str(decision.id)},
+            related_entity_type="execution_anchor_revision",
+            related_entity_id=revision.id,
+        )
+
         await session.commit()
     except IntegrityError:
         await session.rollback()

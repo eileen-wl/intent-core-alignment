@@ -1,30 +1,38 @@
-"""Step 1D: a minimal persistent ``HumanGate`` for Core Anchor revision
-review (docs/DOMAIN_MODEL.md §9 names ``HumanGate`` as its own persisted
-object; before this slice, "Human Gate" was only a UI/workflow pattern).
+"""A minimal persistent ``HumanGate`` for Core Anchor revision review
+(Step 1D; docs/DOMAIN_MODEL.md §9 names ``HumanGate`` as its own
+persisted object; before that slice, "Human Gate" was only a UI/workflow
+pattern), extended in Step 4 to also cover an ``ExecutionAnchorRevision``
+gate.
 
 A ``HumanGate`` is not an Agent, does not interpret creative intent, and
 does not generate recommendations -- it only records that an
-authoritative human review is required for one ``CoreAnchorRevision``
-draft, and how that review was resolved. ``Decision``
+authoritative human review is required for one Anchor revision draft,
+and how that review was resolved. ``Decision``
 (``workflow.models.Decision``) remains the authoritative human decision
 record; a ``HumanGate`` links to the ``Decision`` that resolved it via
 ``decision_id``, it never replaces it.
 
-Every function here is a pure persistence helper with no commit of its
-own -- callers (``intent.core_anchor_service``) fold gate creation/
-resolution into their own existing atomic transaction, so a draft and
-its pending gate always succeed or fail together, and a confirm/reject,
-its ``Decision``, and its gate resolution always succeed or fail
-together.
+Every function here takes two explicit, named, optional target
+parameters (``core_anchor_revision_id`` / ``execution_anchor_revision_id``)
+-- exactly one must be supplied on any call -- rather than a generic
+``target_type``/``target_id`` framework; this keeps the bounded two-target
+shape explicit at every call site while still letting
+``core_anchor_service`` and ``execution_anchor_service`` share one
+implementation. No function here commits on its own -- callers fold gate
+creation/resolution into their own existing atomic transaction, so a
+draft and its pending gate always succeed or fail together, and a
+confirm/reject, its ``Decision``, and its gate resolution always succeed
+or fail together.
 
-Legacy compatibility (Step 1D §5): a ``CoreAnchorRevision`` draft created
-before migration ``0017`` has no ``HumanGate`` row (no backfill is ever
-run). The first time such a draft is confirmed or rejected,
-``get_or_create_pending_gate_for_resolution`` creates the missing
-pending gate inside that same resolution transaction -- it is never left
-pending on its own, and this path can never create a duplicate gate for
-one revision (enforced by the unique ``core_anchor_revision_id`` column
-and this function's own existing-row check).
+Legacy compatibility (Step 1D §5, extended in Step 4 to Execution Anchor):
+a revision draft created before the gate for its Anchor type existed has
+no ``HumanGate`` row (no backfill is ever run). The first time such a
+draft is confirmed or rejected, ``get_or_create_pending_gate_for_resolution``
+creates the missing pending gate inside that same resolution transaction
+-- it is never left pending on its own, and this path can never create a
+duplicate gate for one revision (enforced by the unique
+``core_anchor_revision_id``/``execution_anchor_revision_id`` columns and
+this function's own existing-row check).
 """
 
 from __future__ import annotations
@@ -41,25 +49,51 @@ from intent_core_api.workflow.actors import ActorContext
 from intent_core_api.workflow.exceptions import InternalConsistencyError
 
 GATE_TYPE_CORE_ANCHOR_CONFIRMATION: Final = "core_anchor_confirmation"
+GATE_TYPE_EXECUTION_ANCHOR_CONFIRMATION: Final = "execution_anchor_confirmation"
 REQUIRED_ROLE_VFX_SUPERVISOR: Final = "vfx_supervisor"
+REQUIRED_ROLE_CG_SUPERVISOR: Final = "cg_supervisor"
 
 
 def _utcnow() -> datetime:
     return datetime.now(UTC)
 
 
+def _require_exactly_one_target(
+    core_anchor_revision_id: uuid.UUID | None, execution_anchor_revision_id: uuid.UUID | None
+) -> None:
+    if (core_anchor_revision_id is None) == (execution_anchor_revision_id is None):
+        raise InternalConsistencyError(
+            "exactly one of core_anchor_revision_id or execution_anchor_revision_id "
+            "must be supplied"
+        )
+
+
 async def create_pending_gate(
-    session: AsyncSession, *, shot_id: uuid.UUID, core_anchor_revision_id: uuid.UUID
+    session: AsyncSession,
+    *,
+    shot_id: uuid.UUID,
+    core_anchor_revision_id: uuid.UUID | None = None,
+    execution_anchor_revision_id: uuid.UUID | None = None,
 ) -> HumanGate:
     """Called exactly once, inside the same transaction as a new
-    ``CoreAnchorRevision`` draft (``core_anchor_service.create_draft_revision``)
-    -- never called standalone. Does not commit.
+    ``CoreAnchorRevision`` or ``ExecutionAnchorRevision`` draft
+    (``core_anchor_service.create_draft_revision`` /
+    ``execution_anchor_service.create_draft_revision``) -- never called
+    standalone. Does not commit.
     """
+    _require_exactly_one_target(core_anchor_revision_id, execution_anchor_revision_id)
+    if core_anchor_revision_id is not None:
+        gate_type = GATE_TYPE_CORE_ANCHOR_CONFIRMATION
+        required_role = REQUIRED_ROLE_VFX_SUPERVISOR
+    else:
+        gate_type = GATE_TYPE_EXECUTION_ANCHOR_CONFIRMATION
+        required_role = REQUIRED_ROLE_CG_SUPERVISOR
     gate = HumanGate(
         shot_id=shot_id,
         core_anchor_revision_id=core_anchor_revision_id,
-        gate_type=GATE_TYPE_CORE_ANCHOR_CONFIRMATION,
-        required_role=REQUIRED_ROLE_VFX_SUPERVISOR,
+        execution_anchor_revision_id=execution_anchor_revision_id,
+        gate_type=gate_type,
+        required_role=required_role,
         status="pending",
     )
     session.add(gate)
@@ -74,20 +108,42 @@ async def get_gate_for_revision(session: AsyncSession, revision_id: uuid.UUID) -
     return result
 
 
+async def get_gate_for_execution_anchor_revision(
+    session: AsyncSession, revision_id: uuid.UUID
+) -> HumanGate | None:
+    result: HumanGate | None = await session.scalar(
+        select(HumanGate).where(HumanGate.execution_anchor_revision_id == revision_id)
+    )
+    return result
+
+
 async def get_or_create_pending_gate_for_resolution(
-    session: AsyncSession, *, shot_id: uuid.UUID, core_anchor_revision_id: uuid.UUID
+    session: AsyncSession,
+    *,
+    shot_id: uuid.UUID,
+    core_anchor_revision_id: uuid.UUID | None = None,
+    execution_anchor_revision_id: uuid.UUID | None = None,
 ) -> HumanGate:
-    """Load the existing gate for a revision, or -- for a legacy,
-    pre-Step-1D draft -- create the missing pending one. Does not commit;
-    the caller's own confirm/reject transaction resolves and commits this
-    same row immediately after, so a legacy gate is never left pending on
-    its own.
+    """Load the existing gate for a revision, or -- for a legacy draft
+    predating the gate for its Anchor type -- create the missing pending
+    one. Does not commit; the caller's own confirm/reject transaction
+    resolves and commits this same row immediately after, so a legacy
+    gate is never left pending on its own.
     """
-    gate = await get_gate_for_revision(session, core_anchor_revision_id)
+    _require_exactly_one_target(core_anchor_revision_id, execution_anchor_revision_id)
+    gate: HumanGate | None
+    if core_anchor_revision_id is not None:
+        gate = await get_gate_for_revision(session, core_anchor_revision_id)
+    else:
+        assert execution_anchor_revision_id is not None
+        gate = await get_gate_for_execution_anchor_revision(session, execution_anchor_revision_id)
     if gate is not None:
         return gate
     return await create_pending_gate(
-        session, shot_id=shot_id, core_anchor_revision_id=core_anchor_revision_id
+        session,
+        shot_id=shot_id,
+        core_anchor_revision_id=core_anchor_revision_id,
+        execution_anchor_revision_id=execution_anchor_revision_id,
     )
 
 

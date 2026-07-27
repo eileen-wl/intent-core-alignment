@@ -6,6 +6,7 @@ from arq import create_pool
 from arq.connections import RedisSettings
 from fastapi import APIRouter, Depends, HTTPException
 from intent_core_contracts.api.agent_runs import AgentRunRead, ContextSnapshotRead
+from intent_core_contracts.api.cg_supervisor_review import CGSupervisorReviewRead
 from intent_core_contracts.api.context_reconstruction import ContextReconstructionRead
 from intent_core_contracts.api.execution_anchor import (
     ExecutionAnchorRead,
@@ -33,6 +34,7 @@ from intent_core_contracts.api.workflow import DecisionRead
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.agents import (
+    cg_supervisor_review_service,
     context_reconstruction_service,
     core_agent_service,
     intent_decomposition_service,
@@ -49,6 +51,7 @@ from intent_core_api.intent import (
     human_gate_service,
 )
 from intent_core_api.intent.models import (
+    CGSupervisorReview,
     ContextReconstruction,
     CoreAnchor,
     CoreAnchorRevision,
@@ -362,6 +365,28 @@ async def get_execution_anchor_revision(
     return revision
 
 
+@router.get(
+    "/tasks/{task_id}/execution-anchor/revisions", response_model=list[ExecutionAnchorRevisionRead]
+)
+async def list_execution_anchor_revisions(
+    task_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> list[ExecutionAnchorRevision]:
+    return await execution_anchor_service.list_revisions_for_task(session, task_id)
+
+
+@router.get("/execution-anchor-revisions/{revision_id}/human-gate", response_model=HumanGateRead)
+async def get_execution_anchor_revision_human_gate(
+    revision_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> HumanGate:
+    # Same legacy-compatibility contract as the Core Anchor equivalent
+    # above: 404 (not an empty/null response) when no gate has been
+    # persisted for this revision.
+    gate = await human_gate_service.get_gate_for_execution_anchor_revision(session, revision_id)
+    if gate is None:
+        raise NotFoundError("No persisted human gate exists for this revision")
+    return gate
+
+
 @router.patch(
     "/execution-anchor-revisions/{revision_id}", response_model=ExecutionAnchorRevisionRead
 )
@@ -446,3 +471,46 @@ async def list_vfx_supervisor_reviews(
     return await vfx_supervisor_review_service.list_vfx_supervisor_reviews_for_version(
         session, version_id
     )
+
+
+# Step 4: CG Supervisor Agent -- the second independent Role Agent. Its
+# review is purely advisory execution guidance for a Human CG Supervisor;
+# it never confirms/rejects the Execution Anchor and never resolves a
+# HumanGate or creates an authoritative Decision (see
+# agents.cg_supervisor_review_service's module docstring).
+
+
+@router.post(
+    "/execution-anchor-revisions/{revision_id}/cg-supervisor-reviews/generate",
+    response_model=CGSupervisorReviewRead,
+    status_code=201,
+)
+async def generate_cg_supervisor_review(
+    revision_id: uuid.UUID,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> CGSupervisorReview:
+    return await cg_supervisor_review_service.generate_cg_supervisor_review(
+        session, actor, revision_id
+    )
+
+
+@router.get("/cg-supervisor-reviews/{review_id}", response_model=CGSupervisorReviewRead)
+async def get_cg_supervisor_review(
+    review_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> CGSupervisorReview:
+    review = await cg_supervisor_review_service.get_cg_supervisor_review(session, review_id)
+    if review is None:
+        raise NotFoundError("CG Supervisor review not found")
+    return review
+
+
+@router.get(
+    "/execution-anchor-revisions/{revision_id}/cg-supervisor-reviews",
+    response_model=list[CGSupervisorReviewRead],
+)
+async def list_cg_supervisor_reviews(
+    revision_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> list[CGSupervisorReview]:
+    svc = cg_supervisor_review_service
+    return await svc.list_cg_supervisor_reviews_for_execution_anchor_revision(session, revision_id)
