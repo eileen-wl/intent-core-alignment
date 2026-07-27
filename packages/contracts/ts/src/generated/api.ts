@@ -450,6 +450,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/intent/core-anchor-revisions/{revision_id}/human-gate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Core Anchor Revision Human Gate */
+        get: operations["get_core_anchor_revision_human_gate_intent_core_anchor_revisions__revision_id__human_gate_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/intent/core-anchor-revisions/{revision_id}/confirm": {
         parameters: {
             query?: never;
@@ -1423,6 +1440,66 @@ export interface components {
         HTTPValidationError: {
             /** Detail */
             detail?: components["schemas"]["ValidationError"][];
+        };
+        /** HumanGateRead */
+        HumanGateRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /**
+             * Core Anchor Revision Id
+             * Format: uuid
+             */
+            core_anchor_revision_id: string;
+            /**
+             * Gate Type
+             * @constant
+             */
+            gate_type: "core_anchor_confirmation";
+            /**
+             * Required Role
+             * @enum {string}
+             */
+            required_role: "vfx_supervisor" | "cg_supervisor" | "artist";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "pending" | "confirmed" | "rejected";
+            /**
+             * Opened At
+             * Format: date-time
+             */
+            opened_at: string;
+            /** Resolved At */
+            resolved_at: string | null;
+            /** Resolved By Actor Id */
+            resolved_by_actor_id: string | null;
+            /** Resolved By Role */
+            resolved_by_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
+            /** Resolved By Actor Type */
+            resolved_by_actor_type: ("human" | "agent" | "system") | null;
+            /** Rationale */
+            rationale: string | null;
+            /** Decision Id */
+            decision_id: string | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /**
+             * Updated At
+             * Format: date-time
+             */
+            updated_at: string;
         };
         /** IntentBriefCreate */
         IntentBriefCreate: {
@@ -2841,6 +2918,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DecisionRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_core_anchor_revision_human_gate_intent_core_anchor_revisions__revision_id__human_gate_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                revision_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HumanGateRead"];
                 };
             };
             /** @description Validation Error */

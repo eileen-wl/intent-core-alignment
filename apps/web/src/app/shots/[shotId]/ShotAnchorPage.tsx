@@ -11,6 +11,7 @@ import type {
   DecisionRead,
   ExecutionAnchorRead,
   ExecutionAnchorRevisionRead,
+  HumanGateRead,
   HumanRole,
   IntentBriefRead,
   IntentDecompositionDimensions,
@@ -31,6 +32,7 @@ import {
   getCoreAnchor,
   getExecutionAnchor,
   getExecutionAnchorRevision,
+  getHumanGateForRevision,
   getShot,
   listBriefsForShot,
   listContextReconstructionsForShot,
@@ -341,6 +343,10 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
     revisions.find((r) => r.status === "confirmed") ?? null;
   const draftRevision =
     [...revisions].reverse().find((r) => r.status === "draft") ?? null;
+  // Step 1D: the most recently rejected revision, if any -- see
+  // RejectedAnchorCard for why this display slot was added.
+  const rejectedRevision =
+    [...revisions].reverse().find((r) => r.status === "rejected") ?? null;
 
   const actor = { role, actorId };
 
@@ -431,6 +437,9 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
                 revision={confirmedRevision}
                 decision={confirmedRevisionDecision}
               />
+            )}
+            {rejectedRevision && (
+              <RejectedAnchorCard revision={rejectedRevision} />
             )}
             {draftRevision ? (
               <CoreAnchorGate
@@ -1066,6 +1075,116 @@ function ScalarFieldsReadOnly({
   );
 }
 
+// Step 1D: renders the persisted HumanGate for one CoreAnchorRevision --
+// not an Agent, does not interpret intent, does not resolve anything
+// itself. Reused unmodified in the pending gate (CoreAnchorGate), the
+// confirmed-revision card, and the rejected-revision card, so gate
+// provenance always reads identically regardless of where it's shown.
+function HumanGateDetails({ revisionId }: { revisionId: string }) {
+  const [state, setState] = useState<
+    | { status: "loading" }
+    | { status: "none" }
+    | { status: "ready"; gate: HumanGateRead }
+  >({ status: "loading" });
+
+  useEffect(() => {
+    let cancelled = false;
+    setState({ status: "loading" });
+    getHumanGateForRevision(revisionId).then(
+      (gate) => {
+        if (cancelled) return;
+        setState(gate ? { status: "ready", gate } : { status: "none" });
+      },
+      () => {
+        if (!cancelled) setState({ status: "none" });
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [revisionId]);
+
+  if (state.status === "loading") {
+    return (
+      <p>
+        <small>Loading human review gate…</small>
+      </p>
+    );
+  }
+
+  if (state.status === "none") {
+    return (
+      <p>
+        <small>
+          No persisted HumanGate exists for this pre-Step 1D revision.
+        </small>
+      </p>
+    );
+  }
+
+  const { gate } = state;
+  const statusLabel =
+    gate.status === "pending"
+      ? "Pending"
+      : gate.status === "confirmed"
+        ? "Confirmed"
+        : "Rejected";
+
+  return (
+    <div aria-label="Human review gate">
+      {/* h5, not h4: this must never collide with the fixed-order h4
+       * query the existing Step 1A semantic-collections tests use to
+       * enumerate exactly the five semantic-collection headings. */}
+      <h5>Human review gate</h5>
+      <dl>
+        <div>
+          <dt>Gate id</dt>
+          <dd>{shortId(gate.id)}</dd>
+        </div>
+        <div>
+          <dt>Status</dt>
+          <dd>{statusLabel}</dd>
+        </div>
+        <div>
+          <dt>Opened</dt>
+          <dd>{gate.opened_at}</dd>
+        </div>
+        {gate.status === "pending" ? (
+          <div>
+            <dt>Explanation</dt>
+            <dd>This Core Agent proposal requires a human decision.</dd>
+          </div>
+        ) : (
+          <>
+            <div>
+              <dt>Resolved by</dt>
+              <dd>
+                {gate.resolved_by_actor_id} ({gate.resolved_by_role})
+              </dd>
+            </div>
+            <div>
+              <dt>Resolved</dt>
+              <dd>{gate.resolved_at}</dd>
+            </div>
+            {gate.rationale && (
+              <div>
+                <dt>Rationale</dt>
+                <dd>{gate.rationale}</dd>
+              </div>
+            )}
+            {gate.decision_id && (
+              <div>
+                <dt>Decision</dt>
+                <dd>{shortId(gate.decision_id)}</dd>
+              </div>
+            )}
+          </>
+        )}
+      </dl>
+    </div>
+  );
+}
+
 function ConfirmedAnchorCard({
   revision,
   decision,
@@ -1102,6 +1221,38 @@ function ConfirmedAnchorCard({
           </small>
         </p>
       )}
+      <HumanGateDetails revisionId={revision.id} />
+    </article>
+  );
+}
+
+/** Step 1D: the most recently rejected revision, if any -- previously
+ * this page had no persistent display slot for a rejected revision at
+ * all (only the transient "Rejected revision #N" status banner right
+ * after the action). Mirrors ConfirmedAnchorCard's shape exactly, minus
+ * the confirmed-only fields. */
+function RejectedAnchorCard({
+  revision,
+}: {
+  revision: CoreAnchorRevisionRead;
+}) {
+  return (
+    <article>
+      <h3>
+        Revision #{revision.revision_number}{" "}
+        <StatusBadge status={revision.status} />
+      </h3>
+      <ScalarFieldsReadOnly revision={revision} />
+      <SemanticCollectionsReadOnly revision={revision} />
+      {revision.source_intent_decomposition_id && (
+        <p>
+          <small>
+            Based on intent decomposition{" "}
+            {shortId(revision.source_intent_decomposition_id)}
+          </small>
+        </p>
+      )}
+      <HumanGateDetails revisionId={revision.id} />
     </article>
   );
 }
@@ -1773,6 +1924,8 @@ function CoreAnchorGate({
           </dd>
         </div>
       </dl>
+
+      <HumanGateDetails revisionId={revision.id} />
 
       {showStaleWarning && (
         <p data-warning="stale-impact">

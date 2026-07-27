@@ -20,6 +20,7 @@ from intent_core_contracts.api.intent import (
     CoreAnchorRevisionDraftCreate,
     CoreAnchorRevisionRead,
     CoreAnchorRevisionUpdate,
+    HumanGateRead,
     IntentBriefCreate,
     IntentBriefRead,
 )
@@ -39,13 +40,19 @@ from intent_core_api.agents.models import AgentRun, ContextSnapshot
 from intent_core_api.config import get_settings
 from intent_core_api.db import get_session
 from intent_core_api.integrations import writeback_service
-from intent_core_api.intent import brief_service, core_anchor_service, execution_anchor_service
+from intent_core_api.intent import (
+    brief_service,
+    core_anchor_service,
+    execution_anchor_service,
+    human_gate_service,
+)
 from intent_core_api.intent.models import (
     ContextReconstruction,
     CoreAnchor,
     CoreAnchorRevision,
     ExecutionAnchor,
     ExecutionAnchorRevision,
+    HumanGate,
     IntentBrief,
     IntentDecomposition,
 )
@@ -249,6 +256,19 @@ async def list_core_anchor_revision_decisions(
     return await decision_service.list_decisions_for_entity(
         session, "core_anchor_revision", revision_id
     )
+
+
+@router.get("/core-anchor-revisions/{revision_id}/human-gate", response_model=HumanGateRead)
+async def get_core_anchor_revision_human_gate(
+    revision_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> HumanGate:
+    # 404 (not an empty/null response) when a historical, pre-Step-1D
+    # revision has no persisted gate -- the caller (UI) distinguishes
+    # this from a real error and shows a legacy-compatibility message.
+    gate = await human_gate_service.get_gate_for_revision(session, revision_id)
+    if gate is None:
+        raise NotFoundError("No persisted human gate exists for this revision")
+    return gate
 
 
 @router.patch("/core-anchor-revisions/{revision_id}", response_model=CoreAnchorRevisionRead)
