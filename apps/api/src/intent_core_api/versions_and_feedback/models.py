@@ -110,6 +110,50 @@ class VFXSupervisorReview(Base):
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)
 
 
+class ArtistAgentGuidance(Base):
+    """One immutable, advisory Artist Agent iteration guidance for a
+    single Version (Step 5, ``agent_type=artist_agent``,
+    ``capability=iteration_guidance``) -- Artist-facing translation of
+    upstream creative/technical intent and existing feedback, never an
+    authoritative Decision, never a HumanGate resolution, never a
+    confirm/reject/approve/rank of the Version itself (see
+    ``agents.artist_guidance_service``'s module docstring). Lives here,
+    not in ``intent.models``, for the same reason ``VFXSupervisorReview``
+    does: it is fundamentally about a Version. ``task_id`` and
+    ``execution_anchor_revision_id`` record which Task's confirmed
+    Execution Anchor this guidance was generated against -- supplied by
+    the caller at generation time, since ``Version`` itself has no
+    ``task_id`` (see ``Version``'s own module docstring). No update or
+    delete path exists anywhere in the API surface; multiple guidance
+    records may exist for one Version, with no active/latest pointer --
+    same convention as ``VFXSupervisorReview``/``CGSupervisorReview``.
+    """
+
+    __tablename__ = "artist_agent_guidances"
+    __table_args__ = (
+        Index("ix_artist_agent_guidances_shot_id", "shot_id"),
+        Index("ix_artist_agent_guidances_task_id", "task_id"),
+        Index("ix_artist_agent_guidances_version_id", "version_id"),
+        Index(
+            "ix_artist_agent_guidances_execution_anchor_revision_id",
+            "execution_anchor_revision_id",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id"))
+    shot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("shots.id"))
+    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tasks.id"))
+    version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("versions.id"))
+    execution_anchor_revision_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("execution_anchor_revisions.id")
+    )
+    context_snapshot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("context_snapshots.id"))
+    agent_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("agent_runs.id"), unique=True)
+    guidance_output: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+
+
 class ReviewNote(Base):
     """Original human feedback on a Version. Immutable, append-only --
     AI summaries must never overwrite it (docs/GLOSSARY.md "Review Note").

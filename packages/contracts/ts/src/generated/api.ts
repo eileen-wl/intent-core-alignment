@@ -723,6 +723,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/intent/versions/{version_id}/artist-guidances/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate Artist Agent Guidance */
+        post: operations["generate_artist_agent_guidance_intent_versions__version_id__artist_guidances_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/artist-guidances/{guidance_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Artist Agent Guidance */
+        get: operations["get_artist_agent_guidance_intent_artist_guidances__guidance_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/versions/{version_id}/artist-guidances": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Artist Agent Guidances */
+        get: operations["list_artist_agent_guidances_intent_versions__version_id__artist_guidances_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/integrations/sync-cursor/{key}": {
         parameters: {
             query?: never;
@@ -1084,6 +1135,134 @@ export interface components {
         AnchorRejectRequest: {
             /** Rationale */
             rationale?: string | null;
+        };
+        /** ArtistAgentGuidanceOutput */
+        ArtistAgentGuidanceOutput: {
+            /** Executive Summary */
+            executive_summary: string;
+            creative_intent_read: components["schemas"]["ArtistGuidanceItem"];
+            task_goal: components["schemas"]["ArtistGuidanceItem"];
+            current_iteration_read: components["schemas"]["ArtistGuidanceItem"];
+            /** Non Negotiables */
+            non_negotiables: components["schemas"]["ArtistGuidanceItem"][];
+            /** Allowed Variations */
+            allowed_variations: components["schemas"]["ArtistGuidanceItem"][];
+            /** Feedback Translations */
+            feedback_translations: components["schemas"]["ArtistFeedbackTranslation"][];
+            /** Iteration Priorities */
+            iteration_priorities: components["schemas"]["ArtistGuidanceItem"][];
+            /** Cross Department Dependencies */
+            cross_department_dependencies: components["schemas"]["ArtistGuidanceItem"][];
+            /** Questions For Human Supervisor */
+            questions_for_human_supervisor: string[];
+            /** Evidence Gaps */
+            evidence_gaps: string[];
+        };
+        /** ArtistAgentGuidanceRead */
+        ArtistAgentGuidanceRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+            /**
+             * Execution Anchor Revision Id
+             * Format: uuid
+             */
+            execution_anchor_revision_id: string;
+            /**
+             * Context Snapshot Id
+             * Format: uuid
+             */
+            context_snapshot_id: string;
+            /**
+             * Agent Run Id
+             * Format: uuid
+             */
+            agent_run_id: string;
+            guidance_output: components["schemas"]["ArtistAgentGuidanceOutput"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
+        /** ArtistEvidenceReference */
+        ArtistEvidenceReference: {
+            /**
+             * Source Type
+             * @enum {string}
+             */
+            source_type: "intent_brief" | "intent_decomposition" | "core_anchor_revision" | "constraint" | "variation_zone" | "drift_risk" | "open_question" | "context_reconstruction" | "execution_anchor_revision" | "vfx_supervisor_review" | "cg_supervisor_review" | "version" | "review_note" | "decision" | "task" | "shot";
+            /** Source Id */
+            source_id: string;
+            /** Label */
+            label: string;
+        };
+        /**
+         * ArtistFeedbackTranslation
+         * @description Translates one piece of upstream feedback/evidence into practical,
+         *     Artist-facing terms -- suggested wording only, never persisted as a
+         *     ``ReviewNote`` row.
+         */
+        ArtistFeedbackTranslation: {
+            /** Feedback Or Issue */
+            feedback_or_issue: string;
+            /** Practical Action */
+            practical_action: string;
+            /** Underlying Intent */
+            underlying_intent: string;
+            /** Self Check */
+            self_check: string;
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "low" | "medium" | "high";
+            /** Evidence */
+            evidence: components["schemas"]["ArtistEvidenceReference"][];
+        };
+        /** ArtistGuidanceGenerateRequest */
+        ArtistGuidanceGenerateRequest: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+        };
+        /** ArtistGuidanceItem */
+        ArtistGuidanceItem: {
+            /** Summary */
+            summary: string;
+            /** Why It Matters */
+            why_it_matters: string;
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "low" | "medium" | "high";
+            /** Evidence */
+            evidence: components["schemas"]["ArtistEvidenceReference"][];
         };
         /**
          * AssessmentDecisionRequest
@@ -3843,6 +4022,106 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CGSupervisorReviewRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_artist_agent_guidance_intent_versions__version_id__artist_guidances_generate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ArtistGuidanceGenerateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtistAgentGuidanceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_artist_agent_guidance_intent_artist_guidances__guidance_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                guidance_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtistAgentGuidanceRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_artist_agent_guidances_intent_versions__version_id__artist_guidances_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtistAgentGuidanceRead"][];
                 };
             };
             /** @description Validation Error */
