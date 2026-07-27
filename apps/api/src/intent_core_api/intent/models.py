@@ -349,6 +349,57 @@ class CoreAnchorRevision(Base):
     )
 
 
+class HumanGate(Base):
+    """Step 1D: a first-class, minimal persistent record of the human
+    review requirement opened by a ``CoreAnchorRevision`` draft, and how
+    it was resolved. Exactly one ``HumanGate`` per revision
+    (``core_anchor_revision_id`` unique) -- created in the same
+    transaction as the draft (``core_anchor_service.create_draft_revision``)
+    and resolved only as a side effect of the existing confirm/reject
+    flow (``core_anchor_service.confirm_revision`` /
+    ``.reject_revision``, via ``intent.human_gate_service``). No
+    PATCH/DELETE path exists anywhere in the API surface -- a resolved
+    gate is immutable.
+
+    This is not an Agent and does not itself decide anything: ``Decision``
+    remains the authoritative human decision record, referenced here via
+    ``decision_id`` once resolution completes. Historical revisions
+    created before this migration have no row here -- see
+    ``intent.human_gate_service`` for the legacy-compatibility path.
+    """
+
+    __tablename__ = "human_gates"
+    __table_args__ = (Index("ix_human_gates_shot_id", "shot_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    shot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("shots.id"), nullable=False)
+    core_anchor_revision_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("core_anchor_revisions.id"), nullable=False, unique=True
+    )
+    # "core_anchor_confirmation" today -- a plain bounded string, not a
+    # generic polymorphic target_type/target_id framework (Step 1D scope
+    # is Core Anchor review only; see module docstring).
+    gate_type: Mapped[str] = mapped_column(String(50))
+    required_role: Mapped[str] = mapped_column(String(20))
+    # "pending" | "confirmed" | "rejected" -- validated at the contract/
+    # service layer (same convention as CoreAnchorRevision.status), not
+    # by a database CHECK constraint.
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    opened_at: Mapped[datetime] = mapped_column(default=_utcnow)
+    resolved_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    resolved_by_actor_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    resolved_by_role: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    resolved_by_actor_type: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    rationale: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Nullable + unique: null while pending, populated with the
+    # authoritative Decision's id exactly once, at resolution.
+    decision_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("decisions.id"), nullable=True, unique=True
+    )
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(default=_utcnow, onupdate=_utcnow)
+
+
 class ExecutionAnchor(Base):
     """Secondary Execution Anchor identity -- one per Task. Same shape as
     ``CoreAnchor``: ``active_revision_id`` is a stored pointer, updated

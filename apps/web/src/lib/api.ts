@@ -20,6 +20,7 @@ import type {
   DecisionRead,
   ExecutionAnchorRead,
   ExecutionAnchorRevisionRead,
+  HumanGateRead,
   HumanRole,
   IntentBriefRead,
   IntentDecompositionRead,
@@ -226,6 +227,15 @@ export function listDecisionsForRevision(
   revisionId: string,
 ): Promise<DecisionRead[]> {
   return apiFetch(`/intent/core-anchor-revisions/${revisionId}/decisions`);
+}
+
+// Step 1D: the persisted HumanGate for a Core Anchor revision. `null` for
+// a legacy, pre-Step-1D draft that has no gate row -- a legitimate empty
+// state, not an error (same convention as getCoreAnchor/getExecutionAnchor).
+export function getHumanGateForRevision(
+  revisionId: string,
+): Promise<HumanGateRead | null> {
+  return fetchOrNull(`/intent/core-anchor-revisions/${revisionId}/human-gate`);
 }
 
 export function getAgentRun(agentRunId: string): Promise<AgentRunRead> {

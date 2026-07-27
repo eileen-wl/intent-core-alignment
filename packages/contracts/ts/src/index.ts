@@ -48,6 +48,8 @@ export type ExecutionAnchorRevisionUpdate =
 export type AnchorConfirmRequest = Schemas["AnchorConfirmRequest"];
 export type AnchorRejectRequest = Schemas["AnchorRejectRequest"];
 
+export type HumanGateRead = Schemas["HumanGateRead"];
+
 export type DecisionRead = Schemas["DecisionRead"];
 
 export type ContextSnapshotRead = Schemas["ContextSnapshotRead"];

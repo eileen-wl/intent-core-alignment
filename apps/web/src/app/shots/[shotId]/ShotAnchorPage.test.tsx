@@ -16,6 +16,7 @@ import type {
   DecisionRead,
   ExecutionAnchorRead,
   ExecutionAnchorRevisionRead,
+  HumanGateRead,
   IntentBriefRead,
   IntentDecompositionRead,
   ShotRead,
@@ -347,6 +348,27 @@ function decision(overrides: Partial<DecisionRead> = {}): DecisionRead {
   };
 }
 
+function humanGate(overrides: Partial<HumanGateRead> = {}): HumanGateRead {
+  return {
+    id: "gate-1",
+    shot_id: "shot-1",
+    core_anchor_revision_id: "rev-draft",
+    gate_type: "core_anchor_confirmation",
+    required_role: "vfx_supervisor",
+    status: "pending",
+    opened_at: NOW,
+    resolved_at: null,
+    resolved_by_actor_id: null,
+    resolved_by_role: null,
+    resolved_by_actor_type: null,
+    rationale: null,
+    decision_id: null,
+    created_at: NOW,
+    updated_at: NOW,
+    ...overrides,
+  };
+}
+
 function agentRun(overrides: Partial<AgentRunRead> = {}): AgentRunRead {
   return {
     id: "run-123",
@@ -406,6 +428,7 @@ interface Fixture {
   contextSnapshots: Record<string, ContextSnapshotRead>;
   versions: VersionRead[];
   contextReconstructions: ContextReconstructionRead[];
+  humanGates: Record<string, HumanGateRead>;
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -561,6 +584,16 @@ function installFetchMock(
       if (method === "GET" && decisionsMatch) {
         return jsonResponse(200, fixture.decisions[decisionsMatch[1]] ?? []);
       }
+      const humanGateMatch =
+        /^\/intent\/core-anchor-revisions\/([^/]+)\/human-gate$/.exec(path);
+      if (method === "GET" && humanGateMatch) {
+        const gate = fixture.humanGates[humanGateMatch[1]];
+        return gate
+          ? jsonResponse(200, gate)
+          : jsonResponse(404, {
+              detail: "No persisted human gate exists for this revision",
+            });
+      }
       const agentRunMatch = /^\/intent\/agent-runs\/([^/]+)$/.exec(path);
       if (method === "GET" && agentRunMatch) {
         const run = fixture.agentRuns[agentRunMatch[1]];
@@ -713,6 +746,23 @@ function baseFixture(): Fixture {
     contextSnapshots: {},
     versions: [],
     contextReconstructions: [],
+    humanGates: {
+      "rev-confirmed": humanGate({
+        id: "gate-confirmed",
+        core_anchor_revision_id: "rev-confirmed",
+        status: "confirmed",
+        resolved_at: NOW,
+        resolved_by_actor_id: "vfx-1",
+        resolved_by_role: "vfx_supervisor",
+        resolved_by_actor_type: "human",
+        decision_id: "decision-1",
+      }),
+      "rev-draft": humanGate({
+        id: "gate-draft",
+        core_anchor_revision_id: "rev-draft",
+        status: "pending",
+      }),
+    },
   };
 }
 
@@ -2740,6 +2790,176 @@ describe("ShotAnchorPage", () => {
       ).not.toBeInTheDocument();
       expect(
         within(card).queryByRole("button", { name: /use/i }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Step 1D: Persistent human gate", () => {
+    it("renders pending gate details on the draft's Human Review Gate", async () => {
+      installFetchMock(baseFixture());
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const draftGate = await screen.findByLabelText("Draft revision 2");
+      const gateSection = within(draftGate).getByLabelText("Human review gate");
+      expect(within(gateSection).getByText("Pending")).toBeInTheDocument();
+      expect(within(gateSection).getByText("gate-dra")).toBeInTheDocument();
+      expect(
+        within(gateSection).getByText(
+          "This Core Agent proposal requires a human decision.",
+        ),
+      ).toBeInTheDocument();
+      // Resolution fields must not appear while pending.
+      expect(
+        within(gateSection).queryByText("Resolved by"),
+      ).not.toBeInTheDocument();
+      expect(
+        within(gateSection).queryByText("Decision"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows Confirm/Reject for the VFX Supervisor on a pending draft", async () => {
+      installFetchMock(baseFixture());
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const draftGate = await screen.findByLabelText("Draft revision 2");
+      expect(
+        within(draftGate).getByRole("button", { name: "Confirm" }),
+      ).not.toBeDisabled();
+      expect(
+        within(draftGate).getByRole("button", { name: "Reject" }),
+      ).not.toBeDisabled();
+    });
+
+    it("shows the pending gate read-only for CG Supervisor and Artist, with no Confirm/Reject", async () => {
+      const user = userEvent.setup();
+      installFetchMock(baseFixture());
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      for (const roleValue of ["cg_supervisor", "artist"]) {
+        await user.selectOptions(screen.getByLabelText("Role"), roleValue);
+
+        const draftGate = screen.getByLabelText("Draft revision 2");
+        const gateSection =
+          within(draftGate).getByLabelText("Human review gate");
+        expect(within(gateSection).getByText("Pending")).toBeInTheDocument();
+        expect(
+          within(draftGate).getByRole("button", { name: "Confirm" }),
+        ).toBeDisabled();
+        expect(
+          within(draftGate).getByRole("button", { name: "Reject" }),
+        ).toBeDisabled();
+      }
+    });
+
+    it("renders confirmed gate resolution details on the confirmed anchor card", async () => {
+      installFetchMock(baseFixture());
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByText("Keep dread quiet");
+      const confirmedCard = screen
+        .getByText("Keep dread quiet")
+        .closest("article");
+      expect(confirmedCard).not.toBeNull();
+      const gateSection = within(confirmedCard as HTMLElement).getByLabelText(
+        "Human review gate",
+      );
+      expect(within(gateSection).getByText("Confirmed")).toBeInTheDocument();
+      expect(within(gateSection).getByText(/vfx-1/)).toBeInTheDocument();
+      expect(
+        within(gateSection).getByText(/vfx_supervisor/),
+      ).toBeInTheDocument();
+      // Decision short id (shortId slices to 8 chars: "decision-1" -> "decisio1"? no -- "decision" is exactly 8).
+      expect(within(gateSection).getByText("decision")).toBeInTheDocument();
+    });
+
+    it("renders rejected gate resolution details on a rejected revision card", async () => {
+      const fixture = baseFixture();
+      fixture.revisions = [
+        ...fixture.revisions.filter((r) => r.status !== "draft"),
+        revision({
+          id: "rev-rejected",
+          revision_number: 3,
+          status: "rejected",
+          shot_objective: "Too loud",
+        }),
+      ];
+      fixture.humanGates["rev-rejected"] = humanGate({
+        id: "gate-rejected",
+        core_anchor_revision_id: "rev-rejected",
+        status: "rejected",
+        resolved_at: NOW,
+        resolved_by_actor_id: "vfx-1",
+        resolved_by_role: "vfx_supervisor",
+        resolved_by_actor_type: "human",
+        rationale: "Not aligned with the brief.",
+        decision_id: "decision-reject-1",
+      });
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByText("Too loud");
+      const rejectedCard = screen.getByText("Too loud").closest("article");
+      expect(rejectedCard).not.toBeNull();
+      const gateSection = within(rejectedCard as HTMLElement).getByLabelText(
+        "Human review gate",
+      );
+      expect(within(gateSection).getByText("Rejected")).toBeInTheDocument();
+      expect(
+        within(gateSection).getByText("Not aligned with the brief."),
+      ).toBeInTheDocument();
+      // shortId() slices to 8 chars: "decision-reject-1" -> "decision".
+      expect(within(gateSection).getByText("decision")).toBeInTheDocument();
+    });
+
+    it("shows a legacy no-gate message for a revision with no persisted gate", async () => {
+      const fixture = baseFixture();
+      fixture.humanGates = {};
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const draftGate = await screen.findByLabelText("Draft revision 2");
+      expect(
+        await within(draftGate).findByText(
+          "No persisted HumanGate exists for this pre-Step 1D revision.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("lets the VFX Supervisor confirm a legacy draft with no persisted gate", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.humanGates = {};
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const draftGate = await screen.findByLabelText("Draft revision 2");
+      await within(draftGate).findByText(
+        "No persisted HumanGate exists for this pre-Step 1D revision.",
+      );
+
+      await user.click(
+        within(draftGate).getByRole("button", { name: "Confirm" }),
+      );
+
+      expect(await screen.findByRole("status")).toHaveTextContent(
+        /Confirmed revision #2/,
+      );
+    });
+
+    it("never renders reopen, reset, or edit-gate controls", async () => {
+      installFetchMock(baseFixture());
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Draft revision 2");
+      expect(
+        screen.queryByRole("button", { name: /reopen/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /reset/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /edit gate/i }),
       ).not.toBeInTheDocument();
     });
   });

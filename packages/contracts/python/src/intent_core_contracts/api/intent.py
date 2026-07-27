@@ -267,3 +267,31 @@ class AnchorConfirmRequest(BaseModel):
 
 class AnchorRejectRequest(BaseModel):
     rationale: str | None = None
+
+
+# Step 1D: a minimal persistent HumanGate for Core Anchor revision review.
+# "core_anchor_confirmation" is the only gate_type this slice produces --
+# not a generic polymorphic target_type/target_id framework (see
+# intent_core_api.intent.human_gate_service's module docstring).
+HumanGateType = Literal["core_anchor_confirmation"]
+HumanGateStatus = Literal["pending", "confirmed", "rejected"]
+
+
+class HumanGateRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    shot_id: UUID
+    core_anchor_revision_id: UUID
+    gate_type: HumanGateType
+    required_role: HumanRole
+    status: HumanGateStatus
+    opened_at: datetime
+    resolved_at: datetime | None
+    resolved_by_actor_id: str | None
+    resolved_by_role: HumanRole | None
+    resolved_by_actor_type: ActorKind | None
+    rationale: str | None
+    decision_id: UUID | None
+    created_at: datetime
+    updated_at: datetime
