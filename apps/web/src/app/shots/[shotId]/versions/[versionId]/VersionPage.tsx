@@ -10,6 +10,9 @@ import type {
   HumanRole,
   ReviewNoteRead,
   VersionRead,
+  VFXReviewEvidenceReference,
+  VFXReviewItem,
+  VFXSupervisorReviewRead,
 } from "@intent-core/contracts";
 
 import {
@@ -17,11 +20,13 @@ import {
   acceptAlignmentAssessment,
   describeError,
   generateAlignmentAssessment,
+  generateVfxSupervisorReview,
   getVersion,
   listCoreAnchorRevisions,
   listDecisionsForAssessment,
   listReviewNotesForVersion,
   listAssessmentsForVersion,
+  listVfxSupervisorReviewsForVersion,
   rejectAlignmentAssessment,
 } from "@/lib/api";
 import { ActorSelector } from "@/components/ActorSelector";
@@ -68,6 +73,7 @@ interface VersionData {
   reviewNotes: ReviewNoteRead[];
   coreAnchorRevisions: CoreAnchorRevisionRead[];
   assessments: AssessmentData[];
+  vfxSupervisorReviews: VFXSupervisorReviewRead[];
 }
 
 type LoadState =
@@ -81,11 +87,13 @@ async function loadVersionData(
   versionId: string,
 ): Promise<VersionData> {
   const version = await getVersion(versionId);
-  const [reviewNotes, coreAnchorRevisions, assessments] = await Promise.all([
-    listReviewNotesForVersion(versionId),
-    listCoreAnchorRevisions(shotId),
-    listAssessmentsForVersion(versionId),
-  ]);
+  const [reviewNotes, coreAnchorRevisions, assessments, vfxSupervisorReviews] =
+    await Promise.all([
+      listReviewNotesForVersion(versionId),
+      listCoreAnchorRevisions(shotId),
+      listAssessmentsForVersion(versionId),
+      listVfxSupervisorReviewsForVersion(versionId),
+    ]);
   const assessmentData = await Promise.all(
     assessments.map(async (assessment) => ({
       assessment,
@@ -97,6 +105,7 @@ async function loadVersionData(
     reviewNotes,
     coreAnchorRevisions,
     assessments: assessmentData,
+    vfxSupervisorReviews,
   };
 }
 
@@ -161,7 +170,13 @@ export function VersionPage({
     );
   }
 
-  const { version, reviewNotes, coreAnchorRevisions, assessments } = state.data;
+  const {
+    version,
+    reviewNotes,
+    coreAnchorRevisions,
+    assessments,
+    vfxSupervisorReviews,
+  } = state.data;
   const confirmedRevision =
     coreAnchorRevisions.find((r) => r.status === "confirmed") ?? null;
   const actor = { role, actorId };
@@ -253,6 +268,31 @@ export function VersionPage({
               actor={actor}
               onDecided={reload}
             />
+          ))
+        )}
+      </section>
+
+      <section aria-label="VFX Supervisor Agent review">
+        <h2>VFX Supervisor Agent review</h2>
+        <p>
+          <small>
+            AI creative review — VFX Supervisor Agent. Advisory only: this Agent
+            has not visually inspected any media for this Version -- its review
+            is based solely on recorded text metadata and existing evidence.
+          </small>
+        </p>
+        {actor.role === "vfx_supervisor" && (
+          <GenerateVfxSupervisorReviewButton
+            versionId={versionId}
+            actor={actor}
+            onGenerated={reload}
+          />
+        )}
+        {vfxSupervisorReviews.length === 0 ? (
+          <p>No VFX Supervisor Agent reviews generated yet.</p>
+        ) : (
+          vfxSupervisorReviews.map((review) => (
+            <VfxSupervisorReviewCard key={review.id} review={review} />
           ))
         )}
       </section>
@@ -542,5 +582,212 @@ function AssessmentDecisionPanel({
         ))}
       </ul>
     </section>
+  );
+}
+
+function GenerateVfxSupervisorReviewButton({
+  versionId,
+  actor,
+  onGenerated,
+}: {
+  versionId: string;
+  actor: { role: HumanRole; actorId: string };
+  onGenerated: () => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleGenerate() {
+    setPending(true);
+    setError(null);
+    try {
+      await generateVfxSupervisorReview(versionId, actor);
+      onGenerated();
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => void handleGenerate()}
+      >
+        {pending ? "Generating…" : "Generate VFX Supervisor review"}
+      </button>
+      {error && <p role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function EvidenceList({
+  evidence,
+}: {
+  evidence: VFXReviewEvidenceReference[];
+}) {
+  return (
+    <ul>
+      {evidence.map((ref, index) => (
+        // eslint-disable-next-line react/no-array-index-key -- evidence
+        // references have no stable id of their own and are never
+        // reordered in place
+        <li key={index}>
+          <small>
+            {ref.label} ({ref.source_type}: {shortId(ref.source_id)})
+          </small>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ReviewItemView({ item }: { item: VFXReviewItem }) {
+  return (
+    <li>
+      <p>
+        {item.summary} <em data-priority={item.priority}>[{item.priority}]</em>
+      </p>
+      <p>
+        <small>{item.rationale}</small>
+      </p>
+      <EvidenceList evidence={item.evidence} />
+    </li>
+  );
+}
+
+function ReviewItemList({
+  label,
+  items,
+}: {
+  label: string;
+  items: VFXReviewItem[];
+}) {
+  return (
+    <div>
+      <h4>{label}</h4>
+      {items.length === 0 ? (
+        <p>
+          <small>None.</small>
+        </p>
+      ) : (
+        <ul>
+          {items.map((item, index) => (
+            // eslint-disable-next-line react/no-array-index-key -- these
+            // items have no stable id of their own and are never
+            // reordered in place
+            <ReviewItemView key={index} item={item} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function StringList({ label, items }: { label: string; items: string[] }) {
+  return (
+    <div>
+      <h4>{label}</h4>
+      {items.length === 0 ? (
+        <p>
+          <small>None.</small>
+        </p>
+      ) : (
+        <ul>
+          {items.map((item, index) => (
+            // eslint-disable-next-line react/no-array-index-key -- these
+            // strings have no stable id and are never reordered in place
+            <li key={index}>{item}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function VfxSupervisorReviewCard({
+  review,
+}: {
+  review: VFXSupervisorReviewRead;
+}) {
+  const output = review.review_output;
+
+  return (
+    <article aria-label={`VFX Supervisor review ${review.id}`}>
+      <p>{output.executive_summary}</p>
+
+      <div>
+        <h4>Creative direction read</h4>
+        <ReviewItemView item={output.creative_direction_read} />
+      </div>
+
+      <ReviewItemList label="Strengths" items={output.strengths} />
+      <ReviewItemList
+        label="Creative concerns"
+        items={output.creative_concerns}
+      />
+      <ReviewItemList
+        label="Review priorities"
+        items={output.review_priorities}
+      />
+
+      <div>
+        <h4>Proposed feedback notes</h4>
+        {output.proposed_feedback_notes.length === 0 ? (
+          <p>
+            <small>None.</small>
+          </p>
+        ) : (
+          <ul>
+            {output.proposed_feedback_notes.map((note, index) => (
+              // eslint-disable-next-line react/no-array-index-key -- these
+              // notes have no stable id of their own and are never
+              // reordered in place
+              <li key={index}>
+                <p>
+                  <strong>Feedback:</strong> {note.feedback}{" "}
+                  <em data-priority={note.priority}>[{note.priority}]</em>
+                </p>
+                <p>
+                  <strong>Why it matters:</strong> {note.underlying_intent}
+                </p>
+                <EvidenceList evidence={note.evidence} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <StringList
+        label="Questions for Human Supervisor"
+        items={output.questions_for_human_supervisor}
+      />
+      <StringList label="Evidence gaps" items={output.evidence_gaps} />
+
+      <dl>
+        <div>
+          <dt>Created</dt>
+          <dd>{review.created_at}</dd>
+        </div>
+        <div>
+          <dt>Agent run</dt>
+          <dd>
+            {review.agent_run_id}
+            <AgentProvenanceDetails
+              agentRunId={review.agent_run_id}
+              contextSnapshotId={review.context_snapshot_id}
+              showAgentType
+            />
+          </dd>
+        </div>
+        <div>
+          <dt>Context snapshot</dt>
+          <dd>{review.context_snapshot_id}</dd>
+        </div>
+      </dl>
+    </article>
   );
 }

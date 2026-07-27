@@ -587,6 +587,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/intent/versions/{version_id}/vfx-supervisor-reviews/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate Vfx Supervisor Review */
+        post: operations["generate_vfx_supervisor_review_intent_versions__version_id__vfx_supervisor_reviews_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/vfx-supervisor-reviews/{review_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vfx Supervisor Review */
+        get: operations["get_vfx_supervisor_review_intent_vfx_supervisor_reviews__review_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/versions/{version_id}/vfx-supervisor-reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Vfx Supervisor Reviews */
+        get: operations["list_vfx_supervisor_reviews_intent_versions__version_id__vfx_supervisor_reviews_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/integrations/sync-cursor/{key}": {
         parameters: {
             query?: never;
@@ -1844,6 +1895,108 @@ export interface components {
              * Format: date-time
              */
             updated_at: string;
+        };
+        /**
+         * VFXProposedFeedbackNote
+         * @description Suggested feedback wording only -- never persisted as a
+         *     ``ReviewNote`` row; a Human VFX Supervisor decides whether and how
+         *     to actually record feedback.
+         */
+        VFXProposedFeedbackNote: {
+            /** Feedback */
+            feedback: string;
+            /** Underlying Intent */
+            underlying_intent: string;
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "low" | "medium" | "high";
+            /** Evidence */
+            evidence: components["schemas"]["VFXReviewEvidenceReference"][];
+        };
+        /** VFXReviewEvidenceReference */
+        VFXReviewEvidenceReference: {
+            /**
+             * Source Type
+             * @enum {string}
+             */
+            source_type: "intent_brief" | "intent_decomposition" | "core_anchor_revision" | "constraint" | "variation_zone" | "drift_risk" | "anchor_reference" | "open_question" | "context_reconstruction" | "alignment_assessment" | "version" | "review_note" | "decision" | "task" | "execution_anchor_revision" | "shot";
+            /** Source Id */
+            source_id: string;
+            /** Label */
+            label: string;
+        };
+        /** VFXReviewItem */
+        VFXReviewItem: {
+            /** Summary */
+            summary: string;
+            /** Rationale */
+            rationale: string;
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "low" | "medium" | "high";
+            /** Evidence */
+            evidence: components["schemas"]["VFXReviewEvidenceReference"][];
+        };
+        /** VFXSupervisorReviewOutput */
+        VFXSupervisorReviewOutput: {
+            /** Executive Summary */
+            executive_summary: string;
+            creative_direction_read: components["schemas"]["VFXReviewItem"];
+            /** Strengths */
+            strengths: components["schemas"]["VFXReviewItem"][];
+            /** Creative Concerns */
+            creative_concerns: components["schemas"]["VFXReviewItem"][];
+            /** Review Priorities */
+            review_priorities: components["schemas"]["VFXReviewItem"][];
+            /** Proposed Feedback Notes */
+            proposed_feedback_notes: components["schemas"]["VFXProposedFeedbackNote"][];
+            /** Questions For Human Supervisor */
+            questions_for_human_supervisor: string[];
+            /** Evidence Gaps */
+            evidence_gaps: string[];
+        };
+        /** VFXSupervisorReviewRead */
+        VFXSupervisorReviewRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+            /**
+             * Context Snapshot Id
+             * Format: uuid
+             */
+            context_snapshot_id: string;
+            /**
+             * Agent Run Id
+             * Format: uuid
+             */
+            agent_run_id: string;
+            review_output: components["schemas"]["VFXSupervisorReviewOutput"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
         };
         /** ValidationError */
         ValidationError: {
@@ -3243,6 +3396,102 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExecutionAnchorRevisionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_vfx_supervisor_review_intent_versions__version_id__vfx_supervisor_reviews_generate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VFXSupervisorReviewRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vfx_supervisor_review_intent_vfx_supervisor_reviews__review_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                review_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VFXSupervisorReviewRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_vfx_supervisor_reviews_intent_versions__version_id__vfx_supervisor_reviews_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VFXSupervisorReviewRead"][];
                 };
             };
             /** @description Validation Error */

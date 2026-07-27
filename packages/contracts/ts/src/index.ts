@@ -71,6 +71,12 @@ export type AlignmentState =
 export type AlignmentAssessmentRead = Schemas["AlignmentAssessmentRead"];
 export type AssessmentDecisionRequest = Schemas["AssessmentDecisionRequest"];
 
+export type VFXReviewEvidenceReference = Schemas["VFXReviewEvidenceReference"];
+export type VFXReviewItem = Schemas["VFXReviewItem"];
+export type VFXProposedFeedbackNote = Schemas["VFXProposedFeedbackNote"];
+export type VFXSupervisorReviewOutput = Schemas["VFXSupervisorReviewOutput"];
+export type VFXSupervisorReviewRead = Schemas["VFXSupervisorReviewRead"];
+
 export type SyncCursorRead = Schemas["SyncCursorRead"];
 export type SyncCursorUpsert = Schemas["SyncCursorUpsert"];
 
