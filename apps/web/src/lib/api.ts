@@ -20,6 +20,8 @@ import type {
   CoreAnchorRead,
   CoreAnchorRevisionRead,
   CoreAnchorRevisionUpdate,
+  CrossRoleAssessmentGenerateRequest,
+  CrossRoleAssessmentRead,
   DecisionRead,
   ExecutionAnchorRead,
   ExecutionAnchorRevisionDraftCreate,
@@ -496,4 +498,30 @@ export function listArtistAgentGuidancesForVersion(
   versionId: string,
 ): Promise<ArtistAgentGuidanceRead[]> {
   return apiFetch(`/intent/versions/${versionId}/artist-guidances`);
+}
+
+// Step 6: Core Agent cross-role assessment -- a fifth Core Agent
+// capability, not a fifth Agent. Purely advisory; the read response
+// links the required IntentSignal and optional ReAnchorProposal.
+// Generation requires an explicit task_id (Version has no task_id of
+// its own -- same Step 5 domain decision).
+
+export function generateCrossRoleAssessment(
+  versionId: string,
+  payload: CrossRoleAssessmentGenerateRequest,
+  actor: Actor,
+): Promise<CrossRoleAssessmentRead> {
+  return apiFetch(
+    `/intent/versions/${versionId}/cross-role-assessments/generate`,
+    { method: "POST", body: payload, actor },
+  );
+}
+
+export function listCrossRoleAssessmentsForVersionAndTask(
+  versionId: string,
+  taskId: string,
+): Promise<CrossRoleAssessmentRead[]> {
+  return apiFetch(
+    `/intent/versions/${versionId}/cross-role-assessments?task_id=${taskId}`,
+  );
 }

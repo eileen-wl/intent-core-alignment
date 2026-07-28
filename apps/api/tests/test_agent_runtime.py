@@ -12,7 +12,7 @@ output type rather than a real capability's contract.
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 import pytest
 from intent_core_api.agents import model_gateway, prompt_registry, runtime
@@ -20,7 +20,7 @@ from intent_core_api.agents.models import AgentRun, ContextSnapshot
 from intent_core_api.agents.runtime import AgentExecutionSpec, execute_agent
 from intent_core_api.production_context.models import Project, Shot
 from intent_core_api.workflow.exceptions import AgentGenerationError
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -768,3 +768,279 @@ def test_runtime_module_reexports_nothing_extra() -> None:
     """
     public_names = {name for name in dir(runtime) if not name.startswith("_")}
     assert {"AgentExecutionSpec", "execute_agent", "Generator"} <= public_names
+
+
+# --- schema-conformance diagnostics (Step 6 real-provider fix) ---
+#
+# A real Core Agent cross-role-assessment DeepSeek call once returned a
+# complete, non-empty, non-truncated response (finish_reason="stop",
+# well under the configured output budget) that still failed
+# ValidationError -- a genuine schema-conformance miss, not a truncation
+# or empty-content case, which the previous diagnostics could not tell
+# apart from any other decode failure. These tests exercise
+# ``StructuredOutputValidationDiagnostics`` directly against a small,
+# deliberately more structured fake output type (nested object, a
+# Literal enum, and bounded lists) than ``_FakeOutput`` above, since
+# ``_FakeOutput``'s single plain string field cannot produce the error
+# shapes (literal_error, too_long, too_short, missing) a real
+# capability's richer contract can.
+
+
+class _FakeRole(BaseModel):
+    kind: Literal["alpha", "beta", "gamma"]
+    text: str = Field(max_length=10)
+
+
+class _FakeProposal(BaseModel):
+    reason: str
+    evidence: list[str] = Field(min_length=2, max_length=4)
+
+
+class _FakeStructuredOutput(BaseModel):
+    summary: str
+    items: list[str] = Field(max_length=3)
+    roles: list[_FakeRole]
+    proposal: _FakeProposal | None = None
+
+
+def _valid_fake_payload() -> dict[str, Any]:
+    return {
+        "summary": "ok",
+        "items": ["a"],
+        "roles": [{"kind": "alpha", "text": "x"}],
+        "proposal": None,
+    }
+
+
+def _generate_with_fake_content(
+    monkeypatch: pytest.MonkeyPatch, content_dict: dict[str, Any]
+) -> str:
+    """Runs ``model_gateway.generate_deepseek`` against
+    ``_FakeStructuredOutput`` with the given (already-invalid) JSON-able
+    payload as the mocked provider's raw content, and returns the
+    sanitised ``AgentGenerationError`` message.
+    """
+    import json
+
+    import openai
+
+    class _SchemaFailureClient(_FakeOpenAIClient):
+        def __init__(self, *, api_key: str, base_url: str) -> None:
+            super().__init__(api_key=api_key, base_url=base_url)
+            self.chat = _FakeChat(json.dumps(content_dict))
+
+    monkeypatch.setattr(openai, "OpenAI", _SchemaFailureClient)
+
+    with pytest.raises(AgentGenerationError) as excinfo:
+        model_gateway.generate_deepseek(
+            api_key="k",
+            model_name="deepseek-v4-flash",
+            system_prompt="json",
+            user_content="{}",
+            output_model=_FakeStructuredOutput,
+            max_tokens=1024,
+        )
+    return str(excinfo.value)
+
+
+def test_schema_diagnostics_missing_required_field(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _valid_fake_payload()
+    del payload["summary"]
+
+    message = _generate_with_fake_content(monkeypatch, payload)
+
+    assert "validation_stage=schema_validation" in message
+    assert "total_validation_errors=1" in message
+    assert "summary:missing" in message
+
+
+def test_schema_diagnostics_invalid_role_enum(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _valid_fake_payload()
+    payload["roles"] = [{"kind": "not_a_role", "text": "x"}]
+
+    message = _generate_with_fake_content(monkeypatch, payload)
+
+    assert "roles.0.kind:literal_error" in message
+    # The invalid value itself must never reach the message.
+    assert "not_a_role" not in message
+
+
+def test_schema_diagnostics_too_many_list_entries(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _valid_fake_payload()
+    payload["items"] = ["a", "b", "c", "d"]
+
+    message = _generate_with_fake_content(monkeypatch, payload)
+
+    assert "items:too_long" in message
+
+
+def test_schema_diagnostics_string_too_long(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _valid_fake_payload()
+    payload["roles"] = [{"kind": "alpha", "text": "x" * 11}]
+
+    message = _generate_with_fake_content(monkeypatch, payload)
+
+    assert "roles.0.text:string_too_long" in message
+    assert "x" * 11 not in message
+
+
+def test_schema_diagnostics_evidence_list_too_short(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _valid_fake_payload()
+    payload["proposal"] = {"reason": "r", "evidence": ["only-one"]}
+
+    message = _generate_with_fake_content(monkeypatch, payload)
+
+    assert "proposal.evidence:too_short" in message
+
+
+def test_schema_diagnostics_evidence_list_too_long(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _valid_fake_payload()
+    payload["proposal"] = {"reason": "r", "evidence": ["a", "b", "c", "d", "e"]}
+
+    message = _generate_with_fake_content(monkeypatch, payload)
+
+    assert "proposal.evidence:too_long" in message
+
+
+def test_schema_diagnostics_malformed_re_anchor_proposal_shape(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A present-but-incomplete nested optional object (the
+    ReAnchorProposal shape in the real capability) -- missing a required
+    field inside the nested object, not the object itself missing.
+    """
+    payload = _valid_fake_payload()
+    payload["proposal"] = {"evidence": ["a", "b"]}  # "reason" omitted
+
+    message = _generate_with_fake_content(monkeypatch, payload)
+
+    assert "proposal.reason:missing" in message
+
+
+def test_schema_diagnostics_multiple_simultaneous_errors(monkeypatch: pytest.MonkeyPatch) -> None:
+    payload = _valid_fake_payload()
+    del payload["summary"]
+    payload["items"] = ["a", "b", "c", "d"]
+    payload["roles"] = [{"kind": "not_a_role", "text": "x" * 11}]
+    payload["proposal"] = {"evidence": ["only-one"]}
+
+    message = _generate_with_fake_content(monkeypatch, payload)
+
+    assert "total_validation_errors=6" in message
+    assert "summary:missing" in message
+    assert "items:too_long" in message
+    assert "roles.0.kind:literal_error" in message
+    assert "roles.0.text:string_too_long" in message
+    assert "proposal.reason:missing" in message
+    assert "proposal.evidence:too_short" in message
+
+
+def test_schema_diagnostics_are_capped_at_ten_entries() -> None:
+    """Direct unit test of the diagnostics builder (bypassing the network
+    mock) for precise control over triggering more than ten simultaneous
+    errors -- eleven invalid roles, one error each.
+    """
+    from intent_core_api.agents.model_gateway import (
+        DeepSeekResponseDiagnostics,
+        StructuredOutputValidationDiagnostics,
+    )
+    from pydantic import ValidationError
+
+    payload = {
+        "summary": "ok",
+        "items": [],
+        "roles": [{"kind": "not_a_role", "text": "x"} for _ in range(11)],
+        "proposal": None,
+    }
+    try:
+        _FakeStructuredOutput.model_validate(payload)
+        raise AssertionError("expected a ValidationError")
+    except ValidationError as exc:
+        response = DeepSeekResponseDiagnostics(
+            finish_reason="stop",
+            configured_max_output_tokens=1024,
+            prompt_tokens=None,
+            completion_tokens=None,
+            total_tokens=None,
+            response_characters=0,
+            content_was_empty=False,
+        )
+        diagnostics = StructuredOutputValidationDiagnostics.from_validation_error(exc, response)
+
+    assert diagnostics.total_validation_errors == 11
+    assert len(diagnostics.schema_errors) == 10
+    message = str(diagnostics)
+    assert message.count("literal_error") == 10
+
+
+def test_schema_diagnostics_never_include_model_values_prompt_or_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    secret_api_key = "sk-should-never-be-recorded"  # noqa: S105 -- fake, test-only value
+    secret_prompt = "a secret system prompt that must never leak"
+    marker = "DISTINCTIVE_MODEL_GENERATED_MARKER_VALUE"
+
+    payload = _valid_fake_payload()
+    payload["roles"] = [{"kind": "alpha", "text": marker}]  # too long AND carries the marker
+
+    import json
+
+    import openai
+
+    class _SchemaFailureClient(_FakeOpenAIClient):
+        def __init__(self, *, api_key: str, base_url: str) -> None:
+            super().__init__(api_key=api_key, base_url=base_url)
+            self.chat = _FakeChat(json.dumps(payload))
+
+    monkeypatch.setattr(openai, "OpenAI", _SchemaFailureClient)
+
+    with pytest.raises(AgentGenerationError) as excinfo:
+        model_gateway.generate_deepseek(
+            api_key=secret_api_key,
+            model_name="deepseek-v4-flash",
+            system_prompt=secret_prompt,
+            user_content="{}",
+            output_model=_FakeStructuredOutput,
+            max_tokens=1024,
+        )
+
+    message = str(excinfo.value)
+    assert marker not in message
+    assert secret_api_key not in message
+    assert secret_prompt not in message
+    # Pydantic's full `msg` text must not leak either -- only the short
+    # `error_type` code, never the human-readable sentence.
+    assert "String should have at most" not in message
+    assert "roles.0.text:string_too_long" in message
+
+
+def test_schema_diagnostics_distinguishes_json_decode_from_schema_validation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A response that is not valid JSON at all must be reported as
+    ``validation_stage=json_decode``, never lumped in with per-field
+    schema errors (there is no per-field detail to report).
+    """
+    import openai
+
+    class _MalformedJsonClient(_FakeOpenAIClient):
+        def __init__(self, *, api_key: str, base_url: str) -> None:
+            super().__init__(api_key=api_key, base_url=base_url)
+            self.chat = _FakeChat('{"summary": "unterminated')
+
+    monkeypatch.setattr(openai, "OpenAI", _MalformedJsonClient)
+
+    with pytest.raises(AgentGenerationError) as excinfo:
+        model_gateway.generate_deepseek(
+            api_key="k",
+            model_name="deepseek-v4-flash",
+            system_prompt="json",
+            user_content="{}",
+            output_model=_FakeStructuredOutput,
+            max_tokens=1024,
+        )
+
+    message = str(excinfo.value)
+    assert "validation_stage=json_decode" in message
+    assert "schema_errors=" not in message
+    assert "unterminated" not in message

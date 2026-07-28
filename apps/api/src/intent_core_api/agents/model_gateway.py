@@ -32,12 +32,31 @@ particular, pydantic's own ``ValidationError`` message on malformed
 JSON embeds a snippet of the actual (possibly truncated) response text
 via its ``input_value`` field -- that message is deliberately never
 allowed to reach an ``AgentRun.error`` unsanitised.
+
+Schema-conformance diagnostics (Step 6 real-provider fix): a real Core
+Agent cross-role-assessment call once returned a complete, non-empty,
+non-truncated response (``finish_reason="stop"``, well under the
+configured output budget) that still failed ``ValidationError`` --
+i.e. the failure was neither empty content nor truncation, but the
+provider's JSON not conforming to the output contract. The previous
+diagnostics gave no way to tell that apart from "some other decode
+error," which mattered for the *next* prompt-hardening iteration
+(schema-conformance misses ask for a different prompt fix than
+truncation does). ``StructuredOutputValidationDiagnostics`` splits a
+``ValidationError`` into exactly two safely-reportable shapes: a
+malformed-JSON failure (pydantic v2 reports this as a single
+``type="json_invalid"`` error with an empty ``loc``) versus a
+schema-validation failure, for which it reports only each error's
+field path (from Pydantic's own ``loc``) and short ``type`` code,
+capped at ten entries -- never Pydantic's ``input``/``input_value``
+(which can embed a snippet of the actual model-generated content) and
+never its full ``msg`` text.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Final
+from typing import Final, Literal
 
 from pydantic import BaseModel, ValidationError
 
@@ -124,6 +143,93 @@ def _usage_field(usage: object, field: str) -> int | None:
     return value if isinstance(value, int) else None
 
 
+# Bounded so one malformed response with many simultaneous errors still
+# produces a short, readable ``AgentRun.error`` string.
+_MAX_REPORTED_SCHEMA_ERRORS: Final[int] = 10
+
+
+@dataclass(frozen=True)
+class SchemaValidationErrorDetail:
+    """One sanitised entry from a failed ``model_validate_json`` call --
+    only the dotted field path (from Pydantic's own ``loc``) and its
+    short ``type`` code (e.g. ``"literal_error"``, ``"too_long"``).
+    Deliberately never carries Pydantic's ``input``/``input_value`` or
+    its full ``msg`` text, either of which can embed a snippet of the
+    actual model-generated content.
+    """
+
+    field_path: str
+    error_type: str
+
+    def __str__(self) -> str:
+        return f"{self.field_path}:{self.error_type}"
+
+
+def _schema_error_field_path(loc: tuple[int | str, ...]) -> str:
+    return ".".join(str(part) for part in loc) if loc else "<root>"
+
+
+@dataclass(frozen=True)
+class StructuredOutputValidationDiagnostics:
+    """Bounded, credential-free diagnostics for one failed
+    ``model_validate_json`` call, distinguishing two failure stages:
+
+    - ``"json_decode"``: the provider's content is not valid JSON at
+      all. Pydantic v2 reports this as a single error with
+      ``type="json_invalid"`` and an empty ``loc`` -- there is no
+      per-field detail to report, only the same response-level facts
+      as ``DeepSeekResponseDiagnostics``.
+    - ``"schema_validation"``: the content parsed as JSON but does not
+      conform to ``output_model`` -- reports the total error count and,
+      capped at ``_MAX_REPORTED_SCHEMA_ERRORS``, each error's field path
+      and short type code.
+
+    Never includes Pydantic's ``input``/``input_value``, its full
+    ``msg`` text, the raw response, the prompt, or any credential.
+    """
+
+    validation_stage: Literal["json_decode", "schema_validation"]
+    response: DeepSeekResponseDiagnostics
+    total_validation_errors: int
+    schema_errors: tuple[SchemaValidationErrorDetail, ...]
+
+    @classmethod
+    def from_validation_error(
+        cls, exc: ValidationError, response: DeepSeekResponseDiagnostics
+    ) -> StructuredOutputValidationDiagnostics:
+        errors = exc.errors(include_url=False, include_context=False, include_input=False)
+        if any(error["type"] == "json_invalid" for error in errors):
+            return cls(
+                validation_stage="json_decode",
+                response=response,
+                total_validation_errors=len(errors),
+                schema_errors=(),
+            )
+        schema_errors = tuple(
+            SchemaValidationErrorDetail(
+                field_path=_schema_error_field_path(error["loc"]),
+                error_type=error["type"],
+            )
+            for error in errors[:_MAX_REPORTED_SCHEMA_ERRORS]
+        )
+        return cls(
+            validation_stage="schema_validation",
+            response=response,
+            total_validation_errors=len(errors),
+            schema_errors=schema_errors,
+        )
+
+    def __str__(self) -> str:
+        if self.validation_stage == "json_decode":
+            return f"validation_stage=json_decode {self.response}"
+        errors_repr = ", ".join(str(detail) for detail in self.schema_errors)
+        return (
+            f"validation_stage=schema_validation "
+            f"total_validation_errors={self.total_validation_errors} "
+            f"schema_errors=[{errors_repr}] {self.response}"
+        )
+
+
 def generate_deepseek[OutputT: BaseModel](
     *,
     api_key: str,
@@ -187,7 +293,11 @@ def generate_deepseek[OutputT: BaseModel](
         # pydantic's own ValidationError message embeds a snippet of the
         # actual (possibly truncated) response text via its
         # `input_value` field -- deliberately not propagated. Only the
-        # sanitised diagnostics reach the AgentRun.
+        # sanitised diagnostics (json-decode vs. schema-validation, with
+        # per-field paths/type codes for the latter) reach the AgentRun.
+        structured_diagnostics = StructuredOutputValidationDiagnostics.from_validation_error(
+            exc, diagnostics
+        )
         raise AgentGenerationError(
-            f"DeepSeek response failed structured-output validation ({diagnostics})"
+            f"DeepSeek response failed structured-output validation ({structured_diagnostics})"
         ) from exc

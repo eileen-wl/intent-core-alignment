@@ -11,6 +11,9 @@ import type {
   CoreAnchorRead,
   CoreAnchorRevisionRead,
   CoreAnchorRevisionUpdate,
+  CrossRoleAssessmentRead,
+  CrossRoleEvidenceReference,
+  CrossRoleFinding,
   DecisionRead,
   ExecutionAnchorRead,
   ExecutionAnchorRevisionRead,
@@ -19,6 +22,7 @@ import type {
   IntentBriefRead,
   IntentDecompositionDimensions,
   IntentDecompositionRead,
+  RolePerspectiveRead,
   ShotRead,
   TaskRead,
   VersionRead,
@@ -33,6 +37,7 @@ import {
   generateCgSupervisorReview,
   generateContextReconstruction,
   generateCoreAnchorDraft,
+  generateCrossRoleAssessment,
   generateIntentDecomposition,
   getCoreAnchor,
   getExecutionAnchor,
@@ -44,6 +49,7 @@ import {
   listCgSupervisorReviewsForExecutionAnchorRevision,
   listContextReconstructionsForShot,
   listCoreAnchorRevisions,
+  listCrossRoleAssessmentsForVersionAndTask,
   listDecisionsForRevision,
   listExecutionAnchorRevisionsForTask,
   listIntentDecompositionsForShot,
@@ -556,6 +562,12 @@ export function ShotAnchorPage({ shotId }: { shotId: string }) {
           </ul>
         )}
       </section>
+
+      <CrossRoleAssessmentSection
+        taskAnchors={taskAnchors}
+        versions={versions}
+        actor={actor}
+      />
     </main>
   );
 }
@@ -2698,5 +2710,565 @@ function TaskAnchorRow({
         </>
       )}
     </li>
+  );
+}
+
+// Step 6: Core Agent cross-role assessment section -- a fifth Core Agent
+// capability, not a fifth Agent. Requires an explicit Task and Version
+// selection (both drawn from the Shot page's already-loaded local data,
+// per the same Step 5 explicit-context domain decision: Version has no
+// task_id of its own). Purely advisory: no apply/accept/reject/
+// materialise/confirm/edit control exists for the assessment, its
+// IntentSignal, or its optional ReAnchorProposal.
+
+function CrossRoleEvidenceList({
+  evidence,
+}: {
+  evidence: CrossRoleEvidenceReference[];
+}) {
+  return (
+    <ul>
+      {evidence.map((ref, index) => (
+        // eslint-disable-next-line react/no-array-index-key -- evidence
+        // references have no stable id of their own and are never
+        // reordered in place
+        <li key={index}>
+          <small>
+            {ref.label} ({ref.source_type}: {shortId(ref.source_id)})
+          </small>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function CrossRoleFindingView({ finding }: { finding: CrossRoleFinding }) {
+  return (
+    <li>
+      <p>
+        {finding.summary}{" "}
+        <em data-priority={finding.priority}>[{finding.priority}]</em>
+      </p>
+      <p>
+        <small>{finding.why_it_matters}</small>
+      </p>
+      <p>
+        <small>Affects: {finding.affected_roles.join(", ")}</small>
+      </p>
+      <CrossRoleEvidenceList evidence={finding.evidence} />
+    </li>
+  );
+}
+
+function CrossRoleFindingList({
+  label,
+  items,
+}: {
+  label: string;
+  items: CrossRoleFinding[];
+}) {
+  return (
+    <div>
+      <h5>{label}</h5>
+      {items.length === 0 ? (
+        <p>
+          <small>None.</small>
+        </p>
+      ) : (
+        <ul>
+          {items.map((item, index) => (
+            // eslint-disable-next-line react/no-array-index-key -- these
+            // findings have no stable id of their own and are never
+            // reordered in place
+            <CrossRoleFindingView key={index} finding={item} />
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function RolePerspectiveView({
+  perspective,
+}: {
+  perspective: RolePerspectiveRead;
+}) {
+  return (
+    <li>
+      <p>
+        <strong>{perspective.role}</strong>
+      </p>
+      <p>
+        <strong>Current position:</strong> {perspective.current_position}
+      </p>
+      <p>
+        <strong>Protected intent:</strong> {perspective.protected_intent}
+      </p>
+      <p>
+        <strong>Main concerns:</strong> {perspective.main_concerns}
+      </p>
+      <CrossRoleEvidenceList evidence={perspective.evidence} />
+    </li>
+  );
+}
+
+function IntentSignalCard({
+  signal,
+}: {
+  signal: CrossRoleAssessmentRead["intent_signal"];
+}) {
+  const output = signal.signal_output;
+  return (
+    <article aria-label="Intent signal">
+      <h4>Intent signal</h4>
+      <p>
+        <small>
+          This is an advisory attention signal, not an alignment verdict or a
+          production Decision.
+        </small>
+      </p>
+      <p>
+        <strong>Attention level:</strong>{" "}
+        <span data-attention-level={output.attention_level}>
+          {output.attention_level}
+        </span>{" "}
+        (<em>{output.label}</em>)
+      </p>
+      <p>{output.summary}</p>
+      <div>
+        <h5>Drivers</h5>
+        {output.drivers.length === 0 ? (
+          <p>
+            <small>None.</small>
+          </p>
+        ) : (
+          <ul>
+            {output.drivers.map((driver, index) => (
+              // eslint-disable-next-line react/no-array-index-key -- drivers
+              // have no stable id of their own and are never reordered
+              <li key={index}>
+                <small>
+                  [{driver.priority}] {driver.code}: {driver.summary} (
+                  {driver.assessment_section}#{driver.assessment_item_index})
+                </small>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <p>
+        <small>
+          Role coverage: VFX {output.role_coverage.vfx_supervisor ? "✓" : "✗"},
+          CG {output.role_coverage.cg_supervisor ? "✓" : "✗"}, Artist{" "}
+          {output.role_coverage.artist ? "✓" : "✗"}
+        </small>
+      </p>
+      <p>
+        <small>
+          Re-anchor proposal present:{" "}
+          {output.re_anchor_proposal_present ? "Yes" : "No"}
+        </small>
+      </p>
+      {output.caveats.length > 0 && (
+        <ul>
+          {output.caveats.map((caveat, index) => (
+            // eslint-disable-next-line react/no-array-index-key -- caveats
+            // have no stable id and are never reordered in place
+            <li key={index}>
+              <small>{caveat}</small>
+            </li>
+          ))}
+        </ul>
+      )}
+    </article>
+  );
+}
+
+function ReAnchorProposalCard({
+  proposal,
+}: {
+  proposal: NonNullable<CrossRoleAssessmentRead["re_anchor_proposal"]>;
+}) {
+  const output = proposal.proposal_output;
+  return (
+    <article aria-label="Re-anchor proposal">
+      <h4>Re-anchor proposal</h4>
+      <p>
+        <small>
+          This proposal is advisory only, for Human VFX Supervisor
+          consideration. It does not modify the Core Anchor, and it is not a
+          Decision.
+        </small>
+      </p>
+      <p>{output.reason_for_consideration}</p>
+
+      <div>
+        <h5>Preserved elements</h5>
+        {output.preserved_elements.length === 0 ? (
+          <p>
+            <small>None.</small>
+          </p>
+        ) : (
+          <ul>
+            {output.preserved_elements.map((item, index) => (
+              // eslint-disable-next-line react/no-array-index-key -- these
+              // strings have no stable id and are never reordered in place
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div>
+        <h5>Proposed fields</h5>
+        <ul>
+          {output.proposed_fields.map((fieldProposal, index) => (
+            // eslint-disable-next-line react/no-array-index-key -- these
+            // proposals have no stable id and are never reordered in place
+            <li key={index}>
+              <p>
+                <strong>Field:</strong> {fieldProposal.field}
+              </p>
+              <p>
+                <strong>Current problem:</strong>{" "}
+                {fieldProposal.current_problem}
+              </p>
+              <p>
+                <strong>Proposed direction:</strong>{" "}
+                {fieldProposal.proposed_direction}
+              </p>
+              <p>
+                <strong>Why it may help:</strong>{" "}
+                {fieldProposal.why_it_may_help}
+              </p>
+              <CrossRoleEvidenceList evidence={fieldProposal.evidence} />
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div>
+        <h5>Adoption risks</h5>
+        {output.adoption_risks.length === 0 ? (
+          <p>
+            <small>None.</small>
+          </p>
+        ) : (
+          <ul>
+            {output.adoption_risks.map((item, index) => (
+              // eslint-disable-next-line react/no-array-index-key -- these
+              // strings have no stable id and are never reordered in place
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div>
+        <h5>Questions for Human VFX Supervisor</h5>
+        {output.questions_for_human_vfx_supervisor.length === 0 ? (
+          <p>
+            <small>None.</small>
+          </p>
+        ) : (
+          <ul>
+            {output.questions_for_human_vfx_supervisor.map((item, index) => (
+              // eslint-disable-next-line react/no-array-index-key -- these
+              // strings have no stable id and are never reordered in place
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <CrossRoleEvidenceList evidence={output.evidence} />
+    </article>
+  );
+}
+
+function CrossRoleAssessmentCard({
+  assessment,
+}: {
+  assessment: CrossRoleAssessmentRead;
+}) {
+  const output = assessment.assessment_output;
+
+  return (
+    <article aria-label={`Cross-role assessment ${assessment.id}`}>
+      <p>{output.executive_summary}</p>
+
+      <div>
+        <h4>Shared intent read</h4>
+        <ul>
+          <CrossRoleFindingView finding={output.shared_intent_read} />
+        </ul>
+      </div>
+
+      <div>
+        <h4>Role perspectives</h4>
+        <ul>
+          {output.role_perspectives.map((perspective) => (
+            <RolePerspectiveView
+              key={perspective.role}
+              perspective={perspective}
+            />
+          ))}
+        </ul>
+      </div>
+
+      <CrossRoleFindingList label="Agreements" items={output.agreements} />
+      <CrossRoleFindingList
+        label="Cross-role tensions"
+        items={output.cross_role_tensions}
+      />
+      <CrossRoleFindingList
+        label="Local-optimum risks"
+        items={output.local_optimum_risks}
+      />
+      <CrossRoleFindingList
+        label="Unresolved dependencies"
+        items={output.unresolved_dependencies}
+      />
+      <CrossRoleFindingList
+        label="Human coordination priorities"
+        items={output.human_coordination_priorities}
+      />
+
+      <div>
+        <h4>Evidence gaps</h4>
+        {output.evidence_gaps.length === 0 ? (
+          <p>
+            <small>None.</small>
+          </p>
+        ) : (
+          <ul>
+            {output.evidence_gaps.map((item, index) => (
+              // eslint-disable-next-line react/no-array-index-key -- these
+              // strings have no stable id and are never reordered in place
+              <li key={index}>{item}</li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <IntentSignalCard signal={assessment.intent_signal} />
+      {assessment.re_anchor_proposal && (
+        <ReAnchorProposalCard proposal={assessment.re_anchor_proposal} />
+      )}
+
+      <dl>
+        <div>
+          <dt>Created</dt>
+          <dd>{assessment.created_at}</dd>
+        </div>
+        <div>
+          <dt>Provenance</dt>
+          <dd>
+            <AgentProvenanceDetails
+              agentRunId={assessment.agent_run_id}
+              contextSnapshotId={assessment.context_snapshot_id}
+              showAgentType
+            />
+          </dd>
+        </div>
+      </dl>
+    </article>
+  );
+}
+
+function GenerateCrossRoleAssessmentButton({
+  versionId,
+  taskId,
+  actor,
+  onGenerated,
+}: {
+  versionId: string;
+  taskId: string;
+  actor: { role: HumanRole; actorId: string };
+  onGenerated: () => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleGenerate() {
+    setPending(true);
+    setError(null);
+    try {
+      await generateCrossRoleAssessment(versionId, { task_id: taskId }, actor);
+      onGenerated();
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => void handleGenerate()}
+      >
+        {pending ? "Generating…" : "Generate cross-role assessment"}
+      </button>
+      {error && <p role="alert">{error}</p>}
+    </div>
+  );
+}
+
+function CrossRoleAssessmentSection({
+  taskAnchors,
+  versions,
+  actor,
+}: {
+  taskAnchors: TaskAnchorInfo[];
+  versions: VersionRead[];
+  actor: { role: HumanRole; actorId: string };
+}) {
+  const [taskId, setTaskId] = useState(taskAnchors[0]?.task.id ?? "");
+  const [versionId, setVersionId] = useState(versions[0]?.id ?? "");
+  const [state, setState] = useState<
+    | { status: "loading" }
+    | { status: "error"; message: string }
+    | { status: "ready"; assessments: CrossRoleAssessmentRead[] }
+  >({ status: "loading" });
+
+  const loadAssessments = useCallback(() => {
+    if (!taskId || !versionId) return;
+    setState({ status: "loading" });
+    listCrossRoleAssessmentsForVersionAndTask(versionId, taskId).then(
+      (assessments) => setState({ status: "ready", assessments }),
+      (err: unknown) =>
+        setState({ status: "error", message: describeError(err) }),
+    );
+  }, [versionId, taskId]);
+
+  useEffect(() => {
+    loadAssessments();
+  }, [loadAssessments]);
+
+  if (taskAnchors.length === 0 || versions.length === 0) {
+    return (
+      <section aria-label="AI cross-role assessment — Core Agent">
+        <h2>AI cross-role assessment — Core Agent</h2>
+        <p>
+          <small>
+            A cross-role assessment requires at least one Task and one Version
+            to exist for this Shot.
+          </small>
+        </p>
+      </section>
+    );
+  }
+
+  return (
+    <section aria-label="AI cross-role assessment — Core Agent">
+      <h2>AI cross-role assessment — Core Agent</h2>
+      <p>
+        <small>
+          Advisory only: this Core Agent capability has not directly inspected
+          any footage, render, or scene file -- it synthesises the confirmed
+          Anchors and the recorded VFX/CG/Artist Agent output.
+        </small>
+      </p>
+      <label htmlFor="cross-role-task">Task</label>{" "}
+      <select
+        id="cross-role-task"
+        value={taskId}
+        onChange={(e) => setTaskId(e.target.value)}
+      >
+        {taskAnchors.map(({ task }) => (
+          <option key={task.id} value={task.id}>
+            {task.name}
+            {task.department ? ` (${task.department})` : ""}
+          </option>
+        ))}
+      </select>{" "}
+      <label htmlFor="cross-role-version">Version</label>{" "}
+      <select
+        id="cross-role-version"
+        value={versionId}
+        onChange={(e) => setVersionId(e.target.value)}
+      >
+        {versions.map((version) => (
+          <option key={version.id} value={version.id}>
+            {version.name}
+          </option>
+        ))}
+      </select>
+      {actor.role === "vfx_supervisor" ? (
+        <GenerateCrossRoleAssessmentButton
+          versionId={versionId}
+          taskId={taskId}
+          actor={actor}
+          onGenerated={loadAssessments}
+        />
+      ) : (
+        <p>
+          <small>Only a VFX Supervisor can generate a new assessment.</small>
+        </p>
+      )}
+      {state.status === "loading" && (
+        <p>
+          <small>Loading cross-role assessments…</small>
+        </p>
+      )}
+      {state.status === "error" && <p role="alert">{state.message}</p>}
+      {state.status === "ready" &&
+        (state.assessments.length === 0 ? (
+          <p>No cross-role assessments generated yet.</p>
+        ) : (
+          <CrossRoleAssessmentHistory assessments={state.assessments} />
+        ))}
+    </section>
+  );
+}
+
+function CrossRoleAssessmentHistory({
+  assessments,
+}: {
+  assessments: CrossRoleAssessmentRead[];
+}) {
+  // `assessments` is already newest-first from the backend -- the first
+  // entry is the current, latest assessment; everything after it is an
+  // immutable historical record kept only for audit purposes (Step 6's
+  // own multiple-immutable-assessments guarantee).
+  const [latestAssessment, ...previousAssessments] = assessments;
+
+  return (
+    <div>
+      {latestAssessment && (
+        <div role="region" aria-label="Latest cross-role assessment">
+          <h3>Latest assessment</h3>
+          <p>
+            <small>Created: {latestAssessment.created_at}</small>
+          </p>
+          <CrossRoleAssessmentCard assessment={latestAssessment} />
+        </div>
+      )}
+
+      {previousAssessments.length > 0 && (
+        <details aria-label="Previous cross-role assessments">
+          <summary>Previous assessments ({previousAssessments.length})</summary>
+          <p>
+            <small>
+              These are immutable historical outputs and may reflect earlier
+              validation rules. They are not the current assessment.
+            </small>
+          </p>
+          {previousAssessments.map((assessment) => (
+            <details key={assessment.id}>
+              <summary>Historical assessment — {assessment.created_at}</summary>
+              <h4>Historical assessment</h4>
+              <p>
+                <small>Created: {assessment.created_at}</small>
+              </p>
+              <CrossRoleAssessmentCard assessment={assessment} />
+            </details>
+          ))}
+        </details>
+      )}
+    </div>
   );
 }

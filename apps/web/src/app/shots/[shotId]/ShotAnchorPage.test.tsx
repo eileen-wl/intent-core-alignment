@@ -14,12 +14,18 @@ import type {
   ContextSnapshotRead,
   CoreAnchorRead,
   CoreAnchorRevisionRead,
+  CrossRoleAssessmentRead,
+  CrossRoleEvidenceReference,
+  CrossRoleFinding,
   DecisionRead,
   ExecutionAnchorRead,
   ExecutionAnchorRevisionRead,
   HumanGateRead,
   IntentBriefRead,
   IntentDecompositionRead,
+  IntentSignalRead,
+  ReAnchorProposalRead,
+  RolePerspectiveRead,
   ShotRead,
   TaskRead,
   VersionRead,
@@ -386,6 +392,185 @@ function cgSupervisorReview(
   };
 }
 
+function crossRoleEvidenceRef(
+  sourceType: CrossRoleEvidenceReference["source_type"] = "shot",
+  sourceId = "shot-1",
+  label = "Shot SH010",
+): CrossRoleEvidenceReference {
+  return { source_type: sourceType, source_id: sourceId, label };
+}
+
+function crossRoleFinding(
+  overrides: Partial<CrossRoleFinding> = {},
+): CrossRoleFinding {
+  return {
+    summary: "The three roles broadly agree on the restrained tone.",
+    why_it_matters: "Shared understanding reduces rework risk.",
+    affected_roles: ["vfx_supervisor"],
+    priority: "low",
+    evidence: [crossRoleEvidenceRef()],
+    ...overrides,
+  };
+}
+
+function rolePerspective(
+  overrides: Partial<RolePerspectiveRead> = {},
+): RolePerspectiveRead {
+  return {
+    role: "vfx_supervisor",
+    current_position: "Supports the restrained read of the brief.",
+    protected_intent: "Keep the tone quiet and controlled.",
+    main_concerns: "Final beat may read as too aggressive.",
+    evidence: [crossRoleEvidenceRef()],
+    ...overrides,
+  };
+}
+
+function intentSignal(
+  overrides: Partial<IntentSignalRead> = {},
+): IntentSignalRead {
+  return {
+    id: "signal-1",
+    cross_role_assessment_id: "assessment-1",
+    project_id: "proj-1",
+    shot_id: "shot-1",
+    task_id: "task-1",
+    version_id: "version-1",
+    attention_level: "low",
+    signal_output: {
+      attention_level: "low",
+      label: "low_attention",
+      summary: "No high-priority tensions, risks, or proposal were found.",
+      drivers: [],
+      role_coverage: {
+        vfx_supervisor: true,
+        cg_supervisor: true,
+        artist: true,
+      },
+      re_anchor_proposal_present: false,
+      caveats: [
+        "This is not an alignment verdict, quality score, or approval recommendation.",
+      ],
+    },
+    created_at: NOW,
+    ...overrides,
+  };
+}
+
+function reAnchorProposal(
+  overrides: Partial<ReAnchorProposalRead> = {},
+): ReAnchorProposalRead {
+  return {
+    id: "re-anchor-1",
+    cross_role_assessment_id: "assessment-1",
+    project_id: "proj-1",
+    shot_id: "shot-1",
+    current_core_anchor_revision_id: "rev-confirmed",
+    proposal_output: {
+      reason_for_consideration: "The push-in speed limit is ambiguous.",
+      preserved_elements: ["Keep the restrained tone."],
+      proposed_fields: [
+        {
+          field: "open_questions",
+          current_problem: "No recorded push-in speed limit.",
+          proposed_direction: "Add a push-in speed range to the Core Anchor.",
+          why_it_may_help: "Removes ambiguity for future iterations.",
+          evidence: [
+            crossRoleEvidenceRef(
+              "vfx_supervisor_review",
+              "vfx-review-1",
+              "VFX Supervisor review",
+            ),
+            crossRoleEvidenceRef(
+              "cg_supervisor_review",
+              "cg-review-1",
+              "CG Supervisor review",
+            ),
+          ],
+        },
+      ],
+      adoption_risks: ["May be too restrictive for future shots."],
+      questions_for_human_vfx_supervisor: ["Is this ambiguity real?"],
+      evidence: [
+        crossRoleEvidenceRef(
+          "core_anchor_revision",
+          "rev-confirmed",
+          "Core Anchor revision",
+        ),
+        crossRoleEvidenceRef(
+          "vfx_supervisor_review",
+          "vfx-review-1",
+          "VFX Supervisor review",
+        ),
+        crossRoleEvidenceRef(
+          "cg_supervisor_review",
+          "cg-review-1",
+          "CG Supervisor review",
+        ),
+      ],
+    },
+    created_at: NOW,
+    ...overrides,
+  };
+}
+
+function crossRoleAssessment(
+  overrides: Partial<CrossRoleAssessmentRead> = {},
+): CrossRoleAssessmentRead {
+  return {
+    id: "assessment-1",
+    project_id: "proj-1",
+    shot_id: "shot-1",
+    task_id: "task-1",
+    version_id: "version-1",
+    core_anchor_revision_id: "rev-confirmed",
+    execution_anchor_revision_id: "ea-rev-1",
+    vfx_supervisor_review_id: "vfx-review-1",
+    cg_supervisor_review_id: "cg-review-1",
+    artist_agent_guidance_id: "artist-guidance-1",
+    context_snapshot_id: "snapshot-cross-role-1",
+    agent_run_id: "run-cross-role-1",
+    assessment_output: {
+      executive_summary: "The three roles broadly agree on the shot's tone.",
+      shared_intent_read: crossRoleFinding({
+        summary: "All three roles read the brief as calling for restraint.",
+      }),
+      role_perspectives: [
+        rolePerspective({ role: "vfx_supervisor" }),
+        rolePerspective({
+          role: "cg_supervisor",
+          current_position: "Technically deliverable as described.",
+          protected_intent: "Keep the render within the 24fps boundary.",
+          main_concerns: "Contrast curve is not yet defined.",
+        }),
+        rolePerspective({
+          role: "artist",
+          current_position: "One iteration considered so far.",
+          protected_intent: "Preserve the character's stillness.",
+          main_concerns: "Push-in speed is unclear.",
+        }),
+      ],
+      agreements: [
+        crossRoleFinding({
+          summary: "All roles agree on the restrained tone.",
+        }),
+      ],
+      cross_role_tensions: [],
+      local_optimum_risks: [],
+      unresolved_dependencies: [],
+      human_coordination_priorities: [],
+      re_anchor_proposal: null,
+      evidence_gaps: [
+        "ICAS has not directly inspected footage, rendered frames, scene files, or numeric parameters for this Task.",
+      ],
+    },
+    created_at: NOW,
+    intent_signal: intentSignal(),
+    re_anchor_proposal: null,
+    ...overrides,
+  };
+}
+
 function decision(overrides: Partial<DecisionRead> = {}): DecisionRead {
   return {
     id: "decision-1",
@@ -494,6 +679,9 @@ interface Fixture {
   versions: VersionRead[];
   contextReconstructions: ContextReconstructionRead[];
   humanGates: Record<string, HumanGateRead>;
+  /** Keyed by `${versionId}:${taskId}`, matching the query the Shot page
+   * issues for its explicit Task+Version selection. */
+  crossRoleAssessments: Record<string, CrossRoleAssessmentRead[]>;
 }
 
 function jsonResponse(status: number, body: unknown): Response {
@@ -892,6 +1080,33 @@ function installFetchMock(
         fixture.revisions.push(generated);
         return jsonResponse(201, generated);
       }
+      const crossRoleListMatch =
+        /^\/intent\/versions\/([^/]+)\/cross-role-assessments$/.exec(path);
+      if (method === "GET" && crossRoleListMatch) {
+        const versionId = crossRoleListMatch[1];
+        const taskId = url.searchParams.get("task_id") ?? "";
+        return jsonResponse(
+          200,
+          fixture.crossRoleAssessments[`${versionId}:${taskId}`] ?? [],
+        );
+      }
+      const crossRoleGenerateMatch =
+        /^\/intent\/versions\/([^/]+)\/cross-role-assessments\/generate$/.exec(
+          path,
+        );
+      if (method === "POST" && crossRoleGenerateMatch) {
+        const versionId = crossRoleGenerateMatch[1];
+        const body = JSON.parse(String(init?.body)) as { task_id: string };
+        const key = `${versionId}:${body.task_id}`;
+        const existing = fixture.crossRoleAssessments[key] ?? [];
+        const generated = crossRoleAssessment({
+          id: `assessment-${existing.length + 1}`,
+          version_id: versionId,
+          task_id: body.task_id,
+        });
+        fixture.crossRoleAssessments[key] = [generated, ...existing];
+        return jsonResponse(201, generated);
+      }
 
       throw new Error(`Unhandled request in test: ${method} ${path}`);
     },
@@ -952,6 +1167,7 @@ function baseFixture(): Fixture {
     contextSnapshots: {},
     versions: [],
     contextReconstructions: [],
+    crossRoleAssessments: {},
     humanGates: {
       "rev-confirmed": humanGate({
         id: "gate-confirmed",
@@ -3435,6 +3651,492 @@ describe("ShotAnchorPage", () => {
       expect(
         within(review).queryByRole("button", { name: /edit/i }),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Cross-role assessment section", () => {
+    it("shows an empty state when the Shot has no Task or Version yet", async () => {
+      const fixture = baseFixture();
+      fixture.tasks = [];
+      fixture.versions = [];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      expect(
+        await screen.findByText(
+          "A cross-role assessment requires at least one Task and one Version to exist for this Shot.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("shows an empty list state and a VFX-only Generate button by default", async () => {
+      const fixture = baseFixture();
+      fixture.versions = [version()];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByText("AI cross-role assessment — Core Agent");
+      expect(
+        await screen.findByText("No cross-role assessments generated yet."),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Generate cross-role assessment" }),
+      ).toBeInTheDocument();
+    });
+
+    it("hides the Generate button and shows a read-only note for a CG Supervisor", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.versions = [version()];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByText("AI cross-role assessment — Core Agent");
+      await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
+
+      expect(
+        screen.queryByRole("button", {
+          name: "Generate cross-role assessment",
+        }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Only a VFX Supervisor can generate a new assessment.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("hides the Generate button and shows a read-only note for an Artist", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.versions = [version()];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByText("AI cross-role assessment — Core Agent");
+      await user.selectOptions(screen.getByLabelText("Role"), "artist");
+
+      expect(
+        screen.queryByRole("button", {
+          name: "Generate cross-role assessment",
+        }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.getByText(
+          "Only a VFX Supervisor can generate a new assessment.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("generates a new assessment as a VFX Supervisor and renders it", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.versions = [version()];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByText("No cross-role assessments generated yet.");
+      await user.click(
+        screen.getByRole("button", { name: "Generate cross-role assessment" }),
+      );
+
+      expect(
+        await screen.findByText(
+          "The three roles broadly agree on the shot's tone.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("renders an existing assessment's executive summary, findings, and all three role perspectives", async () => {
+      const fixture = baseFixture();
+      fixture.versions = [version()];
+      fixture.crossRoleAssessments["version-1:task-1"] = [
+        crossRoleAssessment(),
+      ];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const card = await screen.findByLabelText(
+        "Cross-role assessment assessment-1",
+      );
+      expect(
+        within(card).getByText(
+          "The three roles broadly agree on the shot's tone.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText(
+          "All three roles read the brief as calling for restraint.",
+        ),
+      ).toBeInTheDocument();
+      expect(within(card).getByText("vfx_supervisor")).toBeInTheDocument();
+      expect(within(card).getByText("cg_supervisor")).toBeInTheDocument();
+      expect(within(card).getByText("artist")).toBeInTheDocument();
+      expect(
+        within(card).getByText("Technically deliverable as described."),
+      ).toBeInTheDocument();
+      expect(
+        within(card).getByText("One iteration considered so far."),
+      ).toBeInTheDocument();
+    });
+
+    it("renders the Intent Signal with its attention level, drivers, and disclaimer", async () => {
+      const fixture = baseFixture();
+      fixture.versions = [version()];
+      fixture.crossRoleAssessments["version-1:task-1"] = [
+        crossRoleAssessment({
+          intent_signal: intentSignal({
+            attention_level: "medium",
+            signal_output: {
+              attention_level: "medium",
+              label: "attention_needed",
+              summary: "A medium-priority cross-role tension was identified.",
+              drivers: [
+                {
+                  code: "cross_role_tension",
+                  summary: "Push-in speed reading differs across roles.",
+                  priority: "medium",
+                  assessment_section: "cross_role_tensions",
+                  assessment_item_index: 0,
+                },
+              ],
+              role_coverage: {
+                vfx_supervisor: true,
+                cg_supervisor: true,
+                artist: true,
+              },
+              re_anchor_proposal_present: false,
+              caveats: [
+                "This is not an alignment verdict, quality score, or approval recommendation.",
+              ],
+            },
+          }),
+        }),
+      ];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const signal = await screen.findByLabelText("Intent signal");
+      expect(within(signal).getByText("medium")).toBeInTheDocument();
+      expect(within(signal).getByText("attention_needed")).toBeInTheDocument();
+      expect(
+        within(signal).getByText(/Push-in speed reading differs across roles/),
+      ).toBeInTheDocument();
+      expect(
+        within(signal).getByText(
+          /not an alignment verdict, quality score, or approval recommendation/,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("does not render a Re-anchor proposal card when none was generated", async () => {
+      const fixture = baseFixture();
+      fixture.versions = [version()];
+      fixture.crossRoleAssessments["version-1:task-1"] = [
+        crossRoleAssessment(),
+      ];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("Cross-role assessment assessment-1");
+      expect(
+        screen.queryByLabelText("Re-anchor proposal"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("renders a Re-anchor proposal card with its advisory-only disclaimer when present", async () => {
+      const fixture = baseFixture();
+      fixture.versions = [version()];
+      fixture.crossRoleAssessments["version-1:task-1"] = [
+        crossRoleAssessment({
+          re_anchor_proposal: reAnchorProposal(),
+          intent_signal: intentSignal({
+            attention_level: "high",
+            signal_output: {
+              attention_level: "high",
+              label: "human_review_required",
+              summary: "A re-anchor proposal was generated.",
+              drivers: [],
+              role_coverage: {
+                vfx_supervisor: true,
+                cg_supervisor: true,
+                artist: true,
+              },
+              re_anchor_proposal_present: true,
+              caveats: [
+                "This is not an alignment verdict, quality score, or approval recommendation.",
+              ],
+            },
+          }),
+        }),
+      ];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const proposal = await screen.findByLabelText("Re-anchor proposal");
+      expect(
+        within(proposal).getByText("The push-in speed limit is ambiguous."),
+      ).toBeInTheDocument();
+      expect(
+        within(proposal).getByText(
+          "Add a push-in speed range to the Core Anchor.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(proposal).getByText(
+          /advisory only, for Human VFX Supervisor consideration/,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        within(proposal).getByText(
+          /does not modify the Core Anchor, and it is not a Decision/,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("renders evidence and provenance but no apply/accept/reject controls", async () => {
+      const fixture = baseFixture();
+      fixture.versions = [version()];
+      fixture.crossRoleAssessments["version-1:task-1"] = [
+        crossRoleAssessment(),
+      ];
+      fixture.agentRuns["run-cross-role-1"] = agentRun({
+        id: "run-cross-role-1",
+        agent_type: "core_agent",
+        capability: "cross_role_assessment",
+        provider: "deterministic",
+      });
+      fixture.contextSnapshots["snapshot-cross-role-1"] = contextSnapshot({
+        id: "snapshot-cross-role-1",
+      });
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const card = await screen.findByLabelText(
+        "Cross-role assessment assessment-1",
+      );
+      expect(
+        within(card).getByText(/agent type: core_agent/),
+      ).toBeInTheDocument();
+      expect(
+        within(card).queryByRole("button", { name: /apply/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(card).queryByRole("button", { name: /accept/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(card).queryByRole("button", { name: /reject/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(card).queryByRole("button", { name: /confirm/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("re-loads the assessment list when the selected Task or Version changes", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.tasks = [task(), task({ id: "task-2", name: "Lighting" })];
+      fixture.versions = [version()];
+      fixture.crossRoleAssessments["version-1:task-1"] = [
+        crossRoleAssessment({ id: "assessment-for-task-1" }),
+      ];
+      fixture.crossRoleAssessments["version-1:task-2"] = [
+        crossRoleAssessment({ id: "assessment-for-task-2", task_id: "task-2" }),
+      ];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText(
+        "Cross-role assessment assessment-for-task-1",
+      );
+      await user.selectOptions(screen.getByLabelText("Task"), "task-2");
+
+      expect(
+        await screen.findByLabelText(
+          "Cross-role assessment assessment-for-task-2",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Cross-role assessment assessment-for-task-1"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("surfaces a 409 from the backend when a prerequisite is missing", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.versions = [version()];
+      installFetchMock(fixture, {
+        onRequest: (method, path) =>
+          method === "POST" && path.endsWith("/cross-role-assessments/generate")
+            ? jsonResponse(409, {
+                detail:
+                  "No confirmed Execution Anchor revision exists for this Task",
+              })
+            : null,
+      });
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByText("No cross-role assessments generated yet.");
+      await user.click(
+        screen.getByRole("button", { name: "Generate cross-role assessment" }),
+      );
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        /No confirmed Execution Anchor revision exists for this Task/,
+      );
+    });
+
+    it("labels the current assessment as the latest assessment with its created timestamp", async () => {
+      const fixture = baseFixture();
+      fixture.versions = [version()];
+      fixture.crossRoleAssessments["version-1:task-1"] = [
+        crossRoleAssessment({ created_at: "2026-01-02T00:00:00Z" }),
+      ];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const latest = await screen.findByRole("region", {
+        name: "Latest cross-role assessment",
+      });
+      expect(within(latest).getByText("Latest assessment")).toBeInTheDocument();
+      expect(
+        within(latest).getByText("Created: 2026-01-02T00:00:00Z"),
+      ).toBeInTheDocument();
+      expect(
+        within(latest).getByLabelText("Cross-role assessment assessment-1"),
+      ).toBeInTheDocument();
+    });
+
+    it("does not render a Previous assessments section when exactly one assessment exists", async () => {
+      const fixture = baseFixture();
+      fixture.versions = [version()];
+      fixture.crossRoleAssessments["version-1:task-1"] = [
+        crossRoleAssessment(),
+      ];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByText("Latest assessment");
+      expect(
+        screen.queryByText(/Previous assessments/),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not render a Previous assessments section in the empty state", async () => {
+      const fixture = baseFixture();
+      fixture.versions = [version()];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByText("No cross-role assessments generated yet.");
+      expect(screen.queryByText("Latest assessment")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Previous assessments/),
+      ).not.toBeInTheDocument();
+    });
+
+    it("separates an older assessment into a collapsed Previous assessments section, keeping the latest fully expanded", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.versions = [version()];
+      fixture.crossRoleAssessments["version-1:task-1"] = [
+        crossRoleAssessment({
+          id: "assessment-latest",
+          created_at: "2026-01-02T00:00:00Z",
+        }),
+        crossRoleAssessment({
+          id: "assessment-old",
+          created_at: "2026-01-01T00:00:00Z",
+        }),
+      ];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      const latest = await screen.findByRole("region", {
+        name: "Latest cross-role assessment",
+      });
+      expect(
+        within(latest).getByLabelText(
+          "Cross-role assessment assessment-latest",
+        ),
+      ).toBeInTheDocument();
+      // The historical record must not be presented as part of the latest
+      // assessment.
+      expect(
+        within(latest).queryByLabelText("Cross-role assessment assessment-old"),
+      ).not.toBeInTheDocument();
+
+      const previousSection = screen.getByRole("group", {
+        name: "Previous cross-role assessments",
+      });
+      expect(
+        within(previousSection).getByText("Previous assessments (1)"),
+      ).toBeInTheDocument();
+      expect(
+        within(previousSection).getByText(
+          /These are immutable historical outputs and may reflect earlier validation rules\. They are not the current assessment\./,
+        ),
+      ).toBeInTheDocument();
+
+      // Collapsed by default: the historical record exists so a reader can
+      // deliberately expand it, but it is not visible until they do.
+      const historicalCard = within(previousSection).getByLabelText(
+        "Cross-role assessment assessment-old",
+      );
+      expect(historicalCard).not.toBeVisible();
+
+      // The outer "Previous assessments" <details> must itself be opened
+      // before its nested per-assessment <details> can become visible.
+      await user.click(
+        within(previousSection).getByText("Previous assessments (1)"),
+      );
+      const historicalSummary = within(previousSection).getByText(
+        "Historical assessment — 2026-01-01T00:00:00Z",
+      );
+      await user.click(historicalSummary);
+
+      expect(historicalCard).toBeVisible();
+      expect(screen.getByText("Historical assessment")).toBeVisible();
+      expect(screen.getByText("Created: 2026-01-01T00:00:00Z")).toBeVisible();
+    });
+
+    it("never shows apply/accept/reject/materialise/confirm/create-draft controls on any assessment", async () => {
+      const fixture = baseFixture();
+      fixture.versions = [version()];
+      fixture.crossRoleAssessments["version-1:task-1"] = [
+        crossRoleAssessment({
+          id: "assessment-latest",
+          created_at: "2026-01-02T00:00:00Z",
+        }),
+        crossRoleAssessment({
+          id: "assessment-old",
+          created_at: "2026-01-01T00:00:00Z",
+        }),
+      ];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByText("Latest assessment");
+      // Scoped to the cross-role section only -- the page also has
+      // legitimate Confirm/Reject buttons for the unrelated Core Anchor and
+      // Execution Anchor Human Gates, which must not be mistaken for
+      // cross-role assessment controls.
+      const crossRoleSection = screen.getByRole("region", {
+        name: "AI cross-role assessment — Core Agent",
+      });
+      for (const pattern of [
+        /apply/i,
+        /accept/i,
+        /reject/i,
+        /materiali[sz]e/i,
+        /^confirm/i,
+        /create draft/i,
+        /^edit/i,
+      ]) {
+        expect(
+          within(crossRoleSection).queryByRole("button", { name: pattern }),
+        ).not.toBeInTheDocument();
+      }
     });
   });
 });
