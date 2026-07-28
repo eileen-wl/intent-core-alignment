@@ -1,0 +1,39 @@
+.state {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--state-error-surface);
+  border: 1px solid var(--state-error-border);
+  border-radius: var(--radius-md);
+}
+
+.marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  background: var(--state-error);
+  color: var(--text-on-accent);
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+}
+
+.title {
+  margin: 0;
+  color: var(--state-error);
+  font-weight: 600;
+}
+
+.description {
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.action {
+  margin-top: var(--space-3);
+}

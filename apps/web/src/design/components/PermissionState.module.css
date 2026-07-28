@@ -1,0 +1,30 @@
+.state {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--authority-neutral-surface);
+  border: 1px dashed var(--authority-neutral-border);
+  border-radius: var(--radius-md);
+}
+
+.marker {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.125rem;
+  border: 1.5px dashed var(--authority-neutral-text);
+  border-radius: 50%;
+}
+
+.title {
+  margin: 0;
+  color: var(--authority-neutral-text);
+  font-weight: 600;
+}
+
+.description {
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}

@@ -1,0 +1,74 @@
+.label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-sm);
+  border-width: 1.5px;
+  font-size: var(--font-size-xs);
+  line-height: 1;
+}
+
+.borderSolid {
+  border-style: solid;
+}
+
+.borderDashed {
+  border-style: dashed;
+}
+
+.borderDotted {
+  border-style: dotted;
+}
+
+.marker {
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+
+.text {
+  font-weight: 600;
+}
+
+.detail {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.fact {
+  background: var(--accent-fact-surface);
+  border-color: var(--accent-fact-border);
+  color: var(--accent-fact-text);
+}
+
+.neutral {
+  background: var(--surface-panel);
+  border-color: var(--authority-neutral-border);
+  color: var(--authority-neutral-text);
+}
+
+.neutralStrong {
+  background: var(--authority-neutral-surface);
+  border-color: var(--authority-neutral-text);
+  color: var(--authority-neutral-text);
+}
+
+.agent {
+  background: var(--accent-agent-surface);
+  border-color: var(--accent-agent-border);
+  color: var(--accent-agent-text);
+}
+
+.attention {
+  background: var(--state-attention-surface);
+  border-color: var(--state-attention-border);
+  color: var(--state-attention);
+}
+
+.historical {
+  background: var(--state-historical-surface);
+  border-color: var(--state-historical-border);
+  color: var(--state-historical);
+}
