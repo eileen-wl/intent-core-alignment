@@ -92,6 +92,21 @@ export type ArtistAgentGuidanceRead = Schemas["ArtistAgentGuidanceRead"];
 export type ArtistGuidanceGenerateRequest =
   Schemas["ArtistGuidanceGenerateRequest"];
 
+export type CrossRoleEvidenceReference = Schemas["CrossRoleEvidenceReference"];
+export type CrossRoleFinding = Schemas["CrossRoleFinding"];
+export type RolePerspectiveRead = Schemas["RolePerspectiveRead"];
+export type ReAnchorFieldProposal = Schemas["ReAnchorFieldProposal"];
+export type ReAnchorProposalOutput = Schemas["ReAnchorProposalOutput"];
+export type ReAnchorProposalRead = Schemas["ReAnchorProposalRead"];
+export type CrossRoleAssessmentOutput = Schemas["CrossRoleAssessmentOutput"];
+export type CrossRoleAssessmentRead = Schemas["CrossRoleAssessmentRead"];
+export type CrossRoleAssessmentGenerateRequest =
+  Schemas["CrossRoleAssessmentGenerateRequest"];
+export type IntentSignalDriver = Schemas["IntentSignalDriver"];
+export type RoleCoverage = Schemas["RoleCoverage"];
+export type IntentSignalOutput = Schemas["IntentSignalOutput"];
+export type IntentSignalRead = Schemas["IntentSignalRead"];
+
 export type SyncCursorRead = Schemas["SyncCursorRead"];
 export type SyncCursorUpsert = Schemas["SyncCursorUpsert"];
 

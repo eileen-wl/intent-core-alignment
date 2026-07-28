@@ -12,6 +12,12 @@ from intent_core_contracts.api.artist_agent_guidance import (
 )
 from intent_core_contracts.api.cg_supervisor_review import CGSupervisorReviewRead
 from intent_core_contracts.api.context_reconstruction import ContextReconstructionRead
+from intent_core_contracts.api.cross_role_assessment import (
+    CrossRoleAssessmentGenerateRequest,
+    CrossRoleAssessmentRead,
+    IntentSignalRead,
+    ReAnchorProposalRead,
+)
 from intent_core_contracts.api.execution_anchor import (
     ExecutionAnchorRead,
     ExecutionAnchorRevisionDraftCreate,
@@ -42,6 +48,7 @@ from intent_core_api.agents import (
     cg_supervisor_review_service,
     context_reconstruction_service,
     core_agent_service,
+    cross_role_assessment_service,
     intent_decomposition_service,
     vfx_supervisor_review_service,
 )
@@ -66,7 +73,13 @@ from intent_core_api.intent.models import (
     IntentBrief,
     IntentDecomposition,
 )
-from intent_core_api.versions_and_feedback.models import ArtistAgentGuidance, VFXSupervisorReview
+from intent_core_api.versions_and_feedback.models import (
+    ArtistAgentGuidance,
+    CrossRoleAssessment,
+    IntentSignal,
+    ReAnchorProposal,
+    VFXSupervisorReview,
+)
 from intent_core_api.workflow import decision_service
 from intent_core_api.workflow.actors import ActorContext, get_current_actor
 from intent_core_api.workflow.exceptions import NotFoundError
@@ -562,3 +575,76 @@ async def list_artist_agent_guidances(
     return await artist_guidance_service.list_artist_agent_guidances_for_version(
         session, version_id
     )
+
+
+# Step 6: Core Agent cross-role assessment -- a fifth Core Agent
+# capability (agent_type=core_agent), not a fifth Agent and not a Role
+# Agent. Synthesises the confirmed Core/Execution Anchors and the three
+# Role Agents' newest recorded output into an advisory
+# CrossRoleAssessment, a required deterministic IntentSignal, and an
+# optional advisory ReAnchorProposal; never establishes/modifies either
+# Anchor, never resolves a HumanGate, never creates an authoritative
+# Decision, and never triggers a Role Agent (see
+# agents.cross_role_assessment_service's module docstring).
+
+
+@router.post(
+    "/versions/{version_id}/cross-role-assessments/generate",
+    response_model=CrossRoleAssessmentRead,
+    status_code=201,
+)
+async def generate_cross_role_assessment(
+    version_id: uuid.UUID,
+    payload: CrossRoleAssessmentGenerateRequest,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> CrossRoleAssessment:
+    return await cross_role_assessment_service.generate_cross_role_assessment(
+        session, actor, version_id, payload.task_id
+    )
+
+
+@router.get("/cross-role-assessments/{assessment_id}", response_model=CrossRoleAssessmentRead)
+async def get_cross_role_assessment(
+    assessment_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> CrossRoleAssessment:
+    assessment = await cross_role_assessment_service.get_cross_role_assessment(
+        session, assessment_id
+    )
+    if assessment is None:
+        raise NotFoundError("Cross-role assessment not found")
+    return assessment
+
+
+@router.get(
+    "/versions/{version_id}/cross-role-assessments",
+    response_model=list[CrossRoleAssessmentRead],
+)
+async def list_cross_role_assessments(
+    version_id: uuid.UUID,
+    task_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> list[CrossRoleAssessment]:
+    return await cross_role_assessment_service.list_cross_role_assessments_for_version_and_task(
+        session, version_id, task_id
+    )
+
+
+@router.get("/re-anchor-proposals/{proposal_id}", response_model=ReAnchorProposalRead)
+async def get_re_anchor_proposal(
+    proposal_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> ReAnchorProposal:
+    proposal = await cross_role_assessment_service.get_re_anchor_proposal(session, proposal_id)
+    if proposal is None:
+        raise NotFoundError("Re-anchor proposal not found")
+    return proposal
+
+
+@router.get("/intent-signals/{signal_id}", response_model=IntentSignalRead)
+async def get_intent_signal(
+    signal_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> IntentSignal:
+    signal = await cross_role_assessment_service.get_intent_signal(session, signal_id)
+    if signal is None:
+        raise NotFoundError("Intent signal not found")
+    return signal

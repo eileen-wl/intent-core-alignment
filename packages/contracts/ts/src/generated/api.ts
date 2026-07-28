@@ -774,6 +774,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/intent/versions/{version_id}/cross-role-assessments/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate Cross Role Assessment */
+        post: operations["generate_cross_role_assessment_intent_versions__version_id__cross_role_assessments_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/cross-role-assessments/{assessment_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cross Role Assessment */
+        get: operations["get_cross_role_assessment_intent_cross_role_assessments__assessment_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/versions/{version_id}/cross-role-assessments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Cross Role Assessments */
+        get: operations["list_cross_role_assessments_intent_versions__version_id__cross_role_assessments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/re-anchor-proposals/{proposal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Re Anchor Proposal */
+        get: operations["get_re_anchor_proposal_intent_re_anchor_proposals__proposal_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/intent-signals/{signal_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Intent Signal */
+        get: operations["get_intent_signal_intent_intent_signals__signal_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/integrations/sync-cursor/{key}": {
         parameters: {
             query?: never;
@@ -1663,6 +1748,134 @@ export interface components {
             /** Open Questions */
             open_questions?: components["schemas"]["OpenQuestionInput"][] | null;
         };
+        /** CrossRoleAssessmentGenerateRequest */
+        CrossRoleAssessmentGenerateRequest: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+        };
+        /** CrossRoleAssessmentOutput */
+        CrossRoleAssessmentOutput: {
+            /** Executive Summary */
+            executive_summary: string;
+            shared_intent_read: components["schemas"]["CrossRoleFinding"];
+            /** Role Perspectives */
+            role_perspectives: components["schemas"]["RolePerspectiveRead"][];
+            /** Agreements */
+            agreements: components["schemas"]["CrossRoleFinding"][];
+            /** Cross Role Tensions */
+            cross_role_tensions: components["schemas"]["CrossRoleFinding"][];
+            /** Local Optimum Risks */
+            local_optimum_risks: components["schemas"]["CrossRoleFinding"][];
+            /** Unresolved Dependencies */
+            unresolved_dependencies: components["schemas"]["CrossRoleFinding"][];
+            /** Human Coordination Priorities */
+            human_coordination_priorities: components["schemas"]["CrossRoleFinding"][];
+            re_anchor_proposal?: components["schemas"]["ReAnchorProposalOutput"] | null;
+            /** Evidence Gaps */
+            evidence_gaps: string[];
+        };
+        /** CrossRoleAssessmentRead */
+        CrossRoleAssessmentRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+            /**
+             * Core Anchor Revision Id
+             * Format: uuid
+             */
+            core_anchor_revision_id: string;
+            /**
+             * Execution Anchor Revision Id
+             * Format: uuid
+             */
+            execution_anchor_revision_id: string;
+            /**
+             * Vfx Supervisor Review Id
+             * Format: uuid
+             */
+            vfx_supervisor_review_id: string;
+            /**
+             * Cg Supervisor Review Id
+             * Format: uuid
+             */
+            cg_supervisor_review_id: string;
+            /**
+             * Artist Agent Guidance Id
+             * Format: uuid
+             */
+            artist_agent_guidance_id: string;
+            /**
+             * Context Snapshot Id
+             * Format: uuid
+             */
+            context_snapshot_id: string;
+            /**
+             * Agent Run Id
+             * Format: uuid
+             */
+            agent_run_id: string;
+            assessment_output: components["schemas"]["CrossRoleAssessmentOutput"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            intent_signal: components["schemas"]["IntentSignalRead"];
+            re_anchor_proposal: components["schemas"]["ReAnchorProposalRead"] | null;
+        };
+        /** CrossRoleEvidenceReference */
+        CrossRoleEvidenceReference: {
+            /**
+             * Source Type
+             * @enum {string}
+             */
+            source_type: "intent_brief" | "intent_decomposition" | "core_anchor_revision" | "constraint" | "variation_zone" | "drift_risk" | "open_question" | "context_reconstruction" | "execution_anchor_revision" | "vfx_supervisor_review" | "cg_supervisor_review" | "artist_agent_guidance" | "version" | "review_note" | "decision" | "task" | "shot";
+            /** Source Id */
+            source_id: string;
+            /** Label */
+            label: string;
+        };
+        /** CrossRoleFinding */
+        CrossRoleFinding: {
+            /** Summary */
+            summary: string;
+            /** Why It Matters */
+            why_it_matters: string;
+            /** Affected Roles */
+            affected_roles: ("vfx_supervisor" | "cg_supervisor" | "artist")[];
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "low" | "medium" | "high";
+            /** Evidence */
+            evidence: components["schemas"]["CrossRoleEvidenceReference"][];
+        };
         /** DecisionRead */
         DecisionRead: {
             /**
@@ -2046,6 +2259,91 @@ export interface components {
             /** Rationale */
             rationale: string;
         };
+        /** IntentSignalDriver */
+        IntentSignalDriver: {
+            /**
+             * Code
+             * @enum {string}
+             */
+            code: "cross_role_tension" | "local_optimum_risk" | "unresolved_dependency" | "anchor_clarity_gap" | "missing_evidence";
+            /** Summary */
+            summary: string;
+            /**
+             * Priority
+             * @enum {string}
+             */
+            priority: "low" | "medium" | "high";
+            /** Assessment Section */
+            assessment_section: string;
+            /** Assessment Item Index */
+            assessment_item_index: number;
+        };
+        /** IntentSignalOutput */
+        IntentSignalOutput: {
+            /**
+             * Attention Level
+             * @enum {string}
+             */
+            attention_level: "low" | "medium" | "high";
+            /**
+             * Label
+             * @enum {string}
+             */
+            label: "low_attention" | "attention_needed" | "human_review_required";
+            /** Summary */
+            summary: string;
+            /** Drivers */
+            drivers: components["schemas"]["IntentSignalDriver"][];
+            role_coverage: components["schemas"]["RoleCoverage"];
+            /** Re Anchor Proposal Present */
+            re_anchor_proposal_present: boolean;
+            /** Caveats */
+            caveats: string[];
+        };
+        /** IntentSignalRead */
+        IntentSignalRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Cross Role Assessment Id
+             * Format: uuid
+             */
+            cross_role_assessment_id: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+            /**
+             * Attention Level
+             * @enum {string}
+             */
+            attention_level: "low" | "medium" | "high";
+            signal_output: components["schemas"]["IntentSignalOutput"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** OpenQuestionInput */
         OpenQuestionInput: {
             /** Question */
@@ -2106,6 +2404,79 @@ export interface components {
              */
             updated_at: string;
         };
+        /** ReAnchorFieldProposal */
+        ReAnchorFieldProposal: {
+            /**
+             * Field
+             * @enum {string}
+             */
+            field: "core_summary" | "constraints" | "variation_zones" | "drift_risks" | "open_questions";
+            /** Current Problem */
+            current_problem: string;
+            /** Proposed Direction */
+            proposed_direction: string;
+            /** Why It May Help */
+            why_it_may_help: string;
+            /** Evidence */
+            evidence: components["schemas"]["CrossRoleEvidenceReference"][];
+        };
+        /**
+         * ReAnchorProposalOutput
+         * @description Advisory-only evidence for the Human VFX Supervisor to consider --
+         *     never an instruction, never a Decision, never a ``CoreAnchorRevision``,
+         *     never an automatic write. See
+         *     ``agents/cross_role_assessment_service.py``'s
+         *     ``_validate_re_anchor_proposal`` for the evidence-diversity rules
+         *     that gate whether a generated proposal may actually be persisted.
+         */
+        ReAnchorProposalOutput: {
+            /** Reason For Consideration */
+            reason_for_consideration: string;
+            /** Preserved Elements */
+            preserved_elements: string[];
+            /** Proposed Fields */
+            proposed_fields: components["schemas"]["ReAnchorFieldProposal"][];
+            /** Adoption Risks */
+            adoption_risks: string[];
+            /** Questions For Human Vfx Supervisor */
+            questions_for_human_vfx_supervisor: string[];
+            /** Evidence */
+            evidence: components["schemas"]["CrossRoleEvidenceReference"][];
+        };
+        /** ReAnchorProposalRead */
+        ReAnchorProposalRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Cross Role Assessment Id
+             * Format: uuid
+             */
+            cross_role_assessment_id: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /**
+             * Current Core Anchor Revision Id
+             * Format: uuid
+             */
+            current_core_anchor_revision_id: string;
+            proposal_output: components["schemas"]["ReAnchorProposalOutput"];
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+        };
         /** ReviewNoteCreate */
         ReviewNoteCreate: {
             /** Content */
@@ -2144,6 +2515,31 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** RoleCoverage */
+        RoleCoverage: {
+            /** Vfx Supervisor */
+            vfx_supervisor: boolean;
+            /** Cg Supervisor */
+            cg_supervisor: boolean;
+            /** Artist */
+            artist: boolean;
+        };
+        /** RolePerspectiveRead */
+        RolePerspectiveRead: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "vfx_supervisor" | "cg_supervisor" | "artist";
+            /** Current Position */
+            current_position: string;
+            /** Protected Intent */
+            protected_intent: string;
+            /** Main Concerns */
+            main_concerns: string;
+            /** Evidence */
+            evidence: components["schemas"]["CrossRoleEvidenceReference"][];
         };
         /** ShotCreate */
         ShotCreate: {
@@ -4122,6 +4518,170 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ArtistAgentGuidanceRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_cross_role_assessment_intent_versions__version_id__cross_role_assessments_generate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrossRoleAssessmentGenerateRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrossRoleAssessmentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cross_role_assessment_intent_cross_role_assessments__assessment_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                assessment_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrossRoleAssessmentRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_cross_role_assessments_intent_versions__version_id__cross_role_assessments_get: {
+        parameters: {
+            query: {
+                task_id: string;
+            };
+            header?: never;
+            path: {
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrossRoleAssessmentRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_re_anchor_proposal_intent_re_anchor_proposals__proposal_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                proposal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReAnchorProposalRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_intent_signal_intent_intent_signals__signal_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                signal_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IntentSignalRead"];
                 };
             };
             /** @description Validation Error */

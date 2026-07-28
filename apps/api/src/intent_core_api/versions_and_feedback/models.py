@@ -154,6 +154,117 @@ class ArtistAgentGuidance(Base):
     created_at: Mapped[datetime] = mapped_column(default=_utcnow)
 
 
+class CrossRoleAssessment(Base):
+    """One immutable Core Agent ``cross_role_assessment`` synthesis of
+    the complete recorded evidence chain for one Version/Task context
+    (Step 6, ``agent_type=core_agent``, ``capability=cross_role_assessment``)
+    -- confirmed Core Anchor, confirmed Execution Anchor, the newest VFX
+    Supervisor Agent review, the newest CG Supervisor Agent review, and
+    the newest Artist Agent guidance. Never an authoritative Decision,
+    never a HumanGate resolution, never an automatic Core Anchor edit
+    (see ``agents.cross_role_assessment_service``'s module docstring).
+    Lives here, not in ``intent.models``, for the same reason
+    ``VFXSupervisorReview``/``ArtistAgentGuidance`` do: it is
+    fundamentally about a Version. ``task_id`` is supplied by the caller
+    at generation time, since ``Version`` itself has no ``task_id`` (see
+    ``Version``'s own module docstring). No update or delete path exists
+    anywhere in the API surface; multiple assessments may exist for one
+    Version/Task context, with no active/latest pointer -- same
+    convention as the three Role Agent capabilities.
+    """
+
+    __tablename__ = "cross_role_assessments"
+    __table_args__ = (
+        Index("ix_cross_role_assessments_shot_id", "shot_id"),
+        Index("ix_cross_role_assessments_task_id", "task_id"),
+        Index("ix_cross_role_assessments_version_id", "version_id"),
+        Index("ix_cross_role_assessments_core_anchor_revision_id", "core_anchor_revision_id"),
+        Index(
+            "ix_cross_role_assessments_execution_anchor_revision_id",
+            "execution_anchor_revision_id",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id"))
+    shot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("shots.id"))
+    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tasks.id"))
+    version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("versions.id"))
+    core_anchor_revision_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("core_anchor_revisions.id")
+    )
+    execution_anchor_revision_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("execution_anchor_revisions.id")
+    )
+    vfx_supervisor_review_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("vfx_supervisor_reviews.id")
+    )
+    cg_supervisor_review_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("cg_supervisor_reviews.id")
+    )
+    artist_agent_guidance_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("artist_agent_guidances.id")
+    )
+    context_snapshot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("context_snapshots.id"))
+    agent_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("agent_runs.id"), unique=True)
+    assessment_output: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+
+
+class ReAnchorProposal(Base):
+    """Zero-or-one immutable, advisory Re-anchor Proposal attached to one
+    ``CrossRoleAssessment`` (Step 6) -- bounded evidence for the Human
+    VFX Supervisor to consider, never an instruction, never a Decision,
+    never a ``CoreAnchorRevision``, never an automatic write. No
+    approval state, no HumanGate or Decision linkage, no apply/
+    materialise endpoint anywhere in the API surface (see
+    ``agents.cross_role_assessment_service``'s
+    ``_validate_re_anchor_proposal`` for the evidence-diversity rules
+    that gate whether one is ever persisted at all).
+    """
+
+    __tablename__ = "re_anchor_proposals"
+    __table_args__ = (Index("ix_re_anchor_proposals_shot_id", "shot_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    cross_role_assessment_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("cross_role_assessments.id"), unique=True
+    )
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id"))
+    shot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("shots.id"))
+    current_core_anchor_revision_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("core_anchor_revisions.id")
+    )
+    proposal_output: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+
+
+class IntentSignal(Base):
+    """Exactly one deterministic, explainable attention-level projection
+    derived from one ``CrossRoleAssessment`` (Step 6) -- never an
+    alignment verdict, a quality score, a Decision, or an approval
+    recommendation. Not an Agent and does not itself create an
+    ``AgentRun``: it is computed purely from the already-validated
+    ``CrossRoleAssessmentOutput`` (see
+    ``agents.cross_role_assessment_service``'s ``derive_intent_signal``).
+    """
+
+    __tablename__ = "intent_signals"
+    __table_args__ = (Index("ix_intent_signals_shot_id", "shot_id"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    cross_role_assessment_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("cross_role_assessments.id"), unique=True
+    )
+    project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id"))
+    shot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("shots.id"))
+    task_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("tasks.id"))
+    version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("versions.id"))
+    attention_level: Mapped[str] = mapped_column(String(10))
+    signal_output: Mapped[dict[str, Any]] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(default=_utcnow)
+
+
 class ReviewNote(Base):
     """Original human feedback on a Version. Immutable, append-only --
     AI summaries must never overwrite it (docs/GLOSSARY.md "Review Note").
