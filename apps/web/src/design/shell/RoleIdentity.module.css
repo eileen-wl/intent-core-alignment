@@ -1,0 +1,16 @@
+.identity {
+  display: flex;
+  flex-direction: column;
+  line-height: var(--line-height-tight);
+}
+
+.name {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+
+.role {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}

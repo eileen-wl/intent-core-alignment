@@ -1,0 +1,30 @@
+.nav {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tab {
+  display: inline-block;
+  padding: var(--space-2) var(--space-1);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  border-bottom: 2px solid transparent;
+}
+
+.tab:hover {
+  color: var(--text-primary);
+}
+
+.tab[data-active="true"] {
+  color: var(--accent-agent-text);
+  border-bottom-color: var(--accent-agent);
+}

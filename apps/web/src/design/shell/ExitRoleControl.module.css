@@ -1,0 +1,15 @@
+.button {
+  background: var(--surface-panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: var(--space-1) var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.button:hover {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}

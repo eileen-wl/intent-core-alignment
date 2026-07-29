@@ -1,15 +1,8 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 
+/** No normal-product sign-in exists yet, so `/` sends every visitor
+ * straight to the Demo entry (brief §3). The former "Engineering
+ * skeleton" landing content moved to `/dev`. */
 export default function HomePage() {
-  return (
-    <main>
-      <h1>Intent Core Alignment System</h1>
-      <p>
-        Engineering skeleton. No role-aware product views are implemented yet.
-      </p>
-      <p>
-        <Link href="/shots">View Shots (manual-input smoke test)</Link>
-      </p>
-    </main>
-  );
+  redirect("/demo");
 }

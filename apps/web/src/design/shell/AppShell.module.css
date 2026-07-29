@@ -1,0 +1,28 @@
+.shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface-page);
+}
+
+.body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+}
+
+/* Overrides the legacy global `main { max-width }` rule (globals.css)
+ * -- the shell's main content region fills the remaining width next to
+ * the sidebar rather than being capped at the prose reading width. */
+.main {
+  max-width: none;
+  margin: 0;
+  padding: var(--space-6) var(--space-5);
+  min-width: 0;
+}
+
+@media (max-width: 768px) {
+  .body {
+    grid-template-columns: 1fr;
+  }
+}

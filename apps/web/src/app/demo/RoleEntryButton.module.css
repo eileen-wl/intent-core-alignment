@@ -1,0 +1,15 @@
+.button {
+  margin-top: var(--space-3);
+  background: var(--accent-agent);
+  border: 1px solid var(--accent-agent);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2) var(--space-4);
+  color: var(--text-on-accent);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+
+.button:hover {
+  background: var(--accent-agent-text);
+  border-color: var(--accent-agent-text);
+}

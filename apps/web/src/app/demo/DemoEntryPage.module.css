@@ -1,0 +1,15 @@
+.scenarioProject {
+  margin: 0 0 var(--space-3);
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.cardTitle {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-lg);
+}
+
+.question {
+  color: var(--text-secondary);
+  font-style: italic;
+}
