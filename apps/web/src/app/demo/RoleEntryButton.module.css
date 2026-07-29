@@ -1,15 +1,30 @@
 .button {
   margin-top: var(--space-3);
-  background: var(--accent-agent);
-  border: 1px solid var(--accent-agent);
+  background: var(--surface-panel);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-4);
-  color: var(--text-on-accent);
+  color: var(--text-secondary);
   font-weight: 600;
   font-size: var(--font-size-sm);
 }
 
 .button:hover {
+  background: var(--surface-muted);
+  color: var(--text-primary);
+}
+
+.primaryButton {
+  background: var(--accent-agent);
+  border: 1px solid var(--accent-agent);
+  border-radius: var(--radius-md);
+  padding: var(--space-3) var(--space-6);
+  color: var(--text-on-accent);
+  font-weight: 700;
+  font-size: var(--font-size-md);
+}
+
+.primaryButton:hover {
   background: var(--accent-agent-text);
   border-color: var(--accent-agent-text);
 }

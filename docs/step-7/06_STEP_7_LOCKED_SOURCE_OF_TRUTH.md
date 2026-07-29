@@ -4,6 +4,17 @@
 **Scope:** Step 7 role-aware product experience and dashboard  
 **Implementation branch:** `feat/step7-role-aware-dashboard`
 
+> **Amended by `10_FTRACK_ENTRY_AND_IA_AMENDMENT.md`:** §5 routes (adds
+> planned `/vfx/shots/:shotId/versions` and `/cg/tasks/:taskId/versions`
+> collections; removes `/vfx/shots/:shotId/decisions` as an isolated
+> route), §9 ftrack presentation (Integrations is a secondary
+> System/technical-status destination, not a primary VFX workflow),
+> and §14 Demo entry (one dominant guided-demo action; direct role
+> entries move to a secondary, collapsed section). The amendment also
+> records the three product entry modes (production/ftrack, portfolio
+> Demo, development) and the real-software implementation standard.
+> Sections below are marked `[Amended]` where it applies.
+
 ---
 
 ## 1. Product goal
@@ -22,6 +33,13 @@ The final interface must let a reviewer understand:
 - why humans retain final control.
 
 Step 7 is not an enterprise product expansion. It remains a real, runnable, research-grade prototype.
+
+**[Amended]** "Real, runnable" is a standard, not a slogan: the final
+implementation must use the same real domain model, APIs, routes, and
+workflow logic for both normal production use and the portfolio Demo --
+the Demo may use seeded data as a stable fallback, but never a separate
+fake Demo-only implementation. Full standard and explicit enterprise
+exclusions: `10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §9.
 
 ---
 
@@ -126,7 +144,7 @@ Primary goals:
 /dev
 ```
 
-### VFX
+### VFX **[Amended]**
 
 ```text
 /vfx
@@ -134,26 +152,35 @@ Primary goals:
 /vfx/projects/:projectId
 /vfx/shots/:shotId
 /vfx/shots/:shotId/intent
+/vfx/shots/:shotId/versions
 /vfx/shots/:shotId/versions/:versionId
 /vfx/shots/:shotId/alignment
-/vfx/shots/:shotId/decisions
 /vfx/shots/:shotId/activity
 /vfx/signals
 /vfx/integrations
 ```
 
-### CG
+`/vfx/shots/:shotId/versions` (the Version collection) is planned, not
+implemented. `/vfx/shots/:shotId/decisions` is removed as an isolated
+route -- Decision visibility is distributed into Intent, Alignment, and
+Activity instead.
+
+### CG **[Amended]**
 
 ```text
 /cg
 /cg/tasks
 /cg/tasks/:taskId
 /cg/tasks/:taskId/execution
+/cg/tasks/:taskId/versions
 /cg/tasks/:taskId/versions/:versionId
 /cg/tasks/:taskId/dependencies
 /cg/tasks/:taskId/activity
 /cg/signals
 ```
+
+`/cg/tasks/:taskId/versions` (the Version collection) is planned, not
+implemented.
 
 ### Artist
 
@@ -254,13 +281,21 @@ Role wording:
 
 Step 7 does not add read, acknowledge, dismiss, assign, resolve, or notification-delivery state.
 
+**[Amended]** Step 7 shows exactly `Latest Intent Signal`, derived from
+the latest successful Cross-role Assessment. It must never read as
+continuous monitoring, a live unread notification, an always-running
+watcher, or an automatically-updating real-time feed -- see
+`10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §8.
+
 ---
 
 ## 9. ftrack presentation
 
 ### VFX
 
-- full Integration overview;
+- full Integration overview (a **secondary, System/technical-status
+  destination** -- not the VFX Supervisor's primary daily workflow;
+  see `10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §7) **[Amended]**;
 - Project / Shot / Version / ReviewNote linkage;
 - connector and validation state.
 
@@ -431,6 +466,11 @@ capture intent
 ```
 
 The Demo must include seeded fallback data and must not depend entirely on live model availability.
+
+**[Amended]** `/demo` leads with one dominant `Start guided demonstration`
+action (enters as VFX Supervisor, matching the Demo order above); the
+three direct role entries move to a secondary, collapsed `Explore by
+role` section. See `10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §4.
 
 ---
 

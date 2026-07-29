@@ -7,6 +7,14 @@
 **Scope:** Portfolio-grade, role-based product information architecture  
 **Not in scope:** Detailed wireframes, final visual design, enterprise authentication, notification lifecycle, Step 8 ftrack data implementation
 
+> **Amended by `10_FTRACK_ENTRY_AND_IA_AMENDMENT.md`:** the VFX Shot and
+> CG Task contextual navigation (Decisions folded into Intent/Alignment/
+> Activity; a `Versions` collection tab added ahead of Version detail),
+> the Integrations placement (secondary System destination, not a
+> primary VFX workflow), and the three product entry modes. Read the
+> amendment alongside this document; sections below are marked
+> `[Amended]` where it applies.
+
 ---
 
 ## 1. Purpose
@@ -239,18 +247,25 @@ Intent Signals
 Integrations
 ```
 
-Contextual Shot navigation appears after entering a Shot:
+Contextual Shot navigation appears after entering a Shot: **[Amended]**
 
 ```text
 Overview
 Intent
 Versions
 Alignment
-Decisions
 Activity
 ```
 
+`Decisions` is no longer an isolated top-level tab -- see the
+`10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §5.1 for the reason and where
+Decision visibility now lives (inside Intent, Alignment, and Activity).
+
 ## 5.2 VFX routes
+
+**[Amended]** adds `/vfx/shots/:shotId/versions` (planned, not
+implemented); removes `/vfx/shots/:shotId/decisions` as an isolated
+route.
 
 ```text
 /vfx
@@ -258,9 +273,9 @@ Activity
 /vfx/projects/:projectId
 /vfx/shots/:shotId
 /vfx/shots/:shotId/intent
+/vfx/shots/:shotId/versions
 /vfx/shots/:shotId/versions/:versionId
 /vfx/shots/:shotId/alignment
-/vfx/shots/:shotId/decisions
 /vfx/shots/:shotId/activity
 /vfx/signals
 /vfx/integrations
@@ -382,6 +397,17 @@ Detailed create / review / confirm interaction is defined in 7A-3.
 
 ---
 
+### E2. `/vfx/shots/:shotId/versions` — Versions **[Amended, planned]**
+
+**Primary purpose:** the Version collection for a Shot -- lead here
+before a single Version's detail/review, since a Shot's Task(s) may
+have more than one Version.
+
+Not implemented in Step 7B-2 or by this amendment; see
+`10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §6.
+
+---
+
 ### F. `/vfx/shots/:shotId/versions/:versionId` — VFX Version Review
 
 **Primary purpose:** inspect one Version from the VFX perspective.
@@ -425,22 +451,24 @@ This page does not automatically modify an Anchor.
 
 ---
 
-### H. `/vfx/shots/:shotId/decisions` — Decisions
+### H. Decision visibility **[Amended -- no longer an isolated route]**
 
-**Primary purpose:** inspect and manage VFX-level human authority records.
+**Correction:** `/vfx/shots/:shotId/decisions` is removed as a
+top-level workspace. Decisions are contextual records produced inside
+other flows and lose their meaning (which Anchor revision, which
+Assessment, which gate) when isolated from that context. See
+`10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §5.1.
 
-Contains:
+Decision content that this section previously described (pending
+HumanGates, confirmed/rejected outcomes, linked Anchor revision,
+linked evidence, actor, rationale, history) is distributed instead:
 
-- pending VFX HumanGates;
-- confirmed / rejected outcomes;
-- Decisions;
-- linked Anchor revision;
-- linked evidence;
-- actor;
-- rationale;
-- history.
+- Core Anchor and HumanGate decisions -> **inside Intent** (section E);
+- cross-role coordination decisions -> **inside Alignment** (section G);
+- historical and superseded decisions -> **inside Activity** (section I).
 
-This is not a generic organisation-wide decision system.
+This remains VFX-level human authority history, not a generic
+organisation-wide decision system -- only its placement changed.
 
 ---
 
@@ -482,7 +510,15 @@ Does not add read / unread / resolve actions.
 
 ---
 
-### K. `/vfx/integrations` — Integrations
+### K. `/vfx/integrations` — Integrations **[Amended: placement]**
+
+**Correction:** this is a **secondary, System/technical-status
+destination** -- useful for demonstration and operational transparency,
+but **not part of the VFX Supervisor's primary daily workflow** (which
+remains Alignment Inbox -> Shot Overview -> Intent/Alignment). See
+`10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §7. Object-level ftrack linkage
+remains visible in context on Project, Shot, Task, Version, and
+ReviewNote regardless of this page.
 
 **Primary purpose:** understand ICAS connection readiness and current ftrack status.
 
@@ -511,23 +547,32 @@ Tasks
 Intent Signals
 ```
 
-Contextual Task navigation:
+Contextual Task navigation: **[Amended]**
 
 ```text
 Overview
 Execution
-Version Review
+Versions
 Dependencies
 Activity
 ```
 
+The singular `Version Review` tab is replaced with `Versions` -- a
+Task may contain more than one Version, so primary navigation must lead
+to a Version **collection** before a single Version's detail/review.
+See `10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §5.2.
+
 ## 6.2 CG routes
+
+**[Amended]** adds `/cg/tasks/:taskId/versions` (planned, not
+implemented).
 
 ```text
 /cg
 /cg/tasks
 /cg/tasks/:taskId
 /cg/tasks/:taskId/execution
+/cg/tasks/:taskId/versions
 /cg/tasks/:taskId/versions/:versionId
 /cg/tasks/:taskId/dependencies
 /cg/tasks/:taskId/activity
@@ -622,6 +667,16 @@ Contains:
 - ftrack Task linkage.
 
 Detailed create / review / confirm flow belongs to 7A-3.
+
+---
+
+### D2. `/cg/tasks/:taskId/versions` — Versions **[Amended, planned]**
+
+**Primary purpose:** the Version collection for a Task -- lead here
+before a single Version's detail/review.
+
+Not implemented in Step 7B-2 or by this amendment; see
+`10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §6.
 
 ---
 
@@ -858,8 +913,8 @@ No Signal management actions are added.
 | ContextReconstruction | VFX Intent Workspace | Evidence / provenance |
 | CoreAnchor | VFX Intent Workspace | CG full read-only; Artist summary |
 | ExecutionAnchor | CG Execution Workspace | VFX summary; Artist summary |
-| HumanGate | Intent or Execution authority workspace | Decisions and Activity |
-| Decision | VFX Decisions or CG Execution context | Activity and outcome summary |
+| HumanGate | Intent or Execution authority workspace | Activity |
+| Decision | Intent (Core Anchor) or Alignment (cross-role) **[Amended]** | Activity and outcome summary |
 | VFXSupervisorReview | VFX Version Review | CG / Artist relevant summary |
 | CGSupervisorReview | CG Version Review | VFX / Artist relevant summary |
 | ArtistAgentGuidance | Artist Version Workspace | VFX / CG read-only |
@@ -898,9 +953,11 @@ Use a separate page when the user must focus on a distinct object or authority r
 - Execution Anchor management;
 - Version review;
 - Cross-role Alignment;
-- Decisions;
 - Integration overview;
 - Dependencies and escalations.
+
+Decisions are **not** given a separate workspace of their own
+**[Amended]** -- see §5.1 and `10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §5.1.
 
 ## 9.3 Use a deliberate multi-step interaction
 
@@ -1170,14 +1227,13 @@ Intent Signals
 Integrations
 ```
 
-Contextual Shot tabs:
+Contextual Shot tabs: **[Amended -- see §5.1]**
 
 ```text
 Overview
 Intent
-Version Review
+Versions
 Alignment
-Decisions
 Activity
 ```
 
@@ -1191,12 +1247,12 @@ Tasks
 Intent Signals
 ```
 
-Contextual Task tabs:
+Contextual Task tabs: **[Amended -- see §6.1]**
 
 ```text
 Overview
 Execution
-Version Review
+Versions
 Dependencies
 Activity
 ```
@@ -1379,7 +1435,7 @@ Should be implemented with credible scope:
 
 - VFX Project Overview
 - VFX Version Review
-- VFX Decisions
+- VFX Versions (collection) **[Amended, planned]**
 - VFX Signals
 - VFX Integrations
 - CG Dependencies
@@ -1438,11 +1494,11 @@ Reason:
 
 ## Decision B — VFX Shot workspace navigation
 
-**Recommendation:** confirm separate `Overview`, `Intent`, `Version Review`, `Alignment`, `Decisions`, and `Activity` sections.
+**Recommendation (amended -- see `10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §5.1):** confirm separate `Overview`, `Intent`, `Versions`, `Alignment`, and `Activity` sections. `Decisions` is not an isolated section; Decision visibility is distributed into Intent, Alignment, and Activity.
 
 ## Decision C — CG Task workspace navigation
 
-**Recommendation:** confirm separate `Overview`, `Execution`, `Version Review`, `Dependencies`, and `Activity` sections.
+**Recommendation (amended -- see `10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §5.2):** confirm separate `Overview`, `Execution`, `Versions`, `Dependencies`, and `Activity` sections.
 
 ## Decision D — Artist Task workspace navigation
 

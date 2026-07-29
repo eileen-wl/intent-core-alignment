@@ -167,22 +167,33 @@ Raw IDs remain secondary.
 
 # 6. Tier 1 pages
 
-## 6.1 Demo entry — `/demo`
+## 6.1 Demo entry — `/demo` **[Amended -- see `10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §4]**
 
-Purpose: explain one shared scenario and enter one locked role.
+Purpose: identify this clearly as a guided portfolio demonstration of
+one shared scenario, lead with one dominant guided-demo action, and
+keep the three direct role entries available but visually secondary.
 
 ```text
-ICAS
-One production scenario. Three human roles. One shared intent.
-
+ICAS -- Guided portfolio demonstration
 D1 Demo Project · Shot 010
 Restrained confrontation; timing and contrast have begun to drift.
 
-[VFX Supervisor] [CG Supervisor] [Artist]
- Enter role       Enter role      Enter role
+┌───────────────────────────────┐
+│  Start guided demonstration     │  <- dominant primary action,
+└───────────────────────────────┘     enters as VFX Supervisor -> /vfx
+
+Production users will ultimately launch ICAS from ftrack; their
+verified identity and current context will determine the workspace
+they enter.
+
+▸ Explore by role                  <- collapsed, visually quiet
+   [VFX Supervisor] [CG Supervisor] [Artist]
+    Enter role       Enter role      Enter role
 ```
 
-Role persists across refresh. Switching requires Exit role view.
+Role persists across refresh. Switching requires Exit role view. Both
+the primary action and each direct role entry use the identical
+role-session mechanism.
 
 ---
 
@@ -715,10 +726,10 @@ Live generation remains optional during the presentation.
 ### Supporting routes
 
 - Signals
-- Decisions
-- Activity
+- Versions (collection) **[Amended, planned]**
+- Activity (carries Decision visibility -- see amendment)
 - Dependencies
-- Integrations
+- Integrations (secondary System destination -- see amendment)
 - Feedback History
 - legacy-route migration
 

@@ -99,6 +99,51 @@ Purpose:
 - translates the locked planning into exact development scope, components, boundaries, and validation;
 - does not reopen the product planning.
 
+### 08 — Step 7B-1 Implementation Note
+
+`08_STEP_7B1_IMPLEMENTATION_NOTE.md`
+
+Purpose:
+
+- records what the shared design foundation batch actually built.
+
+### 09 — Step 7B-2 Implementation Note
+
+`09_STEP_7B2_IMPLEMENTATION_NOTE.md`
+
+Purpose:
+
+- records what the App Shell and Demo Identity batch actually built;
+- superseded in part by document 10 below (the `/demo` hierarchy it
+  originally described has since been corrected).
+
+### 10 — ftrack Entry and Information-Architecture Amendment
+
+`10_FTRACK_ENTRY_AND_IA_AMENDMENT.md`
+
+Purpose:
+
+- a narrow, locked correction made before Step 7B-3, not a new planning
+  round;
+- records the three product entry modes (production/ftrack, portfolio
+  Demo, development) and the future ftrack production-entry flow;
+- corrects the `/demo` information hierarchy (one dominant guided-demo
+  action, three direct role entries moved to a secondary, collapsed
+  section);
+- corrects the VFX Shot and CG Task contextual navigation (removes the
+  isolated `Decisions` tab; adds a `Versions` collection tab ahead of
+  Version detail/review);
+- corrects the placement of the VFX Integration overview to a secondary
+  System/technical-status destination;
+- states the Intent Signal honesty rule (`Latest Intent Signal`, not a
+  live feed);
+- states the real-software implementation standard (same domain model,
+  APIs, and routes for production and portfolio Demo -- no separate
+  fake Demo implementation).
+
+Does not reopen the role model, route structure, Anchor authority,
+HumanGate rules, or four-Agent architecture.
+
 ## Document hierarchy
 
 ```text
@@ -123,6 +168,8 @@ Recommended location:
 docs/step-7/
 ```
 
-Place all eight files in that folder, including this index.
+Place all files in that folder, including this index. The set has grown
+past the original eight as implementation batches and corrections were
+recorded (currently 00–10).
 
 The detailed 7A documents remain valuable throughout implementation. The Source of Truth is the quick reference; the implementation brief is the immediate coding instruction.

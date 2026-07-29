@@ -6,6 +6,16 @@
 VFX/CG/Artist domain dashboards, no backend change.
 **Base commit:** `82c717e` (Step 7B-1, shared design foundation)
 
+> **Amended by `10_FTRACK_ENTRY_AND_IA_AMENDMENT.md`:** the "three
+> equal role-entry cards" `/demo` hierarchy this note originally
+> described (§ Routes added, below) has since been corrected to one
+> dominant `Start guided demonstration` action with the three direct
+> role entries moved to a secondary, collapsed `Explore by role`
+> section. The Demo session mechanism described in this note (the
+> `icas_demo_role` cookie, `enterDemoRole`/`exitRoleView` Server
+> Actions, and the route-protection middleware) is unchanged by that
+> correction -- only the `/demo` page's visual hierarchy changed.
+
 ## Demo session mechanism
 
 A single cookie, `icas_demo_role` (`apps/web/src/lib/demoIdentity.ts`),
@@ -91,7 +101,7 @@ and layout primitives (no new dependency):
 | Route | Purpose |
 |---|---|
 | `/` | Redirects to `/demo` (no normal-product sign-in yet) |
-| `/demo` | Demo entry: product explanation, shared scenario, three role-entry cards |
+| `/demo` | Demo entry: product explanation, shared scenario, guided-demo CTA + secondary role entries **[Amended, see note above]** |
 | `/vfx` | VFX Supervisor homepage shell (Alignment Inbox) |
 | `/cg` | CG Supervisor homepage shell (Execution Inbox) |
 | `/artist` | Artist homepage shell (My Tasks) |
