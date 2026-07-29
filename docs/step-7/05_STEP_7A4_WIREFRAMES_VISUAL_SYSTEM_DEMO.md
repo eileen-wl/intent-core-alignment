@@ -167,7 +167,20 @@ Raw IDs remain secondary.
 
 # 6. Tier 1 pages
 
-## 6.1 Demo entry — `/demo` **[Amended -- see `10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §4]**
+> **VFX pages (§6.2-§6.5) superseded by locked, detailed textual
+> wireframes:** `14_STEP_7C0B_VFX_WORKSPACE_LOCKED_IA_AND_IMPLEMENTATION_PLAN.md`
+> §9 locks the exact page-by-page wireframes for `/vfx`,
+> `/vfx/shots/:shotId`, `/vfx/shots/:shotId/intent`, and
+> `/vfx/shots/:shotId/alignment` (plus Versions/Version/Activity, not
+> sketched below at all). The early sketches in §6.2-§6.5 below are
+> preserved as historical context but are no longer the implementation
+> reference for VFX pages -- notably, the Shot Overview's free-form
+> content list in §6.3 is replaced by document 14's bounded "Current
+> focus" plus up to two "Next in this Shot" items, and §6.5's three
+> simultaneous role-perspective panels are replaced by a single
+> segmented switch showing one perspective at a time (`14_...md` §9.4).
+
+## 6.1 Demo entry — `/demo` **[Amended -- see `10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §4; further corrected by `14_STEP_7C0B_...md` §8]**
 
 Purpose: identify this clearly as a guided portfolio demonstration of
 one shared scenario, lead with one dominant guided-demo action, and
@@ -576,13 +589,19 @@ capture intent
 
 # 12. Three-role Demo path
 
+> **Corrected by `14_STEP_7C0B_...md` §8.3:** the VFX path below
+> originally opened on the Alignment Inbox before reaching the Shot
+> Overview. The guided demo now resolves the real D1 Shot server-side
+> and redirects directly to the Shot Overview, skipping the Inbox step
+> shown below (the Inbox remains real and reachable via standalone
+> `/vfx` entry, just not as part of this guided path).
+
 ## VFX Supervisor — 3–4 minutes
 
 ```text
 /demo
-→ Alignment Inbox
-→ high Intent Signal
-→ Shot Overview
+→ Shot Overview                    [corrected -- was: → Alignment Inbox
+                                     → high Intent Signal → Shot Overview]
 → Alignment Workspace
 → compare three perspectives
 → inspect tension and local optimum risk

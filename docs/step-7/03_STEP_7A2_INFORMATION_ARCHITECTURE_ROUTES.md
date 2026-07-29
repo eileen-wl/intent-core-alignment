@@ -238,6 +238,19 @@ The shell does not contain a role dropdown.
 
 # 5. VFX Supervisor information architecture
 
+> **Locked and refined by `14_STEP_7C0B_VFX_WORKSPACE_LOCKED_IA_AND_IMPLEMENTATION_PLAN.md`:**
+> the route family below is unchanged, but page tiering (§17 of this
+> document) is refined -- `/vfx/shots/:shotId/versions/:versionId`
+> joins the fully-polished first-pass tier, `/vfx/signals` is
+> explicitly deferred until a real cross-Shot aggregation exists, and
+> `/vfx/projects`/`/vfx/projects/:projectId`/`/vfx/integrations` are
+> deferred from the first VFX implementation pass without being
+> removed. Document 14 also locks the Shot Overview's interaction
+> model (a bounded "Current focus" plus up to two "Next in this Shot"
+> items, not the free-form content list in §5.3.D below) and a
+> page-by-page textual wireframe for every VFX route. Read document 14
+> alongside this section for implementation purposes.
+
 ## 5.1 Primary navigation
 
 ```text
@@ -1409,6 +1422,15 @@ Where unavailable, use honest empty or unavailable states.
 ---
 
 # 17. Page-priority and implementation scope
+
+> **VFX tiering refined by `14_STEP_7C0B_...md` §3.2:** within the VFX
+> route family, `/vfx/shots/:shotId/versions/:versionId` is promoted to
+> the fully-polished first-pass tier alongside the four VFX pages
+> already listed below; `/vfx/shots/:shotId/versions` and
+> `/vfx/shots/:shotId/activity` are supporting; `/vfx/projects`,
+> `/vfx/projects/:projectId`, `/vfx/integrations`, and `/vfx/signals`
+> are explicitly deferred from the first VFX implementation pass. This
+> does not change the Tier 1 list below, which spans all three roles.
 
 Not every route must receive equal complexity.
 

@@ -85,6 +85,19 @@ from ftrack will eventually look like.
 
 ### After (this amendment)
 
+> **Corrected by `14_STEP_7C0B_...md` §8:** "Start guided demonstration"
+> was originally understood to enter as VFX Supervisor and land on
+> `/vfx` (the Alignment Inbox), matching the general
+> `enterDemoRole`/`ROLE_HOME_PATH` mechanism used by the three direct
+> role-entry cards below. Step 7C-0B review found this was never
+> actually backed by persisted D1 Demo data (no seed/bootstrap script
+> exists), and separately decided that a guided single-Shot demo
+> should not stop at a triage Inbox first. The dominant action is now
+> corrected below to resolve the real D1 Shot server-side and redirect
+> straight to `/vfx/shots/:shotId`; the three direct role-entry cards
+> in "Explore by role" are unchanged and still land on each role's
+> plain homepage (`/vfx`, `/cg`, `/artist`).
+
 ```text
 ICAS
 Guided portfolio demonstration
@@ -92,10 +105,12 @@ Guided portfolio demonstration
 D1 Demo Project · Shot 010 — Final confrontation
 (shared scenario summary, unchanged)
 
-┌─────────────────────────────────────┐
-│  Start guided demonstration          │  <- one dominant primary action
-│  (enters as VFX Supervisor → /vfx)   │
-└─────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│  Start guided demonstration                   │  <- one dominant primary action
+│  (enters as VFX Supervisor →                  │
+│   resolves the real D1 Shot server-side →     │
+│   /vfx/shots/:shotId, not /vfx first)          │
+└─────────────────────────────────────────────┘
 
 Production users will ultimately launch ICAS directly from ftrack --
 their verified identity and current Project, Shot, Task, or Version
@@ -111,7 +126,11 @@ Both the primary action and each direct role entry call the **exact
 same** `enterDemoRole` Server Action and the exact same session-scoped
 cookie mechanism — only the visual weight differs (a bold primary
 button vs. a quiet secondary button inside a collapsed `<details>`
-disclosure). No new identity mechanism, no new route-protection
+disclosure), **and, per the correction above, the primary action alone
+additionally calls the new server-side D1 Shot resolver
+(`14_...md` §8.2) before redirecting** -- the three direct role-entry
+cards do not, and continue to redirect to their plain role homepage.
+No new identity mechanism, no new route-protection
 behaviour, no bypass of the existing middleware lock.
 
 The guided demonstration currently only starts as VFX Supervisor. A

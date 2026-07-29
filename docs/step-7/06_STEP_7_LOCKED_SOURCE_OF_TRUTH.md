@@ -4,6 +4,17 @@
 **Scope:** Step 7 role-aware product experience and dashboard  
 **Implementation branch:** `feat/step7-role-aware-dashboard`
 
+> **Further locked by `14_STEP_7C0B_VFX_WORKSPACE_LOCKED_IA_AND_IMPLEMENTATION_PLAN.md`:**
+> the VFX route family in §5 is unchanged, but page tiering, the Shot
+> Overview interaction model (a bounded "Current focus" plus up to two
+> "Next in this Shot" items), the CrossRoleAssessment-vs-legacy-
+> AlignmentAssessment product decision, a VFX Inbox read-model
+> specification, an identity-to-Actor adapter architecture, and the
+> Demo scenario resolver are locked there. §13's Demo scenario below is
+> corrected: the guided demo now resolves the real D1 Shot server-side
+> and redirects directly into the Shot Workspace rather than stopping
+> at the Alignment Inbox first -- see `14_...md` §8.3.
+>
 > **Amended by `10_FTRACK_ENTRY_AND_IA_AMENDMENT.md`:** §5 routes (adds
 > planned `/vfx/shots/:shotId/versions` and `/cg/tasks/:taskId/versions`
 > collections; removes `/vfx/shots/:shotId/decisions` as an isolated
@@ -471,6 +482,14 @@ The Demo must include seeded fallback data and must not depend entirely on live 
 action (enters as VFX Supervisor, matching the Demo order above); the
 three direct role entries move to a secondary, collapsed `Explore by
 role` section. See `10_FTRACK_ENTRY_AND_IA_AMENDMENT.md` §4.
+
+**[Further corrected by `14_...md` §8]** No persisted D1 Demo data
+exists yet (no seed/bootstrap script -- a real gap, not previously
+recorded). Once resolved, `Start guided demonstration` resolves the
+real D1 Shot server-side and redirects directly to
+`/vfx/shots/:shotId` -- it does not stop at the Alignment Inbox first.
+Standalone VFX entry (outside the guided demo) still lands at `/vfx`
+unchanged.
 
 ---
 
