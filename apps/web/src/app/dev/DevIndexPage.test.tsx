@@ -23,6 +23,13 @@ describe("DevIndexPage", () => {
     ).toHaveAttribute("href", "/dev/ui-foundation");
   });
 
+  it("links to the Semantic Components preview", () => {
+    render(<DevIndexPage />);
+    expect(
+      screen.getByRole("link", { name: "Open Semantic Components preview" }),
+    ).toHaveAttribute("href", "/dev/semantic-components");
+  });
+
   it("links to the legacy Shot smoke test, labelled as an engineering surface", () => {
     render(<DevIndexPage />);
     expect(

@@ -1,0 +1,23 @@
+.linkage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0 var(--space-2) var(--space-3);
+  border-left: 3px solid var(--border-strong);
+}
+
+.linked {
+  border-left-color: var(--accent-fact);
+}
+
+.description {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.unavailable {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}

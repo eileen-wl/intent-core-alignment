@@ -144,6 +144,43 @@ Purpose:
 Does not reopen the role model, route structure, Anchor authority,
 HumanGate rules, or four-Agent architecture.
 
+### 11 — Step 7B-3 Implementation Note
+
+`11_STEP_7B3_IMPLEMENTATION_NOTE.md`
+
+Purpose:
+
+- records what the shared semantic components batch actually built:
+  the Intent Signal, authority/advisory, Evidence/Provenance, and
+  ftrack linkage component families;
+- records the component-to-domain-contract mapping and the two
+  frontend-only display view models introduced
+  (`IntentSignalAvailability`, `EvidenceReferenceLike`);
+- records the Intent Signal role-wording mapping and its truthfulness
+  constraints;
+- records which ftrack linkage states are grounded in real persisted
+  data and which are explicitly deferred to Step 8;
+- records the Development preview (`/dev/semantic-components`) and its
+  fixture isolation.
+
+### 12 — Step 7B-3 Visual Refinement Note
+
+`12_STEP_7B3_VISUAL_REFINEMENT_NOTE.md`
+
+Purpose:
+
+- a visual-only refinement pass over the Step 7B-3 semantic components
+  and their Development preview -- no domain logic, data mapping,
+  routes, or behaviour changed;
+- records the typography, surface/card-system, and per-family visual
+  changes (Intent Signal, Authority, Evidence/Provenance, ftrack
+  linkage) made to address weak hierarchy, small type, and repeated
+  pale-card/amber overuse in the first pass;
+- records the shared "left accent bar" grammar introduced across
+  families for visual consistency without one repeated card template;
+- records what remains deferred to Step 7C (in-page placement) and
+  Step 7D (live-data and accessibility QA passes).
+
 ## Document hierarchy
 
 ```text
@@ -170,6 +207,6 @@ docs/step-7/
 
 Place all files in that folder, including this index. The set has grown
 past the original eight as implementation batches and corrections were
-recorded (currently 00–10).
+recorded (currently 00–12).
 
 The detailed 7A documents remain valuable throughout implementation. The Source of Truth is the quick reference; the implementation brief is the immediate coding instruction.

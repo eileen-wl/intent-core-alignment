@@ -1,0 +1,41 @@
+.boundary {
+  padding: var(--space-3) var(--space-4);
+  border-left: 3px solid var(--border-strong);
+  background: var(--surface-panel);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+}
+
+.human {
+  border-left-color: var(--authority-neutral-text);
+}
+
+.agent {
+  border-left-color: var(--accent-agent);
+}
+
+.attention {
+  border-left-color: var(--state-attention);
+}
+
+.kicker {
+  margin-bottom: var(--space-2);
+}
+
+.statement {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-md);
+}
+
+.owner {
+  color: var(--text-primary);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}

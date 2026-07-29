@@ -30,6 +30,20 @@ export function DevIndexPage() {
 
         <Section>
           <Panel>
+            <h2>Semantic Components preview</h2>
+            <p>
+              Every Step 7B-3 Intent Signal, authority/advisory, Evidence and
+              Provenance, and ftrack linkage component, demonstrated with
+              clearly labelled development fixtures.
+            </p>
+            <Link href="/dev/semantic-components">
+              Open Semantic Components preview
+            </Link>
+          </Panel>
+        </Section>
+
+        <Section>
+          <Panel>
             <h2>Legacy Shot smoke test</h2>
             <p>
               Engineering / manual smoke-test surface for Steps 1-6: raw Role
