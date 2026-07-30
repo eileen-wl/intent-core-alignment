@@ -1,14 +1,22 @@
-import { AppShell, Breadcrumbs, Panel, PageHeader } from "@/design";
+import type { VfxInboxRead } from "@intent-core/contracts";
+
+import { AppShell, Breadcrumbs, EmptyState, ErrorState, PageHeader } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
+import { InboxRow } from "./InboxRow";
 
-/** `/vfx` -- Alignment Inbox homepage shell. Not the final Alignment
- * Inbox: workspace structure only, no fake Signal, Shot, or Decision
- * data (brief §8). `onExitRole` is injected as a prop so this stays
- * testable without the Next.js server runtime. */
+/** `/vfx` -- the real Alignment Inbox (Step 7C-1;
+ * docs/step-7/16_STEP_7C0D_...md §5). List/table work surface, not a
+ * dashboard: page heading, an honest scope line (real row count, never
+ * fabricated), then restrained list rows -- no card grid, no summary
+ * metric tiles, no notification tray. `inbox` is `null` only when the
+ * real `GET /vfx/inbox` call failed (network/API error), distinct from
+ * a real empty Inbox (`items: []`), so the two render differently. */
 export function VfxWorkspacePage({
+  inbox,
   onExitRole,
 }: {
+  inbox: VfxInboxRead | null;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
@@ -22,14 +30,28 @@ export function VfxWorkspacePage({
       <Breadcrumbs items={[{ label: "Alignment Inbox" }]} />
       <PageHeader
         title="Alignment Inbox"
-        description="Where VFX Supervisor attention will surface: Shots needing review, cross-role tensions, and Re-anchor Proposals awaiting consideration."
+        description="Where VFX Supervisor attention surfaces across your Shots."
       />
-      <Panel tone="muted">
-        <p>
-          Workspace structure established. Production data and role-specific
-          cards will be added in the next implementation batches.
-        </p>
-      </Panel>
+
+      {inbox === null ? (
+        <ErrorState
+          title="The Alignment Inbox is unavailable"
+          description="The ICAS service could not be reached. Try refreshing the page."
+        />
+      ) : inbox.items.length === 0 ? (
+        <EmptyState title="No Shots currently need your attention" />
+      ) : (
+        <>
+          <p>Showing {inbox.items.length} Shots</p>
+          <div role="list">
+            {inbox.items.map((item) => (
+              <div role="listitem" key={item.shot_id}>
+                <InboxRow item={item} />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </AppShell>
   );
 }

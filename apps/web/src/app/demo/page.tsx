@@ -12,12 +12,19 @@ import { DemoEntryPage } from "./DemoEntryPage";
  * `Exit role view` (brief §1). Revisiting `/demo` with a role already
  * selected redirects straight back to that role's workspace rather
  * than allowing a second, un-audited role pick. */
-export default async function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const store = await cookies();
   const existingRole = store.get(DEMO_ROLE_COOKIE)?.value;
   if (isDemoRole(existingRole)) {
     redirect(ROLE_HOME_PATH[existingRole]);
   }
 
-  return <DemoEntryPage />;
+  const params = await searchParams;
+  const guidedEntryError = params.guidedError !== undefined;
+
+  return <DemoEntryPage guidedEntryError={guidedEntryError} />;
 }

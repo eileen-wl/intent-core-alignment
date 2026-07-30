@@ -17,8 +17,15 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
+const { resolveD1DemoShotIdMock } = vi.hoisted(() => ({
+  resolveD1DemoShotIdMock: vi.fn(),
+}));
+vi.mock("@/features/session/demoScenario", () => ({
+  resolveD1DemoShotId: resolveD1DemoShotIdMock,
+}));
+
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
-import { enterDemoRole, exitRoleView } from "./actions";
+import { enterDemoRole, exitRoleView, startGuidedDemonstration } from "./actions";
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -59,6 +66,44 @@ describe("enterDemoRole", () => {
     const secondCall = cookieStore.set.mock.calls[0];
 
     expect(firstCall).toEqual(secondCall);
+  });
+});
+
+describe("startGuidedDemonstration", () => {
+  it("sets the VFX Supervisor Demo cookie and redirects to the resolved D1 Shot", async () => {
+    resolveD1DemoShotIdMock.mockResolvedValue("11111111-1111-1111-1111-111111111111");
+
+    await expect(startGuidedDemonstration()).rejects.toThrow();
+
+    expect(cookieStore.set).toHaveBeenCalledWith(
+      DEMO_ROLE_COOKIE,
+      "vfx_supervisor",
+      expect.objectContaining({ httpOnly: true }),
+    );
+    expect(redirectSpy).toHaveBeenCalledWith(
+      "/vfx/shots/11111111-1111-1111-1111-111111111111",
+    );
+  });
+
+  it("redirects back to /demo with an honest error when resolution fails", async () => {
+    resolveD1DemoShotIdMock.mockRejectedValue(new Error("unavailable"));
+
+    await expect(startGuidedDemonstration()).rejects.toThrow();
+
+    expect(redirectSpy).toHaveBeenCalledWith("/demo?guidedError=1");
+    // Identity is still established before the failure -- a retry via
+    // the direct role card would work even if the guided path failed.
+    expect(cookieStore.set).toHaveBeenCalledWith(
+      DEMO_ROLE_COOKIE,
+      "vfx_supervisor",
+      expect.objectContaining({ httpOnly: true }),
+    );
+  });
+
+  it("never redirects to a raw UUID-bearing route without resolving it first", async () => {
+    resolveD1DemoShotIdMock.mockResolvedValue("22222222-2222-2222-2222-222222222222");
+    await expect(startGuidedDemonstration()).rejects.toThrow();
+    expect(resolveD1DemoShotIdMock).toHaveBeenCalled();
   });
 });
 

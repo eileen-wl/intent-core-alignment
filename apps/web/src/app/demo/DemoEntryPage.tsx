@@ -1,6 +1,7 @@
 import {
   Card,
   Container,
+  ErrorState,
   Grid,
   MetadataRow,
   PageHeader,
@@ -13,19 +14,26 @@ import styles from "./DemoEntryPage.module.css";
 import { RoleEntryButton } from "./RoleEntryButton";
 import { ROLE_CARDS } from "./roleCards";
 
-/** `/demo` entry content. Presentational and prop-free: each role card
- * renders a `RoleEntryButton` with only the serialisable role literal
- * and label -- this component never creates or forwards a callback
- * closure across the Server/Client boundary.
+/** `/demo` entry content. Presentational and prop-free except for an
+ * optional guided-entry failure notice -- each role card renders a
+ * `RoleEntryButton` with only the serialisable role literal and label,
+ * this component never creates or forwards a callback closure across
+ * the Server/Client boundary.
  *
  * Hierarchy (corrected per docs/step-7/10_FTRACK_ENTRY_AND_IA_AMENDMENT.md
  * §4): one dominant "Start guided demonstration" action enters as VFX
  * Supervisor; the three direct role entries move to a visually quieter,
- * collapsed-by-default "Explore by role" section. Both paths call the
- * exact same `enterDemoRole` Server Action and role-session mechanism --
- * only the visual prominence differs. Static scenario copy only; no
- * technical IDs, permission matrices, or raw production records. */
-export function DemoEntryPage() {
+ * collapsed-by-default "Explore by role" section. The guided CTA calls
+ * `startGuidedDemonstration` (which additionally resolves the real D1
+ * scenario and redirects to its Shot Overview, docs/step-7/16_STEP_7C0D_...md
+ * §8.3); each direct role entry still calls the same plain
+ * `enterDemoRole` Server Action and role-session mechanism as before --
+ * only the visual prominence differs between the direct-entry cards. */
+export function DemoEntryPage({
+  guidedEntryError = false,
+}: {
+  guidedEntryError?: boolean;
+}) {
   return (
     <Container>
       <Section spacing={6}>
@@ -37,6 +45,17 @@ export function DemoEntryPage() {
           />
         </ReadingColumn>
       </Section>
+
+      {guidedEntryError && (
+        <Section>
+          <ReadingColumn>
+            <ErrorState
+              title="The guided demonstration couldn't start"
+              description="The ICAS service is unavailable. Try again in a moment."
+            />
+          </ReadingColumn>
+        </Section>
+      )}
 
       <Section>
         <ReadingColumn>
@@ -70,6 +89,7 @@ export function DemoEntryPage() {
               role="vfx_supervisor"
               label="Start guided demonstration"
               variant="primary"
+              guided
             />
           </div>
         </ReadingColumn>

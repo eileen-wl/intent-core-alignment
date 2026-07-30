@@ -75,6 +75,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/demo/ensure-d1-scenario": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ensure D1 Scenario Endpoint */
+        post: operations["ensure_d1_scenario_endpoint_internal_demo_ensure_d1_scenario_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/ping-worker": {
         parameters: {
             query?: never;
@@ -1066,6 +1083,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vfx/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vfx Inbox */
+        get: operations["get_vfx_inbox_vfx_inbox_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vfx/inbox/{shot_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vfx Inbox Item */
+        get: operations["get_vfx_inbox_item_vfx_inbox__shot_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1875,6 +1926,44 @@ export interface components {
             priority: "low" | "medium" | "high";
             /** Evidence */
             evidence: components["schemas"]["CrossRoleEvidenceReference"][];
+        };
+        /** D1ScenarioResultRead */
+        D1ScenarioResultRead: {
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+            /**
+             * Core Anchor Revision Id
+             * Format: uuid
+             */
+            core_anchor_revision_id: string;
+            /**
+             * Execution Anchor Revision Id
+             * Format: uuid
+             */
+            execution_anchor_revision_id: string;
+            /**
+             * Cross Role Assessment Id
+             * Format: uuid
+             */
+            cross_role_assessment_id: string;
         };
         /** DecisionRead */
         DecisionRead: {
@@ -2853,6 +2942,134 @@ export interface components {
              */
             created_at: string;
         };
+        /**
+         * VfxInboxCurrentFocusRead
+         * @description The single derived Current focus for one Shot -- never more than
+         *     one per Shot, per the locked precedence order. See
+         *     docs/step-7/15_STEP_7C0C_...md §6 for the exact predicate each
+         *     `focus_type` corresponds to.
+         */
+        VfxInboxCurrentFocusRead: {
+            /**
+             * Focus Type
+             * @enum {string}
+             */
+            focus_type: "core_anchor_gate_pending" | "core_anchor_draft_needs_review" | "alignment_not_followed_by_anchor_action" | "re_anchor_proposal_present" | "assessment_generation_available" | "none";
+            /** Title */
+            title: string;
+            /** Explanation */
+            explanation: string;
+            /** Target Route */
+            target_route: string;
+            /** Primary Action Label */
+            primary_action_label: string | null;
+            /** Actionable */
+            actionable: boolean;
+        };
+        /** VfxInboxItemRead */
+        VfxInboxItemRead: {
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /** Project Name */
+            project_name: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Shot Name */
+            shot_name: string;
+            /**
+             * Shot Source
+             * @enum {string}
+             */
+            shot_source: "manual" | "ftrack";
+            /**
+             * Core Anchor State
+             * @enum {string}
+             */
+            core_anchor_state: "none" | "draft_pending" | "confirmed";
+            /** Active Core Anchor Revision Id */
+            active_core_anchor_revision_id: string | null;
+            /** Active Core Anchor Summary */
+            active_core_anchor_summary: string | null;
+            /** Pending Human Gate Id */
+            pending_human_gate_id: string | null;
+            /** Relevant Task Id */
+            relevant_task_id: string | null;
+            /** Relevant Task Name */
+            relevant_task_name: string | null;
+            /** Relevant Version Id */
+            relevant_version_id: string | null;
+            /** Relevant Version Name */
+            relevant_version_name: string | null;
+            /** Relevant Version Number */
+            relevant_version_number: number | null;
+            /** Pairing Established */
+            pairing_established: boolean;
+            /** Latest Assessment Id */
+            latest_assessment_id: string | null;
+            /** Latest Assessment Created At */
+            latest_assessment_created_at: string | null;
+            /** Latest Signal Id */
+            latest_signal_id: string | null;
+            /** Latest Signal Attention Level */
+            latest_signal_attention_level: ("low" | "medium" | "high") | null;
+            /** Latest Signal Summary */
+            latest_signal_summary: string | null;
+            /** Re Anchor Proposal Present */
+            re_anchor_proposal_present: boolean;
+            current_focus: components["schemas"]["VfxInboxCurrentFocusRead"];
+            /** Next Candidates */
+            next_candidates?: components["schemas"]["VfxInboxNextFocusRead"][];
+            /** Sort Rank */
+            sort_rank: number;
+        };
+        /**
+         * VfxInboxNextFocusRead
+         * @description One subordinate, still-real focus-type candidate for a Shot,
+         *     ranked below the Current focus by the same locked precedence (Step
+         *     7C-1 targeted correction §7-§8): derived from the same real domain
+         *     state via the same six-type predicates, minus whichever type won as
+         *     Current focus, capped at the next two. Field-identical to
+         *     `VfxInboxCurrentFocusRead` by design -- same real derivation, same
+         *     honest action target -- but a distinct type on purpose: a "Next in
+         *     this Shot" item is never rendered, or represented over the API, as
+         *     if it were the active Current focus. `focus_type` is never `"none"`
+         *     here (`"none"` is never a candidate) and never the legacy
+         *     AlignmentAssessment concept (no such type exists in
+         *     `VfxCurrentFocusType`).
+         */
+        VfxInboxNextFocusRead: {
+            /**
+             * Focus Type
+             * @enum {string}
+             */
+            focus_type: "core_anchor_gate_pending" | "core_anchor_draft_needs_review" | "alignment_not_followed_by_anchor_action" | "re_anchor_proposal_present" | "assessment_generation_available" | "none";
+            /** Title */
+            title: string;
+            /** Explanation */
+            explanation: string;
+            /** Target Route */
+            target_route: string;
+            /** Primary Action Label */
+            primary_action_label: string | null;
+            /** Actionable */
+            actionable: boolean;
+        };
+        /** VfxInboxRead */
+        VfxInboxRead: {
+            /** Items */
+            items: components["schemas"]["VfxInboxItemRead"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+        };
         /** WorkerHeartbeatRead */
         WorkerHeartbeatRead: {
             /** Name */
@@ -2892,9 +3109,9 @@ export interface components {
             entity_id: string;
             /**
              * Source
-             * @constant
+             * @enum {string}
              */
-            source: "ftrack";
+            source: "ftrack" | "demo";
             /** Target External Id */
             target_external_id: string;
             /** Content */
@@ -3123,6 +3340,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ensure_d1_scenario_endpoint_internal_demo_ensure_d1_scenario_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["D1ScenarioResultRead"];
                 };
             };
         };
@@ -5181,6 +5418,57 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DecisionRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vfx_inbox_vfx_inbox_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VfxInboxRead"];
+                };
+            };
+        };
+    };
+    get_vfx_inbox_item_vfx_inbox__shot_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VfxInboxItemRead"];
                 };
             };
             /** @description Validation Error */

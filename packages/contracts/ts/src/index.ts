@@ -119,3 +119,9 @@ export type WorkerHeartbeatUpsert = Schemas["WorkerHeartbeatUpsert"];
 
 export type HTTPValidationError = Schemas["HTTPValidationError"];
 export type ValidationError = Schemas["ValidationError"];
+
+export type VfxCurrentFocusType = Schemas["VfxInboxCurrentFocusRead"]["focus_type"];
+export type VfxInboxCurrentFocusRead = Schemas["VfxInboxCurrentFocusRead"];
+export type VfxInboxNextFocusRead = Schemas["VfxInboxNextFocusRead"];
+export type VfxInboxItemRead = Schemas["VfxInboxItemRead"];
+export type VfxInboxRead = Schemas["VfxInboxRead"];

@@ -28,8 +28,13 @@ from uuid import UUID
 from pydantic import BaseModel, ConfigDict
 
 # The first (and so far only) Workflow Connector (docs/PROJECT_CONTEXT.md
-# §11). Extend when a second connector is added -- not preemptively.
-ExternalSource = Literal["ftrack"]
+# §11), plus "demo": an ICAS-owned seeded Demo identity marker (Step 7C-1,
+# docs/step-7/16_STEP_7C0D_...md §2.6/§6) -- used only for deterministic
+# Demo scenario ownership/lookup on ExternalEntityLink, never presented as
+# a real production integration, and never treated as "ftrack" by any
+# ftrack-specific code path. Extend further only when a genuine new
+# connector or ownership marker is added -- not preemptively.
+ExternalSource = Literal["ftrack", "demo"]
 LinkedEntityType = Literal["project", "shot", "task"]
 
 

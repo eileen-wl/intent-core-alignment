@@ -1,6 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import type { VfxInboxRead } from "@intent-core/contracts";
 
+import { fetchVfxInbox } from "@/features/vfx/api";
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
 import { exitRoleView } from "../demo/actions";
 import { VfxWorkspacePage } from "./VfxWorkspacePage";
@@ -14,5 +16,12 @@ export default async function Page() {
     redirect("/demo");
   }
 
-  return <VfxWorkspacePage onExitRole={exitRoleView} />;
+  let inbox: VfxInboxRead | null;
+  try {
+    inbox = await fetchVfxInbox();
+  } catch {
+    inbox = null;
+  }
+
+  return <VfxWorkspacePage inbox={inbox} onExitRole={exitRoleView} />;
 }

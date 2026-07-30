@@ -4,9 +4,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./actions", () => ({
   enterDemoRole: vi.fn(),
+  startGuidedDemonstration: vi.fn(),
 }));
 
-import { enterDemoRole } from "./actions";
+import { enterDemoRole, startGuidedDemonstration } from "./actions";
 import { DemoEntryPage } from "./DemoEntryPage";
 
 afterEach(() => {
@@ -41,12 +42,13 @@ describe("DemoEntryPage", () => {
       ).toBeVisible();
     });
 
-    it("enters as VFX Supervisor when activated", async () => {
+    it("starts the guided demonstration (resolving the real D1 scenario) when activated", async () => {
       render(<DemoEntryPage />);
       await userEvent.click(
         screen.getByRole("button", { name: "Start guided demonstration" }),
       );
-      expect(enterDemoRole).toHaveBeenCalledWith("vfx_supervisor");
+      expect(startGuidedDemonstration).toHaveBeenCalled();
+      expect(enterDemoRole).not.toHaveBeenCalled();
     });
 
     it("explains that the guided path will move through CG and Artist perspectives later", () => {
@@ -147,7 +149,7 @@ describe("DemoEntryPage", () => {
     });
   });
 
-  it("uses the same role literal for the guided CTA and the direct VFX entry", async () => {
+  it("both the guided CTA and the direct VFX entry establish the VFX Supervisor identity", async () => {
     render(<DemoEntryPage />);
     await userEvent.click(
       screen.getByRole("button", { name: "Start guided demonstration" }),
@@ -157,8 +159,27 @@ describe("DemoEntryPage", () => {
       screen.getByRole("button", { name: "Enter as VFX Supervisor" }),
     );
 
-    expect(enterDemoRole).toHaveBeenNthCalledWith(1, "vfx_supervisor");
-    expect(enterDemoRole).toHaveBeenNthCalledWith(2, "vfx_supervisor");
+    // Guided entry additionally resolves the real D1 scenario
+    // (docs/step-7/16_STEP_7C0D_...md §8.3), so it calls a distinct
+    // action -- but that action always establishes the VFX Supervisor
+    // identity, same as the direct card below.
+    expect(startGuidedDemonstration).toHaveBeenCalledTimes(1);
+    expect(enterDemoRole).toHaveBeenCalledWith("vfx_supervisor");
+  });
+
+  it("does not show a guided-entry failure notice by default", () => {
+    render(<DemoEntryPage />);
+    expect(
+      screen.queryByText(/guided demonstration couldn't start/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an honest inline error when the guided entry failed", () => {
+    render(<DemoEntryPage guidedEntryError />);
+    expect(
+      screen.getByText("The guided demonstration couldn't start"),
+    ).toBeVisible();
+    expect(screen.getByText(/ICAS service is unavailable/i)).toBeVisible();
   });
 
   it("does not display technical IDs, permission matrices, or raw session values", () => {
