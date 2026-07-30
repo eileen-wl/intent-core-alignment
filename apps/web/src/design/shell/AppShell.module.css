@@ -1,28 +1,43 @@
 .shell {
-  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  background: var(--surface-page);
+  background: #f9fafc;
 }
 
 .body {
   flex: 1;
   display: grid;
-  grid-template-columns: 240px 1fr;
+  grid-template-columns: 17.75rem minmax(0, 1fr);
+  min-height: 0;
 }
 
-/* Overrides the legacy global `main { max-width }` rule (globals.css)
- * -- the shell's main content region fills the remaining width next to
- * the sidebar rather than being capped at the prose reading width. */
 .main {
   max-width: none;
-  margin: 0;
-  padding: var(--space-6) var(--space-5);
   min-width: 0;
+  margin: 0;
+  padding: 2.35rem 2.5rem 1.25rem 3.65rem;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(116, 91, 223, 0.022), transparent 22rem),
+    #fafbfc;
+}
+
+@media (max-width: 1100px) {
+  .body {
+    grid-template-columns: 14.5rem minmax(0, 1fr);
+  }
+
+  .main {
+    padding: 2rem 2rem 2.25rem;
+  }
 }
 
 @media (max-width: 768px) {
   .body {
     grid-template-columns: 1fr;
+  }
+
+  .main {
+    padding: 1.5rem 1rem 2rem;
   }
 }

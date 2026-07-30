@@ -5,9 +5,14 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 vi.mock("./actions", () => ({
   enterDemoRole: vi.fn(),
   startGuidedDemonstration: vi.fn(),
+  exitRoleView: vi.fn(),
 }));
 
-import { enterDemoRole, startGuidedDemonstration } from "./actions";
+import {
+  enterDemoRole,
+  exitRoleView,
+  startGuidedDemonstration,
+} from "./actions";
 import { DemoEntryPage } from "./DemoEntryPage";
 
 afterEach(() => {
@@ -16,155 +21,71 @@ afterEach(() => {
 });
 
 describe("DemoEntryPage", () => {
-  it("shows the ICAS product name and a concise explanation", () => {
+  it("renders the reference entry hierarchy inside the role-aware shell", () => {
+    render(<DemoEntryPage />);
+
+    expect(screen.getByText("ICAS")).toBeVisible();
+    expect(
+      screen.getByRole("heading", {
+        level: 1,
+        name: "Choose how you want to enter ICAS",
+      }),
+    ).toBeVisible();
+    expect(screen.getByText("Maya Chen")).toBeVisible();
+    expect(screen.getByText("VFX Supervisor")).toBeVisible();
+    expect(screen.getByText("Demo mode")).toBeVisible();
+  });
+
+  it("shows the featured D1 Shot and approved version identifier", () => {
     render(<DemoEntryPage />);
     expect(
-      screen.getByRole("heading", { level: 1, name: "ICAS" }),
+      screen.getByRole("heading", {
+        name: "Shot 010 — Final confrontation",
+      }),
     ).toBeVisible();
-    expect(screen.getByText("Guided portfolio demonstration")).toBeVisible();
-    expect(screen.getByText(/shared creative intent connected/i)).toBeVisible();
+    expect(screen.getByText("D1 Demo Project")).toBeVisible();
+    expect(screen.getByText("No linked ftrack entity")).toBeVisible();
+    expect(screen.getByText("D1_STEP3_VFX_REVIEW_001 (v1)")).toBeVisible();
   });
 
-  it("shows the shared scenario summary with the approved identifiers", () => {
-    render(<DemoEntryPage />);
-    expect(
-      screen.getByText("D1 Demo Project · Shot 010 — Final confrontation"),
-    ).toBeVisible();
-    expect(screen.getByText("Compositing Review")).toBeVisible();
-    expect(screen.getByText("D1_STEP3_VFX_REVIEW_001")).toBeVisible();
-  });
-
-  describe("primary guided-demo entry", () => {
-    it("renders one dominant 'Start guided demonstration' action", () => {
-      render(<DemoEntryPage />);
-      expect(
-        screen.getByRole("button", { name: "Start guided demonstration" }),
-      ).toBeVisible();
-    });
-
-    it("starts the guided demonstration (resolving the real D1 scenario) when activated", async () => {
-      render(<DemoEntryPage />);
-      await userEvent.click(
-        screen.getByRole("button", { name: "Start guided demonstration" }),
-      );
-      expect(startGuidedDemonstration).toHaveBeenCalled();
-      expect(enterDemoRole).not.toHaveBeenCalled();
-    });
-
-    it("explains that the guided path will move through CG and Artist perspectives later", () => {
-      render(<DemoEntryPage />);
-      expect(
-        screen.getByText(/move through CG Supervisor and Artist perspectives/i),
-      ).toBeVisible();
-    });
-  });
-
-  describe("ftrack production-entry explanation", () => {
-    it("explains the future ftrack launch without an active or fake control", () => {
-      render(<DemoEntryPage />);
-      expect(
-        screen.getByText(
-          /production users will ultimately launch icas directly from ftrack/i,
-        ),
-      ).toBeVisible();
-      expect(
-        screen.queryByRole("button", { name: /launch from ftrack/i }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole("link", { name: /launch from ftrack/i }),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  describe("secondary 'Explore by role' entry", () => {
-    it("is present and visually secondary to the guided-demo action", async () => {
-      render(<DemoEntryPage />);
-      const disclosure = screen.getByText("Explore by role");
-      expect(disclosure).toBeVisible();
-      // Collapsed by default -- a quieter, progressive-disclosure entry.
-      expect(disclosure.closest("details")).not.toHaveAttribute("open");
-    });
-
-    it("renders all three role-entry cards once expanded", async () => {
-      render(<DemoEntryPage />);
-      await userEvent.click(screen.getByText("Explore by role"));
-
-      expect(
-        screen.getByRole("heading", { name: "VFX Supervisor" }),
-      ).toBeVisible();
-      expect(
-        screen.getByText(
-          "Protects the shared creative intent across departments.",
-        ),
-      ).toBeVisible();
-
-      expect(
-        screen.getByRole("heading", { name: "CG Supervisor" }),
-      ).toBeVisible();
-      expect(
-        screen.getByText(
-          "Turns confirmed intent into department execution boundaries.",
-        ),
-      ).toBeVisible();
-
-      expect(screen.getByRole("heading", { name: "Artist" })).toBeVisible();
-      expect(
-        screen.getByText(
-          "Works from practical guidance and confirmed variation boundaries.",
-        ),
-      ).toBeVisible();
-    });
-
-    it("enters the VFX Supervisor role when its direct card is activated", async () => {
-      render(<DemoEntryPage />);
-      await userEvent.click(screen.getByText("Explore by role"));
-      await userEvent.click(
-        screen.getByRole("button", { name: "Enter as VFX Supervisor" }),
-      );
-      expect(enterDemoRole).toHaveBeenCalledWith("vfx_supervisor");
-    });
-
-    it("enters the CG Supervisor role when its direct card is activated", async () => {
-      render(<DemoEntryPage />);
-      await userEvent.click(screen.getByText("Explore by role"));
-      await userEvent.click(
-        screen.getByRole("button", { name: "Enter as CG Supervisor" }),
-      );
-      expect(enterDemoRole).toHaveBeenCalledWith("cg_supervisor");
-    });
-
-    it("enters the Artist role when its direct card is activated", async () => {
-      render(<DemoEntryPage />);
-      await userEvent.click(screen.getByText("Explore by role"));
-      await userEvent.click(
-        screen.getByRole("button", { name: "Enter as Artist" }),
-      );
-      expect(enterDemoRole).toHaveBeenCalledWith("artist");
-    });
-
-    it("keeps the disclosure summary keyboard accessible", () => {
-      render(<DemoEntryPage />);
-      const summary = screen.getByText("Explore by role");
-      expect(summary.tagName.toLowerCase()).toBe("summary");
-    });
-  });
-
-  it("both the guided CTA and the direct VFX entry establish the VFX Supervisor identity", async () => {
+  it("starts the guided demonstration through the existing guided Server Action", async () => {
     render(<DemoEntryPage />);
     await userEvent.click(
       screen.getByRole("button", { name: "Start guided demonstration" }),
     );
-    await userEvent.click(screen.getByText("Explore by role"));
+
+    expect(startGuidedDemonstration).toHaveBeenCalledTimes(1);
+    expect(enterDemoRole).not.toHaveBeenCalled();
+  });
+
+  it("enters the VFX Alignment Inbox through the existing role Server Action", async () => {
+    render(<DemoEntryPage />);
     await userEvent.click(
-      screen.getByRole("button", { name: "Enter as VFX Supervisor" }),
+      screen.getByRole("button", { name: "Browse Alignment Inbox" }),
     );
 
-    // Guided entry additionally resolves the real D1 scenario
-    // (docs/step-7/16_STEP_7C0D_...md §8.3), so it calls a distinct
-    // action -- but that action always establishes the VFX Supervisor
-    // identity, same as the direct card below.
-    expect(startGuidedDemonstration).toHaveBeenCalledTimes(1);
     expect(enterDemoRole).toHaveBeenCalledWith("vfx_supervisor");
+    expect(startGuidedDemonstration).not.toHaveBeenCalled();
+  });
+
+  it("keeps Exit role view connected to the existing exit Server Action", async () => {
+    render(<DemoEntryPage />);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Exit role view" }),
+    );
+    expect(exitRoleView).toHaveBeenCalledTimes(1);
+  });
+
+  it("presents future ftrack launch honestly without an active launch control", () => {
+    render(<DemoEntryPage />);
+    expect(screen.getByText("Future ftrack launch")).toBeVisible();
+    expect(screen.getByText("Not available in demo")).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: /launch from ftrack/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /launch from ftrack/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("does not show a guided-entry failure notice by default", () => {
@@ -174,7 +95,7 @@ describe("DemoEntryPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows an honest inline error when the guided entry failed", () => {
+  it("shows an honest inline error when guided entry failed", () => {
     render(<DemoEntryPage guidedEntryError />);
     expect(
       screen.getByText("The guided demonstration couldn't start"),
@@ -182,7 +103,7 @@ describe("DemoEntryPage", () => {
     expect(screen.getByText(/ICAS service is unavailable/i)).toBeVisible();
   });
 
-  it("does not display technical IDs, permission matrices, or raw session values", () => {
+  it("does not expose UUIDs, permission matrices, or actor identifiers", () => {
     render(<DemoEntryPage />);
     expect(
       screen.queryByText(/[0-9a-f]{8}-[0-9a-f]{4}-/i),

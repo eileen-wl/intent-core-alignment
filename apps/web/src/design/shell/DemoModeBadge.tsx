@@ -1,9 +1,10 @@
-import { StatusBadge } from "../components/StatusBadge";
+import styles from "./DemoModeBadge.module.css";
 
-/** Fixed "Demo mode" indicator for the top bar. Reuses the Step 7B-1
- * `StatusBadge` visual language rather than introducing a second badge
- * treatment -- "neutral" tone since Demo mode is informational, not an
- * attention or authority state. */
 export function DemoModeBadge() {
-  return <StatusBadge status="neutral" label="Demo mode" />;
+  return (
+    <span className={styles.badge}>
+      <span aria-hidden="true" />
+      Demo mode
+    </span>
+  );
 }

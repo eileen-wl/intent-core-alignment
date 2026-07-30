@@ -1,16 +1,18 @@
 .identity {
   display: flex;
   flex-direction: column;
-  line-height: var(--line-height-tight);
+  min-width: 7.25rem;
+  line-height: 1.2;
 }
 
 .name {
-  color: var(--text-primary);
-  font-weight: 600;
-  font-size: var(--font-size-sm);
+  color: #1d2028;
+  font-weight: 650;
+  font-size: 0.98rem;
 }
 
 .role {
-  color: var(--text-muted);
-  font-size: var(--font-size-xs);
+  margin-top: 0.18rem;
+  color: #6c7588;
+  font-size: 0.82rem;
 }

@@ -2,13 +2,16 @@
 
 import styles from "./ExitRoleControl.module.css";
 
-/** Explicit Demo role exit (brief §1/§9): the only way to change role
- * once one has been selected. `onExit` is injected as a prop -- the
- * real Server Action reference in production, a plain mock in tests --
- * called directly rather than through a `<form action>`, since a
- * direct call is testable with plain React Testing Library and works
- * identically for a Server Action reference passed down from a Server
- * Component page. */
+function ExitIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M10 5H6.5A1.5 1.5 0 0 0 5 6.5v11A1.5 1.5 0 0 0 6.5 19H10" />
+      <path d="M13 8.5 16.5 12 13 15.5" />
+      <path d="M9 12h7.5" />
+    </svg>
+  );
+}
+
 export function ExitRoleControl({
   onExit,
 }: {
@@ -22,7 +25,8 @@ export function ExitRoleControl({
         void onExit();
       }}
     >
-      Exit role view
+      <ExitIcon />
+      <span>Exit role view</span>
     </button>
   );
 }

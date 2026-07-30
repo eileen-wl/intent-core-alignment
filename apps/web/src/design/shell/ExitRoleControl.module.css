@@ -1,15 +1,35 @@
 .button {
-  background: var(--surface-panel);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
-  padding: var(--space-1) var(--space-3);
-  color: var(--text-secondary);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
+  min-height: 2.85rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 0 1rem;
+  color: #262b35;
+  background: #ffffff;
+  border: 1px solid #d9dde6;
+  border-radius: 0.55rem;
+  font-size: 0.84rem;
+  font-weight: 650;
   white-space: nowrap;
+  transition:
+    background 140ms ease,
+    border-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.button svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .button:hover {
-  background: var(--surface-muted);
-  color: var(--text-primary);
+  background: #f8f8fb;
+  border-color: #bfc4d0;
+  box-shadow: 0 3px 10px rgba(27, 31, 42, 0.05);
 }

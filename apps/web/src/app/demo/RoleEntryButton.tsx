@@ -5,21 +5,25 @@ import type { HumanRole } from "@intent-core/contracts";
 import { enterDemoRole, startGuidedDemonstration } from "./actions";
 import styles from "./RoleEntryButton.module.css";
 
-/** "Enter as ..." action for one role-entry card. Takes only the
- * serialisable `role` literal (never a callback prop) and calls the
- * imported Server Action itself -- a Server Component cannot pass a
- * freshly-created closure into a Client Component prop (React rejects
- * it: "Event handlers cannot be passed to Client Component props"), so
- * this Client Component owns the call instead of receiving one.
- *
- * `variant` is presentational only. `guided`, when true (only ever the
- * primary "Start guided demonstration" instance), calls
- * `startGuidedDemonstration` instead of `enterDemoRole` -- the one
- * place the guided path's behaviour genuinely differs (it additionally
- * resolves the real D1 Shot and redirects there, docs/step-7/16_STEP_7C0D_...md
- * §8.3), not merely a different visual weight. Every direct role-entry
- * card, and the guided CTA's own role literal, still establish the
- * exact same session-scoped Demo identity. */
+function PlayIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="m8.25 5.5 9 6.5-9 6.5v-13Z" />
+    </svg>
+  );
+}
+
+function ArrowIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 12h13" />
+      <path d="m14 8 4 4-4 4" />
+    </svg>
+  );
+}
+
+/** Demo-entry action. The existing Server Actions remain the only place that
+ * establishes the trusted Demo role and performs redirects. */
 export function RoleEntryButton({
   role,
   label,
@@ -43,7 +47,9 @@ export function RoleEntryButton({
         }
       }}
     >
-      {label}
+      {variant === "primary" && <PlayIcon />}
+      <span>{label}</span>
+      {variant === "secondary" && <ArrowIcon />}
     </button>
   );
 }

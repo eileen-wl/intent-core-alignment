@@ -1,36 +1,108 @@
 import Link from "next/link";
 
-import { StatusBadge } from "../components/StatusBadge";
 import styles from "./RoleSidebar.module.css";
 import type { SidebarNavItem } from "@/lib/roleNavigation";
 
-/** Locked, role-specific primary navigation (brief §7). Only
- * `implemented` items are real links; the rest render as disabled,
- * non-navigable placeholders labelled "Upcoming" so they never lead to
- * a 404 and never imply available functionality. */
+function NavigationIcon({ label }: { label: string }) {
+  if (/alignment|execution inbox|my tasks/i.test(label)) {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 5.5h14l2 11H3l2-11Z" />
+        <path d="M3.75 16.5h4.7l1.2-2h4.7l1.2 2h4.7" />
+      </svg>
+    );
+  }
+
+  if (/project|task/i.test(label)) {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M3.75 7.25A2.25 2.25 0 0 1 6 5h3.1l1.75 2H18a2.25 2.25 0 0 1 2.25 2.25v7.5A2.25 2.25 0 0 1 18 19H6a2.25 2.25 0 0 1-2.25-2.25v-9.5Z" />
+      </svg>
+    );
+  }
+
+  if (/intent signal/i.test(label)) {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M5 9v6" />
+        <path d="M9.5 5.5v13" />
+        <path d="M14.5 3v18" />
+        <path d="M19 8v8" />
+      </svg>
+    );
+  }
+
+  if (/integration/i.test(label)) {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m9.25 14.75 5.5-5.5" />
+        <path d="M7.25 17.25 5.8 18.7a3.5 3.5 0 0 1-4.95-4.95L4 10.6a3.5 3.5 0 0 1 4.95 0" />
+        <path d="m16.75 6.75 1.45-1.45a3.5 3.5 0 1 1 4.95 4.95L20 13.4a3.5 3.5 0 0 1-4.95 0" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <rect x="4.5" y="4.5" width="15" height="15" rx="2.5" />
+    </svg>
+  );
+}
+
+function initials(name: string) {
+  const letters = name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+  return letters || "IC";
+}
+
 export function RoleSidebar({
   items,
   currentPath,
+  name = "ICAS User",
+  mode = "workspace",
 }: {
   items: SidebarNavItem[];
   currentPath: string;
+  name?: string;
+  mode?: "workspace" | "demo-entry";
 }) {
   return (
     <nav className={styles.sidebar} aria-label="Role navigation">
       <ul className={styles.list}>
         {items.map((item) => {
+          const isCurrent = item.href === currentPath;
+          const content = (
+            <>
+              <NavigationIcon label={item.label} />
+              <span aria-disabled={!item.implemented ? "true" : undefined}>{item.label}</span>
+            </>
+          );
+
           if (!item.implemented) {
             return (
               <li key={item.id} className={styles.itemRow}>
                 <span className={styles.disabledItem} aria-disabled="true">
-                  {item.label}
+                  {content}
                 </span>
-                <StatusBadge status="unavailable" label="Upcoming" />
+                <span className={styles.upcoming}>Upcoming</span>
               </li>
             );
           }
 
-          const isCurrent = item.href === currentPath;
+          if (mode === "demo-entry" && isCurrent) {
+            return (
+              <li key={item.id} className={styles.itemRow}>
+                <span className={styles.previewCurrent} aria-current="page">
+                  {content}
+                </span>
+              </li>
+            );
+          }
+
           return (
             <li key={item.id} className={styles.itemRow}>
               <Link
@@ -39,12 +111,19 @@ export function RoleSidebar({
                 aria-current={isCurrent ? "page" : undefined}
                 data-current={isCurrent || undefined}
               >
-                {item.label}
+                {content}
               </Link>
             </li>
           );
         })}
       </ul>
+
+      <div className={styles.footer} aria-label={`${name} profile`}>
+        <span className={styles.avatar}>{initials(name)}</span>
+        <span className={styles.chevron} aria-hidden="true">
+          ›
+        </span>
+      </div>
     </nav>
   );
 }
