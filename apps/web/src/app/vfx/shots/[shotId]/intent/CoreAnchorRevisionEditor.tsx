@@ -2,6 +2,7 @@
 
 import type { CoreAnchorRevisionRead, CoreAnchorRevisionUpdate, HumanGateRead } from "@intent-core/contracts";
 import { useEffect, useRef, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 
 import { ComparisonArea, ConfirmationDialog } from "@/design";
 import {
@@ -139,10 +140,11 @@ export function CoreAnchorRevisionEditor({
   const [dialogMode, setDialogMode] = useState<"confirm" | "reject" | null>(null);
   const [dialogPending, setDialogPending] = useState(false);
   const [dialogConflict, setDialogConflict] = useState<string | null>(null);
-  const [decisionOutcome, setDecisionOutcome] = useState<
-    { kind: "confirmed" | "rejected"; at: string } | null
-  >(null);
+  const [decisionOutcome, setDecisionOutcome] = useState<{ kind: "rejected"; at: string } | null>(
+    null,
+  );
   const [isSaving, startSaveTransition] = useTransition();
+  const router = useRouter();
 
   const revisionKey = `${draftRevision.id}:${draftRevision.updated_at}`;
   useEffect(() => {
@@ -235,17 +237,24 @@ export function CoreAnchorRevisionEditor({
   function submitDialog() {
     if (!humanGate) return;
     setDialogPending(true);
-    const submit = dialogMode === "confirm" ? confirmCoreAnchorRevisionAction : rejectCoreAnchorRevisionAction;
+    const mode = dialogMode;
+    const submit = mode === "confirm" ? confirmCoreAnchorRevisionAction : rejectCoreAnchorRevisionAction;
     submit(shotId, draftRevision.id, humanGate.id, rationale).then((result) => {
       setDialogPending(false);
       if (result.ok) {
         setDialogMode(null);
-        setDecisionOutcome({
-          kind: dialogMode === "confirm" ? "confirmed" : "rejected",
-          at: new Date().toLocaleString(),
-        });
-      } else if (result.error.kind === "conflict") {
-        setDialogConflict(result.error.message);
+        if (mode === "confirm") {
+          // Step 7C-2: no local "just confirmed" message here -- the
+          // draft is gone the moment this succeeds, so this component
+          // is about to unmount. The transient success presentation
+          // moves to `ConfirmedAnchorSummary` via a `?justConfirmed=`
+          // navigation, which also forces the fresh server data
+          // (confirmedRevision now set, draftRevision now null) that
+          // rendering it correctly depends on.
+          router.push(`/vfx/shots/${shotId}/intent?justConfirmed=${result.revision.id}`);
+        } else {
+          setDecisionOutcome({ kind: "rejected", at: new Date().toLocaleString() });
+        }
       } else {
         setDialogConflict(result.error.message);
       }
@@ -261,9 +270,9 @@ export function CoreAnchorRevisionEditor({
       )}
 
       <ComparisonArea>
-        <div className={styles.column}>
-          <h2 className={styles.columnHeading}>Current confirmed</h2>
-          {confirmedRevision ? (
+        {confirmedRevision && (
+          <div className={styles.column}>
+            <h2 className={styles.columnHeading}>Current confirmed</h2>
             <div className={styles.readOnlyFields}>
               {SCALAR_FIELDS.map(({ field, label }) =>
                 confirmedRevision[field] ? (
@@ -274,10 +283,8 @@ export function CoreAnchorRevisionEditor({
                 ) : null,
               )}
             </div>
-          ) : (
-            <p className={styles.empty}>No Core Anchor confirmed yet.</p>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className={styles.column}>
           <h2 className={styles.columnHeading}>Proposed draft</h2>

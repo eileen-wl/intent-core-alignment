@@ -2,6 +2,11 @@ import type { CoreAnchorRevisionRead, VfxInboxItemRead } from "@intent-core/cont
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/vfx/shots/s1/intent",
+}));
+
 vi.mock("@/features/vfx/intent-workspace/actions", () => ({
   confirmCoreAnchorRevisionAction: vi.fn(),
   rejectCoreAnchorRevisionAction: vi.fn(),
@@ -107,6 +112,7 @@ describe("IntentWorkspacePage", () => {
       draftRevision: null,
       draftHumanGate: null,
       evidenceData: { evidence: [], run: null, snapshot: null, decompositions: [], reconstructions: [] },
+      previousConfirmedRevision: null,
     };
     render(<IntentWorkspacePage shotId="s1" data={data} unavailable={false} onExitRole={vi.fn()} />);
     expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
@@ -122,13 +128,48 @@ describe("IntentWorkspacePage", () => {
       draftRevision: null,
       draftHumanGate: null,
       evidenceData: null,
+      previousConfirmedRevision: null,
     };
     render(<IntentWorkspacePage shotId="s1" data={data} unavailable={false} onExitRole={vi.fn()} />);
     expect(screen.getByText("No Core Anchor has been confirmed for this Shot yet.")).toBeVisible();
     expect(screen.getByRole("button", { name: "Start a Core Anchor" })).toBeVisible();
   });
 
-  it("renders the draft comparison state via CoreAnchorRevisionEditor", () => {
+  it("renders FIRST DRAFT (no confirmed revision, one draft) without any Current confirmed column", () => {
+    const data: IntentWorkspaceData = {
+      item: item({ core_anchor_state: "draft_pending", active_core_anchor_revision_id: null }),
+      confirmedRevision: null,
+      draftRevision: revision({ id: "r1", status: "draft", revision_number: 1 }),
+      draftHumanGate: {
+        id: "gate-1",
+        shot_id: "s1",
+        core_anchor_revision_id: "r1",
+        execution_anchor_revision_id: null,
+        gate_type: "core_anchor_confirmation",
+        required_role: "vfx_supervisor",
+        status: "pending",
+        opened_at: "2026-01-01T00:00:00Z",
+        resolved_at: null,
+        resolved_by_actor_id: null,
+        resolved_by_role: null,
+        resolved_by_actor_type: null,
+        rationale: null,
+        decision_id: null,
+        created_at: "2026-01-01T00:00:00Z",
+        updated_at: "2026-01-01T00:00:00Z",
+      },
+      evidenceData: null,
+      previousConfirmedRevision: null,
+    };
+    render(<IntentWorkspacePage shotId="s1" data={data} unavailable={false} onExitRole={vi.fn()} />);
+    expect(screen.getByText("Proposed draft")).toBeVisible();
+    // Locked FIRST DRAFT requirement: no "Current confirmed" column at
+    // all, not even a falsely-labelled empty one.
+    expect(screen.queryByText("Current confirmed")).not.toBeInTheDocument();
+    expect(screen.queryByText("No Core Anchor confirmed yet.")).not.toBeInTheDocument();
+  });
+
+  it("renders REVISION DRAFT (confirmed + newer draft) via CoreAnchorRevisionEditor", () => {
     const data: IntentWorkspaceData = {
       item: item(),
       confirmedRevision: revision(),
@@ -152,10 +193,50 @@ describe("IntentWorkspacePage", () => {
         updated_at: "2026-01-01T00:00:00Z",
       },
       evidenceData: { evidence: [], run: null, snapshot: null, decompositions: [], reconstructions: [] },
+      previousConfirmedRevision: null,
     };
     render(<IntentWorkspacePage shotId="s1" data={data} unavailable={false} onExitRole={vi.fn()} />);
     expect(screen.getByText("Current confirmed")).toBeVisible();
     expect(screen.getByText("Proposed draft")).toBeVisible();
+  });
+
+  it("Reject with no confirmed revision: the next data load (draft gone) returns to INITIAL EMPTY", () => {
+    // Models the read model exactly as it looks the moment after a
+    // Reject on a Shot that had never had a confirmed Core Anchor --
+    // the rejected revision is no longer `status: "draft"`, so it is
+    // simply absent from this data, same as any other never-confirmed
+    // Shot.
+    const data: IntentWorkspaceData = {
+      item: item({ core_anchor_state: "none", active_core_anchor_revision_id: null }),
+      confirmedRevision: null,
+      draftRevision: null,
+      draftHumanGate: null,
+      evidenceData: null,
+      previousConfirmedRevision: null,
+    };
+    render(<IntentWorkspacePage shotId="s1" data={data} unavailable={false} onExitRole={vi.fn()} />);
+    expect(screen.getByText("No Core Anchor has been confirmed for this Shot yet.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Start a Core Anchor" })).toBeVisible();
+  });
+
+  it("Reject with a confirmed revision already active: the next data load (draft gone) returns to NORMAL CONFIRMED", () => {
+    // Models the read model the moment after rejecting a REVISION DRAFT
+    // -- the previously confirmed revision is untouched and still
+    // active; only the rejected draft is gone.
+    const data: IntentWorkspaceData = {
+      item: item(),
+      confirmedRevision: revision(),
+      draftRevision: null,
+      draftHumanGate: null,
+      evidenceData: { evidence: [], run: null, snapshot: null, decompositions: [], reconstructions: [] },
+      previousConfirmedRevision: null,
+    };
+    render(<IntentWorkspacePage shotId="s1" data={data} unavailable={false} onExitRole={vi.fn()} />);
+    expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Create new revision" })).toBeVisible();
+    expect(screen.queryByText("Proposed draft")).not.toBeInTheDocument();
+    // Not the transient success presentation -- Reject never sets it.
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
   });
 
   it("renders exactly the 'Intent' tab as active", () => {
@@ -165,6 +246,7 @@ describe("IntentWorkspacePage", () => {
       draftRevision: null,
       draftHumanGate: null,
       evidenceData: { evidence: [], run: null, snapshot: null, decompositions: [], reconstructions: [] },
+      previousConfirmedRevision: null,
     };
     render(<IntentWorkspacePage shotId="s1" data={data} unavailable={false} onExitRole={vi.fn()} />);
     expect(screen.getByRole("link", { name: "Intent" })).toHaveAttribute("aria-current", "page");
@@ -177,6 +259,7 @@ describe("IntentWorkspacePage", () => {
       draftRevision: null,
       draftHumanGate: null,
       evidenceData: { evidence: [], run: null, snapshot: null, decompositions: [], reconstructions: [] },
+      previousConfirmedRevision: null,
     };
     render(<IntentWorkspacePage shotId="s1" data={data} unavailable={false} onExitRole={vi.fn()} />);
     expect(screen.getByText(/owns Core Anchor confirmation/)).toBeVisible();
@@ -189,6 +272,7 @@ describe("IntentWorkspacePage", () => {
       draftRevision: null,
       draftHumanGate: null,
       evidenceData: { evidence: [], run: null, snapshot: null, decompositions: [], reconstructions: [] },
+      previousConfirmedRevision: null,
     };
     const { container } = render(
       <IntentWorkspacePage shotId="s1" data={data} unavailable={false} onExitRole={vi.fn()} />,

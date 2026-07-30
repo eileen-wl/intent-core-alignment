@@ -30,6 +30,22 @@ const DRAFT = {
   created_by_agent_run_id: null,
   context_snapshot_id: null,
 };
+const SUPERSEDED = {
+  id: "r1",
+  status: "superseded",
+  source_intent_decomposition_id: null,
+  supersedes_revision_id: null,
+  created_by_agent_run_id: null,
+  context_snapshot_id: null,
+};
+const LATER_CONFIRMED = {
+  id: "r2",
+  status: "confirmed",
+  source_intent_decomposition_id: null,
+  supersedes_revision_id: "r1",
+  created_by_agent_run_id: null,
+  context_snapshot_id: null,
+};
 
 beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
@@ -66,6 +82,24 @@ describe("loadIntentWorkspaceData", () => {
     expect(result?.draftHumanGate).toBeNull();
     expect(result?.evidenceData?.evidence).toEqual([]);
     expect(result?.evidenceData?.decompositions).toEqual([]);
+    // A first-ever confirmation has no previous revision to compare
+    // against -- honest null, never fabricated.
+    expect(result?.previousConfirmedRevision).toBeNull();
+  });
+
+  it("derives previousConfirmedRevision from the already-fetched revisions list (no extra API call)", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(200, ITEM))
+      .mockResolvedValueOnce(jsonResponse(200, [SUPERSEDED, LATER_CONFIRMED]))
+      .mockResolvedValueOnce(jsonResponse(200, [])) // decompositions
+      .mockResolvedValueOnce(jsonResponse(200, [])); // reconstructions
+
+    const result = await loadIntentWorkspaceData("s1");
+    expect(result?.confirmedRevision).toEqual(LATER_CONFIRMED);
+    expect(result?.previousConfirmedRevision).toEqual(SUPERSEDED);
+    // Exactly the two calls the confirmed-only branch already makes --
+    // no dedicated fetch was added for the superseded revision.
+    expect(fetchMock).toHaveBeenCalledTimes(4);
   });
 
   it("resolves draft state, fetches the draft's HumanGate, and cites the superseded revision as evidence", async () => {
@@ -93,5 +127,6 @@ describe("loadIntentWorkspaceData", () => {
     expect(result?.confirmedRevision).toBeNull();
     expect(result?.draftRevision).toBeNull();
     expect(result?.evidenceData).toBeNull();
+    expect(result?.previousConfirmedRevision).toBeNull();
   });
 });

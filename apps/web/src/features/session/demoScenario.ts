@@ -44,3 +44,33 @@ export async function resolveD1DemoShotId(): Promise<string> {
   const result = (await response.json()) as D1ScenarioResult;
   return result.shot_id;
 }
+
+interface D1GuidedScenarioResult {
+  project_id: string;
+  shot_id: string;
+  task_id: string;
+  version_id: string;
+}
+
+/** Step 7C-2: the guided-walkthrough counterpart to `resolveD1DemoShotId`
+ * -- ensures/resolves the separate, always-INITIAL-EMPTY guided D1 Shot
+ * (never the fully-seeded rich Shot `resolveD1DemoShotId` resolves) and
+ * returns its real, persisted id. Same failure contract: throws
+ * `DemoScenarioUnavailableError` on an unreachable API or non-2xx
+ * response, for the guided-demo Server Action to catch. */
+export async function resolveD1GuidedDemoShotId(): Promise<string> {
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/internal/demo/ensure-d1-guided-scenario`, {
+      method: "POST",
+      cache: "no-store",
+    });
+  } catch {
+    throw new DemoScenarioUnavailableError();
+  }
+  if (!response.ok) {
+    throw new DemoScenarioUnavailableError();
+  }
+  const result = (await response.json()) as D1GuidedScenarioResult;
+  return result.shot_id;
+}

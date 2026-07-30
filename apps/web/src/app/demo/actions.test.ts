@@ -17,11 +17,13 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-const { resolveD1DemoShotIdMock } = vi.hoisted(() => ({
+const { resolveD1DemoShotIdMock, resolveD1GuidedDemoShotIdMock } = vi.hoisted(() => ({
   resolveD1DemoShotIdMock: vi.fn(),
+  resolveD1GuidedDemoShotIdMock: vi.fn(),
 }));
 vi.mock("@/features/session/demoScenario", () => ({
   resolveD1DemoShotId: resolveD1DemoShotIdMock,
+  resolveD1GuidedDemoShotId: resolveD1GuidedDemoShotIdMock,
 }));
 
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
@@ -29,6 +31,8 @@ import { enterDemoRole, exitRoleView, startGuidedDemonstration } from "./actions
 
 beforeEach(() => {
   vi.clearAllMocks();
+  resolveD1DemoShotIdMock.mockResolvedValue("11111111-1111-1111-1111-111111111111");
+  resolveD1GuidedDemoShotIdMock.mockResolvedValue("22222222-2222-2222-2222-222222222222");
 });
 
 describe("enterDemoRole", () => {
@@ -61,17 +65,37 @@ describe("enterDemoRole", () => {
     const firstCall = cookieStore.set.mock.calls[0];
 
     vi.clearAllMocks();
+    resolveD1DemoShotIdMock.mockResolvedValue("11111111-1111-1111-1111-111111111111");
 
     await expect(enterDemoRole("vfx_supervisor")).rejects.toThrow();
     const secondCall = cookieStore.set.mock.calls[0];
 
     expect(firstCall).toEqual(secondCall);
   });
+
+  it("ensures the rich D1 scenario before landing on the Alignment Inbox for vfx_supervisor (Step 7C-2)", async () => {
+    await expect(enterDemoRole("vfx_supervisor")).rejects.toThrow();
+    expect(resolveD1DemoShotIdMock).toHaveBeenCalled();
+    expect(resolveD1GuidedDemoShotIdMock).not.toHaveBeenCalled();
+    // Destination is unchanged -- still the Inbox, never the resolved shot.
+    expect(redirectSpy).toHaveBeenCalledWith("/vfx");
+  });
+
+  it("still reaches /vfx even when ensuring the rich scenario fails (best-effort, destination unchanged)", async () => {
+    resolveD1DemoShotIdMock.mockRejectedValue(new Error("unavailable"));
+    await expect(enterDemoRole("vfx_supervisor")).rejects.toThrow();
+    expect(redirectSpy).toHaveBeenCalledWith("/vfx");
+  });
+
+  it("does not attempt to ensure any D1 scenario for cg_supervisor or artist", async () => {
+    await expect(enterDemoRole("cg_supervisor")).rejects.toThrow();
+    expect(resolveD1DemoShotIdMock).not.toHaveBeenCalled();
+  });
 });
 
 describe("startGuidedDemonstration", () => {
-  it("sets the VFX Supervisor Demo cookie and redirects to the resolved D1 Shot", async () => {
-    resolveD1DemoShotIdMock.mockResolvedValue("11111111-1111-1111-1111-111111111111");
+  it("sets the VFX Supervisor Demo cookie and redirects to the resolved Guided D1 Shot", async () => {
+    resolveD1GuidedDemoShotIdMock.mockResolvedValue("33333333-3333-3333-3333-333333333333");
 
     await expect(startGuidedDemonstration()).rejects.toThrow();
 
@@ -81,12 +105,15 @@ describe("startGuidedDemonstration", () => {
       expect.objectContaining({ httpOnly: true }),
     );
     expect(redirectSpy).toHaveBeenCalledWith(
-      "/vfx/shots/11111111-1111-1111-1111-111111111111",
+      "/vfx/shots/33333333-3333-3333-3333-333333333333",
     );
+    // Step 7C-2: the guided walkthrough resolves the separate guided
+    // Shot, never the rich/fully-seeded one.
+    expect(resolveD1DemoShotIdMock).not.toHaveBeenCalled();
   });
 
   it("redirects back to /demo with an honest error when resolution fails", async () => {
-    resolveD1DemoShotIdMock.mockRejectedValue(new Error("unavailable"));
+    resolveD1GuidedDemoShotIdMock.mockRejectedValue(new Error("unavailable"));
 
     await expect(startGuidedDemonstration()).rejects.toThrow();
 
@@ -101,9 +128,9 @@ describe("startGuidedDemonstration", () => {
   });
 
   it("never redirects to a raw UUID-bearing route without resolving it first", async () => {
-    resolveD1DemoShotIdMock.mockResolvedValue("22222222-2222-2222-2222-222222222222");
+    resolveD1GuidedDemoShotIdMock.mockResolvedValue("44444444-4444-4444-4444-444444444444");
     await expect(startGuidedDemonstration()).rejects.toThrow();
-    expect(resolveD1DemoShotIdMock).toHaveBeenCalled();
+    expect(resolveD1GuidedDemoShotIdMock).toHaveBeenCalled();
   });
 });
 

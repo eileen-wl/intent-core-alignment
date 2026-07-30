@@ -1,6 +1,11 @@
+"use client";
+
 import type { CoreAnchorRevisionRead } from "@intent-core/contracts";
+import { useEffect } from "react";
+import { usePathname, useRouter } from "next/navigation";
 
 import { HumanDecisionNotice, Panel } from "@/design";
+import { computeChangeSummary } from "@/features/vfx/intent-workspace/changeSummary";
 import styles from "./ConfirmedAnchorSummary.module.css";
 
 const SCALAR_FIELDS: { field: keyof CoreAnchorRevisionRead; label: string }[] = [
@@ -23,10 +28,52 @@ const COLLECTIONS: { field: "constraints" | "variation_zones" | "drift_risks" | 
 /** Full confirmed Core Anchor content -- every field, unlike the Shot
  * Overview's one-line `core_summary`-only supporting context
  * (docs/step-7/14_STEP_7C0B_...md §4.4/§11). Shown when a confirmed
- * revision exists and no draft is currently in progress. */
-export function ConfirmedAnchorSummary({ revision }: { revision: CoreAnchorRevisionRead }) {
+ * revision exists and no draft is currently in progress: this covers
+ * both Normal Confirmed (the default -- `justConfirmed` false/absent)
+ * and, transiently, Just-confirmed Success (Step 7C-2; `justConfirmed`
+ * true only when `page.tsx` has validated the `?justConfirmed=` search
+ * param against this exact revision). The change summary shown in the
+ * latter case is computed from `previousConfirmedRevision` -- the real
+ * superseded revision (or `null` for a genuine first-ever
+ * confirmation) -- never fabricated. */
+export function ConfirmedAnchorSummary({
+  revision,
+  previousConfirmedRevision = null,
+  justConfirmed = false,
+}: {
+  revision: CoreAnchorRevisionRead;
+  previousConfirmedRevision?: CoreAnchorRevisionRead | null;
+  justConfirmed?: boolean;
+}) {
+  const router = useRouter();
+  const pathname = usePathname();
+
+  // The transient success signal is consumed here: once this has
+  // rendered with `justConfirmed`, the `?justConfirmed=` param is
+  // stripped from the visible URL (no new history entry) so a plain
+  // browser refresh re-requests the bare Intent URL and lands on the
+  // ordinary Normal Confirmed state, never repeating the success
+  // presentation.
+  useEffect(() => {
+    if (justConfirmed) {
+      router.replace(pathname, { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally runs once per justConfirmed=true mount, not on every pathname/router identity change
+  }, [justConfirmed]);
+
+  const changeSummary = justConfirmed
+    ? computeChangeSummary(previousConfirmedRevision, revision)
+    : [];
+
   return (
     <Panel tone="panel" className={styles.panel}>
+      {justConfirmed && (
+        <p className={styles.confirmedStatus} role="status">
+          Revision {revision.revision_number} was confirmed.
+          {changeSummary.length > 0 && ` Change summary: ${changeSummary.join(", ")}`}
+        </p>
+      )}
+
       <dl className={styles.fields}>
         {SCALAR_FIELDS.filter(({ field }) => revision[field]).map(({ field, label }) => (
           <div key={field} className={styles.field}>

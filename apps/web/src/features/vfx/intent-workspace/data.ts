@@ -53,6 +53,13 @@ export interface IntentWorkspaceData {
    * (draft, else confirmed) is currently relevant -- `null` when
    * neither exists yet. */
   evidenceData: IntentEvidenceData | null;
+  /** The revision `confirmedRevision` superseded, if any -- derived from
+   * the already-fetched revisions list below (never a second API call).
+   * `null` for a first-ever confirmation, or when there is no confirmed
+   * revision at all. Used only to compute an honest, real change summary
+   * for the transient Just-confirmed Success state (Step 7C-2) -- never
+   * fabricated. */
+  previousConfirmedRevision: CoreAnchorRevisionRead | null;
 }
 
 async function loadEvidenceData(
@@ -106,5 +113,17 @@ export async function loadIntentWorkspaceData(shotId: string): Promise<IntentWor
   const relevantRevision = draftRevision ?? confirmedRevision;
   const evidenceData = relevantRevision ? await loadEvidenceData(shotId, relevantRevision) : null;
 
-  return { item, confirmedRevision, draftRevision, draftHumanGate, evidenceData };
+  const previousConfirmedRevision = confirmedRevision?.supersedes_revision_id
+    ? (revisions.find((revision) => revision.id === confirmedRevision.supersedes_revision_id) ??
+      null)
+    : null;
+
+  return {
+    item,
+    confirmedRevision,
+    draftRevision,
+    draftHumanGate,
+    evidenceData,
+    previousConfirmedRevision,
+  };
 }

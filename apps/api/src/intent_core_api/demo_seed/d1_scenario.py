@@ -129,6 +129,25 @@ _D1_SHOT_NAME: Final = "Shot 010 — Final confrontation"
 _D1_TASK_NAME: Final = "Compositing Review"
 _D1_VERSION_NAME: Final = "D1_STEP3_VFX_REVIEW_001"
 
+# Step 7C-2: Guided D1 walkthrough scenario. A second, deterministic
+# Shot under the same seed-owned Project, with its own fixed
+# `ExternalEntityLink(source="demo")` identity -- never the same row as
+# the fully-seeded `D1_SHOT_EXTERNAL_ID` Shot above. Its whole purpose
+# is to start the Core Anchor lifecycle at INITIAL EMPTY (see
+# `ensure_d1_guided_scenario` below), so every downstream anchor/gate/
+# decision/review helper this module already has for the rich scenario
+# is deliberately never called for it.
+D1_GUIDED_SHOT_EXTERNAL_ID: Final = "icas-demo:d1-guided:shot-010"
+D1_GUIDED_TASK_EXTERNAL_ID: Final = "icas-demo:d1-guided:shot-010:compositing-review"
+
+_D1_GUIDED_SHOT_NAME: Final = "Shot 010 — Final confrontation"
+_D1_GUIDED_TASK_NAME: Final = "Compositing Review"
+_D1_GUIDED_VERSION_NAME: Final = "D1_STEP3_VFX_REVIEW_001"
+_D1_GUIDED_VERSION_DESCRIPTION: Final = (
+    f"{D1_MARKER} Compositing pass reviewing camera timing and contrast in the restrained "
+    "dusk confrontation. Guided walkthrough copy -- Core Anchor intentionally starts empty."
+)
+
 _D1_BRIEF_TEXT: Final = (
     f"{D1_MARKER} A restrained dusk confrontation should remain internal and controlled. "
     "Camera timing and compositing contrast have begun to drift across role interpretations."
@@ -195,9 +214,15 @@ async def _resolve_or_create_project(session: AsyncSession) -> Project:
     return project
 
 
-async def _resolve_or_create_shot(session: AsyncSession, project: Project) -> Shot:
+async def _resolve_or_create_shot(
+    session: AsyncSession,
+    project: Project,
+    *,
+    external_id: str = D1_SHOT_EXTERNAL_ID,
+    name: str = _D1_SHOT_NAME,
+) -> Shot:
     existing_id = await find_linked_entity_id(
-        session, entity_type="shot", source=_DEMO_SOURCE, external_id=D1_SHOT_EXTERNAL_ID
+        session, entity_type="shot", source=_DEMO_SOURCE, external_id=external_id
     )
     if existing_id is not None:
         shot = await session.get(Shot, existing_id)
@@ -207,7 +232,7 @@ async def _resolve_or_create_shot(session: AsyncSession, project: Project) -> Sh
             )
         return shot
 
-    shot = Shot(project_id=project.id, name=_D1_SHOT_NAME, source="manual")
+    shot = Shot(project_id=project.id, name=name, source="manual")
     session.add(shot)
     await session.flush()
     await record_external_link(
@@ -215,16 +240,22 @@ async def _resolve_or_create_shot(session: AsyncSession, project: Project) -> Sh
         entity_type="shot",
         entity_id=shot.id,
         source=_DEMO_SOURCE,
-        external_id=D1_SHOT_EXTERNAL_ID,
+        external_id=external_id,
     )
     await session.commit()
     await session.refresh(shot)
     return shot
 
 
-async def _resolve_or_create_task(session: AsyncSession, shot: Shot) -> Task:
+async def _resolve_or_create_task(
+    session: AsyncSession,
+    shot: Shot,
+    *,
+    external_id: str = D1_TASK_EXTERNAL_ID,
+    name: str = _D1_TASK_NAME,
+) -> Task:
     existing_id = await find_linked_entity_id(
-        session, entity_type="task", source=_DEMO_SOURCE, external_id=D1_TASK_EXTERNAL_ID
+        session, entity_type="task", source=_DEMO_SOURCE, external_id=external_id
     )
     if existing_id is not None:
         task = await session.get(Task, existing_id)
@@ -234,7 +265,7 @@ async def _resolve_or_create_task(session: AsyncSession, shot: Shot) -> Task:
             )
         return task
 
-    task = Task(shot_id=shot.id, name=_D1_TASK_NAME, department="comp", source="manual")
+    task = Task(shot_id=shot.id, name=name, department="comp", source="manual")
     session.add(task)
     await session.flush()
     await record_external_link(
@@ -242,14 +273,20 @@ async def _resolve_or_create_task(session: AsyncSession, shot: Shot) -> Task:
         entity_type="task",
         entity_id=task.id,
         source=_DEMO_SOURCE,
-        external_id=D1_TASK_EXTERNAL_ID,
+        external_id=external_id,
     )
     await session.commit()
     await session.refresh(task)
     return task
 
 
-async def _resolve_or_create_version(session: AsyncSession, shot: Shot) -> Version:
+async def _resolve_or_create_version(
+    session: AsyncSession,
+    shot: Shot,
+    *,
+    name: str = _D1_VERSION_NAME,
+    description: str = _D1_VERSION_DESCRIPTION,
+) -> Version:
     existing = await session.scalar(
         select(Version)
         .where(Version.shot_id == shot.id, Version.description.like(f"{D1_MARKER}%"))
@@ -262,9 +299,9 @@ async def _resolve_or_create_version(session: AsyncSession, shot: Shot) -> Versi
         session,
         _SEED_ACTOR_VFX,
         shot.id,
-        name=_D1_VERSION_NAME,
+        name=name,
         version_number=1,
-        description=_D1_VERSION_DESCRIPTION,
+        description=description,
     )
 
 
@@ -645,4 +682,52 @@ async def ensure_d1_scenario(session: AsyncSession) -> D1ScenarioResult:
         core_anchor_revision_id=core_anchor_revision.id,
         execution_anchor_revision_id=execution_anchor_revision.id,
         cross_role_assessment_id=assessment.id,
+    )
+
+
+@dataclass(frozen=True)
+class D1GuidedScenarioResult:
+    project_id: uuid.UUID
+    shot_id: uuid.UUID
+    task_id: uuid.UUID
+    version_id: uuid.UUID
+
+
+async def ensure_d1_guided_scenario(session: AsyncSession) -> D1GuidedScenarioResult:
+    """Step 7C-2: idempotent guided-walkthrough counterpart to
+    `ensure_d1_scenario`. Resolves/creates the same kind of production
+    scaffolding (Project/Shot/Task/Version) through the exact same
+    resolve-or-create helpers and `ExternalEntityLink(source="demo")`
+    identity mechanism, but under the separate, fixed
+    `D1_GUIDED_SHOT_EXTERNAL_ID` identity -- never the same Shot row as
+    `ensure_d1_scenario`'s `D1_SHOT_EXTERNAL_ID`. The Project is shared
+    (both are "D1 Demo Project" -- a demo project realistically holding
+    more than one Shot); only the Shot/Task/Version are guided-specific.
+
+    Deliberately never calls `_ensure_confirmed_core_anchor`,
+    `_ensure_confirmed_execution_anchor`, or any of the downstream
+    review/assessment helpers -- so the returned Shot always has zero
+    `CoreAnchor` rows, no HumanGate, no Decision, no Execution Anchor,
+    and no CrossRoleAssessment: Core Anchor lifecycle state 1 (INITIAL
+    EMPTY), every time this is called, on a fresh database or a
+    thousandth call alike. Safe to call repeatedly; never resets or
+    mutates an existing guided Shot's Core Anchor state (there is none
+    to reset -- this function never creates one).
+    """
+    project = await _resolve_or_create_project(session)
+    shot = await _resolve_or_create_shot(
+        session, project, external_id=D1_GUIDED_SHOT_EXTERNAL_ID, name=_D1_GUIDED_SHOT_NAME
+    )
+    task = await _resolve_or_create_task(
+        session, shot, external_id=D1_GUIDED_TASK_EXTERNAL_ID, name=_D1_GUIDED_TASK_NAME
+    )
+    version = await _resolve_or_create_version(
+        session, shot, name=_D1_GUIDED_VERSION_NAME, description=_D1_GUIDED_VERSION_DESCRIPTION
+    )
+
+    return D1GuidedScenarioResult(
+        project_id=project.id,
+        shot_id=shot.id,
+        task_id=task.id,
+        version_id=version.id,
     )

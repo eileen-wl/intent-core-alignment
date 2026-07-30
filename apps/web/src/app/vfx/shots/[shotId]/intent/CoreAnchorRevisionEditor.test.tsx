@@ -2,15 +2,20 @@ import type { CoreAnchorRevisionRead, HumanGateRead } from "@intent-core/contrac
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-const { confirmMock, rejectMock, saveMock } = vi.hoisted(() => ({
+const { confirmMock, rejectMock, saveMock, routerPushMock } = vi.hoisted(() => ({
   confirmMock: vi.fn(),
   rejectMock: vi.fn(),
   saveMock: vi.fn(),
+  routerPushMock: vi.fn(),
 }));
 vi.mock("@/features/vfx/intent-workspace/actions", () => ({
   confirmCoreAnchorRevisionAction: confirmMock,
   rejectCoreAnchorRevisionAction: rejectMock,
   saveCoreAnchorDraftAction: saveMock,
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: routerPushMock, replace: vi.fn() }),
+  usePathname: () => "/vfx/shots/s1/intent",
 }));
 
 import { CoreAnchorRevisionEditor } from "./CoreAnchorRevisionEditor";
@@ -106,9 +111,11 @@ describe("CoreAnchorRevisionEditor", () => {
     expect(screen.getAllByText("Quiet dread")).toHaveLength(2);
   });
 
-  it("shows an honest 'no Core Anchor confirmed yet' message when there is no confirmed revision", () => {
+  it("FIRST DRAFT: renders no Current confirmed column at all when there is no confirmed revision", () => {
     renderEditor({ confirmedRevision: null });
-    expect(screen.getByText("No Core Anchor confirmed yet.")).toBeVisible();
+    expect(screen.queryByText("Current confirmed")).not.toBeInTheDocument();
+    expect(screen.queryByText("No Core Anchor confirmed yet.")).not.toBeInTheDocument();
+    expect(screen.getByText("Proposed draft")).toBeVisible();
   });
 
   it("rejects a blank required collection field and does not call the save action", () => {
@@ -153,13 +160,21 @@ describe("CoreAnchorRevisionEditor", () => {
     expect(confirmMock).not.toHaveBeenCalled();
   });
 
-  it("submits Confirm through the dialog and shows the resolved outcome", async () => {
-    confirmMock.mockResolvedValue({ ok: true, revision: baseRevision({ status: "confirmed" }) });
+  it("submits Confirm through the dialog and navigates to the transient justConfirmed success URL (Step 7C-2)", async () => {
+    confirmMock.mockResolvedValue({
+      ok: true,
+      revision: baseRevision({ id: "r2", status: "confirmed" }),
+    });
     renderEditor();
     fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
     fireEvent.click(screen.getAllByRole("button", { name: "Confirm" })[1]);
     await waitFor(() => expect(confirmMock).toHaveBeenCalledWith("s1", "r2", "gate-1", ""));
-    expect(screen.getByText(/was confirmed at/)).toBeVisible();
+    // The draft is gone the instant this succeeds -- this component is
+    // about to unmount, so the transient success presentation is
+    // handed off via navigation (to ConfirmedAnchorSummary) rather than
+    // shown locally here.
+    expect(routerPushMock).toHaveBeenCalledWith("/vfx/shots/s1/intent?justConfirmed=r2");
+    expect(screen.queryByText(/was confirmed at/)).not.toBeInTheDocument();
   });
 
   it("opens the Reject dialog and closes it on Cancel without calling the action", () => {

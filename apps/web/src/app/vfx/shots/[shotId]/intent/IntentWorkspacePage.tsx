@@ -31,11 +31,16 @@ export function IntentWorkspacePage({
   shotId,
   data,
   unavailable,
+  justConfirmed = false,
   onExitRole,
 }: {
   shotId: string;
   data: IntentWorkspaceData | null;
   unavailable: boolean;
+  /** True only when the server has validated `?justConfirmed=` names the
+   * Shot's real, current confirmed revision (Step 7C-2) -- see
+   * `page.tsx`. */
+  justConfirmed?: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
@@ -99,7 +104,11 @@ export function IntentWorkspacePage({
             />
           ) : data.confirmedRevision ? (
             <>
-              <ConfirmedAnchorSummary revision={data.confirmedRevision} />
+              <ConfirmedAnchorSummary
+                revision={data.confirmedRevision}
+                previousConfirmedRevision={data.previousConfirmedRevision}
+                justConfirmed={justConfirmed}
+              />
               <StartDraftButton
                 label="Create new revision"
                 pendingLabel="Starting…"
