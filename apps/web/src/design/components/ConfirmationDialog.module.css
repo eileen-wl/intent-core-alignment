@@ -1,0 +1,87 @@
+.dialog {
+  width: min(90vw, 32rem);
+  padding: var(--space-6);
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--surface-page);
+  color: var(--text-primary);
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+
+.title {
+  margin: 0 0 var(--space-3) 0;
+  font-size: var(--font-size-lg);
+}
+
+.description {
+  margin: 0 0 var(--space-4) 0;
+  color: var(--text-secondary);
+}
+
+.rationaleBlock {
+  margin: 0 0 var(--space-5) 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-elevated);
+}
+
+.rationaleLabel {
+  display: block;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-1);
+}
+
+.rationaleText {
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.conflict {
+  margin: 0 0 var(--space-5) 0;
+  color: var(--state-error);
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-3);
+}
+
+.cancel {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  font-weight: 600;
+}
+
+.cancel:hover:not(:disabled),
+.cancel:focus-visible {
+  background: var(--surface-elevated);
+}
+
+.primary {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--authority-neutral-surface);
+  color: var(--authority-neutral-text);
+  border: 1px solid var(--authority-neutral-border);
+  font-weight: 600;
+}
+
+.primary:hover:not(:disabled),
+.primary:focus-visible {
+  background: var(--surface-elevated);
+}
+
+.cancel:disabled,
+.primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

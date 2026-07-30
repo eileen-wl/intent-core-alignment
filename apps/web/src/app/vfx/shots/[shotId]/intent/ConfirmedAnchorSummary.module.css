@@ -1,0 +1,53 @@
+.panel {
+  max-width: var(--content-width-reading);
+  margin: 0 auto;
+  padding: var(--space-6);
+}
+
+.fields {
+  margin: 0 0 var(--space-5) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.field {
+  margin: 0;
+}
+
+.fieldLabel {
+  margin: 0 0 var(--space-1) 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.fieldValue {
+  margin: 0;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+}
+
+.collection {
+  margin: 0 0 var(--space-4) 0;
+}
+
+.collectionLabel {
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.collectionList {
+  margin: 0;
+  padding-left: var(--space-5);
+}
+
+.referenceNote {
+  color: var(--text-secondary);
+}
+
+.confirmation {
+  margin-top: var(--space-5);
+}

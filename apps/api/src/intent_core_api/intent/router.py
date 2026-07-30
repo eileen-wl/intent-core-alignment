@@ -226,6 +226,27 @@ async def generate_core_anchor_draft(
     return await core_agent_service.generate_core_anchor_draft(session, shot_id)
 
 
+@router.post(
+    "/shots/{shot_id}/core-anchor/drafts/from-confirmed",
+    response_model=CoreAnchorRevisionRead,
+    status_code=201,
+)
+async def create_core_anchor_draft_from_confirmed(
+    shot_id: uuid.UUID,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> CoreAnchorRevision:
+    """Step 7C-2 Intent Workspace: starts a new draft revision from the
+    Shot's current confirmed Core Anchor -- the human-authored
+    counterpart to `POST /core-anchor/generate` (Agent-authored from an
+    IntentBrief) and `POST /intent-decompositions/{id}/core-anchor-draft`
+    (Agent-authored from a decomposition). No request body: the starting
+    content is always the confirmed revision's own real content, never
+    client-supplied.
+    """
+    return await core_anchor_service.create_draft_revision_from_confirmed(session, actor, shot_id)
+
+
 @router.get("/context-snapshots/{snapshot_id}", response_model=ContextSnapshotRead)
 async def get_context_snapshot(
     snapshot_id: uuid.UUID, session: AsyncSession = Depends(get_session)

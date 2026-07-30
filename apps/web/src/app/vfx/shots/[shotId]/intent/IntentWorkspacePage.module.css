@@ -1,0 +1,17 @@
+.authorityLine {
+  margin: var(--space-5) 0;
+}
+
+.neverConfirmed {
+  margin: var(--space-5) 0 0 0;
+  color: var(--text-secondary);
+}
+
+.activityLink {
+  margin-top: var(--space-7);
+  font-size: var(--font-size-sm);
+}
+
+.activityLink a {
+  color: var(--text-secondary);
+}

@@ -8,3 +8,4 @@ export { EmptyState } from "./EmptyState";
 export { ErrorState } from "./ErrorState";
 export { PermissionState } from "./PermissionState";
 export { LoadingSkeleton } from "./LoadingSkeleton";
+export { ConfirmationDialog } from "./ConfirmationDialog";

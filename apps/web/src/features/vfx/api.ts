@@ -1,4 +1,17 @@
-import type { VfxInboxItemRead, VfxInboxRead } from "@intent-core/contracts";
+import type {
+  AgentRunRead,
+  AnchorConfirmRequest,
+  AnchorRejectRequest,
+  ContextReconstructionRead,
+  ContextSnapshotRead,
+  CoreAnchorRead,
+  CoreAnchorRevisionRead,
+  CoreAnchorRevisionUpdate,
+  HumanGateRead,
+  IntentDecompositionRead,
+  VfxInboxItemRead,
+  VfxInboxRead,
+} from "@intent-core/contracts";
 
 /** Server-only API boundary for the new VFX role workspace (Step 7C-1;
  * docs/step-7/16_STEP_7C0D_...md §17, `7C-1` scope item 6). Distinct
@@ -55,7 +68,140 @@ async function vfxFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     throw new VfxApiError(response.status, await parseErrorDetail(response));
   }
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
+}
+
+async function vfxFetchOrNull<T>(path: string): Promise<T | null> {
+  try {
+    return await vfxFetch<T>(path);
+  } catch (error) {
+    if (error instanceof VfxApiError && error.status === 404) return null;
+    throw error;
+  }
+}
+
+/** Trusted Actor headers, resolved server-side (never client-supplied) --
+ * see `features/session/identity.ts`'s `actorHeaders()`. Every mutation
+ * below requires them; every read below does not (matches
+ * docs/step-7/14_STEP_7C0B_...md §7.4: reads never needed actor headers). */
+type ActorHeaders = Record<string, string>;
+
+function mutationInit(
+  method: "POST" | "PATCH",
+  body: unknown,
+  actorHeaders: ActorHeaders,
+): RequestInit {
+  return {
+    method,
+    headers: { "Content-Type": "application/json", ...actorHeaders },
+    body: JSON.stringify(body),
+  };
+}
+
+// --- Step 7C-2 Intent Workspace: Core Anchor read model -------------------
+
+export function getCoreAnchor(shotId: string): Promise<CoreAnchorRead | null> {
+  return vfxFetchOrNull<CoreAnchorRead>(`/intent/shots/${shotId}/core-anchor`);
+}
+
+export function listCoreAnchorRevisions(shotId: string): Promise<CoreAnchorRevisionRead[]> {
+  return vfxFetch<CoreAnchorRevisionRead[]>(`/intent/shots/${shotId}/core-anchor/revisions`);
+}
+
+export function getHumanGateForRevision(revisionId: string): Promise<HumanGateRead | null> {
+  return vfxFetchOrNull<HumanGateRead>(`/intent/core-anchor-revisions/${revisionId}/human-gate`);
+}
+
+/** Read-only advisory-input listings for the Intent Workspace's
+ * Decomposition/Reconstruction disclosure (docs/step-7/16_STEP_7C0D_...md
+ * §7) -- an honest empty array when the D1 seed (or any Shot) has none;
+ * never fabricated. No generation control is wired to these in this
+ * stage (docs/step-7/15_STEP_7C0C_...md §13 marks both "supporting,
+ * disclosure-only," not Tier 1) -- listing existing records is enough
+ * to satisfy the locked disclosure without expanding this stage's scope. */
+export function listIntentDecompositionsForShot(shotId: string): Promise<IntentDecompositionRead[]> {
+  return vfxFetch<IntentDecompositionRead[]>(`/intent/shots/${shotId}/intent-decompositions`);
+}
+
+export function listContextReconstructionsForShot(
+  shotId: string,
+): Promise<ContextReconstructionRead[]> {
+  return vfxFetch<ContextReconstructionRead[]>(`/intent/shots/${shotId}/context-reconstructions`);
+}
+
+/** Technical provenance for the Evidence/Provenance disclosure -- only
+ * fetched when the revision actually carries the corresponding id
+ * (human-authored drafts have neither). */
+export function getAgentRun(agentRunId: string): Promise<AgentRunRead> {
+  return vfxFetch<AgentRunRead>(`/intent/agent-runs/${agentRunId}`);
+}
+
+export function getContextSnapshot(snapshotId: string): Promise<ContextSnapshotRead> {
+  return vfxFetch<ContextSnapshotRead>(`/intent/context-snapshots/${snapshotId}`);
+}
+
+// --- Step 7C-2 Intent Workspace: Core Anchor mutations --------------------
+// Every mutation requires trusted Actor headers, injected by the caller
+// (a Server Action) from the server-resolved identity -- never accepted
+// from Client Component state (docs/step-7/15_STEP_7C0C_...md §12).
+
+export function createCoreAnchorDraftFromConfirmed(
+  shotId: string,
+  actorHeaders: ActorHeaders,
+): Promise<CoreAnchorRevisionRead> {
+  return vfxFetch<CoreAnchorRevisionRead>(
+    `/intent/shots/${shotId}/core-anchor/drafts/from-confirmed`,
+    { method: "POST", headers: actorHeaders },
+  );
+}
+
+/** The pre-existing, already-real blank/manual draft-creation path
+ * (`core_anchor_service.create_draft_revision`, unchanged) -- used only
+ * for the honest "no Core Anchor confirmed yet, and no draft exists
+ * yet" starting state, where there is no confirmed content to copy
+ * from. Every field starts blank/human-authored from here. */
+export function createBlankCoreAnchorDraft(
+  shotId: string,
+  actorHeaders: ActorHeaders,
+): Promise<CoreAnchorRevisionRead> {
+  return vfxFetch<CoreAnchorRevisionRead>(
+    `/intent/shots/${shotId}/core-anchor/drafts`,
+    mutationInit("POST", {}, actorHeaders),
+  );
+}
+
+export function updateCoreAnchorDraft(
+  revisionId: string,
+  changes: CoreAnchorRevisionUpdate,
+  actorHeaders: ActorHeaders,
+): Promise<CoreAnchorRevisionRead> {
+  return vfxFetch<CoreAnchorRevisionRead>(
+    `/intent/core-anchor-revisions/${revisionId}`,
+    mutationInit("PATCH", changes, actorHeaders),
+  );
+}
+
+export function confirmCoreAnchorRevision(
+  revisionId: string,
+  payload: AnchorConfirmRequest,
+  actorHeaders: ActorHeaders,
+): Promise<CoreAnchorRevisionRead> {
+  return vfxFetch<CoreAnchorRevisionRead>(
+    `/intent/core-anchor-revisions/${revisionId}/confirm`,
+    mutationInit("POST", payload, actorHeaders),
+  );
+}
+
+export function rejectCoreAnchorRevision(
+  revisionId: string,
+  payload: AnchorRejectRequest,
+  actorHeaders: ActorHeaders,
+): Promise<CoreAnchorRevisionRead> {
+  return vfxFetch<CoreAnchorRevisionRead>(
+    `/intent/core-anchor-revisions/${revisionId}/reject`,
+    mutationInit("POST", payload, actorHeaders),
+  );
 }
 
 /** `GET /vfx/inbox` -- the full Alignment Inbox, real Shots only,

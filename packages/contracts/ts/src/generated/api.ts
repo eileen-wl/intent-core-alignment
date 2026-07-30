@@ -364,6 +364,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/intent/shots/{shot_id}/core-anchor/drafts/from-confirmed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Core Anchor Draft From Confirmed
+         * @description Step 7C-2 Intent Workspace: starts a new draft revision from the
+         *     Shot's current confirmed Core Anchor -- the human-authored
+         *     counterpart to `POST /core-anchor/generate` (Agent-authored from an
+         *     IntentBrief) and `POST /intent-decompositions/{id}/core-anchor-draft`
+         *     (Agent-authored from a decomposition). No request body: the starting
+         *     content is always the confirmed revision's own real content, never
+         *     client-supplied.
+         */
+        post: operations["create_core_anchor_draft_from_confirmed_intent_shots__shot_id__core_anchor_drafts_from_confirmed_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/intent/context-snapshots/{snapshot_id}": {
         parameters: {
             query?: never;
@@ -3842,6 +3868,40 @@ export interface operations {
         parameters: {
             query?: never;
             header?: never;
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreAnchorRevisionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_core_anchor_draft_from_confirmed_intent_shots__shot_id__core_anchor_drafts_from_confirmed_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
             path: {
                 shot_id: string;
             };

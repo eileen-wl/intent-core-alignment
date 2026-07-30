@@ -333,6 +333,68 @@ async def create_draft_revision(
     return await _get_revision_with_semantic_children(session, revision.id)
 
 
+def _revision_content_for_draft(revision: CoreAnchorRevision) -> dict[str, Any]:
+    """Projects an already-loaded revision's scalar fields and five
+    semantic collections into the same shape ``create_draft_revision``
+    accepts as ``content`` -- used to start a new draft from the
+    confirmed revision's own content (Step 7C-2: ``create_draft_revision_from_confirmed``).
+    """
+    content: dict[str, Any] = {
+        field: getattr(revision, field) for field in CORE_ANCHOR_CONTENT_FIELDS
+    }
+    content["constraints"] = [{"content": row.content} for row in revision.constraints]
+    content["variation_zones"] = [{"content": row.content} for row in revision.variation_zones]
+    content["drift_risks"] = [{"description": row.description} for row in revision.drift_risks]
+    content["references"] = [
+        {"label": row.label, "uri": row.uri, "note": row.note} for row in revision.references
+    ]
+    content["open_questions"] = [{"question": row.question} for row in revision.open_questions]
+    return content
+
+
+async def create_draft_revision_from_confirmed(
+    session: AsyncSession, actor: ActorContext, shot_id: uuid.UUID
+) -> CoreAnchorRevision:
+    """Step 7C-2 Intent Workspace: the smallest honest supported path for
+    "the VFX Supervisor can begin a new proposed revision" when a
+    confirmed Core Anchor already exists and no draft currently does --
+    copies the current confirmed revision's own content into a new
+    editable draft, through the same ``create_draft_revision`` real
+    service call (and therefore the same pending-HumanGate creation,
+    same authority check, same no-Decision-until-Confirm/Reject
+    guarantee) every other draft-creation path already uses. Never
+    itself creates a Decision or performs a write-back. Reuses the
+    identical "no second simultaneous draft" guard already established
+    by ``agents.core_agent_service.generate_core_anchor_draft``/
+    ``create_core_anchor_draft_from_decomposition`` -- this is that same
+    business rule, enforced here too since this is a third caller of
+    ``create_draft_revision``.
+    """
+    anchor = await get_core_anchor_for_shot(session, shot_id)
+    if anchor is None or anchor.active_revision_id is None:
+        raise NotFoundError(
+            "This Shot has no confirmed Core Anchor revision yet; nothing to start a new "
+            "revision from"
+        )
+
+    existing_revisions = await list_revisions_for_shot(session, shot_id)
+    if any(revision.status == "draft" for revision in existing_revisions):
+        raise ConflictError(
+            "An editable Core Anchor draft already exists for this shot; confirm, reject, "
+            "or edit it before starting a new one"
+        )
+
+    confirmed = await get_revision(session, anchor.active_revision_id)
+    if confirmed is None:
+        raise InternalConsistencyError(
+            f"CoreAnchor {anchor.id} active_revision_id references a missing "
+            f"CoreAnchorRevision {anchor.active_revision_id}"
+        )
+
+    content = _revision_content_for_draft(confirmed)
+    return await create_draft_revision(session, actor, shot_id, content)
+
+
 async def get_core_anchor_for_shot(session: AsyncSession, shot_id: uuid.UUID) -> CoreAnchor | None:
     result: CoreAnchor | None = await session.scalar(
         select(CoreAnchor).where(CoreAnchor.shot_id == shot_id)
