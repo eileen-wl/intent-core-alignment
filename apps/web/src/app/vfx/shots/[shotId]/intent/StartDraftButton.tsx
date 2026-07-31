@@ -5,31 +5,31 @@ import { useState, useTransition } from "react";
 import type { IntentActionResult } from "@/features/vfx/intent-workspace/actions";
 import styles from "./StartDraftButton.module.css";
 
-/** The one primary action on the confirmed-only and never-confirmed
- * Intent Workspace states: "Create new revision" (copies the confirmed
- * revision) or "Start a Core Anchor" (first draft, nothing confirmed
- * yet). A plain action button, not dialog-gated -- starting a draft is
- * not itself a HumanGate decision (docs/step-7/16_STEP_7C0D_...md §8's
- * dialog is reserved for Confirm/Reject only). On success, the Server
- * Action's own `revalidatePath` calls bring the new draft onto the page
- * without a client-side navigation. */
+/** Starts a blank first draft or creates a new revision from the current
+ * confirmed Core Anchor. `variant="primary"` is reserved for the dominant
+ * INITIAL EMPTY creation action; existing confirmed-state uses keep the
+ * restrained secondary appearance by default. */
 export function StartDraftButton({
   label,
   pendingLabel,
   action,
+  variant = "secondary",
 }: {
   label: string;
   pendingLabel: string;
   action: () => Promise<IntentActionResult>;
+  variant?: "primary" | "secondary";
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const buttonClassName =
+    variant === "primary" ? `${styles.button} ${styles.primary}` : styles.button;
 
   return (
     <div className={styles.wrapper}>
       <button
         type="button"
-        className={styles.button}
+        className={buttonClassName}
         disabled={isPending}
         onClick={() => {
           setError(null);

@@ -48,7 +48,7 @@ export function IntentSourceContext({
 
       {evidenceData === null ? (
         <p className={styles.empty}>
-          No source evidence has been generated for this Shot yet.
+          No creative-intent source or supporting evidence is linked to this Shot yet. You can still create the first draft from the available Shot context.
         </p>
       ) : (
         <div className={styles.sources}>

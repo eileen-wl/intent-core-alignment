@@ -44,6 +44,8 @@ export function IntentWorkspacePage({
   justConfirmed?: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
+  const hasRevisionHistory = Boolean(data?.draftRevision || data?.confirmedRevision);
+
   return (
     <AppShell
       name={DEMO_IDENTITY_NAME.vfx_supervisor}
@@ -142,11 +144,13 @@ export function IntentWorkspacePage({
 
           {data.evidenceData && <IntentEvidenceDisclosures data={data.evidenceData} />}
 
-          <p className={styles.activityLink}>
-            <span className={styles.activityLinkDisabled} aria-disabled="true">
-              View full revision history in Activity (Upcoming)
-            </span>
-          </p>
+          {hasRevisionHistory && (
+            <p className={styles.activityLink}>
+              <span className={styles.activityLinkDisabled} aria-disabled="true">
+                View full revision history in Activity (Upcoming)
+              </span>
+            </p>
+          )}
         </>
       )}
     </AppShell>
