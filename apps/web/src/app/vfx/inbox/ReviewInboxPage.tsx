@@ -1,21 +1,27 @@
 import type { VfxInboxRead } from "@intent-core/contracts";
+import Link from "next/link";
 
 import { AppShell, Breadcrumbs, EmptyState, ErrorState, PageHeader } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
-import { InboxRow } from "../InboxRow";
+import { adaptCurrentFocusToWorkItems } from "@/features/vfx/review-inbox/workItem";
+import { WorkItemRow } from "../WorkItemRow";
 
-/** `/vfx/inbox` -- Review Inbox (Step 7C-1 locked IA §8). Actionable
- * work only: Core Anchor confirmation, HumanGate, Versions/Review Notes
- * needing review, Assessment interpretation, Proposal, escalation, and
- * acknowledgement/Decision work -- every item here has a real,
- * persisted `current_focus.actionable === true`. Reuses the same
- * focus-first `InboxRow` the former single Alignment Inbox page used;
- * the difference is the filter, not a renamed page keeping the old
- * hierarchy. Never the structural parent of a Shot -- opening an item
- * goes straight to that Shot's own Overview, and this page never
- * appears in a Shot's breadcrumb. `inbox` is `null` only when the real
- * `GET /vfx/inbox` call failed, distinct from a real empty Inbox. */
+/** `/vfx/inbox` -- Review Inbox (Step 7C-1 content-architecture
+ * correction). Work-item-first: the primary information object is the
+ * required work item, not the Shot. Consumes the shared
+ * `ReviewWorkItem` collection (`features/vfx/review-inbox/workItem.ts`)
+ * -- the same model Workspace Home's Priority actions section uses --
+ * rather than rendering raw Shot inbox rows. Today's only real source is
+ * every actionable `current_focus`; Step 7C-3 adds further adapters
+ * (Version/Review Note, Assessment, Proposal, conflict, escalation,
+ * acknowledgement) that concatenate into the same flat collection this
+ * page already renders, so this page does not need to change shape when
+ * that lands. Never a structural parent of a Shot -- opening an item
+ * goes straight to that Shot's own Overview or Intent page, and this
+ * page never appears in a Shot's breadcrumb. `inbox` is `null` only when
+ * the real `GET /vfx/inbox` call failed, distinct from a real empty
+ * Inbox. */
 export function ReviewInboxPage({
   inbox,
   onExitRole,
@@ -23,7 +29,7 @@ export function ReviewInboxPage({
   inbox: VfxInboxRead | null;
   onExitRole: () => void | Promise<void>;
 }) {
-  const actionableItems = inbox?.items.filter((item) => item.current_focus.actionable) ?? null;
+  const workItems = inbox ? adaptCurrentFocusToWorkItems(inbox.items) : null;
 
   return (
     <AppShell
@@ -36,23 +42,27 @@ export function ReviewInboxPage({
       <Breadcrumbs items={[{ label: "Review Inbox" }]} />
       <PageHeader
         title="Review Inbox"
-        description="Actionable work that requires your review, interpretation, confirmation, rejection, acknowledgement, or escalation."
+        description="Work that requires your review, interpretation, confirmation, rejection, acknowledgement, or escalation."
       />
 
-      {inbox === null || actionableItems === null ? (
+      {inbox === null || workItems === null ? (
         <ErrorState
           title="Review Inbox is unavailable"
           description="The ICAS service could not be reached. Try refreshing the page."
         />
-      ) : actionableItems.length === 0 ? (
-        <EmptyState title="Nothing needs your review right now" />
+      ) : workItems.length === 0 ? (
+        <EmptyState
+          title="Review Inbox is clear"
+          description="No review or interpretation currently requires your attention."
+          action={<Link href="/vfx/shots">Browse Shots →</Link>}
+        />
       ) : (
         <>
-          <p>Showing {actionableItems.length} items requiring review</p>
+          <p>Showing {workItems.length} items requiring review</p>
           <div role="list">
-            {actionableItems.map((item) => (
-              <div role="listitem" key={item.shot_id}>
-                <InboxRow item={item} />
+            {workItems.map((item) => (
+              <div role="listitem" key={item.id}>
+                <WorkItemRow item={item} />
               </div>
             ))}
           </div>
