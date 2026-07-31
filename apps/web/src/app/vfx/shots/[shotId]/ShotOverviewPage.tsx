@@ -1,4 +1,5 @@
 import type { VfxInboxItemRead } from "@intent-core/contracts";
+import Link from "next/link";
 
 import {
   AppShell,
@@ -68,24 +69,9 @@ export function ShotOverviewPage({
             tabs={[
               { id: "overview", label: "Overview", href: `/vfx/shots/${item.shot_id}` },
               { id: "intent", label: "Intent", href: `/vfx/shots/${item.shot_id}/intent` },
-              {
-                id: "versions",
-                label: "Versions",
-                href: `/vfx/shots/${item.shot_id}/versions`,
-                implemented: false,
-              },
-              {
-                id: "alignment",
-                label: "Alignment",
-                href: `/vfx/shots/${item.shot_id}/alignment`,
-                implemented: false,
-              },
-              {
-                id: "activity",
-                label: "Activity",
-                href: `/vfx/shots/${item.shot_id}/activity`,
-                implemented: false,
-              },
+              { id: "versions", label: "Versions", href: `/vfx/shots/${item.shot_id}/versions` },
+              { id: "alignment", label: "Alignment", href: `/vfx/shots/${item.shot_id}/alignment` },
+              { id: "activity", label: "Activity", href: `/vfx/shots/${item.shot_id}/activity` },
             ]}
           />
 
@@ -101,23 +87,37 @@ export function ShotOverviewPage({
 
             <dt>Latest Version</dt>
             <dd>
-              {item.relevant_version_name
-                ? item.relevant_version_number
-                  ? `${item.relevant_version_name} (v${item.relevant_version_number})`
-                  : item.relevant_version_name
-                : "No Version recorded yet."}
+              {item.relevant_version_name ? (
+                <Link href={`/vfx/shots/${item.shot_id}/versions`}>
+                  {item.relevant_version_number
+                    ? `${item.relevant_version_name} (v${item.relevant_version_number})`
+                    : item.relevant_version_name}
+                </Link>
+              ) : (
+                "No Version recorded yet."
+              )}
             </dd>
 
             {!ALIGNMENT_FOCUS_TYPES.has(item.current_focus.focus_type) && (
               <>
                 <dt>Latest assessment</dt>
                 <dd>
-                  {item.latest_signal_id
-                    ? `${signalStateLabel(item.latest_signal_attention_level)} -- ${item.latest_signal_summary}`
-                    : "No current Intent Signal. A successful Cross-role Assessment is required."}
+                  {item.latest_signal_id ? (
+                    <Link href={`/vfx/shots/${item.shot_id}/alignment`}>
+                      {signalStateLabel(item.latest_signal_attention_level)} --{" "}
+                      {item.latest_signal_summary}
+                    </Link>
+                  ) : (
+                    "No current Intent Signal. A successful Cross-role Assessment is required."
+                  )}
                 </dd>
               </>
             )}
+
+            <dt>Activity</dt>
+            <dd>
+              <Link href={`/vfx/shots/${item.shot_id}/activity`}>View full activity →</Link>
+            </dd>
           </dl>
         </>
       )}

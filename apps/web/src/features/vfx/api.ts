@@ -7,9 +7,13 @@ import type {
   CoreAnchorRead,
   CoreAnchorRevisionRead,
   CoreAnchorRevisionUpdate,
+  CrossRoleAssessmentRead,
   DecisionRead,
   HumanGateRead,
   IntentDecompositionRead,
+  ReviewNoteRead,
+  ShotActivityRead,
+  VersionRead,
   VfxInboxItemRead,
   VfxInboxRead,
 } from "@intent-core/contracts";
@@ -211,6 +215,34 @@ export function rejectCoreAnchorRevision(
     `/intent/core-anchor-revisions/${revisionId}/reject`,
     mutationInit("POST", payload, actorHeaders),
   );
+}
+
+// --- Step 7C-3: Versions, Alignment, Activity read models -----------------
+
+/** Real Production Versions for a Shot, newest-first per the backend's
+ * own `created_at` ordering -- never a Core Anchor Revision. */
+export function listVersionsForShot(shotId: string): Promise<VersionRead[]> {
+  return vfxFetch<VersionRead[]>(`/shots/${shotId}/versions`);
+}
+
+export function listReviewNotesForVersion(versionId: string): Promise<ReviewNoteRead[]> {
+  return vfxFetch<ReviewNoteRead[]>(`/versions/${versionId}/review-notes`);
+}
+
+/** This Shot's full Cross-role Assessment history, newest first --
+ * distinct from the narrower per-Version+Task listing used during
+ * generation. Each row already carries its own `intent_signal` and
+ * (when one exists) `re_anchor_proposal`. */
+export function listCrossRoleAssessmentsForShot(
+  shotId: string,
+): Promise<CrossRoleAssessmentRead[]> {
+  return vfxFetch<CrossRoleAssessmentRead[]>(`/intent/shots/${shotId}/cross-role-assessments`);
+}
+
+/** The real, persisted chronological Activity timeline for a Shot --
+ * see `intent_core_api.activity.service` for what it is assembled from. */
+export function getShotActivity(shotId: string): Promise<ShotActivityRead> {
+  return vfxFetch<ShotActivityRead>(`/shots/${shotId}/activity`);
 }
 
 /** `GET /vfx/inbox` -- the full Alignment Inbox, real Shots only,

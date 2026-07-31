@@ -73,21 +73,29 @@ describe("ShotOverviewPage", () => {
     expect(screen.getAllByText("D1_STEP3_VFX_REVIEW_001 (v1)").length).toBeGreaterThan(0);
   });
 
-  it("renders all five contextual tabs, Overview active", () => {
+  it("renders all five contextual tabs as real, implemented links, Overview active", () => {
     render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
     expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute(
       "aria-current",
       "page",
     );
     expect(screen.getByRole("link", { name: "Intent" })).toBeVisible();
-    // Versions/Alignment/Activity are Step 7C-3 scope: rendered as
-    // disabled, non-navigable "Upcoming" placeholders, never a live
-    // link leading to a 404.
-    for (const label of ["Versions", "Alignment", "Activity"]) {
-      expect(screen.queryByRole("link", { name: label })).not.toBeInTheDocument();
-      expect(screen.getByText(label)).toBeVisible();
-    }
-    expect(screen.getAllByText("Upcoming")).toHaveLength(3);
+    // Step 7C-3: Versions/Alignment/Activity are real, navigable routes
+    // now -- never a disabled "Upcoming" placeholder.
+    const shotId = buildItem().shot_id;
+    expect(screen.getByRole("link", { name: "Versions" })).toHaveAttribute(
+      "href",
+      `/vfx/shots/${shotId}/versions`,
+    );
+    expect(screen.getByRole("link", { name: "Alignment" })).toHaveAttribute(
+      "href",
+      `/vfx/shots/${shotId}/alignment`,
+    );
+    expect(screen.getByRole("link", { name: "Activity" })).toHaveAttribute(
+      "href",
+      `/vfx/shots/${shotId}/activity`,
+    );
+    expect(screen.queryByText("Upcoming")).not.toBeInTheDocument();
   });
 
   const focusTypes: VfxCurrentFocusType[] = [

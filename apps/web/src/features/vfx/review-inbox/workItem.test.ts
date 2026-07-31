@@ -72,10 +72,18 @@ describe("adaptCurrentFocusToWorkItems", () => {
     {
       focusType: "alignment_not_followed_by_anchor_action",
       category: "Alignment interpretation",
-      route: "/vfx/shots/s1",
+      route: "/vfx/shots/s1/alignment",
     },
-    { focusType: "re_anchor_proposal_present", category: "Alignment interpretation", route: "/vfx/shots/s1" },
-    { focusType: "assessment_generation_available", category: "Attention required", route: "/vfx/shots/s1" },
+    {
+      focusType: "re_anchor_proposal_present",
+      category: "Alignment interpretation",
+      route: "/vfx/shots/s1/alignment",
+    },
+    {
+      focusType: "assessment_generation_available",
+      category: "Attention required",
+      route: "/vfx/shots/s1/alignment",
+    },
   ];
 
   it.each(actionableTypes)(
@@ -93,7 +101,7 @@ describe("adaptCurrentFocusToWorkItems", () => {
     },
   );
 
-  it("never links to an unimplemented Step 7C-3 route (/alignment, /versions, /activity), even though the backend's own target_route still does", () => {
+  it("routes alignment-family focus types to the real Alignment route, matching the backend's own target_route now that it exists", () => {
     const workItems = adaptCurrentFocusToWorkItems([
       item({
         shot_id: "s1",
@@ -102,8 +110,23 @@ describe("adaptCurrentFocusToWorkItems", () => {
         }),
       }),
     ]);
-    expect(workItems[0].route).not.toMatch(/\/(alignment|versions|activity)$/);
-    expect(workItems[0].route).toBe("/vfx/shots/s1");
+    expect(workItems[0].route).toBe("/vfx/shots/s1/alignment");
+  });
+
+  it("still re-derives the route independently rather than blindly forwarding a mismatched target_route", () => {
+    // Even if a future backend response disagreed with this adapter's
+    // own locked rule, the adapter must not blindly trust it -- proven
+    // here by supplying a deliberately wrong target_route and checking
+    // the adapter's own rule still wins.
+    const workItems = adaptCurrentFocusToWorkItems([
+      item({
+        shot_id: "s1",
+        current_focus: focus("core_anchor_gate_pending", {
+          target_route: "/vfx/shots/s1/alignment",
+        }),
+      }),
+    ]);
+    expect(workItems[0].route).toBe("/vfx/shots/s1/intent");
   });
 
   it("uses a stable id namespaced by source type and focus type, never shotId alone", () => {

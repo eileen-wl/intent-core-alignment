@@ -26,7 +26,3 @@
 .activityLink a {
   color: var(--text-secondary);
 }
-
-.activityLinkDisabled {
-  color: var(--text-muted);
-}

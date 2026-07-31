@@ -651,6 +651,23 @@ async def list_cross_role_assessments(
     )
 
 
+@router.get(
+    "/shots/{shot_id}/cross-role-assessments",
+    response_model=list[CrossRoleAssessmentRead],
+)
+async def list_shot_cross_role_assessments(
+    shot_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> list[CrossRoleAssessment]:
+    """Step 7C-3 Alignment Workspace: this Shot's full Cross-role
+    Assessment history, newest first -- not scoped to a single Task/
+    Version pair (see ``list_cross_role_assessments`` above for that
+    narrower query)."""
+    return await cross_role_assessment_service.list_cross_role_assessments_for_shot(
+        session, shot_id
+    )
+
+
 @router.get("/re-anchor-proposals/{proposal_id}", response_model=ReAnchorProposalRead)
 async def get_re_anchor_proposal(
     proposal_id: uuid.UUID, session: AsyncSession = Depends(get_session)

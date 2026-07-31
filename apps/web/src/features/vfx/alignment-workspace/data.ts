@@ -1,0 +1,64 @@
+import type {
+  CoreAnchorRevisionRead,
+  CrossRoleAssessmentRead,
+  VersionRead,
+  VfxInboxItemRead,
+} from "@intent-core/contracts";
+
+import {
+  fetchVfxInboxItem,
+  listCoreAnchorRevisions,
+  listCrossRoleAssessmentsForShot,
+  listVersionsForShot,
+} from "@/features/vfx/api";
+
+/** `/vfx/shots/:shotId/alignment` (Step 7C-3) -- whether the reviewed
+ * production work aligns with the active Core Anchor, and where human
+ * interpretation is required. `CrossRoleAssessment` (with its attached
+ * `intent_signal` and, when one exists, `re_anchor_proposal`) is the one
+ * real, already-persisted assessment concept this page reads -- the
+ * same one `vfx_inbox`'s Current-focus derivation already treats as
+ * canonical. The separate, simpler `AlignmentAssessment` (Step 4b) is
+ * deliberately not surfaced here: introducing a second "assessment"
+ * concept on the same page would contradict "no competing source of
+ * truth". */
+export interface AlignmentWorkspaceData {
+  item: VfxInboxItemRead;
+  /** Newest first. `assessments[0]`, when present, is the current
+   * assessment; the rest is real assessment history. Honestly empty
+   * when no Cross-role Assessment has ever been generated for this
+   * Shot. */
+  assessments: CrossRoleAssessmentRead[];
+  /** Real Version name/number lookup for `assessment.version_id` --
+   * never a fabricated label when a Version was since deleted (never
+   * happens today; kept `| undefined`-safe regardless). */
+  versionsById: Map<string, VersionRead>;
+  /** Real Core Anchor Revision lookup for
+   * `assessment.core_anchor_revision_id`, so the page can show the real
+   * revision number/summary that was active when the assessment ran. */
+  revisionsById: Map<string, CoreAnchorRevisionRead>;
+}
+
+/** Returns `null` only when the Shot itself does not exist -- any other
+ * failure propagates as a thrown `VfxApiError`. */
+export async function loadAlignmentWorkspaceData(
+  shotId: string,
+): Promise<AlignmentWorkspaceData | null> {
+  const item = await fetchVfxInboxItem(shotId);
+  if (item === null) {
+    return null;
+  }
+
+  const [assessments, versions, revisions] = await Promise.all([
+    listCrossRoleAssessmentsForShot(shotId),
+    listVersionsForShot(shotId),
+    listCoreAnchorRevisions(shotId),
+  ]);
+
+  return {
+    item,
+    assessments,
+    versionsById: new Map(versions.map((version) => [version.id, version])),
+    revisionsById: new Map(revisions.map((revision) => [revision.id, revision])),
+  };
+}

@@ -92,6 +92,31 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/demo/reset-uninitialized-shot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Uninitialized Shot Endpoint
+         * @description Dev-only (Step 7C-2 browser-validation fix #1): puts the seed's
+         *     uninitialized Shot back at Core Anchor lifecycle state 1 (INITIAL
+         *     EMPTY) on demand, so that state stays reliably reachable even after a
+         *     prior browser session has moved it past it (e.g. by starting a
+         *     draft). Never adds a product-facing page -- this is scaffolding at the
+         *     same trust boundary as `/ensure-d1-scenario` (see module docstring).
+         */
+        post: operations["reset_uninitialized_shot_endpoint_internal_demo_reset_uninitialized_shot_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/ping-worker": {
         parameters: {
             query?: never;
@@ -868,6 +893,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/intent/shots/{shot_id}/cross-role-assessments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Shot Cross Role Assessments
+         * @description Step 7C-3 Alignment Workspace: this Shot's full Cross-role
+         *     Assessment history, newest first -- not scoped to a single Task/
+         *     Version pair (see ``list_cross_role_assessments`` above for that
+         *     narrower query).
+         */
+        get: operations["list_shot_cross_role_assessments_intent_shots__shot_id__cross_role_assessments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/intent/re-anchor-proposals/{proposal_id}": {
         parameters: {
             query?: never;
@@ -1135,6 +1183,23 @@ export interface paths {
         };
         /** Get Vfx Inbox Item */
         get: operations["get_vfx_inbox_item_vfx_inbox__shot_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shots/{shot_id}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Shot Activity */
+        get: operations["get_shot_activity_shots__shot_id__activity_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1990,6 +2055,11 @@ export interface components {
              * Format: uuid
              */
             cross_role_assessment_id: string;
+            /**
+             * Uninitialized Shot Id
+             * Format: uuid
+             */
+            uninitialized_shot_id: string;
         };
         /** DecisionRead */
         DecisionRead: {
@@ -2592,6 +2662,16 @@ export interface components {
              */
             created_at: string;
         };
+        /** ResetUninitializedShotResultRead */
+        ResetUninitializedShotResultRead: {
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Intent Url */
+            intent_url: string;
+        };
         /** ReviewNoteCreate */
         ReviewNoteCreate: {
             /** Content */
@@ -2655,6 +2735,48 @@ export interface components {
             main_concerns: string;
             /** Evidence */
             evidence: components["schemas"]["CrossRoleEvidenceReference"][];
+        };
+        /** ShotActivityEventRead */
+        ShotActivityEventRead: {
+            /** Id */
+            id: string;
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "core_anchor_draft_created" | "core_anchor_draft_updated" | "core_anchor_confirmed" | "core_anchor_draft_discarded" | "production_version_recorded" | "review_note_recorded" | "alignment_assessment_created" | "re_anchor_proposal_generated" | "external_link_recorded";
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Actor Kind */
+            actor_kind: ("human" | "agent" | "system") | null;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Actor Human Role */
+            actor_human_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
+            /** Summary */
+            summary: string;
+            /** Related Entity Type */
+            related_entity_type: string;
+            /**
+             * Related Entity Id
+             * Format: uuid
+             */
+            related_entity_id: string;
+            /** Route */
+            route: string;
+        };
+        /** ShotActivityRead */
+        ShotActivityRead: {
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Events */
+            events: components["schemas"]["ShotActivityEventRead"][];
         };
         /** ShotCreate */
         ShotCreate: {
@@ -3386,6 +3508,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["D1ScenarioResultRead"];
+                };
+            };
+        };
+    };
+    reset_uninitialized_shot_endpoint_internal_demo_reset_uninitialized_shot_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResetUninitializedShotResultRead"];
                 };
             };
         };
@@ -4930,6 +5072,37 @@ export interface operations {
             };
         };
     };
+    list_shot_cross_role_assessments_intent_shots__shot_id__cross_role_assessments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrossRoleAssessmentRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_re_anchor_proposal_intent_re_anchor_proposals__proposal_id__get: {
         parameters: {
             query?: never;
@@ -5529,6 +5702,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VfxInboxItemRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shot_activity_shots__shot_id__activity_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShotActivityRead"];
                 };
             };
             /** @description Validation Error */

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import type { IntentWorkspaceData } from "@/features/vfx/intent-workspace/data";
 import {
   AppShell,
@@ -86,19 +88,16 @@ export function IntentWorkspacePage({
                 id: "versions",
                 label: "Versions",
                 href: `/vfx/shots/${data.item.shot_id}/versions`,
-                implemented: false,
               },
               {
                 id: "alignment",
                 label: "Alignment",
                 href: `/vfx/shots/${data.item.shot_id}/alignment`,
-                implemented: false,
               },
               {
                 id: "activity",
                 label: "Activity",
                 href: `/vfx/shots/${data.item.shot_id}/activity`,
-                implemented: false,
               },
             ]}
           />
@@ -152,9 +151,9 @@ export function IntentWorkspacePage({
 
           {hasRevisionHistory && (
             <p className={styles.activityLink}>
-              <span className={styles.activityLinkDisabled} aria-disabled="true">
-                View full revision history in Activity (Upcoming)
-              </span>
+              <Link href={`/vfx/shots/${shotId}/activity`}>
+                View full revision history in Activity
+              </Link>
             </p>
           )}
         </>

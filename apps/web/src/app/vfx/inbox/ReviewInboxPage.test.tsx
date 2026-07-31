@@ -125,7 +125,7 @@ describe("ReviewInboxPage", () => {
     }
   });
 
-  it("routes Core Anchor work to Intent, and alignment-family work to Shot Overview (never an unimplemented route)", () => {
+  it("routes Core Anchor work to Intent, and alignment-family work to Alignment", () => {
     render(
       <ReviewInboxPage
         inbox={buildInbox([
@@ -161,7 +161,37 @@ describe("ReviewInboxPage", () => {
     ).toHaveAttribute("href", "/vfx/shots/s1/intent");
     expect(
       screen.getByText("Re-anchor proposal available for consideration").closest("a"),
-    ).toHaveAttribute("href", "/vfx/shots/s2");
+    ).toHaveAttribute("href", "/vfx/shots/s2/alignment");
+  });
+
+  it("falls back to Shot Overview for an unsupported focus type", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([
+          buildItem({
+            shot_id: "s3",
+            shot_name: "Shot 030",
+            current_focus: {
+              // Cast: a focus_type the frontend does not (yet) recognise as
+              // Core Anchor or Alignment family -- proving the honest,
+              // safe default rather than assuming every future type is
+              // Alignment-related.
+              focus_type: "some_future_focus_type" as never,
+              title: "Some future work",
+              explanation: "explanation",
+              target_route: "/vfx/shots/s3/somewhere-unbuilt",
+              primary_action_label: "Do something",
+              actionable: true,
+            },
+          }),
+        ])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Some future work").closest("a")).toHaveAttribute(
+      "href",
+      "/vfx/shots/s3",
+    );
   });
 
   it("supports two work items that reference the same Shot", () => {

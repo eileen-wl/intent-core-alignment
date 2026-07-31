@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from intent_core_api.activity.router import router as activity_router
 from intent_core_api.config import get_settings
 from intent_core_api.demo_seed.router import router as demo_seed_router
 from intent_core_api.integrations.router import router as integrations_router
@@ -37,6 +38,7 @@ app.include_router(intent_router)
 app.include_router(integrations_router)
 app.include_router(versions_and_feedback_router)
 app.include_router(vfx_inbox_router)
+app.include_router(activity_router)
 
 
 @app.exception_handler(ForbiddenActionError)

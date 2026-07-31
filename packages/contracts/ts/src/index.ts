@@ -125,3 +125,8 @@ export type VfxInboxCurrentFocusRead = Schemas["VfxInboxCurrentFocusRead"];
 export type VfxInboxNextFocusRead = Schemas["VfxInboxNextFocusRead"];
 export type VfxInboxItemRead = Schemas["VfxInboxItemRead"];
 export type VfxInboxRead = Schemas["VfxInboxRead"];
+
+export type ShotActivityEventType =
+  Schemas["ShotActivityEventRead"]["event_type"];
+export type ShotActivityEventRead = Schemas["ShotActivityEventRead"];
+export type ShotActivityRead = Schemas["ShotActivityRead"];

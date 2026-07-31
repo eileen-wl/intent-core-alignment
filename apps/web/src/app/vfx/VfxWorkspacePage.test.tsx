@@ -167,7 +167,7 @@ describe("VfxWorkspacePage", () => {
     expect(link).toHaveAttribute("href", "/vfx/shots/s1/intent");
   });
 
-  it("opens future unsupported (alignment-family) work in Shot Overview, never an unimplemented route", () => {
+  it("opens alignment-family work in the real Alignment Workspace", () => {
     render(
       <VfxWorkspacePage
         inbox={buildInbox([
@@ -190,7 +190,7 @@ describe("VfxWorkspacePage", () => {
     const link = priorityActions
       .getByText("Cross-role assessment may need your interpretation")
       .closest("a");
-    expect(link).toHaveAttribute("href", "/vfx/shots/s1");
+    expect(link).toHaveAttribute("href", "/vfx/shots/s1/alignment");
   });
 
   it("shows an honest no-priority-actions state without hiding overview, snapshot, or Shots access", () => {

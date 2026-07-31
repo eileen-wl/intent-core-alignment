@@ -2,29 +2,34 @@ import type { VfxInboxItemRead, VfxCurrentFocusType } from "@intent-core/contrac
 
 /**
  * Review work-item architecture (Step 7C-1 content-architecture
- * correction; docs/step-7/16_STEP_7C0D_...md, docs/step-7/15_STEP_7C0C_...md).
+ * correction, updated in Step 7C-3 now that `/versions`, `/alignment`,
+ * and `/activity` are real routes; docs/step-7/16_STEP_7C0D_...md,
+ * docs/step-7/15_STEP_7C0C_...md).
  *
  * Workspace Home and Review Inbox both render *work items*, not Shots.
  * A Shot is production context a work item happens to relate to -- never
  * the primary identity of the Inbox. This file is the shared model both
- * pages consume, plus the one adapter Step 7C-1 has real data for.
+ * pages consume, plus the one adapter with real data so far.
  *
- * Step 7C-1 source: `current_focus`. Each Shot's already-derived,
- * already-honest `VfxInboxItemRead.current_focus` is the only work-item
- * source available right now. `adaptCurrentFocusToWorkItems` turns every
+ * Source: `current_focus`. Each Shot's already-derived, already-honest
+ * `VfxInboxItemRead.current_focus` is the only work-item source
+ * available today. `adaptCurrentFocusToWorkItems` turns every
  * *actionable* current-focus record into exactly one `ReviewWorkItem`
  * (`focus_type === "none"` never becomes a work item -- there is nothing
- * to act on). Because today's backend still expresses "how would a VFX
- * Supervisor reach this" via `current_focus.target_route`, which for the
- * three alignment-family focus types (`alignment_not_followed_by_anchor_action`,
- * `re_anchor_proposal_present`, `assessment_generation_available`) points
- * at `/vfx/shots/:id/alignment` -- a route that does not exist until Step
- * 7C-3 -- this adapter deliberately does NOT forward `target_route`
- * as-is. It re-derives the destination from the locked route rule
- * instead (`workItemRoute` below): Core Anchor confirmation/draft work
- * goes to the real Intent route; everything else goes to the real Shot
- * Overview route. No work item here ever links to an unimplemented
- * Step 7C-3 route.
+ * to act on). `workItemRoute` still does not blindly forward
+ * `current_focus.target_route`: it re-derives the destination from its
+ * own locked route rule, kept independently correct so a future
+ * backend-side route change cannot silently redirect a work item
+ * without this adapter's own review. That rule now matches the
+ * backend's real `target_route` for every currently-produced focus type
+ * (see `vfx_inbox/current_focus.py`): Core Anchor confirmation/draft
+ * work goes to the real Intent route; the three alignment-family types
+ * (`alignment_not_followed_by_anchor_action`, `re_anchor_proposal_present`,
+ * `assessment_generation_available`) go to the real Alignment route;
+ * anything else, and any future unrecognised focus type, safely falls
+ * back to the real Shot Overview route. No work item here has a real
+ * `version_review` source yet, so `/versions` is not a destination any
+ * work item this adapter produces currently uses.
  *
  * Step 7C-3 extension boundary: additional adapters (Version/Review Note
  * review, Cross-role Assessment interpretation, Re-anchor Proposal
@@ -35,11 +40,11 @@ import type { VfxInboxItemRead, VfxCurrentFocusType } from "@intent-core/contrac
  * this adapter already returns. Nothing about `ReviewWorkItem` assumes a
  * Shot has at most one item: `id`/`sourceId` are keyed by
  * `(sourceType, sourceId)`, never by `shotId` alone, so two work items
- * from different sources (or, once Step 7C-3 lands, the same source
- * producing more than one item) can safely reference the same Shot side
- * by side. Workspace Home and Review Inbox both consume this flat
- * `ReviewWorkItem[]` collection -- neither iterates `VfxInboxItemRead[]`
- * directly for its primary list.
+ * from different sources (or the same source producing more than one
+ * item) can safely reference the same Shot side by side. Workspace Home
+ * and Review Inbox both consume this flat `ReviewWorkItem[]` collection
+ * -- neither iterates `VfxInboxItemRead[]` directly for its primary
+ * list.
  */
 
 /** Every source a work item can come from. Only `"current_focus"` has a
@@ -126,14 +131,39 @@ const CORE_ANCHOR_ROUTE_FOCUS_TYPES: ReadonlySet<VfxCurrentFocusType> = new Set(
   "core_anchor_draft_needs_review",
 ]);
 
-/** Locked route rule (Step 7C-1 §6/§9): Core Anchor draft or
- * confirmation work opens the real Intent route; every other currently
- * supported work item opens the real Shot Overview route. No work item
- * ever links to `/versions`, `/alignment`, or `/activity` -- none of
- * those routes exist until Step 7C-3. */
+/** The three alignment-family focus types: a Cross-role Assessment
+ * awaiting interpretation, a Re-anchor Proposal available for
+ * consideration, and a new assessment being generatable -- all real
+ * Alignment-object work, per the Step 7C-3 object-responsibility
+ * routing table (§5). A Re-anchor Proposal is explained on the
+ * Alignment page; its own in-page "Review proposal" action is what
+ * leads to Intent, never this work item's own route. */
+const ALIGNMENT_ROUTE_FOCUS_TYPES: ReadonlySet<VfxCurrentFocusType> = new Set([
+  "alignment_not_followed_by_anchor_action",
+  "re_anchor_proposal_present",
+  "assessment_generation_available",
+]);
+
+/** Locked route rule (Step 7C-3 §5, updating Step 7C-1 §6/§9 now that
+ * `/versions`, `/alignment`, and `/activity` are real routes): Core
+ * Anchor draft or confirmation work opens the real Intent route;
+ * Alignment-family work (assessment interpretation, re-anchor
+ * consideration, assessment generation) opens the real Alignment route
+ * -- matching the backend's own `current_focus.target_route` for these
+ * exact three types (see `vfx_inbox/current_focus.py`), no longer
+ * overridden to Shot Overview now that the destination exists. Every
+ * other, unrecognised work item safely falls back to the real Shot
+ * Overview route. No work item here has a real `version_review` source
+ * yet (Production Version/Review Note work has no `current_focus`
+ * signal today), so `/versions` is not yet a real destination for any
+ * work item this adapter produces -- the extension boundary documented
+ * above is where that would be added. */
 function workItemRoute(shotId: string, focusType: VfxCurrentFocusType): string {
   if (CORE_ANCHOR_ROUTE_FOCUS_TYPES.has(focusType)) {
     return `/vfx/shots/${shotId}/intent`;
+  }
+  if (ALIGNMENT_ROUTE_FOCUS_TYPES.has(focusType)) {
+    return `/vfx/shots/${shotId}/alignment`;
   }
   return `/vfx/shots/${shotId}`;
 }
