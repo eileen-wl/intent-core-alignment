@@ -15,6 +15,7 @@ import {
   getHumanGateForRevision,
   listContextReconstructionsForShot,
   listCoreAnchorRevisions,
+  listDecisionsForRevision,
   listIntentDecompositionsForShot,
 } from "@/features/vfx/api";
 import type { EvidenceReferenceLike } from "@/design";
@@ -60,6 +61,15 @@ export interface IntentWorkspaceData {
    * for the transient Just-confirmed Success state (Step 7C-2) -- never
    * fabricated. */
   previousConfirmedRevision: CoreAnchorRevisionRead | null;
+  /** The real recorded rationale (if any) from the Decision that
+   * confirmed `confirmedRevision` -- fetched only when there is a
+   * confirmed revision and no in-progress draft (Normal Confirmed /
+   * Just-confirmed Success; the two states that render
+   * `ConfirmedAnchorSummary`'s Decision-and-provenance card). `null`
+   * both when no confirmed revision exists and when one exists but its
+   * Decision genuinely carries no rationale -- the UI must say so
+   * honestly rather than treat `null` as "not loaded yet". */
+  confirmedDecisionRationale: string | null;
 }
 
 async function loadEvidenceData(
@@ -92,6 +102,16 @@ async function loadEvidenceData(
   return { evidence, run, snapshot, decompositions, reconstructions };
 }
 
+/** The confirming Decision's real rationale for a confirmed revision, or
+ * `null` when none was provided -- never the reject Decision, and never
+ * fabricated when the list is empty (a legacy-compatibility case the
+ * same as `draftHumanGate`'s). */
+async function loadConfirmedDecisionRationale(revisionId: string): Promise<string | null> {
+  const decisions = await listDecisionsForRevision(revisionId);
+  const confirmDecision = decisions.find((decision) => decision.decision_type === "confirm_core_anchor");
+  return confirmDecision?.rationale ?? null;
+}
+
 /** Returns `null` only when the Shot itself does not exist (a real
  * 404) -- any other failure (network, 5xx) propagates as a thrown
  * `VfxApiError`, so the caller can distinguish "this Shot does not
@@ -118,6 +138,15 @@ export async function loadIntentWorkspaceData(shotId: string): Promise<IntentWor
       null)
     : null;
 
+  // Only fetched for Normal Confirmed / Just-confirmed Success (no
+  // in-progress draft) -- the two states that actually render the
+  // Decision-and-provenance card; Initial Empty, First Draft, and
+  // Revision Draft have no use for it.
+  const confirmedDecisionRationale =
+    draftRevision === null && confirmedRevision
+      ? await loadConfirmedDecisionRationale(confirmedRevision.id)
+      : null;
+
   return {
     item,
     confirmedRevision,
@@ -125,5 +154,6 @@ export async function loadIntentWorkspaceData(shotId: string): Promise<IntentWor
     draftHumanGate,
     evidenceData,
     previousConfirmedRevision,
+    confirmedDecisionRationale,
   };
 }

@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 import { HumanDecisionNotice } from "@/design";
-import { computeChangeSummary } from "@/features/vfx/intent-workspace/changeSummary";
+import { computeChangeSummary, summarizeEstablishedContent } from "@/features/vfx/intent-workspace/changeSummary";
+import type { IntentEvidenceData } from "@/features/vfx/intent-workspace/data";
 import styles from "./ConfirmedAnchorSummary.module.css";
 
 const ALWAYS_VISIBLE_FIELDS: { field: keyof CoreAnchorRevisionRead; label: string }[] = [
@@ -28,29 +29,40 @@ const COLLECTIONS: { field: "constraints" | "variation_zones" | "drift_risks" | 
   { field: "open_questions", label: "Open questions", text: (item: { question: string }) => item.question },
 ];
 
-/** NORMAL CONFIRMED and JUST-CONFIRMED SUCCESS (Step 7C-2 visual
- * finalization §6/§8) -- the only two states with a confirmed revision
- * and no in-progress draft, distinguished solely by the transient
- * `justConfirmed` signal (`page.tsx` has already validated the
- * `?justConfirmed=` search param names this exact revision). Both
- * states share the same authoritative main card ("Core Anchor
- * confirmed"); only the top banner and the supporting column's content
- * differ -- Normal Confirmed pairs "Decision recorded" with a static
- * "Shared intent is active" explainer, Just-confirmed Success instead
- * pairs a real "What changed" summary with "Decision recorded", and
- * adds the transient banner. The change summary shown in the latter
- * case is computed from `previousConfirmedRevision` -- the real
- * superseded revision (or `null` for a genuine first-ever confirmation)
- * -- never fabricated, and never the reference mockup's hard-coded
- * change text. */
+/** NORMAL CONFIRMED and JUST-CONFIRMED SUCCESS (Step 7C-3 content/state
+ * pass, building on Step 7C-2's visual finalization §6/§8) -- the only
+ * two states with a confirmed revision and no in-progress draft,
+ * distinguished solely by the transient `justConfirmed` signal
+ * (`page.tsx` has already validated the `?justConfirmed=` search param
+ * names this exact revision). Both states share the same authoritative
+ * main card ("Core Anchor confirmed") and the same Decision-and-
+ * provenance card; only the top banner and one extra supporting card
+ * differ. Just-confirmed Success adds the banner plus a real summary
+ * card ahead of "Decision recorded": a genuine first-ever confirmation
+ * (`previousConfirmedRevision === null`) gets an honest "What was
+ * established" summary of `revision`'s own real content
+ * (`summarizeEstablishedContent`) -- never "What changed in Revision 1",
+ * since there was nothing to change from; a later confirmation instead
+ * gets "What changed from Revision N-1" computed from the real
+ * superseded revision (`computeChangeSummary`). Neither is ever
+ * fabricated, and neither is the reference mockup's hard-coded text. */
 export function ConfirmedAnchorSummary({
   revision,
   previousConfirmedRevision = null,
   justConfirmed = false,
+  evidenceData = null,
+  decisionRationale = null,
 }: {
   revision: CoreAnchorRevisionRead;
   previousConfirmedRevision?: CoreAnchorRevisionRead | null;
   justConfirmed?: boolean;
+  /** For the Decision-and-provenance card's honest "available evidence"
+   * line -- `null` when not yet loaded or genuinely unavailable. */
+  evidenceData?: IntentEvidenceData | null;
+  /** The real recorded rationale from the Decision that confirmed
+   * `revision`, or `null` when none was provided -- the card says so
+   * honestly rather than omitting the line. */
+  decisionRationale?: string | null;
 }) {
   const pathname = usePathname();
   const [showAllDetails, setShowAllDetails] = useState(false);
@@ -80,14 +92,27 @@ export function ConfirmedAnchorSummary({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally runs once per justConfirmed=true mount, not on every pathname identity change
   }, [justConfirmed]);
 
-  const changeSummary = justConfirmed
-    ? computeChangeSummary(previousConfirmedRevision, revision)
-    : [];
+  // Two real, non-overlapping content branches for the transient success
+  // card -- a genuine first-ever confirmation has nothing to have
+  // "changed" from, so it gets an honest "What was established" summary
+  // instead of a fabricated "What changed in Revision 1".
+  const isFirstConfirmation = previousConfirmedRevision === null;
+  const changeSummary =
+    justConfirmed && !isFirstConfirmation
+      ? computeChangeSummary(previousConfirmedRevision, revision)
+      : [];
+  const establishedContent =
+    justConfirmed && isFirstConfirmation ? summarizeEstablishedContent(revision) : [];
 
   const hasExpandableContent =
     EXPANDABLE_SCALAR_FIELDS.some(({ field }) => revision[field]) ||
     COLLECTIONS.some(({ field }) => (revision[field] as unknown[]).length > 0) ||
     revision.references.length > 0;
+
+  const evidenceCount = evidenceData?.evidence.length ?? 0;
+  const nextStepStatement = justConfirmed
+    ? `Revision ${revision.revision_number} is now the active Core Anchor. Downstream work should align to this revision.`
+    : "Downstream work should align to this revision.";
 
   return (
     <div className={styles.wrapper}>
@@ -99,11 +124,16 @@ export function ConfirmedAnchorSummary({
 
       <div className={styles.grid}>
         <div className={styles.mainCard}>
-          <span className={styles.confirmedPill}>Confirmed</span>
-          <h2 className={styles.mainHeading}>Core Anchor confirmed</h2>
-          <p className={styles.mainIntro}>
-            Revision {revision.revision_number} is the current confirmed Core Anchor.
-          </p>
+          <div className={styles.headerRow}>
+            <div>
+              <span className={styles.confirmedPill}>Confirmed</span>
+              <h2 className={styles.mainHeading}>Core Anchor confirmed</h2>
+            </div>
+            <div className={styles.identityBadges}>
+              <span className={styles.revisionBadge}>Revision {revision.revision_number}</span>
+              <span className={styles.activeBadge}>Active</span>
+            </div>
+          </div>
 
           <dl className={styles.fields}>
             {ALWAYS_VISIBLE_FIELDS.filter(({ field }) => revision[field]).map(({ field, label }) => (
@@ -187,10 +217,21 @@ export function ConfirmedAnchorSummary({
         </div>
 
         <div className={styles.supportingColumn}>
-          {justConfirmed && changeSummary.length > 0 && (
+          {justConfirmed && isFirstConfirmation && establishedContent.length > 0 && (
+            <div className={styles.supportingCard}>
+              <h3 className={styles.supportingHeading}>What was established</h3>
+              <ul className={styles.changeList}>
+                {establishedContent.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {justConfirmed && previousConfirmedRevision !== null && changeSummary.length > 0 && (
             <div className={styles.supportingCard}>
               <h3 className={styles.supportingHeading}>
-                What changed in Revision {revision.revision_number}
+                What changed from Revision {previousConfirmedRevision.revision_number}
               </h3>
               <ul className={styles.changeList}>
                 {changeSummary.map((change) => (
@@ -207,18 +248,20 @@ export function ConfirmedAnchorSummary({
                 objectLabel={`Core Anchor revision ${revision.revision_number}`}
                 confirmingRole={revision.confirmed_by_human_role}
                 confirmedAt={new Date(revision.confirmed_at).toLocaleString()}
+                rationale={decisionRationale || "No rationale was provided."}
               />
-            </div>
-          )}
-
-          {!justConfirmed && (
-            <div className={styles.supportingCard}>
-              <h3 className={styles.supportingHeading}>Shared intent is active</h3>
-              <p className={styles.supportingText}>
-                Downstream CG interpretation, execution constraints, Artist guidance, and Version and
-                Alignment review should align to this confirmed revision until a newer one is
-                confirmed.
-              </p>
+              {revision.supersedes_revision_id && previousConfirmedRevision && (
+                <p className={styles.supportingText}>
+                  Supersedes Revision {previousConfirmedRevision.revision_number}
+                </p>
+              )}
+              {evidenceData !== null && (
+                <p className={styles.supportingText}>
+                  {evidenceCount} evidence {evidenceCount === 1 ? "source" : "sources"} -- see Evidence
+                  and provenance below.
+                </p>
+              )}
+              <p className={styles.supportingText}>{nextStepStatement}</p>
             </div>
           )}
         </div>

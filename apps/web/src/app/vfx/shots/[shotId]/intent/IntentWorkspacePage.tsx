@@ -18,6 +18,7 @@ import { ConfirmedAnchorSummary } from "./ConfirmedAnchorSummary";
 import { CoreAnchorRevisionEditor } from "./CoreAnchorRevisionEditor";
 import { IntentEvidenceDisclosures } from "./IntentEvidenceDisclosures";
 import { IntentInitialEmptyState } from "./IntentInitialEmptyState";
+import { ReturnToShotOverviewLink } from "./ReturnToShotOverviewLink";
 import { StartDraftButton } from "./StartDraftButton";
 import styles from "./IntentWorkspacePage.module.css";
 
@@ -127,12 +128,17 @@ export function IntentWorkspacePage({
                 revision={data.confirmedRevision}
                 previousConfirmedRevision={data.previousConfirmedRevision}
                 justConfirmed={justConfirmed}
+                evidenceData={data.evidenceData}
+                decisionRationale={data.confirmedDecisionRationale}
               />
-              <StartDraftButton
-                label="Create new revision"
-                pendingLabel="Starting…"
-                action={createCoreAnchorDraftFromConfirmedAction.bind(null, shotId)}
-              />
+              <div className={styles.confirmedActions}>
+                {justConfirmed && <ReturnToShotOverviewLink shotId={shotId} />}
+                <StartDraftButton
+                  label="Create new revision"
+                  pendingLabel="Starting…"
+                  action={createCoreAnchorDraftFromConfirmedAction.bind(null, shotId)}
+                />
+              </div>
             </>
           ) : (
             <IntentInitialEmptyState

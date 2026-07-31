@@ -142,8 +142,8 @@ function renderEditor(overrides: Partial<Parameters<typeof CoreAnchorRevisionEdi
 describe("CoreAnchorRevisionEditor", () => {
   it("REVISION DRAFT: renders both the Current confirmed and Proposed draft revision columns", () => {
     renderEditor();
-    expect(screen.getByText("Current confirmed")).toBeVisible();
-    expect(screen.getByText("Proposed draft revision")).toBeVisible();
+    expect(screen.getByText("Current: Revision 1 · Confirmed")).toBeVisible();
+    expect(screen.getByText("Proposed: Revision 2 · Draft in progress")).toBeVisible();
     // Same default core_summary in this fixture's confirmed and draft
     // revisions -- appears once as read-only text, once as the
     // editable textarea's live value.
@@ -262,7 +262,7 @@ describe("CoreAnchorRevisionEditor", () => {
 
   it("opens the Confirm dialog and closes it on Cancel without calling the action", () => {
     renderEditor();
-    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm revision" }));
     expect(screen.getByText("Confirm this Core Anchor revision?")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(confirmMock).not.toHaveBeenCalled();
@@ -270,7 +270,7 @@ describe("CoreAnchorRevisionEditor", () => {
 
   it("the Confirm dialog communicates Human VFX Supervisor authority and the Revision number", () => {
     renderEditor();
-    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm revision" }));
     expect(screen.getByText(/Human VFX Supervisor may confirm/)).toBeVisible();
     expect(screen.getByText(/revision #2/)).toBeVisible();
   });
@@ -281,8 +281,8 @@ describe("CoreAnchorRevisionEditor", () => {
       revision: baseRevision({ id: "r2", status: "confirmed" }),
     });
     renderEditor();
-    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Confirm" })[1]);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm revision" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Confirm revision" })[1]);
     await waitFor(() => expect(confirmMock).toHaveBeenCalledWith("s1", "r2", "gate-1", ""));
     // The draft is gone the instant this succeeds -- this component is
     // about to unmount, so the transient success presentation is
@@ -294,8 +294,8 @@ describe("CoreAnchorRevisionEditor", () => {
 
   it("opens the Reject dialog and closes it on Cancel without calling the action", () => {
     renderEditor();
-    fireEvent.click(screen.getByRole("button", { name: "Reject" }));
-    expect(screen.getByText("Reject this Core Anchor revision?")).toBeVisible();
+    fireEvent.click(screen.getByRole("button", { name: "Discard draft" }));
+    expect(screen.getByText("Discard this Core Anchor draft revision?")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(rejectMock).not.toHaveBeenCalled();
   });
@@ -303,10 +303,10 @@ describe("CoreAnchorRevisionEditor", () => {
   it("submits Reject through the dialog and shows the resolved outcome", async () => {
     rejectMock.mockResolvedValue({ ok: true, revision: baseRevision({ status: "rejected" }) });
     renderEditor();
-    fireEvent.click(screen.getByRole("button", { name: "Reject" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Reject" })[1]);
+    fireEvent.click(screen.getByRole("button", { name: "Discard draft" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Discard draft" })[1]);
     await waitFor(() => expect(rejectMock).toHaveBeenCalledWith("s1", "r2", "gate-1", ""));
-    expect(screen.getByText(/was rejected at/)).toBeVisible();
+    expect(screen.getByText(/was discarded at/)).toBeVisible();
   });
 
   it("shows a conflict message with a single Reload action instead of pretending success", async () => {
@@ -315,8 +315,8 @@ describe("CoreAnchorRevisionEditor", () => {
       error: { kind: "conflict", message: "This was already acted on elsewhere -- reload to see the current state." },
     });
     renderEditor();
-    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Confirm" })[1]);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm revision" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Confirm revision" })[1]);
     await waitFor(() =>
       expect(
         screen.getByText("This was already acted on elsewhere -- reload to see the current state."),
@@ -327,8 +327,8 @@ describe("CoreAnchorRevisionEditor", () => {
 
   it("does NOT disable Confirm/Reject merely because no HumanGate has been loaded yet (legacy-compatibility case: the real backend confirm/reject call creates the missing gate atomically)", () => {
     renderEditor({ humanGate: null });
-    expect(screen.getByRole("button", { name: "Confirm" })).not.toBeDisabled();
-    expect(screen.getByRole("button", { name: "Reject" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Confirm revision" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Discard draft" })).not.toBeDisabled();
   });
 
   it("submits Confirm with a null humanGateId when no gate has been loaded yet, and the Server Action still resolves it", async () => {
@@ -337,8 +337,8 @@ describe("CoreAnchorRevisionEditor", () => {
       revision: baseRevision({ id: "r2", status: "confirmed" }),
     });
     renderEditor({ humanGate: null });
-    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
-    fireEvent.click(screen.getAllByRole("button", { name: "Confirm" })[1]);
+    fireEvent.click(screen.getByRole("button", { name: "Confirm revision" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Confirm revision" })[1]);
     await waitFor(() => expect(confirmMock).toHaveBeenCalledWith("s1", "r2", null, ""));
     expect(routerPushMock).toHaveBeenCalledWith("/vfx/shots/s1/intent?justConfirmed=r2");
   });
@@ -348,8 +348,8 @@ describe("CoreAnchorRevisionEditor", () => {
     const [firstTextarea] = screen.getAllByRole("textbox");
     fireEvent.change(firstTextarea, { target: { value: "An edited value, not yet saved" } });
 
-    expect(screen.getByRole("button", { name: "Confirm" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Reject" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Confirm revision" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Discard draft" })).not.toBeDisabled();
     expect(
       screen.getByText(/Save the draft before confirming/),
     ).toBeVisible();
@@ -360,12 +360,12 @@ describe("CoreAnchorRevisionEditor", () => {
     renderEditor();
     const [firstTextarea] = screen.getAllByRole("textbox");
     fireEvent.change(firstTextarea, { target: { value: "An edited value" } });
-    expect(screen.getByRole("button", { name: "Confirm" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Confirm revision" })).toBeDisabled();
 
     fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
     await waitFor(() => expect(screen.getByText("Changes saved.")).toBeVisible());
 
-    expect(screen.getByRole("button", { name: "Confirm" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Confirm revision" })).not.toBeDisabled();
     expect(
       screen.queryByText(/Save the draft before confirming/),
     ).not.toBeInTheDocument();
@@ -380,5 +380,40 @@ describe("CoreAnchorRevisionEditor", () => {
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Show changes" }));
     expect(screen.queryByLabelText("Changed")).not.toBeInTheDocument();
+  });
+
+  it("REVISION DRAFT: shows every Core Anchor field group in the comparison, never a partial set", () => {
+    renderEditor();
+    for (const label of [
+      "Core summary",
+      "Shot objective",
+      "Emotional tone",
+      "Visual focus",
+      "Rhythm and intensity",
+      "Character relationship",
+      "Narrative priority",
+      "Constraints",
+      "Variation zones",
+      "Drift risks",
+      "Open questions",
+      "References",
+    ]) {
+      expect(screen.getAllByText(label).length).toBeGreaterThan(0);
+    }
+  });
+
+  it("REVISION DRAFT: no-meaningful-change protection -- shows no Changed indicator and no change summary when the proposed draft is identical to the confirmed revision", () => {
+    renderEditor({
+      confirmedRevision: CONFIRMED,
+      draftRevision: { ...CONFIRMED, id: "r2", status: "draft", revision_number: 2 },
+    });
+    expect(screen.queryByLabelText("Changed")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Change summary:/)).not.toBeInTheDocument();
+  });
+
+  it("REVISION DRAFT: Decision rationale is labelled Optional and explains it is recorded when provided", () => {
+    renderEditor();
+    expect(screen.getByText("Decision rationale · Optional")).toBeVisible();
+    expect(screen.getByText("Included in the recorded Decision when provided.")).toBeVisible();
   });
 });

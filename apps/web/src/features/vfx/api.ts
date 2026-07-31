@@ -7,6 +7,7 @@ import type {
   CoreAnchorRead,
   CoreAnchorRevisionRead,
   CoreAnchorRevisionUpdate,
+  DecisionRead,
   HumanGateRead,
   IntentDecompositionRead,
   VfxInboxItemRead,
@@ -111,6 +112,14 @@ export function listCoreAnchorRevisions(shotId: string): Promise<CoreAnchorRevis
 
 export function getHumanGateForRevision(revisionId: string): Promise<HumanGateRead | null> {
   return vfxFetchOrNull<HumanGateRead>(`/intent/core-anchor-revisions/${revisionId}/human-gate`);
+}
+
+/** Real recorded Decisions for a Core Anchor revision (confirm/reject),
+ * each carrying its own honest `rationale` (nullable) -- the only source
+ * of truth for what a VFX Supervisor actually wrote, never re-derived
+ * from client-side dialog state that does not survive navigation. */
+export function listDecisionsForRevision(revisionId: string): Promise<DecisionRead[]> {
+  return vfxFetch<DecisionRead[]>(`/intent/core-anchor-revisions/${revisionId}/decisions`);
 }
 
 /** Read-only advisory-input listings for the Intent Workspace's

@@ -204,7 +204,7 @@ export function CoreAnchorRevisionEditor({
   const [dialogMode, setDialogMode] = useState<"confirm" | "reject" | null>(null);
   const [dialogPending, setDialogPending] = useState(false);
   const [dialogConflict, setDialogConflict] = useState<string | null>(null);
-  const [decisionOutcome, setDecisionOutcome] = useState<{ kind: "rejected"; at: string } | null>(
+  const [decisionOutcome, setDecisionOutcome] = useState<{ kind: "discarded"; at: string } | null>(
     null,
   );
   // Purely presentational: whether the restrained per-field "Changed"
@@ -351,7 +351,7 @@ export function CoreAnchorRevisionEditor({
           // rendering it correctly depends on.
           router.push(`/vfx/shots/${shotId}/intent?justConfirmed=${result.revision.id}`);
         } else {
-          setDecisionOutcome({ kind: "rejected", at: new Date().toLocaleString() });
+          setDecisionOutcome({ kind: "discarded", at: new Date().toLocaleString() });
         }
       } else {
         setDialogConflict(result.error.message);
@@ -896,13 +896,12 @@ export function CoreAnchorRevisionEditor({
         </div>
       ) : (
         <div className={styles.comparisonGrid}>
-          <div className={styles.gridHeaderLeft}>Current confirmed</div>
+          <div className={styles.gridHeaderLeft}>
+            Current: Revision {confirmedRevision.revision_number} · Confirmed
+          </div>
           <div className={styles.gridHeaderSpacer} aria-hidden="true" />
           <div className={styles.gridHeaderRight}>
-            <span>Proposed draft revision</span>
-            <span className={styles.revisionBadge}>
-              v{draftRevision.revision_number} · Draft
-            </span>
+            <span>Proposed: Revision {draftRevision.revision_number} · Draft in progress</span>
             <label className={styles.showChangesToggle}>
               <input
                 type="checkbox"
@@ -915,7 +914,13 @@ export function CoreAnchorRevisionEditor({
 
           {SCALAR_FIELDS.map(({ field, label }) => {
             const confirmedValue = confirmedRevision[field] as string | null;
-            const changed = showChanges && confirmedRevision[field] !== form.scalars[field];
+            // `form.scalars[field]` normalizes a null scalar to "" (see
+            // `toFormState`), so the confirmed side must be normalized
+            // the same way here -- otherwise every scalar field that is
+            // genuinely null on both sides would falsely flag as
+            // "Changed" (null !== ""), violating no-meaningful-change
+            // protection.
+            const changed = showChanges && (confirmedRevision[field] ?? "") !== form.scalars[field];
             return (
               <div className={styles.fieldRow} key={field}>
                 <div className={styles.leftCell}>
@@ -1009,9 +1014,11 @@ export function CoreAnchorRevisionEditor({
           <div className={styles.decisionBlock}>
             <div className={styles.rationaleHeader}>
               <label className={styles.rationaleLabel} htmlFor="core-anchor-rationale">
-                Rationale
+                Decision rationale · Optional
               </label>
-              <span className={styles.rationaleHint}>Optional but recommended</span>
+              <span className={styles.rationaleHint}>
+                Included in the recorded Decision when provided.
+              </span>
             </div>
             <textarea
               id="core-anchor-rationale"
@@ -1034,7 +1041,7 @@ export function CoreAnchorRevisionEditor({
                 onClick={() => openDialog("reject")}
                 disabled={rejectDisabled}
               >
-                Reject
+                Discard draft
               </button>
               <button
                 type="button"
@@ -1042,7 +1049,7 @@ export function CoreAnchorRevisionEditor({
                 onClick={() => openDialog("confirm")}
                 disabled={confirmDisabled}
               >
-                Confirm
+                Confirm revision
               </button>
             </div>
           </div>
@@ -1058,7 +1065,7 @@ export function CoreAnchorRevisionEditor({
               : "Confirm this Core Anchor revision?"
             : isFirstDraft
               ? "Discard this Core Anchor draft?"
-              : "Reject this Core Anchor revision?"
+              : "Discard this Core Anchor draft revision?"
         }
         description={
           dialogMode === "confirm"
@@ -1067,25 +1074,17 @@ export function CoreAnchorRevisionEditor({
               : `You are confirming revision #${draftRevision.revision_number} as the shared creative intent for ${shotName}. Only a Human VFX Supervisor may confirm a Core Anchor -- once confirmed, downstream CG, Artist, and review work will align to it.`
             : isFirstDraft
               ? `You are discarding the working Revision 1 draft for ${shotName}. It will no longer be available for confirmation, and the Shot will return to having no Core Anchor draft.`
-              : `You are rejecting revision #${draftRevision.revision_number} for ${shotName}. Only a Human VFX Supervisor may reject a Core Anchor draft -- once rejected, it will no longer be available for confirmation, and a new draft can be started afterward.`
+              : `You are discarding proposed revision #${draftRevision.revision_number} for ${shotName}. It will no longer be available for confirmation, and Revision ${confirmedRevision.revision_number} will remain the active Core Anchor.`
         }
         rationale={rationale || null}
         confirmLabel={
           dialogMode === "confirm"
             ? isFirstDraft
               ? "Confirm first Core Anchor"
-              : "Confirm"
-            : isFirstDraft
-              ? "Discard draft"
-              : "Reject"
+              : "Confirm revision"
+            : "Discard draft"
         }
-        pendingLabel={
-          dialogMode === "confirm"
-            ? "Confirming…"
-            : isFirstDraft
-              ? "Discarding…"
-              : "Rejecting…"
-        }
+        pendingLabel={dialogMode === "confirm" ? "Confirming…" : "Discarding…"}
         pending={dialogPending}
         conflictMessage={dialogConflict}
         onConfirm={submitDialog}

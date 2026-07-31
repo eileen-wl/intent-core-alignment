@@ -51,8 +51,14 @@ export function computeChangeSummary(
   const items: string[] = [];
 
   for (const { field, label } of SCALAR_FIELDS) {
-    const before = confirmed ? confirmed[field] : null;
-    const after = draft[field];
+    // Normalized so a genuinely empty field compares equal regardless of
+    // whether it arrives as `null` (a raw revision) or `""` (a live form
+    // state's `toFormState`-normalized value, as `CoreAnchorRevisionEditor`
+    // passes for the in-progress draft side) -- otherwise every scalar
+    // that is empty on both sides would falsely report as changed,
+    // violating no-meaningful-change protection.
+    const before = (confirmed ? confirmed[field] : null) ?? "";
+    const after = draft[field] ?? "";
     if (before !== after) {
       items.push(`${label} changed`);
     }
@@ -70,6 +76,34 @@ export function computeChangeSummary(
     } else if (JSON.stringify(before) !== JSON.stringify(after)) {
       items.push(`${plural} edited`);
     }
+  }
+
+  return items;
+}
+
+/** A concise, real summary of what a genuine first-ever confirmation
+ * established -- for the Just-confirmed Success "What was established"
+ * card (Step 7C-3 basic-layout pass), which must never say "changed"
+ * about a Revision 1 that had nothing to change from. Every line is
+ * gated on real populated content on `revision` itself; nothing here is
+ * invented when a field happens to be empty. */
+export function summarizeEstablishedContent(revision: CoreAnchorRevisionRead): string[] {
+  const items: string[] = [];
+
+  if (revision.core_summary || revision.shot_objective) {
+    items.push("Shared creative direction established");
+  }
+  if (revision.constraints.length > 0) {
+    const count = revision.constraints.length;
+    items.push(`${count} confirmed ${count === 1 ? "constraint" : "constraints"}`);
+  }
+  if (revision.variation_zones.length > 0) {
+    const count = revision.variation_zones.length;
+    items.push(`${count} confirmed variation ${count === 1 ? "boundary" : "boundaries"}`);
+  }
+  if (revision.open_questions.length > 0) {
+    const count = revision.open_questions.length;
+    items.push(`${count} recorded open ${count === 1 ? "question" : "questions"}`);
   }
 
   return items;
