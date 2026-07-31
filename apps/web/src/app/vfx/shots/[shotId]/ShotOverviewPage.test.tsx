@@ -234,3 +234,33 @@ describe("ShotOverviewPage", () => {
     expect(screen.queryByText("A new cross-role assessment can be generated")).not.toBeInTheDocument();
   });
 });
+
+// --- fix: correct shot navigation and confirmation feedback --------------
+// `/vfx/shots` rows and Open actions land here (Shot Overview, never
+// Intent) -- these tests lock in the sidebar active-state and Shot
+// breadcrumb correctness of that real destination page.
+describe("ShotOverviewPage as the real destination of a Shots row/Open action", () => {
+  it("marks Shots (not Workspace Home or Review Inbox) current in the sidebar", () => {
+    render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
+    expect(screen.getByRole("link", { name: "Shots" })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Workspace Home" })).not.toHaveAttribute(
+      "aria-current",
+    );
+    expect(screen.getByRole("link", { name: "Review Inbox" })).not.toHaveAttribute(
+      "aria-current",
+    );
+  });
+
+  it("renders the Project -> Shot -> Overview breadcrumb, never Workspace Home or Review Inbox as the structural parent", () => {
+    render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
+    const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(breadcrumb).getByRole("link", { name: "D1 Demo Project" })).toHaveAttribute(
+      "href",
+      "/vfx/shots",
+    );
+    expect(within(breadcrumb).getByText("Shot 010 — Final confrontation")).toBeVisible();
+    expect(within(breadcrumb).getByText("Overview")).toBeVisible();
+    expect(within(breadcrumb).queryByText("Workspace Home")).not.toBeInTheDocument();
+    expect(within(breadcrumb).queryByText("Review Inbox")).not.toBeInTheDocument();
+  });
+});

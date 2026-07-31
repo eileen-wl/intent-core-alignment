@@ -2,7 +2,7 @@
 
 import type { CoreAnchorRevisionRead } from "@intent-core/contracts";
 import { useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { HumanDecisionNotice } from "@/design";
 import { computeChangeSummary } from "@/features/vfx/intent-workspace/changeSummary";
@@ -52,21 +52,32 @@ export function ConfirmedAnchorSummary({
   previousConfirmedRevision?: CoreAnchorRevisionRead | null;
   justConfirmed?: boolean;
 }) {
-  const router = useRouter();
   const pathname = usePathname();
   const [showAllDetails, setShowAllDetails] = useState(false);
 
   // The transient success signal is consumed here: once this has
   // rendered with `justConfirmed`, the `?justConfirmed=` param is
-  // stripped from the visible URL (no new history entry) so a plain
-  // browser refresh re-requests the bare Intent URL and lands on the
-  // ordinary Normal Confirmed state, never repeating the success
-  // presentation.
+  // stripped from the visible URL so a plain browser refresh (or
+  // reopening the now-clean URL) re-requests the bare Intent URL and
+  // lands on the ordinary Normal Confirmed state, never repeating the
+  // success presentation. This deliberately uses the browser History
+  // API (`replaceState`), never a Next.js router navigation
+  // (`router.replace`/`router.push`): a router navigation triggers a
+  // fresh RSC fetch of this same route, which re-validates
+  // `?justConfirmed=` against the (now-stripped) URL and would
+  // immediately re-render this component with `justConfirmed=false` --
+  // making the success view disappear almost instantly instead of
+  // staying visible for this render. `history.replaceState` only
+  // updates the visible URL and browser history entry; it never
+  // triggers a Next.js navigation, data refetch, or re-render, and it
+  // never persists anything to the database -- `justConfirmed` was
+  // always a URL-only signal, already validated server-side in
+  // `page.tsx` before this component ever saw it.
   useEffect(() => {
     if (justConfirmed) {
-      router.replace(pathname, { scroll: false });
+      window.history.replaceState(null, "", pathname);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally runs once per justConfirmed=true mount, not on every pathname/router identity change
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally runs once per justConfirmed=true mount, not on every pathname identity change
   }, [justConfirmed]);
 
   const changeSummary = justConfirmed

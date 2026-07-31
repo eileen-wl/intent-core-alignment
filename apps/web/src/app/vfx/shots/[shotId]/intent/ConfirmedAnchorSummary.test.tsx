@@ -1,18 +1,23 @@
 import type { CoreAnchorRevisionRead } from "@intent-core/contracts";
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const routerReplaceMock = vi.fn();
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), replace: routerReplaceMock }),
   usePathname: () => "/vfx/shots/s1/intent",
 }));
 
 import { ConfirmedAnchorSummary } from "./ConfirmedAnchorSummary";
 
+let replaceStateSpy: ReturnType<typeof vi.spyOn>;
+
+beforeEach(() => {
+  replaceStateSpy = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
+});
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  replaceStateSpy.mockRestore();
 });
 
 function revision(overrides: Partial<CoreAnchorRevisionRead> = {}): CoreAnchorRevisionRead {
@@ -141,7 +146,7 @@ describe("ConfirmedAnchorSummary", () => {
     expect(screen.getByText("Core summary changed")).toBeVisible();
   });
 
-  it("consumes the transient signal by stripping the URL after rendering justConfirmed", () => {
+  it("cleans the URL via the browser History API, never a Next.js router navigation", () => {
     render(
       <ConfirmedAnchorSummary
         revision={revision()}
@@ -149,11 +154,27 @@ describe("ConfirmedAnchorSummary", () => {
         justConfirmed
       />,
     );
-    expect(routerReplaceMock).toHaveBeenCalledWith("/vfx/shots/s1/intent", { scroll: false });
+    expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "/vfx/shots/s1/intent");
   });
 
   it("does not touch the URL when justConfirmed is false", () => {
     render(<ConfirmedAnchorSummary revision={revision()} />);
-    expect(routerReplaceMock).not.toHaveBeenCalled();
+    expect(replaceStateSpy).not.toHaveBeenCalled();
+  });
+
+  it("keeps rendering Just-confirmed Success on this render after the URL cleanup runs -- history.replaceState never triggers a Next.js navigation, data refetch, or re-render", () => {
+    render(
+      <ConfirmedAnchorSummary
+        revision={revision()}
+        previousConfirmedRevision={null}
+        justConfirmed
+      />,
+    );
+    // The cleanup effect has already run (render/useEffect are flushed
+    // synchronously by Testing Library) -- the success view must still
+    // be exactly as visible as it was before the URL was cleaned.
+    expect(replaceStateSpy).toHaveBeenCalled();
+    expect(screen.getByRole("status")).toHaveTextContent("Revision 2 confirmed successfully");
+    expect(screen.getByText("What changed in Revision 2")).toBeVisible();
   });
 });
