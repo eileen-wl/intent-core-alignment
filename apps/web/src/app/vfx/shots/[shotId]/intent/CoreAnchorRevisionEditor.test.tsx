@@ -1,5 +1,5 @@
 import type { CoreAnchorRevisionRead, HumanGateRead, VfxInboxItemRead } from "@intent-core/contracts";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { confirmMock, rejectMock, saveMock, routerPushMock } = vi.hoisted(() => ({
@@ -157,9 +157,9 @@ describe("CoreAnchorRevisionEditor", () => {
     });
     expect(screen.queryByText("Current confirmed")).not.toBeInTheDocument();
     expect(screen.queryByText("No Core Anchor confirmed yet.")).not.toBeInTheDocument();
-    expect(screen.getByText("Create first Core Anchor draft")).toBeVisible();
+    expect(screen.getByText("Create the first Core Anchor")).toBeVisible();
     expect(screen.getByText("Revision 1")).toBeVisible();
-    expect(screen.getByText("Draft")).toBeVisible();
+    expect(screen.getByText("Draft in progress")).toBeVisible();
   });
 
   it("FIRST DRAFT: shows read-only Source of creative intent, separate from the editable draft form", () => {
@@ -168,9 +168,41 @@ describe("CoreAnchorRevisionEditor", () => {
       draftRevision: baseRevision({ id: "r1", revision_number: 1 }),
       evidenceData: { evidence: [], run: null, snapshot: null, decompositions: [], reconstructions: [] },
     });
-    expect(screen.getByText("Source of creative intent")).toBeVisible();
+    expect(screen.getByText("Source and supporting context")).toBeVisible();
     // The Shot's real Task context appears in the read-only panel.
-    expect(screen.getByText("Compositing Review")).toBeVisible();
+    expect(screen.getAllByText("Compositing Review").length).toBeGreaterThan(0);
+  });
+
+  it("FIRST DRAFT: presents saved status and content counts without a change summary", () => {
+    renderEditor({
+      confirmedRevision: null,
+      draftRevision: baseRevision({
+        id: "r1",
+        revision_number: 1,
+        constraints: [
+          { id: "c1", order_index: 0, content: "Keep the movement restrained.", created_at: "2026-01-01T00:00:00Z" },
+        ],
+        variation_zones: [
+          { id: "z1", order_index: 0, content: "Lighting may vary.", created_at: "2026-01-01T00:00:00Z" },
+        ],
+      }),
+    });
+    expect(screen.getByText("Draft status: Saved")).toBeVisible();
+    const contentOverview = within(screen.getByLabelText("Content overview"));
+    expect(contentOverview.getByText("Constraints")).toBeVisible();
+    expect(contentOverview.getByText("Variation zones")).toBeVisible();
+    expect(screen.queryByText(/Change summary:/)).not.toBeInTheDocument();
+  });
+
+  it("FIRST DRAFT: distinguishes Save, Discard and confirmation actions", () => {
+    renderEditor({
+      confirmedRevision: null,
+      draftRevision: baseRevision({ id: "r1", revision_number: 1 }),
+    });
+    expect(screen.getByRole("button", { name: "Discard draft" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Save draft" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Confirm first Core Anchor" })).toBeVisible();
+    expect(screen.getByText("Decision rationale · Optional")).toBeVisible();
   });
 
   it("rejects a blank required collection field and does not call the save action", () => {

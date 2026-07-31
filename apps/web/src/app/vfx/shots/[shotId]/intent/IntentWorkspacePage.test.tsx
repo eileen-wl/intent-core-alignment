@@ -195,7 +195,7 @@ describe("IntentWorkspacePage", () => {
       previousConfirmedRevision: null,
     };
     render(<IntentWorkspacePage shotId="s1" data={data} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByText("Create first Core Anchor draft")).toBeVisible();
+    expect(screen.getByText("Create the first Core Anchor")).toBeVisible();
     // Locked FIRST DRAFT requirement: no "Current confirmed" column at
     // all, not even a falsely-labelled empty one.
     expect(screen.queryByText("Current confirmed")).not.toBeInTheDocument();

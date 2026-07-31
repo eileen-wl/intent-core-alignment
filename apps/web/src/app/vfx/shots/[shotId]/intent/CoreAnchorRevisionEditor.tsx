@@ -243,6 +243,13 @@ export function CoreAnchorRevisionEditor({
   const requestInFlight = isSaving || dialogPending;
   const confirmDisabled = requestInFlight || hasUnsavedChanges;
   const rejectDisabled = requestInFlight;
+  const draftStatusLabel = hasUnsavedChanges ? "Unsaved changes" : "Saved";
+  const contentOverview = [
+    { label: "Constraints", value: form.constraints.length },
+    { label: "Variation zones", value: form.variation_zones.length },
+    { label: "Drift risks", value: form.drift_risks.length },
+    { label: "Open questions", value: form.open_questions.length },
+  ];
 
   function updateSimpleCollection(
     field: (typeof SIMPLE_COLLECTIONS)[number]["field"],
@@ -518,41 +525,154 @@ export function CoreAnchorRevisionEditor({
       )}
 
       {isFirstDraft ? (
-        <div className={styles.firstDraftGrid}>
-          <div className={styles.column}>
-            <IntentSourceContext item={item} evidenceData={evidenceData} />
-          </div>
+        <div className={styles.firstDraftWorkspace}>
+          <aside className={styles.sourceColumn}>
+            <IntentSourceContext item={item} evidenceData={evidenceData} firstDraft />
+          </aside>
 
-          <div className={styles.column}>
+          <section className={styles.firstDraftEditorCard} aria-labelledby="first-draft-title">
             <div className={styles.firstDraftHeader}>
-              <h2 className={styles.columnHeading}>Create first Core Anchor draft</h2>
-              <span className={styles.revisionBadge}>Revision {draftRevision.revision_number}</span>
-              <span className={styles.draftBadge}>Draft</span>
+              <div>
+                <p className={styles.editorEyebrow}>Revision 1 editor</p>
+                <h2 id="first-draft-title" className={styles.firstDraftTitle}>
+                  Create the first Core Anchor
+                </h2>
+              </div>
+              <div className={styles.draftIdentity}>
+                <span className={styles.revisionBadge}>Revision {draftRevision.revision_number}</span>
+                <span className={styles.draftBadge}>Draft in progress</span>
+              </div>
             </div>
-            <div className={styles.form}>
-              <fieldset className={styles.fieldGroup}>
-                <legend className={styles.groupLabel}>Core direction</legend>
-                {SCALAR_FIELDS.filter(({ field }) => CORE_DIRECTION_FIELDS.has(field)).map(
-                  ({ field, label }) => scalarField(field, label),
-                )}
-              </fieldset>
 
-              <fieldset className={styles.fieldGroup}>
-                <legend className={styles.groupLabel}>Detailed intent</legend>
-                {SCALAR_FIELDS.filter(({ field }) => !CORE_DIRECTION_FIELDS.has(field)).map(
-                  ({ field, label }) => scalarField(field, label),
-                )}
-              </fieldset>
+            <div className={styles.firstDraftEditorGrid}>
+              <div className={styles.editorColumn}>
+                <fieldset className={styles.firstDraftFieldGroup}>
+                  <legend className={styles.firstDraftGroupLabel}>
+                    <span className={styles.groupNumber}>1</span>
+                    Core direction
+                  </legend>
+                  {SCALAR_FIELDS.filter(({ field }) => CORE_DIRECTION_FIELDS.has(field)).map(
+                    ({ field, label }) => scalarField(field, label),
+                  )}
+                </fieldset>
 
-              <fieldset className={styles.fieldGroup}>
-                <legend className={styles.groupLabel}>Boundaries and uncertainty</legend>
+                <fieldset className={styles.firstDraftFieldGroup}>
+                  <legend className={styles.firstDraftGroupLabel}>
+                    <span className={styles.groupNumber}>2</span>
+                    Detailed intent
+                  </legend>
+                  {SCALAR_FIELDS.filter(({ field }) => !CORE_DIRECTION_FIELDS.has(field)).map(
+                    ({ field, label }) => scalarField(field, label),
+                  )}
+                </fieldset>
+              </div>
+
+              <fieldset className={styles.firstDraftFieldGroup}>
+                <legend className={styles.firstDraftGroupLabel}>
+                  <span className={styles.groupNumber}>3</span>
+                  Boundaries and uncertainty
+                </legend>
                 {SIMPLE_COLLECTIONS.map((entry) => simpleCollectionFieldset(entry))}
                 {referencesFieldset}
               </fieldset>
-
-              {saveRow}
             </div>
-          </div>
+
+            <div className={styles.firstDraftRationale}>
+              <div className={styles.rationaleHeader}>
+                <label className={styles.rationaleLabel} htmlFor="core-anchor-rationale">
+                  Decision rationale · Optional
+                </label>
+                <span className={styles.rationaleHint}>
+                  Included in the recorded Decision when provided.
+                </span>
+              </div>
+              <textarea
+                id="core-anchor-rationale"
+                className={styles.rationaleInput}
+                value={rationale}
+                onChange={(event) => setRationale(event.target.value)}
+                rows={2}
+                placeholder="Explain why these intent choices are right for this Shot…"
+              />
+            </div>
+          </section>
+
+          <section className={styles.firstDraftFooter} aria-label="Draft status and actions">
+            <div className={styles.draftStatusPanel}>
+              <div className={styles.draftStatusCopy}>
+                <span className={styles.statusIcon} aria-hidden="true">✓</span>
+                <div>
+                  <p className={styles.statusTitle}>Draft status: {draftStatusLabel}</p>
+                  <p className={styles.statusDetail}>
+                    {hasUnsavedChanges
+                      ? "Save the working revision before confirming it."
+                      : saveState === "saved"
+                        ? "Changes saved."
+                        : "This working revision is saved but is not active intent."}
+                  </p>
+                </div>
+              </div>
+              <div className={styles.contentOverview} aria-label="Content overview">
+                {contentOverview.map((entry) => (
+                  <div key={entry.label} className={styles.overviewMetric}>
+                    <strong>{entry.value}</strong>
+                    <span>{entry.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.firstDraftActionPanel}>
+              <div className={styles.actionExplanation}>
+                <span className={styles.actionInfoIcon} aria-hidden="true">i</span>
+                <p>
+                  <strong>Save draft:</strong> Saves the working revision without making it active.
+                  <br />
+                  <strong>Confirm:</strong> Records the VFX Supervisor decision and makes Revision 1
+                  the active shared intent.
+                </p>
+              </div>
+              {(hasUnsavedChanges || requestInFlight) && (
+                <p className={styles.blockingReason} role="status">
+                  {requestInFlight
+                    ? "Another request is in progress -- please wait."
+                    : "Save the draft before confirming -- Confirm resolves the saved draft, not unsaved edits."}
+                </p>
+              )}
+              <div className={styles.firstDraftActions}>
+                <button
+                  type="button"
+                  className={styles.rejectButton}
+                  onClick={() => openDialog("reject")}
+                  disabled={rejectDisabled}
+                >
+                  Discard draft
+                </button>
+                <button
+                  type="button"
+                  className={styles.saveButton}
+                  onClick={handleSave}
+                  disabled={isSaving}
+                >
+                  {isSaving ? "Saving…" : "Save draft"}
+                </button>
+                <button
+                  type="button"
+                  className={styles.confirmPrimaryButton}
+                  onClick={() => openDialog("confirm")}
+                  disabled={confirmDisabled}
+                >
+                  Confirm first Core Anchor
+                  <span aria-hidden="true">→</span>
+                </button>
+              </div>
+              {saveState === "error" && saveError && (
+                <span className={styles.saveErrorNotice} role="alert">
+                  {saveError}
+                </span>
+              )}
+            </div>
+          </section>
         </div>
       ) : (
         <div className={styles.comparisonGrid}>
@@ -660,66 +780,92 @@ export function CoreAnchorRevisionEditor({
         </div>
       )}
 
-      {changeSummary.length > 0 && (
-        <p className={styles.changeSummary}>Change summary: {changeSummary.join(", ")}</p>
-      )}
+      {!isFirstDraft && (
+        <>
+          {changeSummary.length > 0 && (
+            <p className={styles.changeSummary}>Change summary: {changeSummary.join(", ")}</p>
+          )}
 
-      <div className={styles.decisionBlock}>
-        <div className={styles.rationaleHeader}>
-          <label className={styles.rationaleLabel} htmlFor="core-anchor-rationale">
-            Rationale
-          </label>
-          <span className={styles.rationaleHint}>Optional but recommended</span>
-        </div>
-        <textarea
-          id="core-anchor-rationale"
-          className={styles.rationaleInput}
-          value={rationale}
-          onChange={(event) => setRationale(event.target.value)}
-          rows={3}
-        />
-        {(hasUnsavedChanges || requestInFlight) && (
-          <p className={styles.blockingReason} role="status">
-            {requestInFlight
-              ? "Another request is in progress -- please wait."
-              : "Save the draft before confirming -- Confirm resolves the saved draft, not unsaved edits."}
-          </p>
-        )}
-        <div className={styles.decisionActions}>
-          <button
-            type="button"
-            className={styles.rejectButton}
-            onClick={() => openDialog("reject")}
-            disabled={rejectDisabled}
-          >
-            Reject
-          </button>
-          <button
-            type="button"
-            className={styles.confirmButton}
-            onClick={() => openDialog("confirm")}
-            disabled={confirmDisabled}
-          >
-            Confirm
-          </button>
-        </div>
-      </div>
+          <div className={styles.decisionBlock}>
+            <div className={styles.rationaleHeader}>
+              <label className={styles.rationaleLabel} htmlFor="core-anchor-rationale">
+                Rationale
+              </label>
+              <span className={styles.rationaleHint}>Optional but recommended</span>
+            </div>
+            <textarea
+              id="core-anchor-rationale"
+              className={styles.rationaleInput}
+              value={rationale}
+              onChange={(event) => setRationale(event.target.value)}
+              rows={3}
+            />
+            {(hasUnsavedChanges || requestInFlight) && (
+              <p className={styles.blockingReason} role="status">
+                {requestInFlight
+                  ? "Another request is in progress -- please wait."
+                  : "Save the draft before confirming -- Confirm resolves the saved draft, not unsaved edits."}
+              </p>
+            )}
+            <div className={styles.decisionActions}>
+              <button
+                type="button"
+                className={styles.rejectButton}
+                onClick={() => openDialog("reject")}
+                disabled={rejectDisabled}
+              >
+                Reject
+              </button>
+              <button
+                type="button"
+                className={styles.confirmButton}
+                onClick={() => openDialog("confirm")}
+                disabled={confirmDisabled}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       <ConfirmationDialog
         open={dialogMode !== null}
         title={
           dialogMode === "confirm"
-            ? "Confirm this Core Anchor revision?"
-            : "Reject this Core Anchor revision?"
+            ? isFirstDraft
+              ? "Confirm the first Core Anchor?"
+              : "Confirm this Core Anchor revision?"
+            : isFirstDraft
+              ? "Discard this Core Anchor draft?"
+              : "Reject this Core Anchor revision?"
         }
         description={
           dialogMode === "confirm"
-            ? `You are confirming revision #${draftRevision.revision_number} as the shared creative intent for ${shotName}. Only a Human VFX Supervisor may confirm a Core Anchor -- once confirmed, downstream CG, Artist, and review work will align to it.`
-            : `You are rejecting revision #${draftRevision.revision_number} for ${shotName}. Only a Human VFX Supervisor may reject a Core Anchor draft -- once rejected, it will no longer be available for confirmation, and a new draft can be started afterward.`
+            ? isFirstDraft
+              ? `You are confirming Revision 1 as the first active Core Anchor for ${shotName}. This records the Human VFX Supervisor decision and makes the revision the shared creative intent that downstream work should align to.`
+              : `You are confirming revision #${draftRevision.revision_number} as the shared creative intent for ${shotName}. Only a Human VFX Supervisor may confirm a Core Anchor -- once confirmed, downstream CG, Artist, and review work will align to it.`
+            : isFirstDraft
+              ? `You are discarding the working Revision 1 draft for ${shotName}. It will no longer be available for confirmation, and the Shot will return to having no Core Anchor draft.`
+              : `You are rejecting revision #${draftRevision.revision_number} for ${shotName}. Only a Human VFX Supervisor may reject a Core Anchor draft -- once rejected, it will no longer be available for confirmation, and a new draft can be started afterward.`
         }
         rationale={rationale || null}
-        confirmLabel={dialogMode === "confirm" ? "Confirm" : "Reject"}
-        pendingLabel={dialogMode === "confirm" ? "Confirming…" : "Rejecting…"}
+        confirmLabel={
+          dialogMode === "confirm"
+            ? isFirstDraft
+              ? "Confirm first Core Anchor"
+              : "Confirm"
+            : isFirstDraft
+              ? "Discard draft"
+              : "Reject"
+        }
+        pendingLabel={
+          dialogMode === "confirm"
+            ? "Confirming…"
+            : isFirstDraft
+              ? "Discarding…"
+              : "Rejecting…"
+        }
         pending={dialogPending}
         conflictMessage={dialogConflict}
         onConfirm={submitDialog}
