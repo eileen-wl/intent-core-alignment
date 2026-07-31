@@ -203,6 +203,39 @@ describe("confirmCoreAnchorRevisionAction", () => {
     if (!result.ok) expect(result.error.kind).toBe("not_found");
   });
 
+  it("proceeds (never a stale conflict) when no HumanGate has ever been created for the revision -- the legacy-compatibility case the real backend confirm call resolves atomically", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(200, [DRAFT_REVISION])) // listCoreAnchorRevisions
+      .mockResolvedValueOnce(jsonResponse(404, { detail: "not found" })) // getHumanGateForRevision -> null
+      .mockResolvedValueOnce(jsonResponse(200, { ...DRAFT_REVISION, status: "confirmed" }));
+
+    const result = await confirmCoreAnchorRevisionAction("shot-1", "r-draft", null, "why");
+    expect(result.ok).toBe(true);
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      3,
+      expect.stringContaining("/intent/core-anchor-revisions/r-draft/confirm"),
+      expect.anything(),
+    );
+  });
+
+  it("still returns a stale conflict when the revision itself was already resolved elsewhere (status no longer draft)", async () => {
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse(200, [{ ...DRAFT_REVISION, status: "confirmed" }]),
+    );
+
+    const result = await confirmCoreAnchorRevisionAction("shot-1", "r-draft", "gate-1", "why");
+    expect(result).toEqual({
+      ok: false,
+      error: {
+        kind: "conflict",
+        message: "This was already acted on elsewhere -- reload to see the current state.",
+      },
+    });
+    // Never even checks the gate or calls confirm once the revision
+    // itself is provably no longer a draft.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("maps a 403 from the backend to forbidden", async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse(200, [DRAFT_REVISION]))

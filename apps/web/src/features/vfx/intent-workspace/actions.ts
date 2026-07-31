@@ -162,16 +162,33 @@ export async function saveCoreAnchorDraftAction(
 async function validateGateAndRevision(
   shotId: string,
   revisionId: string,
-  humanGateId: string,
+  humanGateId: string | null,
 ): Promise<IntentActionError | null> {
   const revisions = await listCoreAnchorRevisions(shotId);
   const target = revisions.find((revision) => revision.id === revisionId);
   if (target === undefined) {
     return { kind: "not_found", message: "That revision does not belong to this Shot." };
   }
+  if (target.status !== "draft") {
+    // Someone else already confirmed/rejected this exact revision.
+    return STALE_CONFLICT_ERROR;
+  }
 
   const gate = await getHumanGateForRevision(revisionId);
-  if (gate === null || gate.id !== humanGateId || gate.status !== "pending") {
+  if (gate === null) {
+    // Legacy-compatibility case (`intent.human_gate_service`'s own
+    // documented path): a draft created before HumanGate existed for its
+    // Anchor type has no gate row yet. This is not a staleness conflict
+    // -- the real backend confirm/reject service call
+    // (`get_or_create_pending_gate_for_resolution`) creates the missing
+    // pending gate atomically with the resolution itself, so this is
+    // safe to let through rather than a permanent dead end.
+    return null;
+  }
+  if (gate.id !== humanGateId || gate.status !== "pending") {
+    // A real gate exists but does not match what this page last loaded,
+    // or has already been resolved -- a genuine stale-conflict, kept
+    // exactly as strict as before.
     return STALE_CONFLICT_ERROR;
   }
   return null;
@@ -184,7 +201,7 @@ async function validateGateAndRevision(
 export async function confirmCoreAnchorRevisionAction(
   shotId: string,
   revisionId: string,
-  humanGateId: string,
+  humanGateId: string | null,
   rationale: string,
 ): Promise<IntentActionResult> {
   const identity = await requireVfxIdentity();
@@ -212,7 +229,7 @@ export async function confirmCoreAnchorRevisionAction(
 export async function rejectCoreAnchorRevisionAction(
   shotId: string,
   revisionId: string,
-  humanGateId: string,
+  humanGateId: string | null,
   rationale: string,
 ): Promise<IntentActionResult> {
   const identity = await requireVfxIdentity();

@@ -71,7 +71,7 @@ from intent_core_contracts.api.cross_role_assessment import (
     ReAnchorFieldProposal,
     ReAnchorProposalOutput,
 )
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.agents import cg_supervisor_review_service, vfx_supervisor_review_service
@@ -100,6 +100,7 @@ from intent_core_api.intent.models import (
     CoreAnchorRevision,
     ExecutionAnchor,
     ExecutionAnchorRevision,
+    HumanGate,
     IntentBrief,
 )
 from intent_core_api.production_context.models import Project, Shot, Task
@@ -113,6 +114,7 @@ from intent_core_api.versions_and_feedback.models import (
 )
 from intent_core_api.workflow.actors import ActorContext
 from intent_core_api.workflow.exceptions import InternalConsistencyError
+from intent_core_api.workflow.models import Decision
 
 _DEMO_SOURCE: Final = "demo"
 D1_PROJECT_EXTERNAL_ID: Final = "icas-demo:d1"
@@ -688,6 +690,80 @@ async def _ensure_uninitialized_shot(session: AsyncSession, project: Project) ->
         description=_UNINITIALIZED_VERSION_DESCRIPTION,
     )
     return shot
+
+
+async def reset_uninitialized_shot_core_anchor_state(session: AsyncSession) -> uuid.UUID:
+    """Dev-only reset (Step 7C-2 browser-validation fix #1): puts Step
+    7C-1's uninitialized Shot back at Core Anchor lifecycle state 1
+    (INITIAL EMPTY), even after a prior browser session has moved it past
+    that state (e.g. by clicking "Start a Core Anchor" during manual QA).
+
+    `_ensure_uninitialized_shot` only ever resolves-or-creates -- it never
+    resets an existing Shot's Core Anchor state, so once any draft exists
+    for it, INITIAL EMPTY becomes permanently unreachable through the
+    normal seed endpoint alone. This function is the smallest fix: it
+    ensures the Shot exists (creating it, and its owning Project, via the
+    exact same helpers `ensure_d1_scenario` uses, if this is a fresh
+    database), then deletes only that Shot's own CoreAnchor lifecycle
+    rows -- every CoreAnchorRevision (cascading to its five semantic-child
+    collections via the existing ORM relationship), every HumanGate
+    opened for one of those revisions, every Decision recorded against one
+    of those revisions, and the CoreAnchor row itself. It never touches
+    any other Shot (including the rich D1 Shot), never touches
+    Task/Version/Project rows, and never touches Execution Anchor,
+    Assessment, or Signal data (the uninitialized Shot never has any).
+
+    Idempotent and safe to call repeatedly: a Shot already at INITIAL
+    EMPTY (no CoreAnchor row at all) is left untouched and this is a
+    no-op past the resolve-or-create step.
+    """
+    project = await _resolve_or_create_project(session)
+    shot = await _ensure_uninitialized_shot(session, project)
+
+    anchor = await session.scalar(select(CoreAnchor).where(CoreAnchor.shot_id == shot.id))
+    if anchor is None:
+        return shot.id
+
+    revisions = (
+        await session.scalars(
+            select(CoreAnchorRevision).where(CoreAnchorRevision.core_anchor_id == anchor.id)
+        )
+    ).all()
+    revision_ids = [revision.id for revision in revisions]
+
+    if revision_ids:
+        # HumanGate/Decision are not ORM-cascaded from CoreAnchorRevision
+        # (HumanGate has its own hard FK with no cascade configured;
+        # Decision uses the same loose entity_type/entity_id reference
+        # CoreAnchorRevision's own docstring already describes) -- both
+        # must be deleted explicitly, and before the revisions themselves
+        # so HumanGate's FK is never left dangling mid-transaction.
+        await session.execute(
+            delete(HumanGate).where(HumanGate.core_anchor_revision_id.in_(revision_ids))
+        )
+        await session.execute(
+            delete(Decision).where(
+                Decision.entity_type == "core_anchor_revision",
+                Decision.entity_id.in_(revision_ids),
+            )
+        )
+
+    for revision in revisions:
+        # ORM-level delete (not a bulk `delete()`) so the existing
+        # `cascade="all, delete-orphan"` relationships on
+        # CoreAnchorRevision remove its Constraint/VariationZone/
+        # DriftRisk/AnchorReference/OpenQuestion rows too.
+        await session.delete(revision)
+
+    # CoreAnchor.active_revision_id may still point at a just-deleted
+    # confirmed revision; clearing it first avoids a dangling FK value on
+    # the row this same transaction is about to delete anyway.
+    anchor.active_revision_id = None
+    await session.flush()
+    await session.delete(anchor)
+
+    await session.commit()
+    return shot.id
 
 
 async def ensure_d1_scenario(session: AsyncSession) -> D1ScenarioResult:

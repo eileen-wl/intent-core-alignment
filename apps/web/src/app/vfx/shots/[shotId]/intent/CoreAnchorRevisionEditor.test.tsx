@@ -272,10 +272,50 @@ describe("CoreAnchorRevisionEditor", () => {
     expect(screen.getByRole("button", { name: "Reload" })).toBeVisible();
   });
 
-  it("disables Confirm and Reject when there is no pending HumanGate", () => {
+  it("does NOT disable Confirm/Reject merely because no HumanGate has been loaded yet (legacy-compatibility case: the real backend confirm/reject call creates the missing gate atomically)", () => {
     renderEditor({ humanGate: null });
+    expect(screen.getByRole("button", { name: "Confirm" })).not.toBeDisabled();
+    expect(screen.getByRole("button", { name: "Reject" })).not.toBeDisabled();
+  });
+
+  it("submits Confirm with a null humanGateId when no gate has been loaded yet, and the Server Action still resolves it", async () => {
+    confirmMock.mockResolvedValue({
+      ok: true,
+      revision: baseRevision({ id: "r2", status: "confirmed" }),
+    });
+    renderEditor({ humanGate: null });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    fireEvent.click(screen.getAllByRole("button", { name: "Confirm" })[1]);
+    await waitFor(() => expect(confirmMock).toHaveBeenCalledWith("s1", "r2", null, ""));
+    expect(routerPushMock).toHaveBeenCalledWith("/vfx/shots/s1/intent?justConfirmed=r2");
+  });
+
+  it("blocks Confirm and explains why when the form has unsaved changes, but never blocks Reject on that", () => {
+    renderEditor();
+    const [firstTextarea] = screen.getAllByRole("textbox");
+    fireEvent.change(firstTextarea, { target: { value: "An edited value, not yet saved" } });
+
     expect(screen.getByRole("button", { name: "Confirm" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Reject" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Reject" })).not.toBeDisabled();
+    expect(
+      screen.getByText(/Save the draft before confirming/),
+    ).toBeVisible();
+  });
+
+  it("re-enables Confirm, and clears the blocking-reason message, once the edit is saved", async () => {
+    saveMock.mockResolvedValue({ ok: true, revision: baseRevision({ core_summary: "Updated" }) });
+    renderEditor();
+    const [firstTextarea] = screen.getAllByRole("textbox");
+    fireEvent.change(firstTextarea, { target: { value: "An edited value" } });
+    expect(screen.getByRole("button", { name: "Confirm" })).toBeDisabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save draft" }));
+    await waitFor(() => expect(screen.getByText("Changes saved.")).toBeVisible());
+
+    expect(screen.getByRole("button", { name: "Confirm" })).not.toBeDisabled();
+    expect(
+      screen.queryByText(/Save the draft before confirming/),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a restrained Changed indicator for a field that differs from the confirmed revision, honoring the Show changes toggle", () => {

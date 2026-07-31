@@ -412,6 +412,16 @@
   resize: vertical;
 }
 
+.blockingReason {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--state-attention-surface);
+  border: 1px solid var(--state-attention-border);
+  color: var(--state-attention);
+  font-size: var(--font-size-sm);
+}
+
 .decisionActions {
   display: flex;
   justify-content: flex-end;

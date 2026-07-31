@@ -18,7 +18,10 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.db import get_session
-from intent_core_api.demo_seed.d1_scenario import ensure_d1_scenario
+from intent_core_api.demo_seed.d1_scenario import (
+    ensure_d1_scenario,
+    reset_uninitialized_shot_core_anchor_state,
+)
 
 router = APIRouter(prefix="/internal/demo", tags=["demo_seed"])
 
@@ -48,4 +51,25 @@ async def ensure_d1_scenario_endpoint(
         execution_anchor_revision_id=result.execution_anchor_revision_id,
         cross_role_assessment_id=result.cross_role_assessment_id,
         uninitialized_shot_id=result.uninitialized_shot_id,
+    )
+
+
+class ResetUninitializedShotResultRead(BaseModel):
+    shot_id: UUID
+    intent_url: str
+
+
+@router.post("/reset-uninitialized-shot", response_model=ResetUninitializedShotResultRead)
+async def reset_uninitialized_shot_endpoint(
+    session: AsyncSession = Depends(get_session),
+) -> ResetUninitializedShotResultRead:
+    """Dev-only (Step 7C-2 browser-validation fix #1): puts the seed's
+    uninitialized Shot back at Core Anchor lifecycle state 1 (INITIAL
+    EMPTY) on demand, so that state stays reliably reachable even after a
+    prior browser session has moved it past it (e.g. by starting a
+    draft). Never adds a product-facing page -- this is scaffolding at the
+    same trust boundary as `/ensure-d1-scenario` (see module docstring)."""
+    shot_id = await reset_uninitialized_shot_core_anchor_state(session)
+    return ResetUninitializedShotResultRead(
+        shot_id=shot_id, intent_url=f"/vfx/shots/{shot_id}/intent"
     )

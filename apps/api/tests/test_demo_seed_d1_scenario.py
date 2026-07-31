@@ -13,8 +13,10 @@ from intent_core_api.demo_seed.d1_scenario import (
     UNINITIALIZED_TASK_EXTERNAL_ID,
     DeterministicD1CrossRoleAssessmentGenerator,
     ensure_d1_scenario,
+    reset_uninitialized_shot_core_anchor_state,
 )
 from intent_core_api.integrations.external_link_service import find_linked_entity_id
+from intent_core_api.intent import core_anchor_service
 from intent_core_api.intent.models import (
     CGSupervisorReview,
     CoreAnchor,
@@ -36,8 +38,13 @@ from intent_core_api.versions_and_feedback.models import (
 from intent_core_api.vfx_inbox.service import get_inbox_item_for_shot, list_inbox_items
 from intent_core_api.workflow.actors import ActorContext
 from intent_core_api.workflow.exceptions import AgentGenerationError, InternalConsistencyError
+from intent_core_api.workflow.models import Decision
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+
+_TEST_VFX_ACTOR = ActorContext(
+    actor_kind="human", actor_id="jordan-lee", human_role="vfx_supervisor"
+)
 
 
 async def _count(session: AsyncSession, model: type) -> int:
@@ -617,3 +624,103 @@ async def test_ensure_endpoint_returns_the_uninitialized_shot_id(client: AsyncCl
     body = response.json()
     assert body["uninitialized_shot_id"]
     assert body["uninitialized_shot_id"] != body["shot_id"]
+
+
+# --- Step 7C-2 browser-validation fix #1: reset the uninitialized Shot
+# back to INITIAL EMPTY on demand, since the seed endpoint alone only
+# ever resolves-or-creates and never resets a Shot a browser session has
+# since moved past state 1 -----------------------------------------------
+
+
+async def test_reset_creates_the_shot_at_initial_empty_on_a_fresh_database(
+    session: AsyncSession,
+) -> None:
+    shot_id = await reset_uninitialized_shot_core_anchor_state(session)
+
+    shot = await session.get(Shot, shot_id)
+    assert shot is not None
+
+    core_anchor = await session.scalar(select(CoreAnchor).where(CoreAnchor.shot_id == shot_id))
+    assert core_anchor is None
+    gate_count = await session.scalar(
+        select(func.count()).select_from(HumanGate).where(HumanGate.shot_id == shot_id)
+    )
+    assert gate_count == 0
+
+
+async def test_reset_is_a_noop_when_already_initial_empty(session: AsyncSession) -> None:
+    first_id = await reset_uninitialized_shot_core_anchor_state(session)
+    second_id = await reset_uninitialized_shot_core_anchor_state(session)
+    assert first_id == second_id
+    assert await _count(session, Shot) == 1
+
+
+async def test_reset_removes_an_existing_unconfirmed_draft_and_its_human_gate(
+    session: AsyncSession,
+) -> None:
+    shot_id = await reset_uninitialized_shot_core_anchor_state(session)
+    draft = await core_anchor_service.create_draft_revision(
+        session, _TEST_VFX_ACTOR, shot_id, {"core_summary": "A draft a browser session started."}
+    )
+    assert await _count(session, CoreAnchorRevision) == 1
+    assert await _count(session, HumanGate) == 1
+
+    result_shot_id = await reset_uninitialized_shot_core_anchor_state(session)
+    assert result_shot_id == shot_id
+
+    assert await session.get(CoreAnchorRevision, draft.id) is None
+    assert await session.scalar(select(CoreAnchor).where(CoreAnchor.shot_id == shot_id)) is None
+    assert await _count(session, CoreAnchorRevision) == 0
+    assert await _count(session, HumanGate) == 0
+
+
+async def test_reset_removes_a_confirmed_revision_and_its_decision(session: AsyncSession) -> None:
+    shot_id = await reset_uninitialized_shot_core_anchor_state(session)
+    draft = await core_anchor_service.create_draft_revision(
+        session, _TEST_VFX_ACTOR, shot_id, {"core_summary": "Confirmed then reset."}
+    )
+    confirmed = await core_anchor_service.confirm_revision(
+        session, _TEST_VFX_ACTOR, draft.id, "Confirmed during manual QA."
+    )
+    assert confirmed.status == "confirmed"
+    decision_count_before = await session.scalar(
+        select(func.count())
+        .select_from(Decision)
+        .where(Decision.entity_type == "core_anchor_revision", Decision.entity_id == draft.id)
+    )
+    assert decision_count_before == 1
+
+    await reset_uninitialized_shot_core_anchor_state(session)
+
+    assert await session.get(CoreAnchorRevision, draft.id) is None
+    assert await session.scalar(select(CoreAnchor).where(CoreAnchor.shot_id == shot_id)) is None
+    decision_count_after = await session.scalar(
+        select(func.count())
+        .select_from(Decision)
+        .where(Decision.entity_type == "core_anchor_revision", Decision.entity_id == draft.id)
+    )
+    assert decision_count_after == 0
+
+
+async def test_reset_never_touches_the_rich_shot_or_other_shots(session: AsyncSession) -> None:
+    result = await ensure_d1_scenario(session)
+    await core_anchor_service.create_draft_revision(
+        session, _TEST_VFX_ACTOR, result.uninitialized_shot_id, {"core_summary": "temp"}
+    )
+
+    await reset_uninitialized_shot_core_anchor_state(session)
+
+    rich_revision = await session.get(CoreAnchorRevision, result.core_anchor_revision_id)
+    assert rich_revision is not None
+    assert rich_revision.status == "confirmed"
+    assert await _count(session, Shot) == 2
+
+
+async def test_reset_endpoint_returns_the_shot_id_and_its_exact_intent_url(
+    client: AsyncClient,
+) -> None:
+    response = await client.post("/internal/demo/reset-uninitialized-shot")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["shot_id"]
+    assert body["intent_url"] == f"/vfx/shots/{body['shot_id']}/intent"

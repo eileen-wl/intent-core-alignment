@@ -190,6 +190,13 @@ export function CoreAnchorRevisionEditor({
   const isFirstDraft = confirmedRevision === null;
   const syncedKeyRef = useRef<string>("");
   const [form, setForm] = useState<FormState>(() => toFormState(draftRevision));
+  // The form state as of the last successful Save (or the initial load) --
+  // compared against the live `form` below to detect unsaved edits.
+  // Confirming always resolves whatever is currently *persisted* for this
+  // revision (the backend call sends only `revisionId`, never the live
+  // form), so confirming while this differs from `form` would silently
+  // discard in-progress edits -- see `hasUnsavedChanges`.
+  const [lastSavedForm, setLastSavedForm] = useState<FormState>(() => toFormState(draftRevision));
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -210,7 +217,9 @@ export function CoreAnchorRevisionEditor({
   const revisionKey = `${draftRevision.id}:${draftRevision.updated_at}`;
   useEffect(() => {
     if (syncedKeyRef.current !== revisionKey) {
-      setForm(toFormState(draftRevision));
+      const synced = toFormState(draftRevision);
+      setForm(synced);
+      setLastSavedForm(synced);
       syncedKeyRef.current = revisionKey;
     }
   }, [revisionKey, draftRevision]);
@@ -219,6 +228,21 @@ export function CoreAnchorRevisionEditor({
     ...draftRevision,
     ...toUpdatePayload(form),
   } as CoreAnchorRevisionRead);
+
+  // Real blocking reasons for Confirm/Reject -- each one has an honest,
+  // on-page explanation below rather than a silently disabled button.
+  // Confirming resolves whatever is currently persisted for this
+  // revision, so unsaved edits must be saved first or they would be
+  // silently discarded; a save/confirm/reject already in flight must
+  // finish before another one starts. A draft that has never had a
+  // HumanGate loaded (the legacy-compatibility case
+  // `intent.human_gate_service` documents) is deliberately NOT a
+  // blocking reason here -- the real backend confirm/reject call creates
+  // that missing gate atomically with the resolution itself.
+  const hasUnsavedChanges = JSON.stringify(form) !== JSON.stringify(lastSavedForm);
+  const requestInFlight = isSaving || dialogPending;
+  const confirmDisabled = requestInFlight || hasUnsavedChanges;
+  const rejectDisabled = requestInFlight;
 
   function updateSimpleCollection(
     field: (typeof SIMPLE_COLLECTIONS)[number]["field"],
@@ -276,7 +300,9 @@ export function CoreAnchorRevisionEditor({
         if (result.ok) {
           setSaveState("saved");
           syncedKeyRef.current = `${result.revision.id}:${result.revision.updated_at}`;
-          setForm(toFormState(result.revision));
+          const synced = toFormState(result.revision);
+          setForm(synced);
+          setLastSavedForm(synced);
         } else {
           setSaveState("error");
           setSaveError(result.error.message);
@@ -296,11 +322,15 @@ export function CoreAnchorRevisionEditor({
   }
 
   function submitDialog() {
-    if (!humanGate) return;
     setDialogPending(true);
     const mode = dialogMode;
     const submit = mode === "confirm" ? confirmCoreAnchorRevisionAction : rejectCoreAnchorRevisionAction;
-    submit(shotId, draftRevision.id, humanGate.id, rationale).then((result) => {
+    // `humanGate` may legitimately be null here -- a legacy draft that
+    // has never had a gate created for it. The Server Action's own
+    // `validateGateAndRevision` treats that as safe to proceed (the real
+    // backend confirm/reject call creates the missing gate atomically),
+    // never as a stale conflict.
+    submit(shotId, draftRevision.id, humanGate?.id ?? null, rationale).then((result) => {
       setDialogPending(false);
       if (result.ok) {
         setDialogMode(null);
@@ -648,12 +678,19 @@ export function CoreAnchorRevisionEditor({
           onChange={(event) => setRationale(event.target.value)}
           rows={3}
         />
+        {(hasUnsavedChanges || requestInFlight) && (
+          <p className={styles.blockingReason} role="status">
+            {requestInFlight
+              ? "Another request is in progress -- please wait."
+              : "Save the draft before confirming -- Confirm resolves the saved draft, not unsaved edits."}
+          </p>
+        )}
         <div className={styles.decisionActions}>
           <button
             type="button"
             className={styles.rejectButton}
             onClick={() => openDialog("reject")}
-            disabled={!humanGate}
+            disabled={rejectDisabled}
           >
             Reject
           </button>
@@ -661,7 +698,7 @@ export function CoreAnchorRevisionEditor({
             type="button"
             className={styles.confirmButton}
             onClick={() => openDialog("confirm")}
-            disabled={!humanGate}
+            disabled={confirmDisabled}
           >
             Confirm
           </button>
