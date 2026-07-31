@@ -19,16 +19,18 @@ import styles from "./IntentSourceContext.module.css";
 export function IntentSourceContext({
   item,
   evidenceData,
+  compact = false,
 }: {
   item: VfxInboxItemRead;
   evidenceData: IntentEvidenceData | null;
+  compact?: boolean;
 }) {
   const hasDecompositions = (evidenceData?.decompositions.length ?? 0) > 0;
   const hasReconstructions = (evidenceData?.reconstructions.length ?? 0) > 0;
   const evidenceCount = evidenceData?.evidence.length ?? 0;
 
   return (
-    <div className={styles.panel}>
+    <div className={`${styles.panel} ${compact ? styles.compact : ""}`}>
       <h2 className={styles.heading}>Source of creative intent</h2>
 
       <dl className={styles.shotContext}>

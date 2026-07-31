@@ -70,3 +70,57 @@
   color: var(--text-muted);
   font-size: var(--font-size-sm);
 }
+
+.compact .heading {
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-xs);
+}
+
+.compact .shotContext {
+  margin-bottom: var(--space-2);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.compact .contextRow {
+  min-width: 0;
+  display: block;
+  font-size: var(--font-size-xs);
+}
+
+.compact .contextRow dt {
+  min-width: 0;
+  margin-bottom: 0.125rem;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.compact .contextRow dd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact .empty,
+.compact .evidenceCount,
+.compact .sourceList {
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.compact .sources {
+  gap: var(--space-2);
+}
+
+.compact .sourceLabel {
+  margin-bottom: var(--space-1);
+  font-size: var(--font-size-xs);
+}
+
+@media (max-width: 768px) {
+  .compact .shotContext {
+    grid-template-columns: 1fr;
+  }
+}

@@ -94,7 +94,7 @@ export function IntentInitialEmptyState({
 
       <div className={styles.supportGrid}>
         <section className={`${styles.supportCard} ${styles.sourceCard}`}>
-          <IntentSourceContext item={item} evidenceData={evidenceData} />
+          <IntentSourceContext item={item} evidenceData={evidenceData} compact />
         </section>
 
         <div className={styles.supportStack}>
