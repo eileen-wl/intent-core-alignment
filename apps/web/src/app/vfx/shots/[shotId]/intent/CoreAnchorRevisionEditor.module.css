@@ -655,13 +655,6 @@
   background: var(--surface-elevated);
 }
 
-.saveRow {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  margin-top: var(--space-2);
-}
-
 .saveButton {
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-md);
@@ -913,10 +906,6 @@
   stroke-linejoin: round;
 }
 
-.gridFooterSpan {
-  grid-column: 1 / -1;
-}
-
 @media (max-width: 900px) {
   .comparisonGrid {
     grid-template-columns: 1fr;
@@ -1041,6 +1030,7 @@
   }
 
   .rejectButton,
+  .saveButton,
   .confirmButton {
     width: 100%;
   }

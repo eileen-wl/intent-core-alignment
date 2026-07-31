@@ -150,6 +150,15 @@ describe("CoreAnchorRevisionEditor", () => {
     expect(screen.getAllByText("Quiet dread")).toHaveLength(2);
   });
 
+  it("REVISION DRAFT: Save draft sits in the final decision action row beside Discard draft and Confirm revision, not under the Current confirmed column", () => {
+    renderEditor();
+    const discardButton = screen.getByRole("button", { name: "Discard draft" });
+    const saveButton = screen.getByRole("button", { name: "Save draft" });
+    const confirmButton = screen.getByRole("button", { name: "Confirm revision" });
+    expect(saveButton.parentElement).toBe(discardButton.parentElement);
+    expect(saveButton.parentElement).toBe(confirmButton.parentElement);
+  });
+
   it("FIRST DRAFT: renders no Current confirmed column, and a clear Revision 1 Draft identity", () => {
     renderEditor({
       confirmedRevision: null,

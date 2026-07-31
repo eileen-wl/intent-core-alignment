@@ -694,20 +694,6 @@ export function CoreAnchorRevisionEditor({
     </fieldset>
   );
 
-  const saveRow = (
-    <div className={styles.saveRow}>
-      <button type="button" className={styles.saveButton} onClick={handleSave} disabled={isSaving}>
-        {isSaving ? "Saving…" : "Save draft"}
-      </button>
-      {saveState === "saved" && <span className={styles.savedNotice}>Changes saved.</span>}
-      {saveState === "error" && saveError && (
-        <span className={styles.saveErrorNotice} role="alert">
-          {saveError}
-        </span>
-      )}
-    </div>
-  );
-
   return (
     <div className={styles.wrapper}>
       {decisionOutcome && (
@@ -1000,8 +986,6 @@ export function CoreAnchorRevisionEditor({
               )}
             </div>
           </div>
-
-          <div className={styles.gridFooterSpan}>{saveRow}</div>
         </div>
       )}
 
@@ -1043,6 +1027,9 @@ export function CoreAnchorRevisionEditor({
               >
                 Discard draft
               </button>
+              <button type="button" className={styles.saveButton} onClick={handleSave} disabled={isSaving}>
+                {isSaving ? "Saving…" : "Save draft"}
+              </button>
               <button
                 type="button"
                 className={styles.confirmButton}
@@ -1052,6 +1039,12 @@ export function CoreAnchorRevisionEditor({
                 Confirm revision
               </button>
             </div>
+            {saveState === "saved" && <span className={styles.savedNotice}>Changes saved.</span>}
+            {saveState === "error" && saveError && (
+              <span className={styles.saveErrorNotice} role="alert">
+                {saveError}
+              </span>
+            )}
           </div>
         </>
       )}
