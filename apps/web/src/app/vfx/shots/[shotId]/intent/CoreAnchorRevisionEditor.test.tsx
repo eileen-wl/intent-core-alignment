@@ -1,4 +1,4 @@
-import type { CoreAnchorRevisionRead, HumanGateRead } from "@intent-core/contracts";
+import type { CoreAnchorRevisionRead, HumanGateRead, VfxInboxItemRead } from "@intent-core/contracts";
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -24,6 +24,43 @@ afterEach(() => {
   cleanup();
   vi.clearAllMocks();
 });
+
+function baseItem(overrides: Partial<VfxInboxItemRead> = {}): VfxInboxItemRead {
+  return {
+    project_id: "p1",
+    project_name: "D1 Demo Project",
+    shot_id: "s1",
+    shot_name: "Shot 010 — Final confrontation",
+    shot_source: "manual",
+    core_anchor_state: "draft_pending",
+    active_core_anchor_revision_id: null,
+    active_core_anchor_summary: null,
+    pending_human_gate_id: "gate-1",
+    relevant_task_id: "t1",
+    relevant_task_name: "Compositing Review",
+    relevant_version_id: "v1",
+    relevant_version_name: "D1_STEP3_VFX_REVIEW_001",
+    relevant_version_number: 1,
+    pairing_established: true,
+    latest_assessment_id: null,
+    latest_assessment_created_at: null,
+    latest_signal_id: null,
+    latest_signal_attention_level: null,
+    latest_signal_summary: null,
+    re_anchor_proposal_present: false,
+    current_focus: {
+      focus_type: "core_anchor_draft_needs_review",
+      title: "Core Anchor draft in progress",
+      explanation: "A draft revision exists but has not yet been submitted for confirmation.",
+      target_route: "/vfx/shots/s1/intent",
+      primary_action_label: "Review draft",
+      actionable: true,
+    },
+    next_candidates: [],
+    sort_rank: 1,
+    ...overrides,
+  };
+}
 
 function baseRevision(overrides: Partial<CoreAnchorRevisionRead> = {}): CoreAnchorRevisionRead {
   return {
@@ -92,30 +129,48 @@ function renderEditor(overrides: Partial<Parameters<typeof CoreAnchorRevisionEdi
     <CoreAnchorRevisionEditor
       shotId="s1"
       shotName="Shot 010"
+      item={baseItem()}
       confirmedRevision={CONFIRMED}
       draftRevision={baseRevision()}
       humanGate={GATE}
+      evidenceData={null}
       {...overrides}
     />,
   );
 }
 
 describe("CoreAnchorRevisionEditor", () => {
-  it("renders both the confirmed and proposed draft columns", () => {
+  it("REVISION DRAFT: renders both the Current confirmed and Proposed draft revision columns", () => {
     renderEditor();
     expect(screen.getByText("Current confirmed")).toBeVisible();
-    expect(screen.getByText("Proposed draft")).toBeVisible();
+    expect(screen.getByText("Proposed draft revision")).toBeVisible();
     // Same default core_summary in this fixture's confirmed and draft
     // revisions -- appears once as read-only text, once as the
     // editable textarea's live value.
     expect(screen.getAllByText("Quiet dread")).toHaveLength(2);
   });
 
-  it("FIRST DRAFT: renders no Current confirmed column at all when there is no confirmed revision", () => {
-    renderEditor({ confirmedRevision: null });
+  it("FIRST DRAFT: renders no Current confirmed column, and a clear Revision 1 Draft identity", () => {
+    renderEditor({
+      confirmedRevision: null,
+      draftRevision: baseRevision({ id: "r1", revision_number: 1 }),
+    });
     expect(screen.queryByText("Current confirmed")).not.toBeInTheDocument();
     expect(screen.queryByText("No Core Anchor confirmed yet.")).not.toBeInTheDocument();
-    expect(screen.getByText("Proposed draft")).toBeVisible();
+    expect(screen.getByText("Create first Core Anchor draft")).toBeVisible();
+    expect(screen.getByText("Revision 1")).toBeVisible();
+    expect(screen.getByText("Draft")).toBeVisible();
+  });
+
+  it("FIRST DRAFT: shows read-only Source of creative intent, separate from the editable draft form", () => {
+    renderEditor({
+      confirmedRevision: null,
+      draftRevision: baseRevision({ id: "r1", revision_number: 1 }),
+      evidenceData: { evidence: [], run: null, snapshot: null, decompositions: [], reconstructions: [] },
+    });
+    expect(screen.getByText("Source of creative intent")).toBeVisible();
+    // The Shot's real Task context appears in the read-only panel.
+    expect(screen.getByText("Compositing Review")).toBeVisible();
   });
 
   it("rejects a blank required collection field and does not call the save action", () => {
@@ -158,6 +213,13 @@ describe("CoreAnchorRevisionEditor", () => {
     expect(screen.getByText("Confirm this Core Anchor revision?")).toBeVisible();
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(confirmMock).not.toHaveBeenCalled();
+  });
+
+  it("the Confirm dialog communicates Human VFX Supervisor authority and the Revision number", () => {
+    renderEditor();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    expect(screen.getByText(/Human VFX Supervisor may confirm/)).toBeVisible();
+    expect(screen.getByText(/revision #2/)).toBeVisible();
   });
 
   it("submits Confirm through the dialog and navigates to the transient justConfirmed success URL (Step 7C-2)", async () => {
@@ -214,5 +276,16 @@ describe("CoreAnchorRevisionEditor", () => {
     renderEditor({ humanGate: null });
     expect(screen.getByRole("button", { name: "Confirm" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Reject" })).toBeDisabled();
+  });
+
+  it("shows a restrained Changed indicator for a field that differs from the confirmed revision, honoring the Show changes toggle", () => {
+    renderEditor({
+      confirmedRevision: CONFIRMED,
+      draftRevision: baseRevision({ shot_objective: "A new objective, changed from confirmed" }),
+    });
+    expect(screen.getAllByLabelText("Changed").length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: "Show changes" }));
+    expect(screen.queryByLabelText("Changed")).not.toBeInTheDocument();
   });
 });

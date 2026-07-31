@@ -17,6 +17,7 @@ import { ProductionContextHeader } from "../../ProductionContextHeader";
 import { ConfirmedAnchorSummary } from "./ConfirmedAnchorSummary";
 import { CoreAnchorRevisionEditor } from "./CoreAnchorRevisionEditor";
 import { IntentEvidenceDisclosures } from "./IntentEvidenceDisclosures";
+import { IntentInitialEmptyState } from "./IntentInitialEmptyState";
 import { StartDraftButton } from "./StartDraftButton";
 import styles from "./IntentWorkspacePage.module.css";
 
@@ -112,9 +113,11 @@ export function IntentWorkspacePage({
             <CoreAnchorRevisionEditor
               shotId={shotId}
               shotName={data.item.shot_name}
+              item={data.item}
               confirmedRevision={data.confirmedRevision}
               draftRevision={data.draftRevision}
               humanGate={data.draftHumanGate}
+              evidenceData={data.evidenceData}
             />
           ) : data.confirmedRevision ? (
             <>
@@ -130,16 +133,11 @@ export function IntentWorkspacePage({
               />
             </>
           ) : (
-            <>
-              <p className={styles.neverConfirmed}>
-                No Core Anchor has been confirmed for this Shot yet.
-              </p>
-              <StartDraftButton
-                label="Start a Core Anchor"
-                pendingLabel="Starting…"
-                action={startBlankCoreAnchorDraftAction.bind(null, shotId)}
-              />
-            </>
+            <IntentInitialEmptyState
+              item={data.item}
+              evidenceData={data.evidenceData}
+              startDraftAction={startBlankCoreAnchorDraftAction.bind(null, shotId)}
+            />
           )}
 
           {data.evidenceData && <IntentEvidenceDisclosures data={data.evidenceData} />}

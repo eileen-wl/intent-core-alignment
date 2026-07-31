@@ -58,6 +58,35 @@ describe("ConfirmedAnchorSummary", () => {
     expect(screen.queryByText(/was confirmed/)).not.toBeInTheDocument();
   });
 
+  it("Normal Confirmed: shows Decision recorded and Shared intent is active, never What changed", () => {
+    render(
+      <ConfirmedAnchorSummary
+        revision={revision({
+          confirmed_by_human_role: "vfx_supervisor",
+          confirmed_at: "2026-01-01T00:00:00Z",
+        })}
+      />,
+    );
+    expect(screen.getByText("Decision recorded")).toBeVisible();
+    expect(screen.getByText("Shared intent is active")).toBeVisible();
+    expect(screen.queryByText(/What changed/)).not.toBeInTheDocument();
+  });
+
+  it("Just-confirmed Success: shows Decision recorded but never Shared intent is active (that is Normal Confirmed's card)", () => {
+    render(
+      <ConfirmedAnchorSummary
+        revision={revision({
+          confirmed_by_human_role: "vfx_supervisor",
+          confirmed_at: "2026-01-01T00:00:00Z",
+        })}
+        previousConfirmedRevision={null}
+        justConfirmed
+      />,
+    );
+    expect(screen.getByText("Decision recorded")).toBeVisible();
+    expect(screen.queryByText("Shared intent is active")).not.toBeInTheDocument();
+  });
+
   it("Normal Confirmed: justConfirmed=false explicitly also shows no success status", () => {
     render(
       <ConfirmedAnchorSummary
@@ -82,10 +111,10 @@ describe("ConfirmedAnchorSummary", () => {
         justConfirmed
       />,
     );
-    expect(screen.getByRole("status")).toHaveTextContent("Revision 2 was confirmed.");
+    expect(screen.getByRole("status")).toHaveTextContent("Revision 2 confirmed successfully");
   });
 
-  it("Just-confirmed Success: shows a real change summary computed from the genuinely superseded revision", () => {
+  it("Just-confirmed Success: shows a real change summary, computed from the genuinely superseded revision, in a What changed card", () => {
     const previous = revision({
       id: "r1",
       revision_number: 1,
@@ -95,7 +124,11 @@ describe("ConfirmedAnchorSummary", () => {
     render(
       <ConfirmedAnchorSummary revision={revision()} previousConfirmedRevision={previous} justConfirmed />,
     );
-    expect(screen.getByRole("status")).toHaveTextContent("Core summary changed");
+    expect(screen.getByText("What changed in Revision 2")).toBeVisible();
+    expect(screen.getByText("Core summary changed")).toBeVisible();
+    // The transient banner itself no longer embeds the change summary
+    // text -- the two are now visually and semantically separate cards.
+    expect(screen.getByRole("status")).toHaveTextContent("Revision 2 confirmed successfully");
   });
 
   it("Just-confirmed Success, first-ever confirmation: reports every populated field as newly established, never fabricated", () => {
@@ -104,7 +137,8 @@ describe("ConfirmedAnchorSummary", () => {
     );
     // No previous revision to compare against -- the real
     // computeChangeSummary(null, revision) path, not invented content.
-    expect(screen.getByRole("status")).toHaveTextContent("Core summary changed");
+    expect(screen.getByText("What changed in Revision 2")).toBeVisible();
+    expect(screen.getByText("Core summary changed")).toBeVisible();
   });
 
   it("consumes the transient signal by stripping the URL after rendering justConfirmed", () => {

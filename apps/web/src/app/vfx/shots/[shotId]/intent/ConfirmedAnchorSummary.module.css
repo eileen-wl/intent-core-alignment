@@ -1,20 +1,69 @@
-.panel {
-  max-width: var(--content-width-reading);
+.wrapper {
+  max-width: var(--content-width-comparison);
   margin: 0 auto;
-  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
 }
 
-.confirmedStatus {
-  margin: 0 0 var(--space-5) 0;
+.successBanner {
+  margin: 0;
   padding: var(--space-3) var(--space-4);
   border-radius: var(--radius-md);
-  background: var(--surface-elevated);
-  color: var(--text-primary);
+  background: var(--state-success-surface);
+  border: 1px solid var(--state-success-border);
+  color: var(--state-success);
   font-weight: 600;
 }
 
-.fields {
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+  align-items: start;
+}
+
+@media (min-width: 900px) {
+  .grid {
+    grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr);
+  }
+}
+
+.mainCard {
+  min-width: 0;
+  padding: var(--space-6);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-panel);
+}
+
+.confirmedPill {
+  display: inline-block;
+  margin-bottom: var(--space-3);
+  padding: 0.15rem var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--state-success-surface);
+  border: 1px solid var(--state-success-border);
+  color: var(--state-success);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mainHeading {
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--font-size-lg);
+  color: var(--text-primary);
+}
+
+.mainIntro {
   margin: 0 0 var(--space-5) 0;
+  color: var(--text-secondary);
+}
+
+.fields {
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
@@ -37,8 +86,48 @@
   white-space: pre-wrap;
 }
 
+.expandToggle {
+  margin-top: var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.expandToggle:hover {
+  color: var(--text-primary);
+}
+
+.chevron {
+  width: 0.6rem;
+  height: 0.6rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+.chevron[data-open="true"] {
+  transform: rotate(225deg);
+}
+
+.expandedContent {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
 .collection {
-  margin: 0 0 var(--space-4) 0;
+  margin: 0;
 }
 
 .collectionLabel {
@@ -57,6 +146,68 @@
   color: var(--text-secondary);
 }
 
-.confirmation {
-  margin-top: var(--space-5);
+.confirmedFooter {
+  margin: var(--space-5) 0 0 0;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.supportingColumn {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.supportingCard {
+  padding: var(--space-5);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-panel);
+}
+
+.supportingHeading {
+  margin: 0 0 var(--space-3) 0;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.supportingText {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.changeList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.changeList li {
+  padding-left: var(--space-5);
+  position: relative;
+}
+
+.changeList li::before {
+  content: "";
+  position: absolute;
+  left: 0.1rem;
+  top: 0.35rem;
+  width: 0.7rem;
+  height: 0.4rem;
+  border-left: 2px solid var(--state-success);
+  border-bottom: 2px solid var(--state-success);
+  transform: rotate(-45deg);
 }

@@ -135,6 +135,34 @@ describe("IntentWorkspacePage", () => {
     expect(screen.getByRole("button", { name: "Start a Core Anchor" })).toBeVisible();
   });
 
+  it("INITIAL EMPTY: shows the About Core Anchor introduction, the getting-started steps, and real source/context", () => {
+    const data: IntentWorkspaceData = {
+      item: item({ core_anchor_state: "none", active_core_anchor_revision_id: null }),
+      confirmedRevision: null,
+      draftRevision: null,
+      draftHumanGate: null,
+      evidenceData: null,
+      previousConfirmedRevision: null,
+    };
+    render(<IntentWorkspacePage shotId="s1" data={data} unavailable={false} onExitRole={vi.fn()} />);
+    expect(screen.getByText("About Core Anchor")).toBeVisible();
+    expect(screen.getByText("Get started with the first Core Anchor")).toBeVisible();
+    expect(screen.getByText("Create the first Core Anchor draft.")).toBeVisible();
+    expect(screen.getByText("Source of creative intent")).toBeVisible();
+    // Real Shot context (Project/Task), never fabricated. "D1 Demo
+    // Project" also appears in the breadcrumb -- assert at least one
+    // instance rather than assuming a single match.
+    expect(screen.getAllByText("D1 Demo Project").length).toBeGreaterThan(0);
+    // Also appears in the Shot Context Header's own Task fact.
+    expect(screen.getAllByText("Compositing Review").length).toBeGreaterThan(0);
+    // No source evidence has been loaded yet for a Shot with neither a
+    // draft nor a confirmed revision -- an honest gap, not a fabricated
+    // decomposition/reconstruction summary.
+    expect(
+      screen.getByText("No source evidence has been generated for this Shot yet."),
+    ).toBeVisible();
+  });
+
   it("renders FIRST DRAFT (no confirmed revision, one draft) without any Current confirmed column", () => {
     const data: IntentWorkspaceData = {
       item: item({ core_anchor_state: "draft_pending", active_core_anchor_revision_id: null }),
@@ -162,7 +190,7 @@ describe("IntentWorkspacePage", () => {
       previousConfirmedRevision: null,
     };
     render(<IntentWorkspacePage shotId="s1" data={data} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByText("Proposed draft")).toBeVisible();
+    expect(screen.getByText("Create first Core Anchor draft")).toBeVisible();
     // Locked FIRST DRAFT requirement: no "Current confirmed" column at
     // all, not even a falsely-labelled empty one.
     expect(screen.queryByText("Current confirmed")).not.toBeInTheDocument();
@@ -197,7 +225,7 @@ describe("IntentWorkspacePage", () => {
     };
     render(<IntentWorkspacePage shotId="s1" data={data} unavailable={false} onExitRole={vi.fn()} />);
     expect(screen.getByText("Current confirmed")).toBeVisible();
-    expect(screen.getByText("Proposed draft")).toBeVisible();
+    expect(screen.getByText("Proposed draft revision")).toBeVisible();
   });
 
   it("Reject with no confirmed revision: the next data load (draft gone) returns to INITIAL EMPTY", () => {
