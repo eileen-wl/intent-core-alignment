@@ -43,11 +43,11 @@ export function ShotOverviewPage({
       role={ROLE_LABEL.vfx_supervisor}
       onExitRole={onExitRole}
       sidebarItems={ROLE_SIDEBAR_ITEMS.vfx_supervisor}
-      currentPath="/vfx"
+      currentPath="/vfx/shots"
     >
       {item === null ? (
         <>
-          <Breadcrumbs items={[{ label: "Alignment Inbox", href: "/vfx" }, { label: "Shot" }]} />
+          <Breadcrumbs items={[{ label: "Shots", href: "/vfx/shots" }, { label: "Shot" }]} />
           <ErrorState
             title="This Shot is unavailable"
             description="The ICAS service could not be reached, or this Shot does not exist. Try refreshing the page."
@@ -57,9 +57,9 @@ export function ShotOverviewPage({
         <>
           <Breadcrumbs
             items={[
-              { label: "Alignment Inbox", href: "/vfx" },
-              { label: item.project_name },
+              { label: item.project_name, href: "/vfx/shots" },
               { label: item.shot_name },
+              { label: "Overview" },
             ]}
           />
           <ProductionContextHeader item={item} />
@@ -68,9 +68,24 @@ export function ShotOverviewPage({
             tabs={[
               { id: "overview", label: "Overview", href: `/vfx/shots/${item.shot_id}` },
               { id: "intent", label: "Intent", href: `/vfx/shots/${item.shot_id}/intent` },
-              { id: "versions", label: "Versions", href: `/vfx/shots/${item.shot_id}/versions` },
-              { id: "alignment", label: "Alignment", href: `/vfx/shots/${item.shot_id}/alignment` },
-              { id: "activity", label: "Activity", href: `/vfx/shots/${item.shot_id}/activity` },
+              {
+                id: "versions",
+                label: "Versions",
+                href: `/vfx/shots/${item.shot_id}/versions`,
+                implemented: false,
+              },
+              {
+                id: "alignment",
+                label: "Alignment",
+                href: `/vfx/shots/${item.shot_id}/alignment`,
+                implemented: false,
+              },
+              {
+                id: "activity",
+                label: "Activity",
+                href: `/vfx/shots/${item.shot_id}/activity`,
+                implemented: false,
+              },
             ]}
           />
 

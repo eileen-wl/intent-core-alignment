@@ -11,7 +11,6 @@ export function AppShell({
   onExitRole,
   sidebarItems,
   currentPath,
-  navigationMode = "workspace",
   children,
 }: {
   name: string;
@@ -19,19 +18,13 @@ export function AppShell({
   onExitRole: () => void | Promise<void>;
   sidebarItems: SidebarNavItem[];
   currentPath: string;
-  navigationMode?: "workspace" | "demo-entry";
   children: ReactNode;
 }) {
   return (
     <div className={styles.shell}>
       <TopBar name={name} role={role} onExitRole={onExitRole} />
       <div className={styles.body}>
-        <RoleSidebar
-          items={sidebarItems}
-          currentPath={currentPath}
-          name={name}
-          mode={navigationMode}
-        />
+        <RoleSidebar items={sidebarItems} currentPath={currentPath} name={name} />
         <main className={styles.main}>{children}</main>
       </div>
     </div>

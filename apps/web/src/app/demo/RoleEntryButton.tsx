@@ -2,16 +2,8 @@
 
 import type { HumanRole } from "@intent-core/contracts";
 
-import { enterDemoRole, startGuidedDemonstration } from "./actions";
+import { enterDemoRole } from "./actions";
 import styles from "./RoleEntryButton.module.css";
-
-function PlayIcon() {
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="m8.25 5.5 9 6.5-9 6.5v-13Z" />
-    </svg>
-  );
-}
 
 function ArrowIcon() {
   return (
@@ -22,34 +14,22 @@ function ArrowIcon() {
   );
 }
 
-/** Demo-entry action. The existing Server Actions remain the only place that
- * establishes the trusted Demo role and performs redirects. */
-export function RoleEntryButton({
-  role,
-  label,
-  variant = "secondary",
-  guided = false,
-}: {
-  role: HumanRole;
-  label: string;
-  variant?: "primary" | "secondary";
-  guided?: boolean;
-}) {
+/** Role-selection Home entry action (Step 7C-1). The existing
+ * `enterDemoRole` Server Action remains the only place that establishes
+ * the trusted role session and performs the redirect into that role's
+ * workspace -- this Client Component only ever forwards the plain,
+ * serialisable `role` literal to it. */
+export function RoleEntryButton({ role, label }: { role: HumanRole; label: string }) {
   return (
     <button
       type="button"
-      className={variant === "primary" ? styles.primaryButton : styles.button}
+      className={styles.button}
       onClick={() => {
-        if (guided) {
-          void startGuidedDemonstration();
-        } else {
-          void enterDemoRole(role);
-        }
+        void enterDemoRole(role);
       }}
     >
-      {variant === "primary" && <PlayIcon />}
       <span>{label}</span>
-      {variant === "secondary" && <ArrowIcon />}
+      <ArrowIcon />
     </button>
   );
 }

@@ -9,13 +9,17 @@ from httpx import AsyncClient
 from intent_core_api.demo_seed.d1_scenario import (
     D1_MARKER,
     D1_SHOT_EXTERNAL_ID,
+    UNINITIALIZED_SHOT_EXTERNAL_ID,
+    UNINITIALIZED_TASK_EXTERNAL_ID,
     DeterministicD1CrossRoleAssessmentGenerator,
     ensure_d1_scenario,
 )
 from intent_core_api.integrations.external_link_service import find_linked_entity_id
 from intent_core_api.intent.models import (
     CGSupervisorReview,
+    CoreAnchor,
     CoreAnchorRevision,
+    ExecutionAnchor,
     ExecutionAnchorRevision,
     HumanGate,
 )
@@ -29,7 +33,7 @@ from intent_core_api.versions_and_feedback.models import (
     Version,
     VFXSupervisorReview,
 )
-from intent_core_api.vfx_inbox.service import get_inbox_item_for_shot
+from intent_core_api.vfx_inbox.service import get_inbox_item_for_shot, list_inbox_items
 from intent_core_api.workflow.actors import ActorContext
 from intent_core_api.workflow.exceptions import AgentGenerationError, InternalConsistencyError
 from sqlalchemy import func, select
@@ -43,10 +47,14 @@ async def _count(session: AsyncSession, model: type) -> int:
 async def test_empty_database_creates_full_baseline(session: AsyncSession) -> None:
     result = await ensure_d1_scenario(session)
 
+    # Step 7C-1: this same generic development seed process now also
+    # folds in a second, deliberately-unconfirmed Shot (see
+    # `test_uninitialized_shot_*` below) -- Shot/Task/Version counts are
+    # 2, one per Shot, sharing the one seed-owned Project.
     assert await _count(session, Project) == 1
-    assert await _count(session, Shot) == 1
-    assert await _count(session, Task) == 1
-    assert await _count(session, Version) == 1
+    assert await _count(session, Shot) == 2
+    assert await _count(session, Task) == 2
+    assert await _count(session, Version) == 2
     assert await _count(session, CoreAnchorRevision) == 1
     assert await _count(session, ExecutionAnchorRevision) == 1
     assert await _count(session, VFXSupervisorReview) == 1
@@ -59,6 +67,9 @@ async def test_empty_database_creates_full_baseline(session: AsyncSession) -> No
     # Signal -- see DeterministicD1CrossRoleAssessmentGenerator.
     assert await _count(session, ReAnchorProposal) == 1
     assert await _count(session, IntentSignal) == 1
+    # The uninitialized Shot never gets a CoreAnchor row at all -- the
+    # single CoreAnchorRevision above belongs entirely to the rich Shot.
+    assert await _count(session, CoreAnchor) == 1
 
     revision = await session.get(CoreAnchorRevision, result.core_anchor_revision_id)
     assert revision is not None
@@ -67,6 +78,10 @@ async def test_empty_database_creates_full_baseline(session: AsyncSession) -> No
     exec_revision = await session.get(ExecutionAnchorRevision, result.execution_anchor_revision_id)
     assert exec_revision is not None
     assert exec_revision.status == "confirmed"
+
+    assert result.uninitialized_shot_id != result.shot_id
+    uninitialized_shot = await session.get(Shot, result.uninitialized_shot_id)
+    assert uninitialized_shot is not None
 
 
 async def test_already_complete_seed_is_a_no_op(session: AsyncSession) -> None:
@@ -80,11 +95,12 @@ async def test_already_complete_seed_is_a_no_op(session: AsyncSession) -> None:
     assert first.core_anchor_revision_id == second.core_anchor_revision_id
     assert first.execution_anchor_revision_id == second.execution_anchor_revision_id
     assert first.cross_role_assessment_id == second.cross_role_assessment_id
+    assert first.uninitialized_shot_id == second.uninitialized_shot_id
 
     assert await _count(session, Project) == 1
-    assert await _count(session, Shot) == 1
-    assert await _count(session, Task) == 1
-    assert await _count(session, Version) == 1
+    assert await _count(session, Shot) == 2
+    assert await _count(session, Task) == 2
+    assert await _count(session, Version) == 2
     assert await _count(session, CoreAnchorRevision) == 1
     assert await _count(session, ExecutionAnchorRevision) == 1
     assert await _count(session, VFXSupervisorReview) == 1
@@ -126,9 +142,9 @@ async def test_partial_seed_resumes_without_duplicating(session: AsyncSession) -
     # ExecutionAnchor were not recreated, and the recovery does not
     # duplicate the Assessment or Signal.
     assert await _count(session, Project) == 1
-    assert await _count(session, Shot) == 1
-    assert await _count(session, Task) == 1
-    assert await _count(session, Version) == 1
+    assert await _count(session, Shot) == 2
+    assert await _count(session, Task) == 2
+    assert await _count(session, Version) == 2
     assert await _count(session, CoreAnchorRevision) == 1
     assert await _count(session, ExecutionAnchorRevision) == 1
     assert await _count(session, VFXSupervisorReview) == 1
@@ -481,3 +497,123 @@ async def test_shared_deterministic_generator_still_never_proposes(session: Asyn
         generator=DeterministicCrossRoleAssessmentGenerator(),
     )
     assert live_assessment.assessment_output["re_anchor_proposal"] is None
+
+
+# --- Step 7C-1: the normal uninitialized Shot folded into this same
+# generic development seed process (replaces the removed Step 7C-2
+# Guided-walkthrough-specific scenario/endpoint/Inbox-exclusion) -----------
+
+
+async def test_uninitialized_shot_has_zero_core_anchor_rows(session: AsyncSession) -> None:
+    result = await ensure_d1_scenario(session)
+
+    core_anchor = await session.scalar(
+        select(CoreAnchor).where(CoreAnchor.shot_id == result.uninitialized_shot_id)
+    )
+    assert core_anchor is None
+
+    gate_count = await session.scalar(
+        select(func.count())
+        .select_from(HumanGate)
+        .where(HumanGate.shot_id == result.uninitialized_shot_id)
+    )
+    assert gate_count == 0
+
+
+async def test_uninitialized_shot_has_no_execution_anchor_or_downstream_assessment(
+    session: AsyncSession,
+) -> None:
+    result = await ensure_d1_scenario(session)
+
+    uninitialized_task = await session.scalar(
+        select(Task).where(Task.shot_id == result.uninitialized_shot_id)
+    )
+    assert uninitialized_task is not None
+
+    execution_anchor = await session.scalar(
+        select(ExecutionAnchor).where(ExecutionAnchor.task_id == uninitialized_task.id)
+    )
+    assert execution_anchor is None
+
+    assessment = await session.scalar(
+        select(CrossRoleAssessment).where(
+            CrossRoleAssessment.shot_id == result.uninitialized_shot_id
+        )
+    )
+    assert assessment is None
+
+
+async def test_uninitialized_and_rich_shot_ids_are_distinct_and_linked(
+    session: AsyncSession,
+) -> None:
+    result = await ensure_d1_scenario(session)
+
+    assert result.uninitialized_shot_id != result.shot_id
+
+    rich_link = await find_linked_entity_id(
+        session, entity_type="shot", source="demo", external_id=D1_SHOT_EXTERNAL_ID
+    )
+    uninitialized_link = await find_linked_entity_id(
+        session, entity_type="shot", source="demo", external_id=UNINITIALIZED_SHOT_EXTERNAL_ID
+    )
+    assert rich_link == result.shot_id
+    assert uninitialized_link == result.uninitialized_shot_id
+
+    uninitialized_task_link = await find_linked_entity_id(
+        session, entity_type="task", source="demo", external_id=UNINITIALIZED_TASK_EXTERNAL_ID
+    )
+    assert uninitialized_task_link is not None
+
+
+async def test_uninitialized_shot_seed_is_deterministic_and_idempotent(
+    session: AsyncSession,
+) -> None:
+    results = [await ensure_d1_scenario(session) for _ in range(3)]
+    uninitialized_ids = {result.uninitialized_shot_id for result in results}
+    assert len(uninitialized_ids) == 1
+    assert await _count(session, Shot) == 2
+
+
+async def test_rich_scenario_is_unaffected_by_uninitialized_shot(session: AsyncSession) -> None:
+    result = await ensure_d1_scenario(session)
+
+    revision = await session.get(CoreAnchorRevision, result.core_anchor_revision_id)
+    assert revision is not None
+    assert revision.status == "confirmed"
+
+    exec_revision = await session.get(ExecutionAnchorRevision, result.execution_anchor_revision_id)
+    assert exec_revision is not None
+    assert exec_revision.status == "confirmed"
+
+    # Exactly one confirmed Core Anchor overall -- the rich Shot's --
+    # the uninitialized Shot contributed zero.
+    assert await _count(session, CoreAnchorRevision) == 1
+
+
+async def test_uninitialized_shot_appears_normally_in_the_alignment_inbox(
+    session: AsyncSession,
+) -> None:
+    """Step 7C-1: unlike the removed Guided Shot, the uninitialized Shot
+    is never excluded from `list_inbox_items` -- there is no more
+    Guided/Explore split, so every seeded Shot is a normal Shot.
+    """
+    result = await ensure_d1_scenario(session)
+
+    inbox = await list_inbox_items(session)
+    shot_ids_in_inbox = {item.shot_id for item in inbox.items}
+
+    assert result.shot_id in shot_ids_in_inbox
+    assert result.uninitialized_shot_id in shot_ids_in_inbox
+
+    uninitialized_item = await get_inbox_item_for_shot(session, result.uninitialized_shot_id)
+    assert uninitialized_item is not None
+    assert uninitialized_item.core_anchor_state == "none"
+    assert uninitialized_item.pending_human_gate_id is None
+
+
+async def test_ensure_endpoint_returns_the_uninitialized_shot_id(client: AsyncClient) -> None:
+    response = await client.post("/internal/demo/ensure-d1-scenario")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["uninitialized_shot_id"]
+    assert body["uninitialized_shot_id"] != body["shot_id"]

@@ -17,34 +17,30 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-const { resolveD1DemoShotIdMock, resolveD1GuidedDemoShotIdMock } = vi.hoisted(() => ({
+const { resolveD1DemoShotIdMock } = vi.hoisted(() => ({
   resolveD1DemoShotIdMock: vi.fn(),
-  resolveD1GuidedDemoShotIdMock: vi.fn(),
 }));
 vi.mock("@/features/session/demoScenario", () => ({
   resolveD1DemoShotId: resolveD1DemoShotIdMock,
-  resolveD1GuidedDemoShotId: resolveD1GuidedDemoShotIdMock,
 }));
 
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
-import { enterDemoRole, exitRoleView, startGuidedDemonstration } from "./actions";
+import { enterDemoRole, exitRoleView } from "./actions";
 
 beforeEach(() => {
   vi.clearAllMocks();
   resolveD1DemoShotIdMock.mockResolvedValue("11111111-1111-1111-1111-111111111111");
-  resolveD1GuidedDemoShotIdMock.mockResolvedValue("22222222-2222-2222-2222-222222222222");
 });
 
 describe("enterDemoRole", () => {
-  it("sets the session-scoped, httpOnly Demo cookie and redirects to /vfx for vfx_supervisor", async () => {
+  it("sets the session-scoped, httpOnly role cookie and redirects to /vfx for vfx_supervisor", async () => {
     await expect(enterDemoRole("vfx_supervisor")).rejects.toThrow();
     expect(cookieStore.set).toHaveBeenCalledWith(
       DEMO_ROLE_COOKIE,
       "vfx_supervisor",
       expect.objectContaining({ httpOnly: true }),
     );
-    // No maxAge/expires -- session-scoped, matches docs/step-7's
-    // "session-scoped Demo identity" requirement.
+    // No maxAge/expires -- session-scoped.
     expect(cookieStore.set.mock.calls[0][2]).not.toHaveProperty("maxAge");
     expect(cookieStore.set.mock.calls[0][2]).not.toHaveProperty("expires");
     expect(redirectSpy).toHaveBeenCalledWith("/vfx");
@@ -60,7 +56,7 @@ describe("enterDemoRole", () => {
     expect(redirectSpy).toHaveBeenCalledWith("/artist");
   });
 
-  it("uses the identical mechanism for the guided-demo role and a direct role entry", async () => {
+  it("is deterministic across repeated calls for the same role", async () => {
     await expect(enterDemoRole("vfx_supervisor")).rejects.toThrow();
     const firstCall = cookieStore.set.mock.calls[0];
 
@@ -73,71 +69,35 @@ describe("enterDemoRole", () => {
     expect(firstCall).toEqual(secondCall);
   });
 
-  it("ensures the rich D1 scenario before landing on the Alignment Inbox for vfx_supervisor (Step 7C-2)", async () => {
+  it("ensures the generic development seed data before landing on the VFX Workspace (Step 7C-1)", async () => {
     await expect(enterDemoRole("vfx_supervisor")).rejects.toThrow();
     expect(resolveD1DemoShotIdMock).toHaveBeenCalled();
-    expect(resolveD1GuidedDemoShotIdMock).not.toHaveBeenCalled();
-    // Destination is unchanged -- still the Inbox, never the resolved shot.
+    // Destination is unchanged -- still the Workspace, never a resolved shot.
     expect(redirectSpy).toHaveBeenCalledWith("/vfx");
   });
 
-  it("still reaches /vfx even when ensuring the rich scenario fails (best-effort, destination unchanged)", async () => {
+  it("still reaches /vfx even when ensuring the seed data fails (best-effort, destination unchanged)", async () => {
     resolveD1DemoShotIdMock.mockRejectedValue(new Error("unavailable"));
     await expect(enterDemoRole("vfx_supervisor")).rejects.toThrow();
     expect(redirectSpy).toHaveBeenCalledWith("/vfx");
   });
 
-  it("does not attempt to ensure any D1 scenario for cg_supervisor or artist", async () => {
+  it("does not attempt to ensure any seed data for cg_supervisor or artist", async () => {
     await expect(enterDemoRole("cg_supervisor")).rejects.toThrow();
     expect(resolveD1DemoShotIdMock).not.toHaveBeenCalled();
   });
-});
 
-describe("startGuidedDemonstration", () => {
-  it("sets the VFX Supervisor Demo cookie and redirects to the resolved Guided D1 Shot", async () => {
-    resolveD1GuidedDemoShotIdMock.mockResolvedValue("33333333-3333-3333-3333-333333333333");
-
-    await expect(startGuidedDemonstration()).rejects.toThrow();
-
-    expect(cookieStore.set).toHaveBeenCalledWith(
-      DEMO_ROLE_COOKIE,
-      "vfx_supervisor",
-      expect.objectContaining({ httpOnly: true }),
-    );
-    expect(redirectSpy).toHaveBeenCalledWith(
-      "/vfx/shots/33333333-3333-3333-3333-333333333333",
-    );
-    // Step 7C-2: the guided walkthrough resolves the separate guided
-    // Shot, never the rich/fully-seeded one.
-    expect(resolveD1DemoShotIdMock).not.toHaveBeenCalled();
-  });
-
-  it("redirects back to /demo with an honest error when resolution fails", async () => {
-    resolveD1GuidedDemoShotIdMock.mockRejectedValue(new Error("unavailable"));
-
-    await expect(startGuidedDemonstration()).rejects.toThrow();
-
-    expect(redirectSpy).toHaveBeenCalledWith("/demo?guidedError=1");
-    // Identity is still established before the failure -- a retry via
-    // the direct role card would work even if the guided path failed.
-    expect(cookieStore.set).toHaveBeenCalledWith(
-      DEMO_ROLE_COOKIE,
-      "vfx_supervisor",
-      expect.objectContaining({ httpOnly: true }),
-    );
-  });
-
-  it("never redirects to a raw UUID-bearing route without resolving it first", async () => {
-    resolveD1GuidedDemoShotIdMock.mockResolvedValue("44444444-4444-4444-4444-444444444444");
-    await expect(startGuidedDemonstration()).rejects.toThrow();
-    expect(resolveD1GuidedDemoShotIdMock).toHaveBeenCalled();
+  it("redirects to / for an invalid role", async () => {
+    // @ts-expect-error -- deliberately invalid input
+    await expect(enterDemoRole("producer")).rejects.toThrow();
+    expect(redirectSpy).toHaveBeenCalledWith("/");
   });
 });
 
 describe("exitRoleView", () => {
-  it("clears the Demo cookie and redirects to /demo", async () => {
+  it("clears the role cookie and redirects to / (Step 7C-1 Role-selection Home)", async () => {
     await expect(exitRoleView()).rejects.toThrow();
     expect(cookieStore.delete).toHaveBeenCalledWith(DEMO_ROLE_COOKIE);
-    expect(redirectSpy).toHaveBeenCalledWith("/demo");
+    expect(redirectSpy).toHaveBeenCalledWith("/");
   });
 });

@@ -57,113 +57,80 @@ describe("VfxWorkspacePage", () => {
     expect(screen.getByText("Demo mode")).toBeVisible();
   });
 
-  it("renders the VFX role sidebar with Alignment Inbox current", () => {
+  it("renders the VFX role sidebar with Workspace Home current", () => {
     render(<VfxWorkspacePage inbox={buildInbox([])} onExitRole={vi.fn()} />);
     expect(
-      screen.getByRole("link", { name: "Alignment Inbox" }),
+      screen.getByRole("link", { name: "Workspace Home" }),
     ).toHaveAttribute("aria-current", "page");
   });
 
-  it("shows the Alignment Inbox title", () => {
+  it("shows the Workspace Home title", () => {
     render(<VfxWorkspacePage inbox={buildInbox([])} onExitRole={vi.fn()} />);
     expect(
-      screen.getByRole("heading", { name: "Alignment Inbox" }),
+      screen.getByRole("heading", { name: "Workspace Home" }),
     ).toBeVisible();
   });
 
   it("shows an honest empty state when there are no Shots", () => {
     render(<VfxWorkspacePage inbox={buildInbox([])} onExitRole={vi.fn()} />);
-    expect(
-      screen.getByText("No Shots currently need your attention"),
-    ).toBeVisible();
-    expect(screen.queryByText(/showing \d+ shots/i)).not.toBeInTheDocument();
+    expect(screen.getByText("No Shots exist yet")).toBeVisible();
   });
 
   it("shows an honest error state when the Inbox failed to load", () => {
     render(<VfxWorkspacePage inbox={null} onExitRole={vi.fn()} />);
-    expect(
-      screen.getByText("The Alignment Inbox is unavailable"),
-    ).toBeVisible();
-    expect(screen.queryByText(/no shots/i)).not.toBeInTheDocument();
+    expect(screen.getByText("Workspace Home is unavailable")).toBeVisible();
+    expect(screen.queryByText("No Shots exist yet")).not.toBeInTheDocument();
   });
 
-  it("shows a real, honest row count -- never a fabricated number", () => {
-    render(
-      <VfxWorkspacePage
-        inbox={buildInbox([buildItem(), buildItem({ shot_id: "s2" })])}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("Showing 2 Shots")).toBeVisible();
-  });
-
-  it("renders one row per real Shot, each with the Shot -> focus -> why -> Open hierarchy", () => {
-    render(
-      <VfxWorkspacePage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />,
-    );
-    expect(screen.getByText("Shot 010 — Final confrontation")).toBeVisible();
-    expect(
-      screen.getByText("Cross-role assessment may need your interpretation"),
-    ).toBeVisible();
-    expect(screen.getByText("Attention needed")).toBeVisible();
-    const links = screen.getAllByRole("link");
-    const rowLink = links.find(
-      (link) =>
-        link.getAttribute("href") ===
-        "/vfx/shots/22222222-2222-2222-2222-222222222222",
-    );
-    expect(rowLink).toBeDefined();
-  });
-
-  it("shows Task and Version as independent facts, never a joined pair", () => {
-    render(
-      <VfxWorkspacePage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />,
-    );
-    expect(screen.getByText("Compositing Review")).toBeVisible();
-    expect(screen.getByText("D1_STEP3_VFX_REVIEW_001 (v1)")).toBeVisible();
-  });
-
-  it("shows an honest absence label when Task or Version is missing", () => {
+  it("shows real summary counts, never fabricated metrics", () => {
     render(
       <VfxWorkspacePage
         inbox={buildInbox([
+          buildItem(),
           buildItem({
-            relevant_task_id: null,
-            relevant_task_name: null,
-            relevant_version_id: null,
-            relevant_version_name: null,
-            relevant_version_number: null,
-            pairing_established: false,
+            shot_id: "s2",
+            latest_signal_attention_level: null,
+            current_focus: {
+              focus_type: "none",
+              title: "Nothing requires your attention on this Shot right now",
+              explanation: "",
+              target_route: "/vfx/shots/s2",
+              primary_action_label: null,
+              actionable: false,
+            },
           }),
         ])}
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByText("No Task recorded yet")).toBeVisible();
-    expect(screen.getByText("No Version recorded yet")).toBeVisible();
+    const totalCard = screen.getByText("Total Shots").closest("div") as HTMLElement;
+    expect(totalCard).toHaveTextContent("2");
+    expect(screen.getByText("Requiring attention")).toBeVisible();
   });
 
-  it("shows the real domain source badge, never a fake 'demo' source", () => {
+  it("lists at most the 5 most important Shots, in the backend's real priority order", () => {
+    const items = Array.from({ length: 7 }, (_, i) =>
+      buildItem({ shot_id: `s${i}`, shot_name: `Shot ${i}`, sort_rank: 7 - i }),
+    );
+    const { container } = render(
+      <VfxWorkspacePage inbox={buildInbox(items)} onExitRole={vi.fn()} />,
+    );
+    const rows = container.querySelectorAll('main div[role="list"] > [role="listitem"]');
+    expect(rows.length).toBe(5);
+    expect(screen.getByText("Shot 0")).toBeVisible();
+    expect(screen.queryByText("Shot 6")).not.toBeInTheDocument();
+  });
+
+  it("links into Review Inbox and Shots", () => {
     render(
       <VfxWorkspacePage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />,
     );
-    expect(screen.getByText("No linked ftrack entity")).toBeVisible();
-  });
-
-  it("does not show a raw UUID as a primary label", () => {
-    render(
-      <VfxWorkspacePage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />,
-    );
-    const heading = screen.getByText("Shot 010 — Final confrontation");
-    expect(heading.textContent).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}-/i);
-  });
-
-  it("does not show a card grid, fake metrics, or a notification tray", () => {
-    render(
-      <VfxWorkspacePage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />,
-    );
-    expect(screen.queryByText(/unread/i)).not.toBeInTheDocument();
-    expect(screen.queryByRole("status", { name: /notification/i })).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Go to Review Inbox →" }),
+    ).toHaveAttribute("href", "/vfx/inbox");
+    expect(
+      screen.getAllByRole("link", { name: /Shots/ }).some((link) => link.getAttribute("href") === "/vfx/shots"),
+    ).toBe(true);
   });
 
   it("wires Exit role view to the provided callback", async () => {

@@ -27,8 +27,6 @@ from intent_core_contracts.api.vfx_inbox import (
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from intent_core_api.demo_seed.d1_scenario import D1_GUIDED_SHOT_EXTERNAL_ID
-from intent_core_api.integrations.external_link_service import find_linked_entity_id
 from intent_core_api.intent.models import (
     CGSupervisorReview,
     CoreAnchor,
@@ -428,21 +426,12 @@ async def build_inbox_item(
 
 
 async def list_inbox_items(session: AsyncSession) -> VfxInboxRead:
-    # Step 7C-2: the Guided D1 walkthrough's own Shot (`demo_seed.d1_scenario
-    # .D1_GUIDED_SHOT_EXTERNAL_ID`) is deliberately never confirmed -- it
-    # exists solely so "Start guided demonstration" always begins at Core
-    # Anchor lifecycle state 1 (INITIAL EMPTY). It must not appear in the
-    # Alignment Inbox real "Explore manually" users browse; excluded here by
-    # its fixed external identity rather than a new Shot-table column, so no
-    # migration is introduced. `get_inbox_item_for_shot` below is
-    # deliberately NOT filtered -- the guided walkthrough itself still needs
-    # to load its own Shot's Overview/Intent pages directly.
-    guided_shot_id = await find_linked_entity_id(
-        session, entity_type="shot", source="demo", external_id=D1_GUIDED_SHOT_EXTERNAL_ID
-    )
+    # Step 7C-1: every real Shot is listed here, unfiltered -- there is no
+    # more Guided/Explore split, so no Shot needs excluding by identity.
+    # The generic development seed's second, deliberately-unconfirmed Shot
+    # (`demo_seed.d1_scenario._ensure_uninitialized_shot`) appears here like
+    # any other Shot.
     query = select(Shot).order_by(Shot.created_at)
-    if guided_shot_id is not None:
-        query = query.where(Shot.id != guided_shot_id)
     shots = list((await session.execute(query)).scalars().all())
     project_ids = {shot.project_id for shot in shots}
     projects: dict[uuid.UUID, str] = {}

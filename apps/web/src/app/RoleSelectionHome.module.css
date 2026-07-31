@@ -1,0 +1,95 @@
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-7);
+  padding: var(--space-6);
+  background: var(--surface-page);
+}
+
+.intro {
+  max-width: 34rem;
+  text-align: center;
+}
+
+.brand {
+  display: inline-block;
+  margin-bottom: var(--space-3);
+  color: var(--accent-agent-text);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.intro h1 {
+  margin: 0 0 var(--space-3);
+  color: var(--text-primary);
+  font-size: var(--font-size-2xl);
+  line-height: var(--line-height-tight);
+}
+
+.intro p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+}
+
+.roleGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-5);
+  width: 100%;
+  max-width: 60rem;
+}
+
+.roleCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-5);
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.roleCard h2 {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+}
+
+.responsibility {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.question {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-style: italic;
+  line-height: var(--line-height-normal);
+}
+
+.upcoming {
+  align-self: flex-start;
+  margin-top: auto;
+  padding: var(--space-1) var(--space-3);
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .roleGrid {
+    grid-template-columns: 1fr;
+  }
+}

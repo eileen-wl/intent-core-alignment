@@ -1,10 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const cookieStore = { get: vi.fn() };
-vi.mock("next/headers", () => ({
-  cookies: vi.fn(async () => cookieStore),
-}));
-
 const redirectSpy = vi.fn();
 vi.mock("next/navigation", () => ({
   redirect: (destination: string) => {
@@ -13,41 +8,28 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-import { DemoEntryPage } from "./DemoEntryPage";
 import Page from "./page";
 
 beforeEach(() => {
   vi.clearAllMocks();
 });
 
-const emptySearchParams = Promise.resolve({});
-
-describe("/demo page", () => {
-  it("renders the Demo entry when no Demo role is selected", async () => {
-    cookieStore.get.mockReturnValue(undefined);
-    const result = await Page({ searchParams: emptySearchParams });
-    expect(redirectSpy).not.toHaveBeenCalled();
-    expect(result.type).toBe(DemoEntryPage);
+describe("/demo page (Step 7C-1: retired, redirects to the Role-selection Home)", () => {
+  it("always redirects to /, regardless of any existing role session", () => {
+    expect(() => Page()).toThrow();
+    expect(redirectSpy).toHaveBeenCalledWith("/");
   });
 
-  it("redirects to the active role's homepage instead of re-showing the entry", async () => {
-    cookieStore.get.mockReturnValue({ value: "cg_supervisor" });
-    await expect(Page({ searchParams: emptySearchParams })).rejects.toThrow();
-    expect(redirectSpy).toHaveBeenCalledWith("/cg");
-  });
-
-  it("ignores an invalid cookie value and renders the Demo entry", async () => {
-    cookieStore.get.mockReturnValue({ value: "producer" });
-    const result = await Page({ searchParams: emptySearchParams });
-    expect(redirectSpy).not.toHaveBeenCalled();
-    expect(result.type).toBe(DemoEntryPage);
-  });
-
-  it("passes a guided-entry error notice when the redirect carries ?guidedError", async () => {
-    cookieStore.get.mockReturnValue(undefined);
-    const result = await Page({
-      searchParams: Promise.resolve({ guidedError: "1" }),
-    });
-    expect(result.props.guidedEntryError).toBe(true);
+  it("renders no product UI of its own", () => {
+    let threw = false;
+    try {
+      Page();
+    } catch {
+      threw = true;
+    }
+    // The only observable effect is the redirect -- there is no
+    // fallback render path that could show Demo Entry content.
+    expect(threw).toBe(true);
+    expect(redirectSpy).toHaveBeenCalledTimes(1);
   });
 });

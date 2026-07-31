@@ -79,9 +79,15 @@ describe("ShotOverviewPage", () => {
       "aria-current",
       "page",
     );
-    for (const label of ["Intent", "Versions", "Alignment", "Activity"]) {
-      expect(screen.getByRole("link", { name: label })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Intent" })).toBeVisible();
+    // Versions/Alignment/Activity are Step 7C-3 scope: rendered as
+    // disabled, non-navigable "Upcoming" placeholders, never a live
+    // link leading to a 404.
+    for (const label of ["Versions", "Alignment", "Activity"]) {
+      expect(screen.queryByRole("link", { name: label })).not.toBeInTheDocument();
+      expect(screen.getByText(label)).toBeVisible();
     }
+    expect(screen.getAllByText("Upcoming")).toHaveLength(3);
   });
 
   const focusTypes: VfxCurrentFocusType[] = [

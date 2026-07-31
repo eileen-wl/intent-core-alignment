@@ -42,4 +42,16 @@ describe("ContextTabs", () => {
     render(<ContextTabs tabs={TABS} activeTabId="overview" />);
     expect(screen.getByRole("navigation", { name: "Section" })).toBeVisible();
   });
+
+  it("renders an unimplemented tab as a disabled, non-navigable 'Upcoming' placeholder", () => {
+    const tabs = [
+      ...TABS,
+      { id: "activity", label: "Activity", href: "/vfx/shots/s1/activity", implemented: false },
+    ];
+    render(<ContextTabs tabs={tabs} activeTabId="overview" />);
+    expect(screen.queryByRole("link", { name: "Activity" })).not.toBeInTheDocument();
+    const label = screen.getByText("Activity");
+    expect(label).toHaveAttribute("aria-disabled", "true");
+    expect(screen.getByText("Upcoming")).toBeVisible();
+  });
 });

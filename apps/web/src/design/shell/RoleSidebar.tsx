@@ -59,22 +59,41 @@ function initials(name: string) {
   return letters || "IC";
 }
 
+/** A nav item is a *candidate* match for `currentPath` if the path is
+ * exactly its `href`, or a real sub-path of it (`href + "/"` boundary --
+ * never a bare string-prefix, so `/vfx-other` never matches `/vfx`).
+ * Among every candidate, the one with the longest `href` wins: this is
+ * what correctly keeps `Shots` (`/vfx/shots`) active on
+ * `/vfx/shots/{id}/intent` without `Workspace Home` (`/vfx`) also
+ * claiming it, and without `/vfx` ever prefix-matching every VFX page
+ * (docs/step-7 Step 7C-1 locked IA §6). */
+function currentItemId(items: SidebarNavItem[], currentPath: string): string | null {
+  let best: SidebarNavItem | null = null;
+  for (const item of items) {
+    const matches = currentPath === item.href || currentPath.startsWith(`${item.href}/`);
+    if (matches && (best === null || item.href.length > best.href.length)) {
+      best = item;
+    }
+  }
+  return best?.id ?? null;
+}
+
 export function RoleSidebar({
   items,
   currentPath,
   name = "ICAS User",
-  mode = "workspace",
 }: {
   items: SidebarNavItem[];
   currentPath: string;
   name?: string;
-  mode?: "workspace" | "demo-entry";
 }) {
+  const activeId = currentItemId(items, currentPath);
+
   return (
     <nav className={styles.sidebar} aria-label="Role navigation">
       <ul className={styles.list}>
         {items.map((item) => {
-          const isCurrent = item.href === currentPath;
+          const isCurrent = item.id === activeId;
           const content = (
             <>
               <NavigationIcon label={item.label} />
@@ -89,16 +108,6 @@ export function RoleSidebar({
                   {content}
                 </span>
                 <span className={styles.upcoming}>Upcoming</span>
-              </li>
-            );
-          }
-
-          if (mode === "demo-entry" && isCurrent) {
-            return (
-              <li key={item.id} className={styles.itemRow}>
-                <span className={styles.previewCurrent} aria-current="page">
-                  {content}
-                </span>
               </li>
             );
           }

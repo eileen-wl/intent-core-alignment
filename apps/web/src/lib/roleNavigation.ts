@@ -10,35 +10,33 @@ export interface SidebarNavItem {
   implemented: boolean;
 }
 
-/** Locked per-role navigation structure, per
- * docs/step-7/06_STEP_7_LOCKED_SOURCE_OF_TRUTH.md §7 and
- * docs/step-7/03_STEP_7A2_...md §13. Only each role's homepage is an
- * implemented destination in Step 7B-2; the rest are upcoming. */
+/** Locked per-role navigation structure. Step 7C-1 replaced the VFX
+ * Supervisor's single "Alignment Inbox" entry with the locked three-page
+ * primary navigation (Workspace Home / Review Inbox / Shots) --
+ * "Projects" is a production entity/filter/breadcrumb context, not a
+ * primary nav page; "Intent Signals" is embedded contextually, not a
+ * standalone page; "Integrations" belongs in a later account/settings
+ * area, not daily VFX navigation. All three VFX entries are fully
+ * implemented. */
 export const ROLE_SIDEBAR_ITEMS: Record<HumanRole, SidebarNavItem[]> = {
   vfx_supervisor: [
     {
-      id: "alignment-inbox",
-      label: "Alignment Inbox",
+      id: "workspace-home",
+      label: "Workspace Home",
       href: "/vfx",
       implemented: true,
     },
     {
-      id: "projects",
-      label: "Projects",
-      href: "/vfx/projects",
-      implemented: false,
+      id: "review-inbox",
+      label: "Review Inbox",
+      href: "/vfx/inbox",
+      implemented: true,
     },
     {
-      id: "intent-signals",
-      label: "Intent Signals",
-      href: "/vfx/signals",
-      implemented: false,
-    },
-    {
-      id: "integrations",
-      label: "Integrations",
-      href: "/vfx/integrations",
-      implemented: false,
+      id: "shots",
+      label: "Shots",
+      href: "/vfx/shots",
+      implemented: true,
     },
   ],
   cg_supervisor: [

@@ -1,9 +1,9 @@
 import type { HumanRole } from "@intent-core/contracts";
 
 /** Serialisable display data only -- no callback functions. This is
- * rendered by `DemoEntryPage` (a Server Component) and must stay plain
- * data so it can safely reach `RoleEntryButton` (a Client Component)
- * across the Server/Client boundary. */
+ * rendered by `RoleSelectionHome` (a Server Component) and must stay
+ * plain data so it can safely reach `RoleEntryButton` (a Client
+ * Component) across the Server/Client boundary. */
 export interface RoleCard {
   role: HumanRole;
   title: string;

@@ -42,24 +42,13 @@ describe("RoleEntryButton", () => {
     expect(enterDemoRole).toHaveBeenCalledWith("artist");
   });
 
-  it("calls the exact same enterDemoRole action for the primary variant -- only the visual weight differs", async () => {
+  it("calls enterDemoRole for the VFX Supervisor role", async () => {
     render(
-      <RoleEntryButton
-        role="vfx_supervisor"
-        label="Start guided demonstration"
-        variant="primary"
-      />,
+      <RoleEntryButton role="vfx_supervisor" label="Enter as VFX Supervisor" />,
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Start guided demonstration" }),
+      screen.getByRole("button", { name: "Enter as VFX Supervisor" }),
     );
     expect(enterDemoRole).toHaveBeenCalledWith("vfx_supervisor");
-  });
-
-  it("defaults to the secondary variant when none is specified", () => {
-    render(<RoleEntryButton role="artist" label="Enter as Artist" />);
-    expect(
-      screen.getByRole("button", { name: "Enter as Artist" }),
-    ).toBeVisible();
   });
 });

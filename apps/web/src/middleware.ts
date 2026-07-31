@@ -7,9 +7,11 @@ import {
   roleForPathname,
 } from "@/lib/demoIdentity";
 
-/** Server-side Demo role-locking for the role-prefixed workspaces
- * (brief §9). This is the authoritative check -- role rendering inside
- * each page is a defense-in-depth double check, not the primary gate. */
+/** Server-side role-locking for the role-prefixed workspaces. This is
+ * the authoritative check -- role rendering inside each page is a
+ * defense-in-depth double check, not the primary gate. Step 7C-1: no
+ * role session redirects to the Role-selection Home at `/` (the
+ * former `/demo` product entry point is retired). */
 export function middleware(request: NextRequest) {
   const requestedRole = roleForPathname(request.nextUrl.pathname);
   if (!requestedRole) {
@@ -18,7 +20,7 @@ export function middleware(request: NextRequest) {
 
   const cookieRole = request.cookies.get(DEMO_ROLE_COOKIE)?.value;
   if (!isDemoRole(cookieRole)) {
-    return NextResponse.redirect(new URL("/demo", request.url));
+    return NextResponse.redirect(new URL("/", request.url));
   }
   if (cookieRole !== requestedRole) {
     return NextResponse.redirect(

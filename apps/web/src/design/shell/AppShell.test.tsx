@@ -18,7 +18,7 @@ describe("AppShell", () => {
         sidebarItems={ROLE_SIDEBAR_ITEMS.vfx_supervisor}
         currentPath="/vfx"
       >
-        <h1>Alignment Inbox</h1>
+        <h1>Workspace Home</h1>
       </AppShell>,
     );
 
@@ -27,11 +27,11 @@ describe("AppShell", () => {
       screen.getByRole("navigation", { name: "Role navigation" }),
     ).toBeVisible();
     expect(
-      screen.getByRole("link", { name: "Alignment Inbox" }),
+      screen.getByRole("link", { name: "Workspace Home" }),
     ).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("main")).toBeVisible();
     expect(
-      screen.getByRole("heading", { level: 1, name: "Alignment Inbox" }),
+      screen.getByRole("heading", { level: 1, name: "Workspace Home" }),
     ).toBeVisible();
   });
 

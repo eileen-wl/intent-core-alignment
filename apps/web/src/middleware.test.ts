@@ -15,10 +15,10 @@ function requestFor(pathname: string, cookieRole?: string): NextRequest {
 }
 
 describe("middleware (role route protection)", () => {
-  it("redirects to /demo when no Demo role is selected", () => {
+  it("redirects to / (Role-selection Home) when no role is selected", () => {
     const response = middleware(requestFor("/vfx"));
     expect(response.status).toBe(307);
-    expect(response.headers.get("location")).toBe("http://localhost:3000/demo");
+    expect(response.headers.get("location")).toBe("http://localhost:3000/");
   });
 
   it.each([
@@ -57,7 +57,7 @@ describe("middleware (role route protection)", () => {
 
   it("ignores an invalid cookie value the same as no role selected", () => {
     const response = middleware(requestFor("/vfx", "producer"));
-    expect(response.headers.get("location")).toBe("http://localhost:3000/demo");
+    expect(response.headers.get("location")).toBe("http://localhost:3000/");
   });
 
   it("does not intercept non-role-prefixed paths", () => {

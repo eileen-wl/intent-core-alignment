@@ -36,3 +36,18 @@ export function versionDisplayText(item: VfxInboxItemRead): string {
     ? `${item.relevant_version_name} (v${item.relevant_version_number})`
     : item.relevant_version_name;
 }
+
+/** Core Anchor state wording, shared between the Shot Overview's
+ * `ProductionContextHeader` and the Shots list (Step 7C-1) so both
+ * surfaces describe the same real, persisted `core_anchor_state`
+ * identically. */
+export function coreAnchorStateLabel(state: VfxInboxItemRead["core_anchor_state"]): string {
+  switch (state) {
+    case "confirmed":
+      return "Confirmed";
+    case "draft_pending":
+      return "Draft pending review";
+    default:
+      return "No Core Anchor";
+  }
+}

@@ -49,11 +49,11 @@ export function IntentWorkspacePage({
       role={ROLE_LABEL.vfx_supervisor}
       onExitRole={onExitRole}
       sidebarItems={ROLE_SIDEBAR_ITEMS.vfx_supervisor}
-      currentPath="/vfx"
+      currentPath="/vfx/shots"
     >
       {unavailable || data === null ? (
         <>
-          <Breadcrumbs items={[{ label: "Alignment Inbox", href: "/vfx" }, { label: "Intent" }]} />
+          <Breadcrumbs items={[{ label: "Shots", href: "/vfx/shots" }, { label: "Intent" }]} />
           <ErrorState
             title={unavailable ? "This Shot is unavailable" : "This Shot could not be found"}
             description={
@@ -67,8 +67,7 @@ export function IntentWorkspacePage({
         <>
           <Breadcrumbs
             items={[
-              { label: "Alignment Inbox", href: "/vfx" },
-              { label: data.item.project_name },
+              { label: data.item.project_name, href: "/vfx/shots" },
               { label: data.item.shot_name },
               { label: "Intent" },
             ]}
@@ -79,9 +78,24 @@ export function IntentWorkspacePage({
             tabs={[
               { id: "overview", label: "Overview", href: `/vfx/shots/${data.item.shot_id}` },
               { id: "intent", label: "Intent", href: `/vfx/shots/${data.item.shot_id}/intent` },
-              { id: "versions", label: "Versions", href: `/vfx/shots/${data.item.shot_id}/versions` },
-              { id: "alignment", label: "Alignment", href: `/vfx/shots/${data.item.shot_id}/alignment` },
-              { id: "activity", label: "Activity", href: `/vfx/shots/${data.item.shot_id}/activity` },
+              {
+                id: "versions",
+                label: "Versions",
+                href: `/vfx/shots/${data.item.shot_id}/versions`,
+                implemented: false,
+              },
+              {
+                id: "alignment",
+                label: "Alignment",
+                href: `/vfx/shots/${data.item.shot_id}/alignment`,
+                implemented: false,
+              },
+              {
+                id: "activity",
+                label: "Activity",
+                href: `/vfx/shots/${data.item.shot_id}/activity`,
+                implemented: false,
+              },
             ]}
           />
 
@@ -131,9 +145,9 @@ export function IntentWorkspacePage({
           {data.evidenceData && <IntentEvidenceDisclosures data={data.evidenceData} />}
 
           <p className={styles.activityLink}>
-            <a href={`/vfx/shots/${data.item.shot_id}/activity`}>
-              View full revision history in Activity
-            </a>
+            <span className={styles.activityLinkDisabled} aria-disabled="true">
+              View full revision history in Activity (Upcoming)
+            </span>
           </p>
         </>
       )}
