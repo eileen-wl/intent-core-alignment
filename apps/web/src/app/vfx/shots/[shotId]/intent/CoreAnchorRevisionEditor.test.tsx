@@ -173,6 +173,27 @@ describe("CoreAnchorRevisionEditor", () => {
     expect(screen.getAllByText("Compositing Review").length).toBeGreaterThan(0);
   });
 
+  it("FIRST DRAFT: renders the approved compact editor groups and source cards", () => {
+    renderEditor({
+      confirmedRevision: null,
+      draftRevision: baseRevision({ id: "r1", revision_number: 1 }),
+      evidenceData: {
+        evidence: [],
+        run: null,
+        snapshot: null,
+        decompositions: [],
+        reconstructions: [],
+      },
+    });
+
+    expect(screen.getByText("Brief, notes & source evidence")).toBeVisible();
+    expect(screen.getByText("Intent Decomposition")).toBeVisible();
+    expect(screen.getByText("Context Reconstruction")).toBeVisible();
+    expect(screen.getByText("Core direction")).toBeVisible();
+    expect(screen.getByText("Detailed intent")).toBeVisible();
+    expect(screen.getByText("Boundaries and uncertainty")).toBeVisible();
+  });
+
   it("FIRST DRAFT: presents saved status and content counts without a change summary", () => {
     renderEditor({
       confirmedRevision: null,
@@ -188,9 +209,9 @@ describe("CoreAnchorRevisionEditor", () => {
       }),
     });
     expect(screen.getByText("Draft status: Saved")).toBeVisible();
-    const contentOverview = within(screen.getByLabelText("Content overview"));
-    expect(contentOverview.getByText("Constraints")).toBeVisible();
-    expect(contentOverview.getByText("Variation zones")).toBeVisible();
+    const overview = screen.getByLabelText("Content overview");
+    expect(within(overview).getByText("Constraints")).toBeVisible();
+    expect(within(overview).getByText("Variation zones")).toBeVisible();
     expect(screen.queryByText(/Change summary:/)).not.toBeInTheDocument();
   });
 

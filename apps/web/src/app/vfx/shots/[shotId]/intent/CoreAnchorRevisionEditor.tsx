@@ -381,6 +381,198 @@ export function CoreAnchorRevisionEditor({
     );
   }
 
+
+  function firstDraftScalarField(
+    field: keyof FormState["scalars"],
+    label: string,
+    rows: number,
+  ) {
+    return (
+      <label key={field} className={styles.firstDraftScalarRow}>
+        <span className={styles.firstDraftScalarLabel}>
+          <FieldIcon field={field} />
+          {label}
+        </span>
+        <textarea
+          className={styles.firstDraftScalarInput}
+          value={form.scalars[field]}
+          onChange={(event) =>
+            setForm((previous) => ({
+              ...previous,
+              scalars: { ...previous.scalars, [field]: event.target.value },
+            }))
+          }
+          rows={rows}
+        />
+      </label>
+    );
+  }
+
+  function firstDraftCollectionSection(entry: (typeof SIMPLE_COLLECTIONS)[number]) {
+    const { field, label, addLabel, placeholder } = entry;
+    const emptyCopy: Record<(typeof SIMPLE_COLLECTIONS)[number]["field"], string> = {
+      constraints: "No constraints added yet.",
+      variation_zones: "No variation zones added yet.",
+      drift_risks: "No drift risks identified yet.",
+      open_questions: "No open questions yet.",
+    };
+
+    return (
+      <section key={field} className={styles.firstDraftCollectionSection}>
+        <div className={styles.firstDraftCollectionHeader}>
+          <h3 className={styles.firstDraftCollectionTitle}>
+            <FieldIcon field={field} />
+            {label} ({form[field].length})
+          </h3>
+          <button
+            type="button"
+            className={styles.firstDraftInlineAction}
+            onClick={() => addSimpleItem(field)}
+          >
+            + {addLabel}
+          </button>
+        </div>
+
+        {form[field].length === 0 ? (
+          <p className={styles.firstDraftCollectionEmpty}>{emptyCopy[field]}</p>
+        ) : (
+          <div className={styles.firstDraftCollectionItems}>
+            {form[field].map((item) => (
+              <div key={item.key} className={styles.firstDraftCollectionRow}>
+                <input
+                  type="text"
+                  className={styles.firstDraftCollectionInput}
+                  value={item.text}
+                  placeholder={placeholder}
+                  onChange={(event) => updateSimpleCollection(field, item.key, event.target.value)}
+                  aria-invalid={Boolean(fieldErrors[`${field}:${item.key}`])}
+                />
+                <button
+                  type="button"
+                  className={styles.firstDraftRemoveButton}
+                  onClick={() => removeSimpleItem(field, item.key)}
+                  aria-label={`Remove ${placeholder.toLowerCase()}`}
+                >
+                  Remove
+                </button>
+                {fieldErrors[`${field}:${item.key}`] && (
+                  <p className={styles.fieldError}>{fieldErrors[`${field}:${item.key}`]}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+    );
+  }
+
+  const firstDraftReferencesSection = (
+    <section className={styles.firstDraftCollectionSection}>
+      <div className={styles.firstDraftCollectionHeader}>
+        <h3 className={styles.firstDraftCollectionTitle}>
+          <FieldIcon field="references" />
+          References ({form.references.length})
+        </h3>
+        <button
+          type="button"
+          className={styles.firstDraftInlineAction}
+          onClick={() =>
+            setForm((previous) => ({
+              ...previous,
+              references: [
+                ...previous.references,
+                { key: newKey(), label: "", uri: "", note: "" },
+              ],
+            }))
+          }
+        >
+          + Add reference
+        </button>
+      </div>
+
+      {form.references.length === 0 ? (
+        <p className={styles.firstDraftCollectionEmpty}>No references linked yet.</p>
+      ) : (
+        <div className={styles.firstDraftReferenceItems}>
+          {form.references.map((reference) => (
+            <div key={reference.key} className={styles.firstDraftReferenceRow}>
+              <div className={styles.firstDraftReferenceFields}>
+                <input
+                  type="text"
+                  className={styles.firstDraftCollectionInput}
+                  value={reference.label}
+                  placeholder="Label"
+                  onChange={(event) =>
+                    setForm((previous) => ({
+                      ...previous,
+                      references: previous.references.map((item) =>
+                        item.key === reference.key
+                          ? { ...item, label: event.target.value }
+                          : item,
+                      ),
+                    }))
+                  }
+                  aria-invalid={Boolean(fieldErrors[`references:${reference.key}`])}
+                />
+                <input
+                  type="text"
+                  className={styles.firstDraftCollectionInput}
+                  value={reference.uri}
+                  placeholder="URI (optional)"
+                  onChange={(event) =>
+                    setForm((previous) => ({
+                      ...previous,
+                      references: previous.references.map((item) =>
+                        item.key === reference.key
+                          ? { ...item, uri: event.target.value }
+                          : item,
+                      ),
+                    }))
+                  }
+                />
+                <input
+                  type="text"
+                  className={styles.firstDraftCollectionInput}
+                  value={reference.note}
+                  placeholder="Note (optional)"
+                  onChange={(event) =>
+                    setForm((previous) => ({
+                      ...previous,
+                      references: previous.references.map((item) =>
+                        item.key === reference.key
+                          ? { ...item, note: event.target.value }
+                          : item,
+                      ),
+                    }))
+                  }
+                />
+              </div>
+              <button
+                type="button"
+                className={styles.firstDraftRemoveButton}
+                onClick={() =>
+                  setForm((previous) => ({
+                    ...previous,
+                    references: previous.references.filter(
+                      (item) => item.key !== reference.key,
+                    ),
+                  }))
+                }
+              >
+                Remove
+              </button>
+              {fieldErrors[`references:${reference.key}`] && (
+                <p className={styles.fieldError}>
+                  {fieldErrors[`references:${reference.key}`]}
+                </p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+
   function simpleCollectionFieldset(entry: (typeof SIMPLE_COLLECTIONS)[number]) {
     const { field, label, addLabel, placeholder } = entry;
     return (
@@ -539,7 +731,9 @@ export function CoreAnchorRevisionEditor({
                 </h2>
               </div>
               <div className={styles.draftIdentity}>
-                <span className={styles.revisionBadge}>Revision {draftRevision.revision_number}</span>
+                <span className={styles.revisionBadge}>
+                  Revision {draftRevision.revision_number}
+                </span>
                 <span className={styles.draftBadge}>Draft in progress</span>
               </div>
             </div>
@@ -551,9 +745,12 @@ export function CoreAnchorRevisionEditor({
                     <span className={styles.groupNumber}>1</span>
                     Core direction
                   </legend>
-                  {SCALAR_FIELDS.filter(({ field }) => CORE_DIRECTION_FIELDS.has(field)).map(
-                    ({ field, label }) => scalarField(field, label),
-                  )}
+                  <div className={styles.firstDraftScalarFields}>
+                    {firstDraftScalarField("core_summary", "Core summary", 2)}
+                    {firstDraftScalarField("shot_objective", "Shot objective", 2)}
+                    {firstDraftScalarField("emotional_tone", "Emotional tone", 1)}
+                    {firstDraftScalarField("visual_focus", "Visual focus", 1)}
+                  </div>
                 </fieldset>
 
                 <fieldset className={styles.firstDraftFieldGroup}>
@@ -561,24 +758,36 @@ export function CoreAnchorRevisionEditor({
                     <span className={styles.groupNumber}>2</span>
                     Detailed intent
                   </legend>
-                  {SCALAR_FIELDS.filter(({ field }) => !CORE_DIRECTION_FIELDS.has(field)).map(
-                    ({ field, label }) => scalarField(field, label),
-                  )}
+                  <div className={styles.firstDraftScalarFields}>
+                    {firstDraftScalarField("rhythm_intensity", "Rhythm and intensity", 1)}
+                    {firstDraftScalarField(
+                      "character_relationship",
+                      "Character relationship",
+                      1,
+                    )}
+                    {firstDraftScalarField("narrative_priority", "Narrative priority", 1)}
+                  </div>
                 </fieldset>
               </div>
 
-              <fieldset className={styles.firstDraftFieldGroup}>
+              <fieldset
+                className={`${styles.firstDraftFieldGroup} ${styles.boundariesGroup}`}
+              >
                 <legend className={styles.firstDraftGroupLabel}>
                   <span className={styles.groupNumber}>3</span>
                   Boundaries and uncertainty
                 </legend>
-                {SIMPLE_COLLECTIONS.map((entry) => simpleCollectionFieldset(entry))}
-                {referencesFieldset}
+                <div className={styles.firstDraftBoundaryList}>
+                  {SIMPLE_COLLECTIONS.map((entry) =>
+                    firstDraftCollectionSection(entry),
+                  )}
+                  {firstDraftReferencesSection}
+                </div>
               </fieldset>
             </div>
 
             <div className={styles.firstDraftRationale}>
-              <div className={styles.rationaleHeader}>
+              <div className={styles.firstDraftRationaleCopy}>
                 <label className={styles.rationaleLabel} htmlFor="core-anchor-rationale">
                   Decision rationale · Optional
                 </label>
@@ -600,7 +809,9 @@ export function CoreAnchorRevisionEditor({
           <section className={styles.firstDraftFooter} aria-label="Draft status and actions">
             <div className={styles.draftStatusPanel}>
               <div className={styles.draftStatusCopy}>
-                <span className={styles.statusIcon} aria-hidden="true">✓</span>
+                <span className={styles.statusIcon} aria-hidden="true">
+                  ✓
+                </span>
                 <div>
                   <p className={styles.statusTitle}>Draft status: {draftStatusLabel}</p>
                   <p className={styles.statusDetail}>
@@ -612,26 +823,33 @@ export function CoreAnchorRevisionEditor({
                   </p>
                 </div>
               </div>
-              <div className={styles.contentOverview} aria-label="Content overview">
-                {contentOverview.map((entry) => (
-                  <div key={entry.label} className={styles.overviewMetric}>
-                    <strong>{entry.value}</strong>
-                    <span>{entry.label}</span>
-                  </div>
-                ))}
+
+              <div className={styles.contentOverviewBlock}>
+                <p className={styles.contentOverviewTitle}>Content overview</p>
+                <div className={styles.contentOverview} aria-label="Content overview">
+                  {contentOverview.map((entry) => (
+                    <div key={entry.label} className={styles.overviewMetric}>
+                      <strong>{entry.value}</strong>
+                      <span>{entry.label}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             </div>
 
             <div className={styles.firstDraftActionPanel}>
               <div className={styles.actionExplanation}>
-                <span className={styles.actionInfoIcon} aria-hidden="true">i</span>
+                <span className={styles.actionInfoIcon} aria-hidden="true">
+                  i
+                </span>
                 <p>
-                  <strong>Save draft:</strong> Saves the working revision without making it active.
+                  <strong>Save draft:</strong> Keeps the working revision private and editable.
                   <br />
-                  <strong>Confirm:</strong> Records the VFX Supervisor decision and makes Revision 1
-                  the active shared intent.
+                  <strong>Confirm:</strong> Submits this draft for the VFX Supervisor decision
+                  and makes Revision 1 the active shared intent.
                 </p>
               </div>
+
               {(hasUnsavedChanges || requestInFlight) && (
                 <p className={styles.blockingReason} role="status">
                   {requestInFlight
@@ -639,6 +857,7 @@ export function CoreAnchorRevisionEditor({
                     : "Save the draft before confirming -- Confirm resolves the saved draft, not unsaved edits."}
                 </p>
               )}
+
               <div className={styles.firstDraftActions}>
                 <button
                   type="button"
@@ -666,6 +885,7 @@ export function CoreAnchorRevisionEditor({
                   <span aria-hidden="true">→</span>
                 </button>
               </div>
+
               {saveState === "error" && saveError && (
                 <span className={styles.saveErrorNotice} role="alert">
                   {saveError}

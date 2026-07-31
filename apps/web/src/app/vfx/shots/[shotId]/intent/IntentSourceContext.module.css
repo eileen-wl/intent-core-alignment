@@ -139,13 +139,20 @@
 }
 
 .firstDraftHeadingGroup .heading {
-  margin-bottom: var(--space-1);
+  margin-bottom: 0.125rem;
+  font-size: var(--font-size-xs);
 }
 
 .firstDraftIntro {
   margin: 0;
   color: var(--text-muted);
   font-size: var(--font-size-xs);
+}
+
+.sourceCards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .sourceDisclosure {
@@ -159,12 +166,11 @@
   list-style: none;
   cursor: pointer;
   padding: var(--space-3);
-  display: flex;
-  align-items: center;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: start;
   gap: var(--space-2);
   color: var(--text-primary);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
 }
 
 .sourceDisclosure summary::-webkit-details-marker {
@@ -173,8 +179,9 @@
 
 .sourceDisclosure summary::after {
   content: "⌄";
-  margin-left: auto;
   color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
   transition: transform 140ms ease;
 }
 
@@ -182,12 +189,49 @@
   transform: rotate(180deg);
 }
 
-.sourceSummaryTitle {
+.sourceIcon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-agent-surface);
+  color: var(--accent-agent-text);
+  flex: 0 0 auto;
+}
+
+.sourceIcon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sourceSummaryCopy {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.sourceSummaryTitle {
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.sourceSummaryDescription {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
 }
 
 .sourceCount {
-  margin-left: auto;
   min-width: 1.4rem;
   height: 1.4rem;
   padding: 0 var(--space-1);
@@ -201,26 +245,9 @@
   font-weight: 600;
 }
 
-.sourceDisclosure summary::after {
-  margin-left: 0;
-}
-
 .sourceDisclosureBody {
-  padding: 0 var(--space-3) var(--space-3);
+  padding: 0 var(--space-3) var(--space-3) calc(var(--space-3) + 2rem + var(--space-2));
   color: var(--text-secondary);
-  font-size: var(--font-size-xs);
-}
-
-.sourceDisclosureBody > p:first-child {
-  margin-top: 0;
-}
-
-.sourceDisclosureBody .shotContext {
-  margin: var(--space-3) 0 0;
-  gap: var(--space-1);
-}
-
-.sourceDisclosureBody .contextRow {
   font-size: var(--font-size-xs);
 }
 
@@ -247,30 +274,50 @@
 }
 
 .shotDetails .contextRow {
+  display: grid;
+  grid-template-columns: 6.2rem minmax(0, 1fr);
+  gap: var(--space-2);
   font-size: var(--font-size-xs);
 }
 
 .shotDetails .contextRow dt {
-  min-width: 6.5rem;
+  min-width: 0;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   font-size: 0.68rem;
 }
 
-@media (max-width: 1100px) {
+.shotDetails .contextRow dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
   .firstDraftPanel {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .sourceCards {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .firstDraftHeadingGroup,
-  .shotDetails {
-    grid-column: 1 / -1;
+  .sourceDisclosure summary {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .sourceDisclosure summary::after {
+    display: none;
+  }
+
+  .sourceDisclosureBody {
+    padding-left: var(--space-3);
   }
 }
 
 @media (max-width: 768px) {
-  .firstDraftPanel {
-    display: flex;
+  .sourceCards {
+    grid-template-columns: 1fr;
   }
 }
