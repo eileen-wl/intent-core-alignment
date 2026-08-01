@@ -163,6 +163,84 @@ describe("ActivityWorkspacePage", () => {
     expect(screen.getByText("Human vfx_supervisor confirmed Revision 1")).toBeVisible();
   });
 
+  it("shows a separate Decision recorded event, distinct from and alongside Core Anchor confirmed, linked to Intent", () => {
+    render(
+      <ActivityWorkspacePage
+        shotId="s1"
+        data={data({
+          activity: {
+            shot_id: "s1",
+            events: [
+              event({
+                id: "e2",
+                event_type: "core_anchor_confirmed",
+                summary: "Human vfx_supervisor confirmed Revision 1",
+                related_entity_type: "decision",
+                related_entity_id: "dec1",
+                route: "/vfx/shots/s1/intent",
+                occurred_at: "2026-01-02T00:00:00Z",
+              }),
+              event({
+                id: "e1",
+                event_type: "human_decision_recorded",
+                summary: "Decision recorded: Human vfx_supervisor confirm core anchor (Revision 1)",
+                related_entity_type: "decision",
+                related_entity_id: "dec1",
+                route: "/vfx/shots/s1/intent",
+                occurred_at: "2026-01-02T00:00:00Z",
+              }),
+            ],
+          },
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Core Anchor confirmed")).toBeVisible();
+    expect(screen.getByText("Decision recorded")).toBeVisible();
+    expect(
+      screen.getByText("Decision recorded: Human vfx_supervisor confirm core anchor (Revision 1)"),
+    ).toBeVisible();
+    const links = screen.getAllByRole("link", { name: "Open →" });
+    expect(links).toHaveLength(2);
+    for (const link of links) {
+      expect(link).toHaveAttribute("href", "/vfx/shots/s1/intent");
+    }
+  });
+
+  it("still renders the Open action for an event with no actor (the case that previously broke right-alignment)", () => {
+    render(
+      <ActivityWorkspacePage
+        shotId="s1"
+        data={data({
+          activity: {
+            shot_id: "s1",
+            events: [
+              event({
+                id: "e1",
+                event_type: "core_anchor_draft_updated",
+                summary: "Revision 1 draft saved",
+                actor_kind: null,
+                actor_id: null,
+                actor_human_role: null,
+              }),
+            ],
+          },
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    // No actor text renders (honestly absent) -- this is exactly the
+    // row shape that needs its own `margin-left: auto` on the link
+    // (asserted structurally here; visually confirmed live) rather than
+    // depending on a sibling `.eventActor` for `justify-content:
+    // space-between` to right-align it.
+    expect(screen.queryByText("human")).not.toBeInTheDocument();
+    const link = screen.getByRole("link", { name: "Open →" });
+    expect(link).toBeVisible();
+  });
+
   it("routes a Production Version event to Versions and an Alignment event to Alignment", () => {
     render(
       <ActivityWorkspacePage

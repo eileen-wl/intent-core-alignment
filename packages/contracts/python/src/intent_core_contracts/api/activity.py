@@ -28,6 +28,12 @@ ShotActivityEventType = Literal[
     "core_anchor_draft_updated",
     "core_anchor_confirmed",
     "core_anchor_draft_discarded",
+    # A real persisted `Decision` row's own event -- always additional to,
+    # never a substitute for, the `core_anchor_confirmed`/
+    # `core_anchor_draft_discarded` event the same Decision also produces
+    # (Step 7C-3 completion pass): that pair describes what happened to
+    # the Core Anchor Revision; this describes the human Decision itself.
+    "human_decision_recorded",
     "production_version_recorded",
     "review_note_recorded",
     "alignment_assessment_created",

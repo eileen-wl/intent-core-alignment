@@ -90,7 +90,9 @@ export function VersionsWorkspacePage({
             <EmptyState title="No Production Versions have been recorded for this Shot yet." />
           ) : (
             <div className={styles.grid}>
-              <div className={styles.list}>
+              <div className={styles.listColumn}>
+                <h2 className={styles.columnHeading}>Production Versions</h2>
+                <div className={styles.list}>
                 {data.versions.map(({ version, reviewNotes }) => {
                   const isActive = selected?.version.id === version.id;
                   return (
@@ -116,17 +118,20 @@ export function VersionsWorkspacePage({
                     </button>
                   );
                 })}
+                </div>
               </div>
 
-              <div className={styles.detail}>
+              <div className={styles.detailColumn}>
+                <h2 className={styles.columnHeading}>Production Version details</h2>
+                <div className={styles.detail}>
                 {selected && (
                   <>
-                    <h2 className={styles.detailHeading}>
+                    <h3 className={styles.detailHeading}>
                       {selected.version.name}
                       {selected.version.version_number
                         ? ` (v${selected.version.version_number})`
                         : ""}
-                    </h2>
+                    </h3>
                     <MetadataRow
                       items={[
                         {
@@ -207,6 +212,7 @@ export function VersionsWorkspacePage({
                     </section>
                   </>
                 )}
+                </div>
               </div>
             </div>
           )}

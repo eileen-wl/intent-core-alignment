@@ -86,6 +86,35 @@ def _decision_event(
     )
 
 
+def _human_decision_recorded_event(
+    decision: Decision, revision_number: int, shot_id: uuid.UUID
+) -> ShotActivityEventRead:
+    """The Decision's own event -- always emitted alongside
+    `_decision_event`'s Core-Anchor-lifecycle event for the same
+    `Decision` row, never in place of it (docs/step-7 completion pass:
+    "Core Anchor confirmed" is not a substitute for the Decision event).
+    A distinct, stable id (`decision_recorded:` prefix, vs. `_decision_event`'s
+    `decision:` prefix) keeps the two from colliding in the timeline.
+    """
+    role_label = decision.actor_human_role or "Supervisor"
+    decision_label = decision.decision_type.replace("_", " ")
+    return ShotActivityEventRead(
+        id=f"decision_recorded:{decision.id}",
+        event_type="human_decision_recorded",
+        occurred_at=decision.created_at,
+        actor_kind=decision.actor_kind,  # type: ignore[arg-type]
+        actor_id=decision.actor_id,
+        actor_human_role=decision.actor_human_role,  # type: ignore[arg-type]
+        summary=(
+            f"Decision recorded: Human {role_label} {decision_label} "
+            f"(Revision {revision_number})"
+        ),
+        related_entity_type="decision",
+        related_entity_id=decision.id,
+        route=_intent_route(shot_id),
+    )
+
+
 async def build_shot_activity(session: AsyncSession, shot_id: uuid.UUID) -> ShotActivityRead:
     events: list[ShotActivityEventRead] = []
 
@@ -126,6 +155,9 @@ async def build_shot_activity(session: AsyncSession, shot_id: uuid.UUID) -> Shot
         )
         for decision in decisions:
             events.append(_decision_event(decision, revision.revision_number, shot_id))
+            events.append(
+                _human_decision_recorded_event(decision, revision.revision_number, shot_id)
+            )
 
     versions = await versions_and_feedback_service.list_versions_for_shot(session, shot_id)
     for version in versions:

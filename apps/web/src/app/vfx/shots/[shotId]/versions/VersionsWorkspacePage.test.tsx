@@ -112,6 +112,13 @@ describe("VersionsWorkspacePage", () => {
     expect(screen.getByText("This Shot is unavailable")).toBeVisible();
   });
 
+  it("labels the list and detail area explicitly as Production Versions", () => {
+    render(<VersionsWorkspacePage shotId="s1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    expect(screen.getByRole("heading", { name: "Production Versions" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "Production Version details" })).toBeVisible();
+    expect(screen.queryByText(/Core Anchor Revisions/)).not.toBeInTheDocument();
+  });
+
   it("renders real Production Versions, newest first, never Core Anchor Revision wording", () => {
     render(<VersionsWorkspacePage shotId="s1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
     expect(screen.getByRole("button", { name: /SH010_v001 \(v1\)/ })).toBeVisible();

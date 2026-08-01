@@ -13,6 +13,7 @@ const EVENT_TYPE_LABEL: Record<ShotActivityEventType, string> = {
   core_anchor_draft_updated: "Core Anchor draft updated",
   core_anchor_confirmed: "Core Anchor confirmed",
   core_anchor_draft_discarded: "Core Anchor draft discarded",
+  human_decision_recorded: "Decision recorded",
   production_version_recorded: "Production Version recorded",
   review_note_recorded: "Review Note recorded",
   alignment_assessment_created: "Alignment Assessment generated",

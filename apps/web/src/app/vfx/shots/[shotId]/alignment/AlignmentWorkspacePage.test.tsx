@@ -8,6 +8,11 @@ import type {
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn(), replace: vi.fn() }),
+  usePathname: () => "/vfx/shots/s1/alignment",
+}));
+
 import type { AlignmentWorkspaceData } from "@/features/vfx/alignment-workspace/data";
 import { AlignmentWorkspacePage } from "./AlignmentWorkspacePage";
 
@@ -201,7 +206,7 @@ describe("AlignmentWorkspacePage", () => {
     expect(screen.getByText("This Shot is unavailable")).toBeVisible();
   });
 
-  it("shows the honest empty state when no Alignment Assessment has ever been recorded", () => {
+  it("shows the honest empty state when no Alignment Assessment has ever been recorded, and generation is not ready", () => {
     render(
       <AlignmentWorkspacePage
         shotId="s1"
@@ -213,6 +218,32 @@ describe("AlignmentWorkspacePage", () => {
     expect(
       screen.getByText("No Alignment Assessment has been recorded for this Shot yet."),
     ).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Generate Assessment" })).not.toBeInTheDocument();
+  });
+
+  it("shows a task-aware generation-ready state with a real Generate Assessment action when role outputs are available but no Assessment exists yet", () => {
+    render(
+      <AlignmentWorkspacePage
+        shotId="s1"
+        data={data({
+          assessments: [],
+          item: item({
+            generation_ready_task_id: "t1",
+            generation_ready_version_id: "v1",
+          }),
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("A new Cross-role Assessment can be generated for this Shot"),
+    ).toBeVisible();
+    expect(screen.getAllByText(/SH010_v001 \(v1\)/).length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Generate Assessment" })).toBeVisible();
+    expect(
+      screen.queryByText("No Alignment Assessment has been recorded for this Shot yet."),
+    ).not.toBeInTheDocument();
   });
 
   it("renders real assessment content: assessed Version, Core Anchor used, and findings", () => {

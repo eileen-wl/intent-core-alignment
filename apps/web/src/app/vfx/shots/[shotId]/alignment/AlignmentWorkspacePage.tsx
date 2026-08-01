@@ -17,6 +17,7 @@ import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import type { AlignmentWorkspaceData } from "@/features/vfx/alignment-workspace/data";
 import { ProductionContextHeader } from "../../ProductionContextHeader";
+import { GenerateAssessmentButton } from "./GenerateAssessmentButton";
 import styles from "./AlignmentWorkspacePage.module.css";
 
 function versionLabel(version: VersionRead | undefined): string {
@@ -135,7 +136,23 @@ export function AlignmentWorkspacePage({
           </div>
 
           {current === null ? (
-            <EmptyState title="No Alignment Assessment has been recorded for this Shot yet." />
+            data.item.generation_ready_task_id && data.item.generation_ready_version_id ? (
+              <EmptyState
+                title="A new Cross-role Assessment can be generated for this Shot"
+                description={`Role outputs from the VFX Supervisor, CG Supervisor, and Artist Agent are all available for ${versionLabel(
+                  data.versionsById.get(data.item.generation_ready_version_id),
+                )} -- a Cross-role Assessment can now be generated.`}
+                action={
+                  <GenerateAssessmentButton
+                    shotId={shotId}
+                    taskId={data.item.generation_ready_task_id}
+                    versionId={data.item.generation_ready_version_id}
+                  />
+                }
+              />
+            ) : (
+              <EmptyState title="No Alignment Assessment has been recorded for this Shot yet." />
+            )
           ) : (
             <>
               <section className={styles.summaryCard}>

@@ -40,6 +40,7 @@ from intent_core_api.versions_and_feedback.models import (
     CrossRoleAssessment,
     IntentSignal,
     ReAnchorProposal,
+    ReviewNote,
     Version,
     VFXSupervisorReview,
 )
@@ -67,6 +68,7 @@ class _ShotRelatedData:
     # task_id -> execution_anchor_revision_id
     task_confirmed_execution_anchor: dict[uuid.UUID, uuid.UUID]
     versions_with_vfx_review: set[uuid.UUID]
+    versions_with_review_notes: set[uuid.UUID]
     # (task_id, version_id)
     tasks_with_artist_guidance_by_version: set[tuple[uuid.UUID, uuid.UUID]]
     execution_revisions_with_cg_review: set[uuid.UUID]
@@ -189,6 +191,7 @@ async def _load_shot_related_data(session: AsyncSession, shot_id: uuid.UUID) -> 
                 task_confirmed_execution_anchor[anchor.task_id] = anchor.active_revision_id
 
     versions_with_vfx_review: set[uuid.UUID] = set()
+    versions_with_review_notes: set[uuid.UUID] = set()
     if versions:
         version_ids = [version.id for version in versions]
         vfx_review_rows = (
@@ -199,6 +202,15 @@ async def _load_shot_related_data(session: AsyncSession, shot_id: uuid.UUID) -> 
             )
         ).all()
         versions_with_vfx_review = {row[0] for row in vfx_review_rows}
+
+        review_note_rows = (
+            await session.execute(
+                select(ReviewNote.version_id)
+                .distinct()
+                .where(ReviewNote.version_id.in_(version_ids))
+            )
+        ).all()
+        versions_with_review_notes = {row[0] for row in review_note_rows}
 
     tasks_with_artist_guidance_by_version: set[tuple[uuid.UUID, uuid.UUID]] = set()
     if tasks and versions:
@@ -240,6 +252,7 @@ async def _load_shot_related_data(session: AsyncSession, shot_id: uuid.UUID) -> 
         versions=versions,
         task_confirmed_execution_anchor=task_confirmed_execution_anchor,
         versions_with_vfx_review=versions_with_vfx_review,
+        versions_with_review_notes=versions_with_review_notes,
         tasks_with_artist_guidance_by_version=tasks_with_artist_guidance_by_version,
         execution_revisions_with_cg_review=execution_revisions_with_cg_review,
     )
@@ -247,19 +260,26 @@ async def _load_shot_related_data(session: AsyncSession, shot_id: uuid.UUID) -> 
 
 def _assessment_generation_check(
     core_anchor_confirmed: bool, data: _ShotRelatedData
-) -> tuple[bool, str | None]:
+) -> tuple[bool, str | None, uuid.UUID | None, uuid.UUID | None]:
     """Ordered prerequisite check (docs/step-7/15_STEP_7C0C_...md §6.5):
     confirmed Core Anchor -> confirmed Execution Anchor for at least one
     Task -> all three role outputs present for at least one Task/Version
-    pair. Returns (available, honest missing-prerequisite explanation).
+    pair. Returns (available, honest missing-prerequisite explanation,
+    qualifying task_id, qualifying version_id) -- the last two are only
+    ever set together with `available=True`, and are the one real
+    Task+Version pair that actually satisfies every prerequisite (never
+    just "the latest Task" and "the latest Version" independently).
     """
     if not core_anchor_confirmed:
-        return False, None
+        return False, None, None, None
 
     if not data.task_confirmed_execution_anchor:
-        return False, (
+        return (
+            False,
             "Assessment generation requires a confirmed Execution Anchor, which does not "
-            "exist yet for this Shot's Tasks. This is owned by the CG Supervisor."
+            "exist yet for this Shot's Tasks. This is owned by the CG Supervisor.",
+            None,
+            None,
         )
 
     for task_id, execution_revision_id in data.task_confirmed_execution_anchor.items():
@@ -270,21 +290,24 @@ def _assessment_generation_check(
                 continue
             if (task_id, version.id) not in data.tasks_with_artist_guidance_by_version:
                 continue
-            return True, None
+            return True, None, task_id, version.id
 
-    return False, (
+    return (
+        False,
         "Assessment generation requires a VFX Supervisor review, a CG Supervisor review, "
-        "and Artist Agent guidance to all exist for the same Task and Version."
+        "and Artist Agent guidance to all exist for the same Task and Version.",
+        None,
+        None,
     )
 
 
-def _to_shot_focus_inputs(shot_id: uuid.UUID, data: _ShotRelatedData) -> ShotFocusInputs:
-    core_anchor_confirmed = (
-        data.active_revision is not None and data.active_revision.status == "confirmed"
-    )
-    generation_available, missing_explanation = _assessment_generation_check(
-        core_anchor_confirmed, data
-    )
+def _to_shot_focus_inputs(
+    shot_id: uuid.UUID,
+    data: _ShotRelatedData,
+    core_anchor_confirmed: bool,
+    generation_available: bool,
+    missing_explanation: str | None,
+) -> ShotFocusInputs:
     assessment = data.latest_assessment
     signal = data.latest_signal
 
@@ -345,7 +368,18 @@ async def build_inbox_item(
     session: AsyncSession, shot: Shot, project_name: str
 ) -> VfxInboxItemRead:
     data = await _load_shot_related_data(session, shot.id)
-    inputs = _to_shot_focus_inputs(shot.id, data)
+    core_anchor_confirmed = (
+        data.active_revision is not None and data.active_revision.status == "confirmed"
+    )
+    (
+        generation_available,
+        missing_explanation,
+        generation_ready_task_id,
+        generation_ready_version_id,
+    ) = _assessment_generation_check(core_anchor_confirmed, data)
+    inputs = _to_shot_focus_inputs(
+        shot.id, data, core_anchor_confirmed, generation_available, missing_explanation
+    )
     current_focus = derive_current_focus(inputs)
     next_candidates = [
         VfxInboxNextFocusRead(**candidate.model_dump())
@@ -378,6 +412,11 @@ async def build_inbox_item(
     signal_summary: str | None = None
     if data.latest_signal is not None:
         signal_summary = data.latest_signal.signal_output.get("summary")
+
+    latest_version = data.versions[-1] if data.versions else None
+    latest_version_without_review = (
+        latest_version is not None and latest_version.id not in data.versions_with_review_notes
+    )
 
     # Deterministic tie-break within the same precedence bucket: most
     # recent relevant timestamp descending, encoded as a negative
@@ -419,6 +458,28 @@ async def build_inbox_item(
         latest_signal_attention_level=signal.attention_level if signal else None,  # type: ignore[arg-type]
         latest_signal_summary=signal_summary,
         re_anchor_proposal_present=data.re_anchor_proposal_present,
+        # Honest whenever generation is genuinely ready, independent of
+        # whether some higher-precedence Core-Anchor focus type also
+        # currently wins this Shot's Current focus slot elsewhere (e.g.
+        # Inbox/Overview) -- the Alignment Workspace's own "ready to
+        # generate" state is not gated on Inbox precedence.
+        generation_ready_task_id=(
+            generation_ready_task_id if data.latest_assessment is None else None
+        ),
+        generation_ready_version_id=(
+            generation_ready_version_id if data.latest_assessment is None else None
+        ),
+        latest_version_without_review_id=(
+            latest_version.id if latest_version_without_review and latest_version else None
+        ),
+        latest_version_without_review_name=(
+            latest_version.name if latest_version_without_review and latest_version else None
+        ),
+        latest_version_without_review_number=(
+            latest_version.version_number
+            if latest_version_without_review and latest_version
+            else None
+        ),
         current_focus=current_focus,
         next_candidates=next_candidates,
         sort_rank=bucket * 1_000_000_000_000 + ordinal,

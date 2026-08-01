@@ -9,14 +9,14 @@ import type { VfxInboxItemRead, VfxCurrentFocusType } from "@intent-core/contrac
  * Workspace Home and Review Inbox both render *work items*, not Shots.
  * A Shot is production context a work item happens to relate to -- never
  * the primary identity of the Inbox. This file is the shared model both
- * pages consume, plus the one adapter with real data so far.
+ * pages consume, plus two real adapters.
  *
- * Source: `current_focus`. Each Shot's already-derived, already-honest
- * `VfxInboxItemRead.current_focus` is the only work-item source
- * available today. `adaptCurrentFocusToWorkItems` turns every
- * *actionable* current-focus record into exactly one `ReviewWorkItem`
- * (`focus_type === "none"` never becomes a work item -- there is nothing
- * to act on). `workItemRoute` still does not blindly forward
+ * Source 1: `current_focus`. Each Shot's already-derived, already-honest
+ * `VfxInboxItemRead.current_focus` is one work-item source.
+ * `adaptCurrentFocusToWorkItems` turns every *actionable* current-focus
+ * record into exactly one `ReviewWorkItem` (`focus_type === "none"`
+ * never becomes a work item -- there is nothing to act on).
+ * `workItemRoute` still does not blindly forward
  * `current_focus.target_route`: it re-derives the destination from its
  * own locked route rule, kept independently correct so a future
  * backend-side route change cannot silently redirect a work item
@@ -27,17 +27,27 @@ import type { VfxInboxItemRead, VfxCurrentFocusType } from "@intent-core/contrac
  * (`alignment_not_followed_by_anchor_action`, `re_anchor_proposal_present`,
  * `assessment_generation_available`) go to the real Alignment route;
  * anything else, and any future unrecognised focus type, safely falls
- * back to the real Shot Overview route. No work item here has a real
- * `version_review` source yet, so `/versions` is not a destination any
- * work item this adapter produces currently uses.
+ * back to the real Shot Overview route.
  *
- * Step 7C-3 extension boundary: additional adapters (Version/Review Note
- * review, Cross-role Assessment interpretation, Re-anchor Proposal
- * consideration as its own object, cross-department conflict, CG
- * escalation, acknowledgement) will each independently produce
- * `ReviewWorkItem[]` from their own real source objects and real ids,
- * concatenated into one flat collection before sorting -- the same shape
- * this adapter already returns. Nothing about `ReviewWorkItem` assumes a
+ * Source 2: `version_review` (Step 7C-3 completion pass).
+ * `adaptVersionReviewWorkItems` turns each Shot's real
+ * `latest_version_without_review_id` (backend-computed from actual
+ * `Version`/`ReviewNote` rows -- see that field's doc comment in
+ * `vfx_inbox.py`) into exactly one `ReviewWorkItem`, routed straight to
+ * the real Versions workspace. Never every Version, never every Review
+ * Note -- only the one real Shot-latest Version that has not yet
+ * received a single real Review Note. Concatenated into Review Inbox's
+ * collection only (`app/vfx/inbox/ReviewInboxPage.tsx`) -- Workspace
+ * Home's "Priority actions" widget stays on `adaptCurrentFocusToWorkItems`
+ * alone, unchanged by this pass, per its own existing "never the
+ * complete catalogue" scoping.
+ *
+ * Step 7C-3 extension boundary: further adapters (Cross-role Assessment
+ * interpretation, Re-anchor Proposal consideration as its own object,
+ * cross-department conflict, CG escalation, acknowledgement) will each
+ * independently produce `ReviewWorkItem[]` from their own real source
+ * objects and real ids, concatenated into the same flat collection these
+ * two adapters already return. Nothing about `ReviewWorkItem` assumes a
  * Shot has at most one item: `id`/`sourceId` are keyed by
  * `(sourceType, sourceId)`, never by `shotId` alone, so two work items
  * from different sources (or the same source producing more than one
@@ -144,20 +154,19 @@ const ALIGNMENT_ROUTE_FOCUS_TYPES: ReadonlySet<VfxCurrentFocusType> = new Set([
   "assessment_generation_available",
 ]);
 
-/** Locked route rule (Step 7C-3 §5, updating Step 7C-1 §6/§9 now that
- * `/versions`, `/alignment`, and `/activity` are real routes): Core
- * Anchor draft or confirmation work opens the real Intent route;
- * Alignment-family work (assessment interpretation, re-anchor
- * consideration, assessment generation) opens the real Alignment route
- * -- matching the backend's own `current_focus.target_route` for these
- * exact three types (see `vfx_inbox/current_focus.py`), no longer
- * overridden to Shot Overview now that the destination exists. Every
- * other, unrecognised work item safely falls back to the real Shot
- * Overview route. No work item here has a real `version_review` source
- * yet (Production Version/Review Note work has no `current_focus`
- * signal today), so `/versions` is not yet a real destination for any
- * work item this adapter produces -- the extension boundary documented
- * above is where that would be added. */
+/** Locked route rule for `current_focus`-sourced work items (Step 7C-3
+ * §5, updating Step 7C-1 §6/§9 now that `/versions`, `/alignment`, and
+ * `/activity` are real routes): Core Anchor draft or confirmation work
+ * opens the real Intent route; Alignment-family work (assessment
+ * interpretation, re-anchor consideration, assessment generation) opens
+ * the real Alignment route -- matching the backend's own
+ * `current_focus.target_route` for these exact three types (see
+ * `vfx_inbox/current_focus.py`), no longer overridden to Shot Overview
+ * now that the destination exists. Every other, unrecognised work item
+ * safely falls back to the real Shot Overview route. `version_review`
+ * work items do not go through this function at all --
+ * `adaptVersionReviewWorkItems` sets `/versions` directly, since that
+ * source has no `current_focus` counterpart. */
 function workItemRoute(shotId: string, focusType: VfxCurrentFocusType): string {
   if (CORE_ANCHOR_ROUTE_FOCUS_TYPES.has(focusType)) {
     return `/vfx/shots/${shotId}/intent`;
@@ -203,6 +212,54 @@ function versionFrom(item: VfxInboxItemRead): ReviewWorkItemVersion | undefined 
         number: item.relevant_version_number,
       }
     : undefined;
+}
+
+/** Step 7C-3 completion pass: the first real `version_review` adapter.
+ * Audit of the existing persisted `Version`/`ReviewNote` domain data
+ * (no persisted "unread"/"pending" status exists on either -- the same
+ * truthfulness rule `current_focus.py` documents) found exactly one
+ * real, already-persisted condition worth surfacing: a Shot's own most
+ * recently created Production Version that has never received a single
+ * real Review Note. That is computed backend-side (never re-derived
+ * here) as `VfxInboxItemRead.latest_version_without_review_id` --
+ * non-null only for that one real Version per Shot, never every Version
+ * and never every Review Note. Routes straight to the real Versions
+ * workspace, never through `workItemRoute`'s Core-Anchor/Alignment
+ * routing table (that table has no Versions destination). */
+export function adaptVersionReviewWorkItems(items: VfxInboxItemRead[]): ReviewWorkItem[] {
+  const workItems: ReviewWorkItem[] = [];
+
+  for (const item of items) {
+    const versionId = item.latest_version_without_review_id;
+    const versionName = item.latest_version_without_review_name;
+    if (!versionId || !versionName) continue;
+
+    workItems.push({
+      id: `version_review:${versionId}`,
+      sourceType: "version_review",
+      sourceId: versionId,
+      category: "Version review",
+      title: "New Production Version awaiting review",
+      explanation: `No Review Notes have been recorded yet for "${versionName}"${
+        item.latest_version_without_review_number
+          ? ` (v${item.latest_version_without_review_number})`
+          : ""
+      }.`,
+      sortRank: item.sort_rank,
+      actionLabel: "Review Version",
+      project: { id: item.project_id, name: item.project_name },
+      shot: { id: item.shot_id, name: item.shot_name, source: item.shot_source },
+      version: {
+        id: versionId,
+        name: versionName,
+        number: item.latest_version_without_review_number ?? null,
+      },
+      coreAnchorState: item.core_anchor_state,
+      route: `/vfx/shots/${item.shot_id}/versions`,
+    });
+  }
+
+  return workItems;
 }
 
 /** Step 7C-1's one real adapter: every actionable `current_focus`

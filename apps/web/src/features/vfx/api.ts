@@ -7,6 +7,7 @@ import type {
   CoreAnchorRead,
   CoreAnchorRevisionRead,
   CoreAnchorRevisionUpdate,
+  CrossRoleAssessmentGenerateRequest,
   CrossRoleAssessmentRead,
   DecisionRead,
   HumanGateRead,
@@ -237,6 +238,22 @@ export function listCrossRoleAssessmentsForShot(
   shotId: string,
 ): Promise<CrossRoleAssessmentRead[]> {
   return vfxFetch<CrossRoleAssessmentRead[]>(`/intent/shots/${shotId}/cross-role-assessments`);
+}
+
+/** Generates a real Cross-role Assessment for a Version+Task pair --
+ * VFX Supervisor only (enforced authoritatively in
+ * `agents.cross_role_assessment_service.generate_cross_role_assessment`,
+ * not just here). Never fabricated client-side: the returned assessment
+ * is exactly what the Core Agent persisted. */
+export function generateCrossRoleAssessment(
+  versionId: string,
+  payload: CrossRoleAssessmentGenerateRequest,
+  actorHeaders: ActorHeaders,
+): Promise<CrossRoleAssessmentRead> {
+  return vfxFetch<CrossRoleAssessmentRead>(
+    `/intent/versions/${versionId}/cross-role-assessments/generate`,
+    mutationInit("POST", payload, actorHeaders),
+  );
 }
 
 /** The real, persisted chronological Activity timeline for a Shot --

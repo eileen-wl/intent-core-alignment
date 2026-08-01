@@ -1,7 +1,7 @@
 import type { VfxCurrentFocusType, VfxInboxCurrentFocusRead, VfxInboxItemRead } from "@intent-core/contracts";
 import { describe, expect, it } from "vitest";
 
-import { adaptCurrentFocusToWorkItems } from "./workItem";
+import { adaptCurrentFocusToWorkItems, adaptVersionReviewWorkItems } from "./workItem";
 
 function focus(
   focusType: VfxCurrentFocusType,
@@ -174,5 +174,72 @@ describe("adaptCurrentFocusToWorkItems", () => {
   it("preserves the backend's real sort_rank rather than re-deriving one", () => {
     const workItems = adaptCurrentFocusToWorkItems([item({ sort_rank: 42 })]);
     expect(workItems[0].sortRank).toBe(42);
+  });
+});
+
+describe("adaptVersionReviewWorkItems", () => {
+  it("creates a work item only when the backend flags a real latest Version without a Review Note", () => {
+    const workItems = adaptVersionReviewWorkItems([
+      item({
+        shot_id: "s1",
+        latest_version_without_review_id: "v9",
+        latest_version_without_review_name: "SH010_v002",
+        latest_version_without_review_number: 2,
+      }),
+    ]);
+    expect(workItems).toHaveLength(1);
+    expect(workItems[0].sourceType).toBe("version_review");
+    expect(workItems[0].id).toBe("version_review:v9");
+    expect(workItems[0].version).toEqual({ id: "v9", name: "SH010_v002", number: 2 });
+    expect(workItems[0].route).toBe("/vfx/shots/s1/versions");
+  });
+
+  it("returns an honest empty collection when no Shot has an unreviewed Version", () => {
+    const workItems = adaptVersionReviewWorkItems([
+      item({
+        latest_version_without_review_id: null,
+        latest_version_without_review_name: null,
+        latest_version_without_review_number: null,
+      }),
+    ]);
+    expect(workItems).toEqual([]);
+  });
+
+  it("never fabricates a work item for a Shot the backend did not flag, even with other Version fields present", () => {
+    const workItems = adaptVersionReviewWorkItems([
+      item({
+        relevant_version_id: "v1",
+        relevant_version_name: "SH010_v001",
+        latest_version_without_review_id: undefined,
+        latest_version_without_review_name: undefined,
+      }),
+    ]);
+    expect(workItems).toEqual([]);
+  });
+
+  it("preserves the backend's real sort_rank rather than re-deriving one", () => {
+    const workItems = adaptVersionReviewWorkItems([
+      item({
+        sort_rank: 7,
+        latest_version_without_review_id: "v9",
+        latest_version_without_review_name: "SH010_v002",
+      }),
+    ]);
+    expect(workItems[0].sortRank).toBe(7);
+  });
+
+  it("supports a version_review item and a current_focus item on the same Shot without id collisions", () => {
+    const shot = item({
+      shot_id: "s1",
+      current_focus: focus("core_anchor_gate_pending"),
+      latest_version_without_review_id: "v9",
+      latest_version_without_review_name: "SH010_v002",
+    });
+    const workItems = [
+      ...adaptCurrentFocusToWorkItems([shot]),
+      ...adaptVersionReviewWorkItems([shot]),
+    ];
+    expect(workItems).toHaveLength(2);
+    expect(new Set(workItems.map((w) => w.id)).size).toBe(2);
   });
 });

@@ -2744,7 +2744,7 @@ export interface components {
              * Event Type
              * @enum {string}
              */
-            event_type: "core_anchor_draft_created" | "core_anchor_draft_updated" | "core_anchor_confirmed" | "core_anchor_draft_discarded" | "production_version_recorded" | "review_note_recorded" | "alignment_assessment_created" | "re_anchor_proposal_generated" | "external_link_recorded";
+            event_type: "core_anchor_draft_created" | "core_anchor_draft_updated" | "core_anchor_confirmed" | "core_anchor_draft_discarded" | "human_decision_recorded" | "production_version_recorded" | "review_note_recorded" | "alignment_assessment_created" | "re_anchor_proposal_generated" | "external_link_recorded";
             /**
              * Occurred At
              * Format: date-time
@@ -3170,6 +3170,16 @@ export interface components {
             latest_signal_summary: string | null;
             /** Re Anchor Proposal Present */
             re_anchor_proposal_present: boolean;
+            /** Generation Ready Task Id */
+            generation_ready_task_id?: string | null;
+            /** Generation Ready Version Id */
+            generation_ready_version_id?: string | null;
+            /** Latest Version Without Review Id */
+            latest_version_without_review_id?: string | null;
+            /** Latest Version Without Review Name */
+            latest_version_without_review_name?: string | null;
+            /** Latest Version Without Review Number */
+            latest_version_without_review_number?: number | null;
             current_focus: components["schemas"]["VfxInboxCurrentFocusRead"];
             /** Next Candidates */
             next_candidates?: components["schemas"]["VfxInboxNextFocusRead"][];

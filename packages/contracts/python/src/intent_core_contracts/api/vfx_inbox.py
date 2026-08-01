@@ -118,6 +118,34 @@ class VfxInboxItemRead(BaseModel):
     latest_signal_summary: str | None
     re_anchor_proposal_present: bool
 
+    # The one real Task+Version pair that actually satisfies every
+    # Cross-role Assessment generation prerequisite (confirmed Execution
+    # Anchor, VFX Supervisor review, CG Supervisor review, Artist Agent
+    # guidance, all for the same Task/Version) -- distinct from
+    # `relevant_task_id`/`relevant_version_id` above, which are only the
+    # Shot's independently-latest Task and Version and are not
+    # guaranteed to be the qualifying pair. Non-null only when
+    # `current_focus.focus_type == "assessment_generation_available"`
+    # (equivalently: prerequisites are met and no Assessment has been
+    # generated yet); this is exactly the pair the Alignment Workspace's
+    # real "Generate Assessment" action must submit to avoid an honest
+    # action failing on a mismatched pair (Step 7C-3 completion pass).
+    generation_ready_task_id: UUID | None = None
+    generation_ready_version_id: UUID | None = None
+
+    # The Shot's own most-recently-created Production Version, but only
+    # when it genuinely has zero real persisted Review Notes yet --
+    # never a fabricated "unread"/"pending" status (no such column
+    # exists on `ReviewNote`; this is a plain existence check on real
+    # rows, recomputed every read). `None` whenever the Shot has no
+    # Version, or its latest Version already has at least one real
+    # Review Note. Powers the Review Inbox's `version_review` work item
+    # (Step 7C-3 completion pass) without an N+1 Versions/ReviewNotes
+    # fetch per Shot.
+    latest_version_without_review_id: UUID | None = None
+    latest_version_without_review_name: str | None = None
+    latest_version_without_review_number: int | None = None
+
     current_focus: VfxInboxCurrentFocusRead
     # Zero-to-two remaining eligible focus-type candidates, ranked below
     # Current focus by the same locked precedence -- never `"none"`,

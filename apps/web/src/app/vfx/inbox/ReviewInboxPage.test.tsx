@@ -194,6 +194,46 @@ describe("ReviewInboxPage", () => {
     );
   });
 
+  it("surfaces a real Version-review work item, routed to Versions, alongside current_focus items", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([
+          buildItem({
+            shot_id: "s1",
+            latest_version_without_review_id: "v9",
+            latest_version_without_review_name: "SH010_v002",
+            latest_version_without_review_number: 2,
+          }),
+        ])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    // The Shot's current_focus item and the new version_review item both
+    // appear -- two independent work items for the same Shot.
+    expect(screen.getByText("Showing 2 items requiring review")).toBeVisible();
+    expect(screen.getByText("New Production Version awaiting review")).toBeVisible();
+    expect(
+      screen.getByText("New Production Version awaiting review").closest("a"),
+    ).toHaveAttribute("href", "/vfx/shots/s1/versions");
+  });
+
+  it("never surfaces a Version-review item for a Shot the backend did not flag (not every Version is actionable)", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([
+          inactiveItem({
+            shot_id: "s2",
+            relevant_version_id: "v1",
+            relevant_version_name: "SH010_v001",
+          }),
+        ])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Review Inbox is clear")).toBeVisible();
+    expect(screen.queryByText("New Production Version awaiting review")).not.toBeInTheDocument();
+  });
+
   it("supports two work items that reference the same Shot", () => {
     render(
       <ReviewInboxPage

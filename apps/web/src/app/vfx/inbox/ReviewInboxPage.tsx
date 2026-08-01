@@ -4,7 +4,10 @@ import Link from "next/link";
 import { AppShell, Breadcrumbs, EmptyState, ErrorState, PageHeader } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
-import { adaptCurrentFocusToWorkItems } from "@/features/vfx/review-inbox/workItem";
+import {
+  adaptCurrentFocusToWorkItems,
+  adaptVersionReviewWorkItems,
+} from "@/features/vfx/review-inbox/workItem";
 import { WorkItemRow } from "../WorkItemRow";
 
 /** `/vfx/inbox` -- Review Inbox (Step 7C-1 content-architecture
@@ -29,7 +32,9 @@ export function ReviewInboxPage({
   inbox: VfxInboxRead | null;
   onExitRole: () => void | Promise<void>;
 }) {
-  const workItems = inbox ? adaptCurrentFocusToWorkItems(inbox.items) : null;
+  const workItems = inbox
+    ? [...adaptCurrentFocusToWorkItems(inbox.items), ...adaptVersionReviewWorkItems(inbox.items)]
+    : null;
 
   return (
     <AppShell

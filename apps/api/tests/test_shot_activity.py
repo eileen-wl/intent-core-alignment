@@ -75,6 +75,40 @@ async def test_a_confirmed_revision_produces_a_created_and_a_decision_event(
     assert all("/activity" not in e["route"] for e in events)
 
 
+async def test_a_confirmed_revision_also_produces_a_separate_decision_recorded_event(
+    client: AsyncClient,
+) -> None:
+    """`core_anchor_confirmed` describes what happened to the Revision;
+    `human_decision_recorded` describes the real persisted Decision
+    itself -- both must exist for the same confirm action, never one in
+    place of the other (Step 7C-3 completion pass).
+    """
+    _, shot_id = await _create_project_and_shot(client)
+    draft = await _create_draft(client, shot_id)
+    await client.post(
+        f"/intent/core-anchor-revisions/{draft['id']}/confirm",
+        json={"rationale": "Matches the brief."},
+        headers=VFX,
+    )
+
+    response = await client.get(f"/shots/{shot_id}/activity")
+    events = response.json()["events"]
+
+    event_types = [event["event_type"] for event in events]
+    assert "core_anchor_confirmed" in event_types
+    assert "human_decision_recorded" in event_types
+
+    decision_event = next(e for e in events if e["event_type"] == "human_decision_recorded")
+    assert decision_event["actor_human_role"] == "vfx_supervisor"
+    assert decision_event["related_entity_type"] == "decision"
+    assert decision_event["route"] == f"/vfx/shots/{shot_id}/intent"
+    # Distinct id from the core_anchor_confirmed event for the same
+    # underlying Decision row -- never a duplicate/colliding id.
+    confirm_event = next(e for e in events if e["event_type"] == "core_anchor_confirmed")
+    assert decision_event["id"] != confirm_event["id"]
+    assert decision_event["related_entity_id"] == confirm_event["related_entity_id"]
+
+
 async def test_a_rejected_draft_produces_a_discarded_event(client: AsyncClient) -> None:
     _, shot_id = await _create_project_and_shot(client)
     draft = await _create_draft(client, shot_id)
@@ -88,6 +122,7 @@ async def test_a_rejected_draft_produces_a_discarded_event(client: AsyncClient) 
     response = await client.get(f"/shots/{shot_id}/activity")
     events = response.json()["events"]
     assert any(e["event_type"] == "core_anchor_draft_discarded" for e in events)
+    assert any(e["event_type"] == "human_decision_recorded" for e in events)
 
 
 async def test_events_are_ordered_newest_first_across_different_real_object_types(

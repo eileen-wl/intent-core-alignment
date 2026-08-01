@@ -92,6 +92,15 @@ async def _create_version(client: AsyncClient, shot_id: str, name: str = "SH010_
     return str(version["id"])
 
 
+async def _create_review_note(client: AsyncClient, version_id: str) -> None:
+    response = await client.post(
+        f"/versions/{version_id}/review-notes",
+        json={"content": "Tighten the timing on the push-in."},
+        headers=VFX,
+    )
+    assert response.status_code == 201
+
+
 async def _generate_vfx_review(client: AsyncClient, version_id: str) -> None:
     response = await client.post(
         f"/intent/versions/{version_id}/vfx-supervisor-reviews/generate", headers=VFX
@@ -226,6 +235,93 @@ async def test_assessment_generation_available_focus(client: AsyncClient) -> Non
     response = await client.get(f"/vfx/inbox/{shot_id}")
     item = response.json()
     assert item["current_focus"]["focus_type"] == "assessment_generation_available"
+
+
+async def test_generation_ready_pair_is_the_real_qualifying_task_and_version(
+    client: AsyncClient,
+) -> None:
+    shot_id, task_id, _revision_id, version_id = await _build_ready_shot(client)
+
+    response = await client.get(f"/vfx/inbox/{shot_id}")
+    item = response.json()
+    # Distinct from relevant_task_id/relevant_version_id (independently
+    # "latest") -- this is the one real pair generation would actually
+    # succeed against.
+    assert item["generation_ready_task_id"] == task_id
+    assert item["generation_ready_version_id"] == version_id
+
+
+async def test_generation_ready_pair_absent_once_an_assessment_exists(
+    client: AsyncClient,
+) -> None:
+    shot_id, task_id, _revision_id, version_id = await _build_ready_shot(client)
+    await _generate_assessment(client, version_id, task_id)
+
+    response = await client.get(f"/vfx/inbox/{shot_id}")
+    item = response.json()
+    assert item["generation_ready_task_id"] is None
+    assert item["generation_ready_version_id"] is None
+
+
+async def test_generation_ready_pair_absent_when_prerequisites_are_not_met(
+    client: AsyncClient,
+) -> None:
+    _project_id, shot_id = await _create_project_and_shot(client)
+    await _create_brief(client, shot_id)
+    await _confirm_core_anchor(client, shot_id)
+
+    response = await client.get(f"/vfx/inbox/{shot_id}")
+    item = response.json()
+    assert item["generation_ready_task_id"] is None
+    assert item["generation_ready_version_id"] is None
+
+
+async def test_latest_version_without_review_is_honestly_flagged(client: AsyncClient) -> None:
+    _project_id, shot_id = await _create_project_and_shot(client)
+    version_id = await _create_version(client, shot_id, name="SH010_v001")
+
+    response = await client.get(f"/vfx/inbox/{shot_id}")
+    item = response.json()
+    assert item["latest_version_without_review_id"] == version_id
+    assert item["latest_version_without_review_name"] == "SH010_v001"
+
+
+async def test_latest_version_without_review_clears_once_a_review_note_exists(
+    client: AsyncClient,
+) -> None:
+    _project_id, shot_id = await _create_project_and_shot(client)
+    version_id = await _create_version(client, shot_id, name="SH010_v001")
+    await _create_review_note(client, version_id)
+
+    response = await client.get(f"/vfx/inbox/{shot_id}")
+    item = response.json()
+    assert item["latest_version_without_review_id"] is None
+    assert item["latest_version_without_review_name"] is None
+
+
+async def test_latest_version_without_review_absent_for_a_shot_with_no_versions(
+    client: AsyncClient,
+) -> None:
+    _project_id, shot_id = await _create_project_and_shot(client)
+
+    response = await client.get(f"/vfx/inbox/{shot_id}")
+    item = response.json()
+    assert item["latest_version_without_review_id"] is None
+
+
+async def test_latest_version_without_review_only_considers_the_newest_version(
+    client: AsyncClient,
+) -> None:
+    _project_id, shot_id = await _create_project_and_shot(client)
+    older_version_id = await _create_version(client, shot_id, name="SH010_v001")
+    await _create_review_note(client, older_version_id)
+    newer_version_id = await _create_version(client, shot_id, name="SH010_v002")
+
+    response = await client.get(f"/vfx/inbox/{shot_id}")
+    item = response.json()
+    # The older, already-reviewed Version never re-surfaces once a newer
+    # Version exists -- only the Shot's real latest Version is checked.
+    assert item["latest_version_without_review_id"] == newer_version_id
 
 
 async def test_explicit_assessment_pairing_after_generation(client: AsyncClient) -> None:
