@@ -27,6 +27,7 @@ from intent_core_contracts.api.vfx_inbox import (
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from intent_core_api.cross_department.models import TaskDependency
 from intent_core_api.intent.models import (
     CGSupervisorReview,
     CoreAnchor,
@@ -72,6 +73,9 @@ class _ShotRelatedData:
     # (task_id, version_id)
     tasks_with_artist_guidance_by_version: set[tuple[uuid.UUID, uuid.UUID]]
     execution_revisions_with_cg_review: set[uuid.UUID]
+    # The oldest real open CG escalation targeting a Task under this
+    # Shot, if any -- (task_id, task_name, summary).
+    open_escalation: tuple[uuid.UUID, str, str] | None
 
 
 async def _load_shot_related_data(session: AsyncSession, shot_id: uuid.UUID) -> _ShotRelatedData:
@@ -238,6 +242,28 @@ async def _load_shot_related_data(session: AsyncSession, shot_id: uuid.UUID) -> 
         ).all()
         execution_revisions_with_cg_review = {row[0] for row in cg_review_rows}
 
+    open_escalation: tuple[uuid.UUID, str, str] | None = None
+    if tasks:
+        task_ids = [task.id for task in tasks]
+        task_names_by_id = {task.id: task.name for task in tasks}
+        escalation = await session.scalar(
+            select(TaskDependency)
+            .where(
+                TaskDependency.task_id.in_(task_ids),
+                TaskDependency.kind == "escalation",
+                TaskDependency.status == "open",
+                TaskDependency.escalated_to_role == "vfx_supervisor",
+            )
+            .order_by(TaskDependency.created_at)
+            .limit(1)
+        )
+        if escalation is not None:
+            open_escalation = (
+                escalation.task_id,
+                task_names_by_id.get(escalation.task_id, ""),
+                escalation.description,
+            )
+
     return _ShotRelatedData(
         core_anchor=core_anchor,
         active_revision=active_revision,
@@ -255,6 +281,7 @@ async def _load_shot_related_data(session: AsyncSession, shot_id: uuid.UUID) -> 
         versions_with_review_notes=versions_with_review_notes,
         tasks_with_artist_guidance_by_version=tasks_with_artist_guidance_by_version,
         execution_revisions_with_cg_review=execution_revisions_with_cg_review,
+        open_escalation=open_escalation,
     )
 
 
@@ -480,6 +507,9 @@ async def build_inbox_item(
             if latest_version_without_review and latest_version
             else None
         ),
+        open_cg_escalation_task_id=(data.open_escalation[0] if data.open_escalation else None),
+        open_cg_escalation_task_name=(data.open_escalation[1] if data.open_escalation else None),
+        open_cg_escalation_summary=(data.open_escalation[2] if data.open_escalation else None),
         current_focus=current_focus,
         next_candidates=next_candidates,
         sort_rank=bucket * 1_000_000_000_000 + ordinal,

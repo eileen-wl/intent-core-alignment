@@ -87,15 +87,15 @@ describe("RoleSidebar", () => {
   it("renders unimplemented items as disabled, non-navigable placeholders", () => {
     render(
       <RoleSidebar
-        items={ROLE_SIDEBAR_ITEMS.cg_supervisor}
-        currentPath="/cg"
+        items={ROLE_SIDEBAR_ITEMS.artist}
+        currentPath="/artist"
       />,
     );
     expect(
-      screen.queryByRole("link", { name: "Tasks" }),
+      screen.queryByRole("link", { name: "Intent Signals" }),
     ).not.toBeInTheDocument();
-    const tasks = screen.getByText("Tasks");
-    expect(tasks).toHaveAttribute("aria-disabled", "true");
+    const signals = screen.getByText("Intent Signals");
+    expect(signals).toHaveAttribute("aria-disabled", "true");
     expect(screen.getAllByText("Upcoming").length).toBeGreaterThan(0);
   });
 
@@ -117,8 +117,9 @@ describe("RoleSidebar", () => {
         currentPath="/cg"
       />,
     );
-    expect(screen.getByRole("link", { name: "Execution Inbox" })).toBeVisible();
-    expect(screen.getByText("Tasks")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Workspace Home" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Review Inbox" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Tasks" })).toBeVisible();
     cg.unmount();
 
     render(

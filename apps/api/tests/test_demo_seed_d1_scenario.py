@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import pytest
 from httpx import AsyncClient
+from intent_core_api.cross_department.models import TaskDependency
 from intent_core_api.demo_seed.d1_scenario import (
     D1_MARKER,
     D1_SHOT_EXTERNAL_ID,
@@ -39,7 +40,7 @@ from intent_core_api.vfx_inbox.service import get_inbox_item_for_shot, list_inbo
 from intent_core_api.workflow.actors import ActorContext
 from intent_core_api.workflow.exceptions import AgentGenerationError, InternalConsistencyError
 from intent_core_api.workflow.models import Decision
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 _TEST_VFX_ACTOR = ActorContext(
@@ -56,14 +57,16 @@ async def test_empty_database_creates_full_baseline(session: AsyncSession) -> No
 
     # Step 7C-1: this same generic development seed process now also
     # folds in a second, deliberately-unconfirmed Shot (see
-    # `test_uninitialized_shot_*` below) -- Shot/Task/Version counts are
-    # 2, one per Shot, sharing the one seed-owned Project.
+    # `test_uninitialized_shot_*` below) -- Shot/Version counts are 2,
+    # one per Shot, sharing the one seed-owned Project. Step 7C-4 folds
+    # in a third Task (the CG demo Task, deliberately draft) under the
+    # rich Shot, and its own draft ExecutionAnchorRevision.
     assert await _count(session, Project) == 1
     assert await _count(session, Shot) == 2
-    assert await _count(session, Task) == 2
+    assert await _count(session, Task) == 3
     assert await _count(session, Version) == 2
     assert await _count(session, CoreAnchorRevision) == 1
-    assert await _count(session, ExecutionAnchorRevision) == 1
+    assert await _count(session, ExecutionAnchorRevision) == 2
     assert await _count(session, VFXSupervisorReview) == 1
     assert await _count(session, CGSupervisorReview) == 1
     assert await _count(session, ArtistAgentGuidance) == 1
@@ -90,6 +93,22 @@ async def test_empty_database_creates_full_baseline(session: AsyncSession) -> No
     uninitialized_shot = await session.get(Shot, result.uninitialized_shot_id)
     assert uninitialized_shot is not None
 
+    # Step 7C-4: the CG demo Task's Execution Anchor is deliberately
+    # left at draft (never confirmed), unlike the rich Task's.
+    cg_demo_exec_revision = await session.scalar(
+        select(ExecutionAnchorRevision).where(
+            ExecutionAnchorRevision.id != result.execution_anchor_revision_id
+        )
+    )
+    assert cg_demo_exec_revision is not None
+    assert cg_demo_exec_revision.status == "draft"
+
+    cg_demo_dependency = await session.get(TaskDependency, result.cg_demo_dependency_id)
+    assert cg_demo_dependency is not None
+    assert cg_demo_dependency.task_id == result.cg_demo_task_id
+    assert cg_demo_dependency.kind == "dependency"
+    assert cg_demo_dependency.status == "open"
+
 
 async def test_already_complete_seed_is_a_no_op(session: AsyncSession) -> None:
     first = await ensure_d1_scenario(session)
@@ -103,19 +122,22 @@ async def test_already_complete_seed_is_a_no_op(session: AsyncSession) -> None:
     assert first.execution_anchor_revision_id == second.execution_anchor_revision_id
     assert first.cross_role_assessment_id == second.cross_role_assessment_id
     assert first.uninitialized_shot_id == second.uninitialized_shot_id
+    assert first.cg_demo_task_id == second.cg_demo_task_id
+    assert first.cg_demo_dependency_id == second.cg_demo_dependency_id
 
     assert await _count(session, Project) == 1
     assert await _count(session, Shot) == 2
-    assert await _count(session, Task) == 2
+    assert await _count(session, Task) == 3
     assert await _count(session, Version) == 2
     assert await _count(session, CoreAnchorRevision) == 1
-    assert await _count(session, ExecutionAnchorRevision) == 1
+    assert await _count(session, ExecutionAnchorRevision) == 2
     assert await _count(session, VFXSupervisorReview) == 1
     assert await _count(session, CGSupervisorReview) == 1
     assert await _count(session, ArtistAgentGuidance) == 1
     assert await _count(session, CrossRoleAssessment) == 1
     assert await _count(session, ReAnchorProposal) == 1
     assert await _count(session, IntentSignal) == 1
+    assert await _count(session, TaskDependency) == 1
 
 
 async def test_partial_seed_resumes_without_duplicating(session: AsyncSession) -> None:
@@ -150,16 +172,17 @@ async def test_partial_seed_resumes_without_duplicating(session: AsyncSession) -
     # duplicate the Assessment or Signal.
     assert await _count(session, Project) == 1
     assert await _count(session, Shot) == 2
-    assert await _count(session, Task) == 2
+    assert await _count(session, Task) == 3
     assert await _count(session, Version) == 2
     assert await _count(session, CoreAnchorRevision) == 1
-    assert await _count(session, ExecutionAnchorRevision) == 1
+    assert await _count(session, ExecutionAnchorRevision) == 2
     assert await _count(session, VFXSupervisorReview) == 1
     assert await _count(session, CGSupervisorReview) == 1
     assert await _count(session, ArtistAgentGuidance) == 1
     assert await _count(session, CrossRoleAssessment) == 1
     assert await _count(session, IntentSignal) == 1
     assert await _count(session, ReAnchorProposal) == 1
+    assert await _count(session, TaskDependency) == 1
 
 
 async def test_orphaned_demo_link_fails_loudly(session: AsyncSession) -> None:
@@ -466,13 +489,28 @@ async def test_baseline_seed_introduces_no_pending_human_gate(session: AsyncSess
     unrelated to this correction) -- both end up ``status="confirmed"``,
     never left ``"pending"``. The Proposal added by this correction must
     not introduce a HumanGate of its own at all.
+
+    Step 7C-4 note: the CG demo Task's own Execution Anchor is
+    deliberately left as a pending draft (`_ensure_cg_demo_task`), so
+    this test scopes its "no pending gate" check to the rich Task's own
+    Core/Execution Anchor confirmation gates specifically, rather than
+    every gate on the Shot -- and separately confirms the VFX Inbox's
+    `pending_human_gate_id` (Core-Anchor-gate-only by definition) still
+    reads honestly `None`.
     """
     result = await ensure_d1_scenario(session)
-    gate_statuses = (
-        await session.execute(select(HumanGate.status).where(HumanGate.shot_id == result.shot_id))
+    rich_gate_statuses = (
+        await session.execute(
+            select(HumanGate.status).where(
+                or_(
+                    HumanGate.core_anchor_revision_id == result.core_anchor_revision_id,
+                    HumanGate.execution_anchor_revision_id == result.execution_anchor_revision_id,
+                )
+            )
+        )
     ).scalars().all()
-    assert gate_statuses, "expected the Core/Execution Anchor confirmation gates to exist"
-    assert all(status != "pending" for status in gate_statuses)
+    assert rich_gate_statuses, "expected the Core/Execution Anchor confirmation gates to exist"
+    assert all(status != "pending" for status in rich_gate_statuses)
     item = await get_inbox_item_for_shot(session, result.shot_id)
     assert item is not None
     assert item.pending_human_gate_id is None

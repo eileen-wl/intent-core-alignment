@@ -35,6 +35,8 @@ class D1ScenarioResultRead(BaseModel):
     execution_anchor_revision_id: UUID
     cross_role_assessment_id: UUID
     uninitialized_shot_id: UUID
+    cg_demo_task_id: UUID
+    cg_demo_dependency_id: UUID
 
 
 @router.post("/ensure-d1-scenario", response_model=D1ScenarioResultRead)
@@ -51,6 +53,8 @@ async def ensure_d1_scenario_endpoint(
         execution_anchor_revision_id=result.execution_anchor_revision_id,
         cross_role_assessment_id=result.cross_role_assessment_id,
         uninitialized_shot_id=result.uninitialized_shot_id,
+        cg_demo_task_id=result.cg_demo_task_id,
+        cg_demo_dependency_id=result.cg_demo_dependency_id,
     )
 
 

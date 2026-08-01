@@ -82,8 +82,20 @@ describe("enterDemoRole", () => {
     expect(redirectSpy).toHaveBeenCalledWith("/vfx");
   });
 
-  it("does not attempt to ensure any seed data for cg_supervisor or artist", async () => {
+  it("also ensures the generic development seed data before landing on the CG Workspace (Step 7C-4)", async () => {
     await expect(enterDemoRole("cg_supervisor")).rejects.toThrow();
+    expect(resolveD1DemoShotIdMock).toHaveBeenCalled();
+    expect(redirectSpy).toHaveBeenCalledWith("/cg");
+  });
+
+  it("still reaches /cg even when ensuring the seed data fails (best-effort, destination unchanged)", async () => {
+    resolveD1DemoShotIdMock.mockRejectedValue(new Error("unavailable"));
+    await expect(enterDemoRole("cg_supervisor")).rejects.toThrow();
+    expect(redirectSpy).toHaveBeenCalledWith("/cg");
+  });
+
+  it("does not attempt to ensure any seed data for artist", async () => {
+    await expect(enterDemoRole("artist")).rejects.toThrow();
     expect(resolveD1DemoShotIdMock).not.toHaveBeenCalled();
   });
 

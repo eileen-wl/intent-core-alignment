@@ -42,19 +42,28 @@ import type { VfxInboxItemRead, VfxCurrentFocusType } from "@intent-core/contrac
  * alone, unchanged by this pass, per its own existing "never the
  * complete catalogue" scoping.
  *
- * Step 7C-3 extension boundary: further adapters (Cross-role Assessment
+ * Source 3: `escalation` (Step 7C-4). `adaptEscalationWorkItems` turns
+ * each Shot's real `open_cg_escalation_task_id` (backend-computed from a
+ * real, persisted, open `TaskDependency` row of `kind="escalation"` --
+ * see `intent_core_api.cross_department.models.TaskDependency` and that
+ * field's doc comment in `vfx_inbox.py`) into exactly one
+ * `ReviewWorkItem`, routed to Shot Overview (VFX has no route into CG
+ * Task detail). This is the real CG-to-VFX escalation surface: a CG
+ * Supervisor's "Escalate to VFX" action on the Version Review page
+ * persists the `TaskDependency` row this adapter reads.
+ *
+ * Remaining extension boundary: further adapters (Cross-role Assessment
  * interpretation, Re-anchor Proposal consideration as its own object,
- * cross-department conflict, CG escalation, acknowledgement) will each
- * independently produce `ReviewWorkItem[]` from their own real source
- * objects and real ids, concatenated into the same flat collection these
- * two adapters already return. Nothing about `ReviewWorkItem` assumes a
- * Shot has at most one item: `id`/`sourceId` are keyed by
- * `(sourceType, sourceId)`, never by `shotId` alone, so two work items
- * from different sources (or the same source producing more than one
- * item) can safely reference the same Shot side by side. Workspace Home
- * and Review Inbox both consume this flat `ReviewWorkItem[]` collection
- * -- neither iterates `VfxInboxItemRead[]` directly for its primary
- * list.
+ * cross-department conflict, acknowledgement) will each independently
+ * produce `ReviewWorkItem[]` from their own real source objects and real
+ * ids, concatenated into the same flat collection these three adapters
+ * already return. Nothing about `ReviewWorkItem` assumes a Shot has at
+ * most one item: `id`/`sourceId` are keyed by `(sourceType, sourceId)`,
+ * never by `shotId` alone, so two work items from different sources (or
+ * the same source producing more than one item) can safely reference the
+ * same Shot side by side. Workspace Home and Review Inbox both consume
+ * this flat `ReviewWorkItem[]` collection -- neither iterates
+ * `VfxInboxItemRead[]` directly for its primary list.
  */
 
 /** Every source a work item can come from. Only `"current_focus"` has a
@@ -256,6 +265,42 @@ export function adaptVersionReviewWorkItems(items: VfxInboxItemRead[]): ReviewWo
       },
       coreAnchorState: item.core_anchor_state,
       route: `/vfx/shots/${item.shot_id}/versions`,
+    });
+  }
+
+  return workItems;
+}
+
+/** Source 3: `escalation` (Step 7C-4). Turns each Shot's real
+ * `open_cg_escalation_task_id` (backend-computed from a real,
+ * persisted, open `TaskDependency` row with `kind="escalation"` --
+ * see that field's doc comment in `vfx_inbox.py`) into exactly one
+ * `ReviewWorkItem`. Routes to Shot Overview, not through
+ * `workItemRoute`'s Core-Anchor/Alignment table: VFX has no route into
+ * CG Task detail, so Overview is the honest fallback destination. */
+export function adaptEscalationWorkItems(items: VfxInboxItemRead[]): ReviewWorkItem[] {
+  const workItems: ReviewWorkItem[] = [];
+
+  for (const item of items) {
+    const taskId = item.open_cg_escalation_task_id;
+    const taskName = item.open_cg_escalation_task_name;
+    const summary = item.open_cg_escalation_summary;
+    if (!taskId || !summary) continue;
+
+    workItems.push({
+      id: `escalation:${taskId}`,
+      sourceType: "escalation",
+      sourceId: taskId,
+      category: "CG escalation",
+      title: "A CG Supervisor escalation needs your attention",
+      explanation: summary,
+      sortRank: item.sort_rank,
+      actionLabel: "Review escalation",
+      project: { id: item.project_id, name: item.project_name },
+      shot: { id: item.shot_id, name: item.shot_name, source: item.shot_source },
+      task: taskName ? { id: taskId, name: taskName } : undefined,
+      coreAnchorState: item.core_anchor_state,
+      route: `/vfx/shots/${item.shot_id}`,
     });
   }
 

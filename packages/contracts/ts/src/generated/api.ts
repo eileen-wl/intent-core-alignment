@@ -75,6 +75,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Task */
+        get: operations["get_task_tasks__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shots/{shot_id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tasks For Shot */
+        get: operations["list_tasks_for_shot_shots__shot_id__tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/demo/ensure-d1-scenario": {
         parameters: {
             query?: never;
@@ -1208,6 +1242,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cg/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cg Inbox */
+        get: operations["get_cg_inbox_cg_inbox_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cg/inbox/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cg Inbox Item */
+        get: operations["get_cg_inbox_item_cg_inbox__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{task_id}/dependencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Task Dependencies */
+        get: operations["list_task_dependencies_tasks__task_id__dependencies_get"];
+        put?: never;
+        /** Create Task Dependency */
+        post: operations["create_task_dependency_tasks__task_id__dependencies_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{task_id}/dependencies/{dependency_id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge Task Dependency */
+        post: operations["acknowledge_task_dependency_tasks__task_id__dependencies__dependency_id__acknowledge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{task_id}/dependencies/{dependency_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve Task Dependency */
+        post: operations["resolve_task_dependency_tasks__task_id__dependencies__dependency_id__resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{task_id}/escalate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Escalate Task */
+        post: operations["escalate_task_tasks__task_id__escalate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{task_id}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Task Activity */
+        get: operations["get_task_activity_tasks__task_id__activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1609,6 +1763,87 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** CgInboxCurrentFocusRead */
+        CgInboxCurrentFocusRead: {
+            /**
+             * Focus Type
+             * @enum {string}
+             */
+            focus_type: "execution_anchor_gate_pending" | "execution_anchor_draft_needs_review" | "dependency_needs_attention" | "version_review_available" | "none";
+            /** Title */
+            title: string;
+            /** Explanation */
+            explanation: string;
+            /** Target Route */
+            target_route: string;
+            /** Primary Action Label */
+            primary_action_label: string | null;
+            /** Actionable */
+            actionable: boolean;
+        };
+        /** CgInboxItemRead */
+        CgInboxItemRead: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /** Task Name */
+            task_name: string;
+            /** Department */
+            department: string | null;
+            /**
+             * Task Source
+             * @enum {string}
+             */
+            task_source: "manual" | "ftrack";
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Shot Name */
+            shot_name: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /** Project Name */
+            project_name: string;
+            /**
+             * Execution Anchor State
+             * @enum {string}
+             */
+            execution_anchor_state: "none" | "draft_pending" | "confirmed";
+            /** Active Execution Anchor Revision Id */
+            active_execution_anchor_revision_id: string | null;
+            /** Active Execution Anchor Summary */
+            active_execution_anchor_summary: string | null;
+            /** Pending Human Gate Id */
+            pending_human_gate_id: string | null;
+            /** Latest Version Id */
+            latest_version_id: string | null;
+            /** Latest Version Name */
+            latest_version_name: string | null;
+            /** Latest Version Number */
+            latest_version_number: number | null;
+            /** Open Dependency Count */
+            open_dependency_count: number;
+            current_focus: components["schemas"]["CgInboxCurrentFocusRead"];
+            /** Sort Rank */
+            sort_rank: number;
+        };
+        /** CgInboxRead */
+        CgInboxRead: {
+            /** Items */
+            items: components["schemas"]["CgInboxItemRead"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
         };
         /** ConstraintInput */
         ConstraintInput: {
@@ -2124,6 +2359,13 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** EscalationCreate */
+        EscalationCreate: {
+            /** Description */
+            description: string;
+            /** Related Version Id */
+            related_version_id?: string | null;
         };
         /** ExecutionAnchorRead */
         ExecutionAnchorRead: {
@@ -2849,6 +3091,48 @@ export interface components {
              */
             last_synced_at: string;
         };
+        /** TaskActivityEventRead */
+        TaskActivityEventRead: {
+            /** Id */
+            id: string;
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "execution_anchor_draft_created" | "execution_anchor_draft_updated" | "execution_anchor_confirmed" | "execution_anchor_draft_discarded" | "human_decision_recorded" | "cg_supervisor_review_generated" | "dependency_recorded" | "dependency_acknowledged" | "dependency_resolved" | "escalation_recorded" | "cross_role_assessment_involving_task";
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Actor Kind */
+            actor_kind: ("human" | "agent" | "system") | null;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Actor Human Role */
+            actor_human_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
+            /** Summary */
+            summary: string;
+            /** Related Entity Type */
+            related_entity_type: string;
+            /**
+             * Related Entity Id
+             * Format: uuid
+             */
+            related_entity_id: string;
+            /** Route */
+            route: string;
+        };
+        /** TaskActivityRead */
+        TaskActivityRead: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /** Events */
+            events: components["schemas"]["TaskActivityEventRead"][];
+        };
         /** TaskCreate */
         TaskCreate: {
             /**
@@ -2868,6 +3152,83 @@ export interface components {
             source: "manual" | "ftrack";
             /** External Id */
             external_id?: string | null;
+        };
+        /** TaskDependencyCreate */
+        TaskDependencyCreate: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "dependency" | "conflict";
+            /** Description */
+            description: string;
+            /** Severity */
+            severity?: ("low" | "medium" | "high") | null;
+            /** Related Version Id */
+            related_version_id?: string | null;
+        };
+        /** TaskDependencyRead */
+        TaskDependencyRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /** Related Version Id */
+            related_version_id: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "dependency" | "conflict" | "escalation";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "acknowledged" | "resolved";
+            /** Description */
+            description: string;
+            /** Severity */
+            severity: ("low" | "medium" | "high") | null;
+            /** Escalated To Role */
+            escalated_to_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
+            /**
+             * Created By Actor Kind
+             * @enum {string}
+             */
+            created_by_actor_kind: "human" | "agent" | "system";
+            /** Created By Actor Id */
+            created_by_actor_id: string;
+            /** Created By Human Role */
+            created_by_human_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Resolved By Actor Id */
+            resolved_by_actor_id: string | null;
+            /** Resolved By Human Role */
+            resolved_by_human_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
+            /** Resolved At */
+            resolved_at: string | null;
+            /** Related Cross Role Assessment Id */
+            related_cross_role_assessment_id: string | null;
         };
         /** TaskRead */
         TaskRead: {
@@ -3180,6 +3541,12 @@ export interface components {
             latest_version_without_review_name?: string | null;
             /** Latest Version Without Review Number */
             latest_version_without_review_number?: number | null;
+            /** Open Cg Escalation Task Id */
+            open_cg_escalation_task_id?: string | null;
+            /** Open Cg Escalation Task Name */
+            open_cg_escalation_task_name?: string | null;
+            /** Open Cg Escalation Summary */
+            open_cg_escalation_summary?: string | null;
             current_focus: components["schemas"]["VfxInboxCurrentFocusRead"];
             /** Next Candidates */
             next_candidates?: components["schemas"]["VfxInboxNextFocusRead"][];
@@ -3489,6 +3856,68 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaskRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_task_tasks__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tasks_for_shot_shots__shot_id__tasks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRead"][];
                 };
             };
             /** @description Validation Error */
@@ -5743,6 +6172,265 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ShotActivityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cg_inbox_cg_inbox_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CgInboxRead"];
+                };
+            };
+        };
+    };
+    get_cg_inbox_item_cg_inbox__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CgInboxItemRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_task_dependencies_tasks__task_id__dependencies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDependencyRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_task_dependency_tasks__task_id__dependencies_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskDependencyCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDependencyRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    acknowledge_task_dependency_tasks__task_id__dependencies__dependency_id__acknowledge_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                task_id: string;
+                dependency_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDependencyRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_task_dependency_tasks__task_id__dependencies__dependency_id__resolve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                task_id: string;
+                dependency_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDependencyRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    escalate_task_tasks__task_id__escalate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EscalationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDependencyRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_task_activity_tasks__task_id__activity_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskActivityRead"];
                 };
             };
             /** @description Validation Error */

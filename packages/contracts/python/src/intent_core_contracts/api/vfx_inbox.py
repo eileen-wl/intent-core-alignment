@@ -146,6 +146,15 @@ class VfxInboxItemRead(BaseModel):
     latest_version_without_review_name: str | None = None
     latest_version_without_review_number: int | None = None
 
+    # A real, open CG Supervisor escalation (TaskDependency kind=
+    # "escalation", status="open", escalated_to_role="vfx_supervisor")
+    # targeting a Task under this Shot (Step 7C-4) -- non-null only when
+    # one genuinely exists. Powers the Review Inbox's `escalation` work
+    # item; never fabricated.
+    open_cg_escalation_task_id: UUID | None = None
+    open_cg_escalation_task_name: str | None = None
+    open_cg_escalation_summary: str | None = None
+
     current_focus: VfxInboxCurrentFocusRead
     # Zero-to-two remaining eligible focus-type candidates, ranked below
     # Current focus by the same locked precedence -- never `"none"`,

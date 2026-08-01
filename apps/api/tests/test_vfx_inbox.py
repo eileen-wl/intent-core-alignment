@@ -386,3 +386,48 @@ async def test_domain_source_never_shows_demo(client: AsyncClient) -> None:
     response = await client.get(f"/vfx/inbox/{shot_id}")
     item = response.json()
     assert item["shot_source"] in ("manual", "ftrack")
+
+
+async def test_open_cg_escalation_surfaces_on_the_shot(client: AsyncClient) -> None:
+    """Step 7C-4: a real, open CG Supervisor escalation (a TaskDependency
+    with kind="escalation") targeting a Task under this Shot must surface
+    on the Shot's own VfxInboxItemRead -- the field the Review Inbox's
+    `escalation` work item is sourced from."""
+    _project_id, shot_id = await _create_project_and_shot(client)
+    task_id = await _create_task(client, shot_id)
+    escalation = (
+        await client.post(
+            f"/tasks/{task_id}/escalate",
+            json={"description": "Dusk tone reads too bright, needs VFX input."},
+            headers=CG,
+        )
+    ).json()
+    assert escalation["status"] == "open"
+
+    response = await client.get(f"/vfx/inbox/{shot_id}")
+    item = response.json()
+    assert item["open_cg_escalation_task_id"] == task_id
+    assert item["open_cg_escalation_task_name"] == "Compositing"
+    assert item["open_cg_escalation_summary"] == "Dusk tone reads too bright, needs VFX input."
+
+
+async def test_resolved_escalation_no_longer_surfaces(client: AsyncClient) -> None:
+    _project_id, shot_id = await _create_project_and_shot(client)
+    task_id = await _create_task(client, shot_id)
+    escalation = (
+        await client.post(
+            f"/tasks/{task_id}/escalate", json={"description": "x"}, headers=CG
+        )
+    ).json()
+    await client.post(f"/tasks/{task_id}/dependencies/{escalation['id']}/resolve", headers=CG)
+
+    item = (await client.get(f"/vfx/inbox/{shot_id}")).json()
+    assert item["open_cg_escalation_task_id"] is None
+
+
+async def test_no_escalation_is_honestly_absent(client: AsyncClient) -> None:
+    _project_id, shot_id = await _create_project_and_shot(client)
+    item = (await client.get(f"/vfx/inbox/{shot_id}")).json()
+    assert item["open_cg_escalation_task_id"] is None
+    assert item["open_cg_escalation_task_name"] is None
+    assert item["open_cg_escalation_summary"] is None

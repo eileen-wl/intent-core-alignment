@@ -1,7 +1,11 @@
 import type { VfxCurrentFocusType, VfxInboxCurrentFocusRead, VfxInboxItemRead } from "@intent-core/contracts";
 import { describe, expect, it } from "vitest";
 
-import { adaptCurrentFocusToWorkItems, adaptVersionReviewWorkItems } from "./workItem";
+import {
+  adaptCurrentFocusToWorkItems,
+  adaptEscalationWorkItems,
+  adaptVersionReviewWorkItems,
+} from "./workItem";
 
 function focus(
   focusType: VfxCurrentFocusType,
@@ -241,5 +245,59 @@ describe("adaptVersionReviewWorkItems", () => {
     ];
     expect(workItems).toHaveLength(2);
     expect(new Set(workItems.map((w) => w.id)).size).toBe(2);
+  });
+});
+
+describe("adaptEscalationWorkItems", () => {
+  it("creates a work item only when the backend flags a real open CG escalation", () => {
+    const workItems = adaptEscalationWorkItems([
+      item({
+        shot_id: "s1",
+        open_cg_escalation_task_id: "t9",
+        open_cg_escalation_task_name: "Lighting Pass",
+        open_cg_escalation_summary: "Dusk tone reads too bright, needs VFX input.",
+      }),
+    ]);
+    expect(workItems).toHaveLength(1);
+    expect(workItems[0].sourceType).toBe("escalation");
+    expect(workItems[0].id).toBe("escalation:t9");
+    expect(workItems[0].explanation).toBe("Dusk tone reads too bright, needs VFX input.");
+    expect(workItems[0].task).toEqual({ id: "t9", name: "Lighting Pass" });
+    // No route into CG Task detail exists from VFX -- Shot Overview is
+    // the honest fallback.
+    expect(workItems[0].route).toBe("/vfx/shots/s1");
+  });
+
+  it("returns an honest empty collection when no Shot has an open escalation", () => {
+    const workItems = adaptEscalationWorkItems([
+      item({
+        open_cg_escalation_task_id: null,
+        open_cg_escalation_task_name: null,
+        open_cg_escalation_summary: null,
+      }),
+    ]);
+    expect(workItems).toEqual([]);
+  });
+
+  it("never fabricates a work item for a Shot the backend did not flag", () => {
+    const workItems = adaptEscalationWorkItems([
+      item({
+        open_cg_escalation_task_id: undefined,
+        open_cg_escalation_summary: undefined,
+      }),
+    ]);
+    expect(workItems).toEqual([]);
+  });
+
+  it("preserves the backend's real sort_rank rather than re-deriving one", () => {
+    const workItems = adaptEscalationWorkItems([
+      item({
+        sort_rank: 9,
+        open_cg_escalation_task_id: "t9",
+        open_cg_escalation_task_name: "Lighting Pass",
+        open_cg_escalation_summary: "x",
+      }),
+    ]);
+    expect(workItems[0].sortRank).toBe(9);
   });
 });

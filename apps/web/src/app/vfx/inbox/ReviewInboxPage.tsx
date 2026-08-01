@@ -6,6 +6,7 @@ import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import {
   adaptCurrentFocusToWorkItems,
+  adaptEscalationWorkItems,
   adaptVersionReviewWorkItems,
 } from "@/features/vfx/review-inbox/workItem";
 import { WorkItemRow } from "../WorkItemRow";
@@ -33,7 +34,11 @@ export function ReviewInboxPage({
   onExitRole: () => void | Promise<void>;
 }) {
   const workItems = inbox
-    ? [...adaptCurrentFocusToWorkItems(inbox.items), ...adaptVersionReviewWorkItems(inbox.items)]
+    ? [
+        ...adaptCurrentFocusToWorkItems(inbox.items),
+        ...adaptVersionReviewWorkItems(inbox.items),
+        ...adaptEscalationWorkItems(inbox.items),
+      ]
     : null;
 
   return (

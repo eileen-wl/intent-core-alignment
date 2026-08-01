@@ -89,6 +89,8 @@ from intent_core_api.agents.cross_role_assessment_service import (
 from intent_core_api.agents.vfx_supervisor_review_service import (
     DeterministicVFXSupervisorReviewGenerator,
 )
+from intent_core_api.cross_department import service as cross_department_service
+from intent_core_api.cross_department.models import TaskDependency
 from intent_core_api.integrations.external_link_service import (
     find_linked_entity_id,
     record_external_link,
@@ -152,6 +154,36 @@ _UNINITIALIZED_VERSION_DESCRIPTION: Final = (
     "seed data, deliberately left unconfirmed."
 )
 
+# Step 7C-4: a second Task under the same rich D1 Shot -- its confirmed
+# Core Anchor already exists, but this Task's Execution Anchor is
+# deliberately left at DRAFT (a real pending HumanGate), so the CG
+# Review Inbox has at least one genuinely actionable work item out of
+# the box, and its Dependencies page has one real open dependency to
+# show. Never the same row as `D1_TASK_EXTERNAL_ID`'s fully-confirmed
+# Task -- distinct external identity, distinct department.
+CG_DEMO_TASK_EXTERNAL_ID: Final = "icas-demo:d1:shot-010:lighting-pass"
+_CG_DEMO_TASK_NAME: Final = "Lighting Pass"
+_CG_DEMO_EXECUTION_DRAFT_CONTENT: Final[dict[str, object]] = {
+    "technical_boundaries": (
+        f"{D1_MARKER} Lighting pass must preserve the restrained dusk key/fill ratio already "
+        "established in the confirmed Core Anchor."
+    ),
+    "parameter_ranges": "Key-to-fill ratio: within 10% of the confirmed baseline.",
+    "delivery_conditions": "Deliver at confirmed project resolution, dusk colour temperature.",
+    "production_ready_criteria": (
+        "Lighting reads as restrained and internal, matching the confirmed Core Anchor's "
+        "emotional tone."
+    ),
+    "downstream_dependencies": "Final composite depends on this lighting pass locking first.",
+    "publish_requirements": "Requires CG Supervisor review before publish.",
+    "allowed_refinements": "Minor intensity trims within the stated ratio range.",
+    "escalation_conditions": "Escalate to VFX Supervisor if the dusk tone reads as too bright.",
+}
+_CG_DEMO_DEPENDENCY_TEXT: Final = (
+    f"{D1_MARKER} Lighting pass is blocked on the Compositing Review Task's final contrast "
+    "grade being locked -- key/fill ratio cannot be finalised until that range is confirmed."
+)
+
 _D1_BRIEF_TEXT: Final = (
     f"{D1_MARKER} A restrained dusk confrontation should remain internal and controlled. "
     "Camera timing and compositing contrast have begun to drift across role interpretations."
@@ -193,6 +225,12 @@ class D1ScenarioResult:
     # Shot folded into this same generic development seed process --
     # see `_ensure_uninitialized_shot`.
     uninitialized_shot_id: uuid.UUID
+    # Step 7C-4: id of the second Task under the rich D1 Shot with a
+    # deliberately draft (not confirmed) Execution Anchor, and the real
+    # open TaskDependency recorded against it -- see
+    # `_ensure_cg_demo_task`.
+    cg_demo_task_id: uuid.UUID
+    cg_demo_dependency_id: uuid.UUID
 
 
 async def _resolve_or_create_project(session: AsyncSession) -> Project:
@@ -261,6 +299,7 @@ async def _resolve_or_create_task(
     *,
     external_id: str = D1_TASK_EXTERNAL_ID,
     name: str = _D1_TASK_NAME,
+    department: str = "comp",
 ) -> Task:
     existing_id = await find_linked_entity_id(
         session, entity_type="task", source=_DEMO_SOURCE, external_id=external_id
@@ -273,7 +312,7 @@ async def _resolve_or_create_task(
             )
         return task
 
-    task = Task(shot_id=shot.id, name=name, department="comp", source="manual")
+    task = Task(shot_id=shot.id, name=name, department=department, source="manual")
     session.add(task)
     await session.flush()
     await record_external_link(
@@ -489,6 +528,58 @@ async def _ensure_confirmed_execution_anchor(
     return await execution_anchor_service.confirm_revision(
         session, _SEED_ACTOR_CG, draft.id, _D1_CONFIRM_RATIONALE
     )
+
+
+async def _ensure_cg_demo_task(
+    session: AsyncSession, shot: Shot
+) -> tuple[Task, TaskDependency]:
+    """Step 7C-4: a second, real Task under the rich D1 Shot whose
+    Execution Anchor is deliberately left at draft (never confirmed),
+    plus one real open `TaskDependency` recorded against it -- so the CG
+    Review Inbox and Dependencies page each have at least one genuine,
+    non-fabricated work item out of the box. Idempotent: resolves the
+    Task via the same `ExternalEntityLink` mechanism every other seeded
+    row uses, and the dependency via a stable `D1_MARKER` description
+    prefix scoped to the resolved Task (the same convention
+    `_ensure_review_note` uses for Version, since `TaskDependency` --
+    like `ReviewNote` -- has no `ExternalEntityLink` support).
+    """
+    task = await _resolve_or_create_task(
+        session,
+        shot,
+        external_id=CG_DEMO_TASK_EXTERNAL_ID,
+        name=_CG_DEMO_TASK_NAME,
+        department="lighting",
+    )
+
+    execution_anchor = await session.scalar(
+        select(ExecutionAnchor).where(ExecutionAnchor.task_id == task.id)
+    )
+    if execution_anchor is None:
+        await execution_anchor_service.create_draft_revision(
+            session, _SEED_ACTOR_CG, task.id, dict(_CG_DEMO_EXECUTION_DRAFT_CONTENT)
+        )
+
+    dependency = await session.scalar(
+        select(TaskDependency)
+        .where(
+            TaskDependency.task_id == task.id,
+            TaskDependency.description.like(f"{D1_MARKER}%"),
+        )
+        .order_by(TaskDependency.created_at)
+        .limit(1)
+    )
+    if dependency is None:
+        dependency = await cross_department_service.create_dependency(
+            session,
+            _SEED_ACTOR_CG,
+            task.id,
+            kind="dependency",
+            description=_CG_DEMO_DEPENDENCY_TEXT,
+            severity="medium",
+        )
+
+    return task, dependency
 
 
 async def _ensure_vfx_review(session: AsyncSession, version: Version) -> VFXSupervisorReview:
@@ -779,6 +870,12 @@ async def ensure_d1_scenario(session: AsyncSession) -> D1ScenarioResult:
     generic development seed process, so Core Anchor lifecycle states 1
     (INITIAL EMPTY) and 2 (FIRST DRAFT) remain reachable through the
     normal product journey without any special/guided entry path.
+
+    Step 7C-4: also folds in a second Task under the rich D1 Shot
+    (`_ensure_cg_demo_task`) with a deliberately draft Execution Anchor
+    and one real open dependency, so the CG Workspace has a real,
+    actionable Review Inbox item and Dependencies content without any
+    special/guided entry path either.
     """
     project = await _resolve_or_create_project(session)
     shot = await _resolve_or_create_shot(session, project)
@@ -797,6 +894,7 @@ async def ensure_d1_scenario(session: AsyncSession) -> D1ScenarioResult:
     assessment = await _ensure_cross_role_assessment(session, shot, version, task)
 
     uninitialized_shot = await _ensure_uninitialized_shot(session, project)
+    cg_demo_task, cg_demo_dependency = await _ensure_cg_demo_task(session, shot)
 
     return D1ScenarioResult(
         project_id=project.id,
@@ -807,4 +905,6 @@ async def ensure_d1_scenario(session: AsyncSession) -> D1ScenarioResult:
         execution_anchor_revision_id=execution_anchor_revision.id,
         cross_role_assessment_id=assessment.id,
         uninitialized_shot_id=uninitialized_shot.id,
+        cg_demo_task_id=cg_demo_task.id,
+        cg_demo_dependency_id=cg_demo_dependency.id,
     )

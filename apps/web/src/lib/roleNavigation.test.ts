@@ -18,3 +18,20 @@ describe("ROLE_SIDEBAR_ITEMS.vfx_supervisor", () => {
     }
   });
 });
+
+describe("ROLE_SIDEBAR_ITEMS.cg_supervisor", () => {
+  it("is exactly Workspace Home, Review Inbox, Tasks -- Step 7C-4 locked IA, all implemented", () => {
+    expect(ROLE_SIDEBAR_ITEMS.cg_supervisor).toEqual([
+      { id: "workspace-home", label: "Workspace Home", href: "/cg", implemented: true },
+      { id: "review-inbox", label: "Review Inbox", href: "/cg/inbox", implemented: true },
+      { id: "tasks", label: "Tasks", href: "/cg/tasks", implemented: true },
+    ]);
+  });
+
+  it("never includes a VFX-only item such as Shots, or a separate Intent Signals entry", () => {
+    const labels = ROLE_SIDEBAR_ITEMS.cg_supervisor.map((item) => item.label);
+    for (const disallowed of ["Shots", "Intent Signals", "Execution Inbox"]) {
+      expect(labels).not.toContain(disallowed);
+    }
+  });
+});

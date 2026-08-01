@@ -130,3 +130,23 @@ export type ShotActivityEventType =
   Schemas["ShotActivityEventRead"]["event_type"];
 export type ShotActivityEventRead = Schemas["ShotActivityEventRead"];
 export type ShotActivityRead = Schemas["ShotActivityRead"];
+
+export type CgCurrentFocusType = Schemas["CgInboxCurrentFocusRead"]["focus_type"];
+export type ExecutionAnchorState = Schemas["CgInboxItemRead"]["execution_anchor_state"];
+export type CgInboxCurrentFocusRead = Schemas["CgInboxCurrentFocusRead"];
+export type CgInboxItemRead = Schemas["CgInboxItemRead"];
+export type CgInboxRead = Schemas["CgInboxRead"];
+
+export type TaskDependencyKind = Schemas["TaskDependencyRead"]["kind"];
+export type TaskDependencyStatus = Schemas["TaskDependencyRead"]["status"];
+export type TaskDependencySeverity = NonNullable<
+  Schemas["TaskDependencyRead"]["severity"]
+>;
+export type TaskDependencyRead = Schemas["TaskDependencyRead"];
+export type TaskDependencyCreate = Schemas["TaskDependencyCreate"];
+export type EscalationCreate = Schemas["EscalationCreate"];
+
+export type TaskActivityEventType =
+  Schemas["TaskActivityEventRead"]["event_type"];
+export type TaskActivityEventRead = Schemas["TaskActivityEventRead"];
+export type TaskActivityRead = Schemas["TaskActivityRead"];

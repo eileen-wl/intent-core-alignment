@@ -34,18 +34,18 @@ describe("RoleSelectionHome", () => {
     expect(screen.queryByText(/explore/i)).not.toBeInTheDocument();
   });
 
-  it("only VFX Supervisor is a real, clickable entry action", () => {
+  it("VFX Supervisor and CG Supervisor are real, clickable entry actions; Artist remains Upcoming", () => {
     render(<RoleSelectionHome />);
     expect(
       screen.getByRole("button", { name: "Enter as VFX Supervisor" }),
     ).toBeVisible();
     expect(
-      screen.queryByRole("button", { name: /Enter as CG Supervisor/ }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: "Enter as CG Supervisor" }),
+    ).toBeVisible();
     expect(
       screen.queryByRole("button", { name: /Enter as Artist/ }),
     ).not.toBeInTheDocument();
-    expect(screen.getAllByText("Upcoming")).toHaveLength(2);
+    expect(screen.getAllByText("Upcoming")).toHaveLength(1);
   });
 
   it("selecting VFX Supervisor establishes the role session via the Server Action", async () => {
@@ -54,5 +54,13 @@ describe("RoleSelectionHome", () => {
       screen.getByRole("button", { name: "Enter as VFX Supervisor" }),
     );
     expect(enterDemoRole).toHaveBeenCalledWith("vfx_supervisor");
+  });
+
+  it("selecting CG Supervisor establishes the role session via the Server Action", async () => {
+    render(<RoleSelectionHome />);
+    await userEvent.click(
+      screen.getByRole("button", { name: "Enter as CG Supervisor" }),
+    );
+    expect(enterDemoRole).toHaveBeenCalledWith("cg_supervisor");
   });
 });
