@@ -42,7 +42,11 @@ describe("/vfx/shots/:shotId/versions page", () => {
   });
 
   it("passes the real loaded data through to VersionsWorkspacePage", async () => {
-    const data = { item: { shot_id: "s1" }, versions: [], assessmentsByVersionId: new Map() };
+    const data = {
+      item: { shot_id: "s1" },
+      versions: [],
+      assessmentsByVersionId: new Map(),
+    };
     loadVersionsWorkspaceDataMock.mockResolvedValue(data);
 
     const result = await Page({ params });

@@ -27,8 +27,12 @@ describe("RoleSelectionHome", () => {
 
   it("offers exactly VFX Supervisor, CG Supervisor, and Artist -- no Guided or Explore card", () => {
     render(<RoleSelectionHome />);
-    expect(screen.getByRole("heading", { name: "VFX Supervisor" })).toBeVisible();
-    expect(screen.getByRole("heading", { name: "CG Supervisor" })).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "VFX Supervisor" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "CG Supervisor" }),
+    ).toBeVisible();
     expect(screen.getByRole("heading", { name: "Artist" })).toBeVisible();
     expect(screen.queryByText(/guided/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/explore/i)).not.toBeInTheDocument();
@@ -66,7 +70,9 @@ describe("RoleSelectionHome", () => {
 
   it("selecting Artist establishes the role session via the Server Action", async () => {
     render(<RoleSelectionHome />);
-    await userEvent.click(screen.getByRole("button", { name: "Enter as Artist" }));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Enter as Artist" }),
+    );
     expect(enterDemoRole).toHaveBeenCalledWith("artist", null);
   });
 
@@ -76,7 +82,10 @@ describe("RoleSelectionHome", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Enter as CG Supervisor" }),
     );
-    expect(enterDemoRole).toHaveBeenCalledWith("cg_supervisor", "/cg/tasks/t1/execution");
+    expect(enterDemoRole).toHaveBeenCalledWith(
+      "cg_supervisor",
+      "/cg/tasks/t1/execution",
+    );
 
     vi.clearAllMocks();
     await userEvent.click(

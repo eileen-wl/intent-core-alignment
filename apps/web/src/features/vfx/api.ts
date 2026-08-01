@@ -111,20 +111,32 @@ export function getCoreAnchor(shotId: string): Promise<CoreAnchorRead | null> {
   return vfxFetchOrNull<CoreAnchorRead>(`/intent/shots/${shotId}/core-anchor`);
 }
 
-export function listCoreAnchorRevisions(shotId: string): Promise<CoreAnchorRevisionRead[]> {
-  return vfxFetch<CoreAnchorRevisionRead[]>(`/intent/shots/${shotId}/core-anchor/revisions`);
+export function listCoreAnchorRevisions(
+  shotId: string,
+): Promise<CoreAnchorRevisionRead[]> {
+  return vfxFetch<CoreAnchorRevisionRead[]>(
+    `/intent/shots/${shotId}/core-anchor/revisions`,
+  );
 }
 
-export function getHumanGateForRevision(revisionId: string): Promise<HumanGateRead | null> {
-  return vfxFetchOrNull<HumanGateRead>(`/intent/core-anchor-revisions/${revisionId}/human-gate`);
+export function getHumanGateForRevision(
+  revisionId: string,
+): Promise<HumanGateRead | null> {
+  return vfxFetchOrNull<HumanGateRead>(
+    `/intent/core-anchor-revisions/${revisionId}/human-gate`,
+  );
 }
 
 /** Real recorded Decisions for a Core Anchor revision (confirm/reject),
  * each carrying its own honest `rationale` (nullable) -- the only source
  * of truth for what a VFX Supervisor actually wrote, never re-derived
  * from client-side dialog state that does not survive navigation. */
-export function listDecisionsForRevision(revisionId: string): Promise<DecisionRead[]> {
-  return vfxFetch<DecisionRead[]>(`/intent/core-anchor-revisions/${revisionId}/decisions`);
+export function listDecisionsForRevision(
+  revisionId: string,
+): Promise<DecisionRead[]> {
+  return vfxFetch<DecisionRead[]>(
+    `/intent/core-anchor-revisions/${revisionId}/decisions`,
+  );
 }
 
 /** Read-only advisory-input listings for the Intent Workspace's
@@ -134,14 +146,20 @@ export function listDecisionsForRevision(revisionId: string): Promise<DecisionRe
  * stage (docs/step-7/15_STEP_7C0C_...md §13 marks both "supporting,
  * disclosure-only," not Tier 1) -- listing existing records is enough
  * to satisfy the locked disclosure without expanding this stage's scope. */
-export function listIntentDecompositionsForShot(shotId: string): Promise<IntentDecompositionRead[]> {
-  return vfxFetch<IntentDecompositionRead[]>(`/intent/shots/${shotId}/intent-decompositions`);
+export function listIntentDecompositionsForShot(
+  shotId: string,
+): Promise<IntentDecompositionRead[]> {
+  return vfxFetch<IntentDecompositionRead[]>(
+    `/intent/shots/${shotId}/intent-decompositions`,
+  );
 }
 
 export function listContextReconstructionsForShot(
   shotId: string,
 ): Promise<ContextReconstructionRead[]> {
-  return vfxFetch<ContextReconstructionRead[]>(`/intent/shots/${shotId}/context-reconstructions`);
+  return vfxFetch<ContextReconstructionRead[]>(
+    `/intent/shots/${shotId}/context-reconstructions`,
+  );
 }
 
 /** Technical provenance for the Evidence/Provenance disclosure -- only
@@ -151,8 +169,12 @@ export function getAgentRun(agentRunId: string): Promise<AgentRunRead> {
   return vfxFetch<AgentRunRead>(`/intent/agent-runs/${agentRunId}`);
 }
 
-export function getContextSnapshot(snapshotId: string): Promise<ContextSnapshotRead> {
-  return vfxFetch<ContextSnapshotRead>(`/intent/context-snapshots/${snapshotId}`);
+export function getContextSnapshot(
+  snapshotId: string,
+): Promise<ContextSnapshotRead> {
+  return vfxFetch<ContextSnapshotRead>(
+    `/intent/context-snapshots/${snapshotId}`,
+  );
 }
 
 // --- Step 7C-2 Intent Workspace: Core Anchor mutations --------------------
@@ -226,7 +248,9 @@ export function listVersionsForShot(shotId: string): Promise<VersionRead[]> {
   return vfxFetch<VersionRead[]>(`/shots/${shotId}/versions`);
 }
 
-export function listReviewNotesForVersion(versionId: string): Promise<ReviewNoteRead[]> {
+export function listReviewNotesForVersion(
+  versionId: string,
+): Promise<ReviewNoteRead[]> {
   return vfxFetch<ReviewNoteRead[]>(`/versions/${versionId}/review-notes`);
 }
 
@@ -237,7 +261,9 @@ export function listReviewNotesForVersion(versionId: string): Promise<ReviewNote
 export function listCrossRoleAssessmentsForShot(
   shotId: string,
 ): Promise<CrossRoleAssessmentRead[]> {
-  return vfxFetch<CrossRoleAssessmentRead[]>(`/intent/shots/${shotId}/cross-role-assessments`);
+  return vfxFetch<CrossRoleAssessmentRead[]>(
+    `/intent/shots/${shotId}/cross-role-assessments`,
+  );
 }
 
 /** Generates a real Cross-role Assessment for a Version+Task pair --
@@ -275,7 +301,9 @@ export async function fetchVfxInbox(): Promise<VfxInboxRead> {
  * TypeScript). Returns `null` on a real 404 (Shot not found) --
  * distinguished from a thrown `VfxApiError` for any other failure, so
  * callers can render "not found" and "unavailable" differently. */
-export async function fetchVfxInboxItem(shotId: string): Promise<VfxInboxItemRead | null> {
+export async function fetchVfxInboxItem(
+  shotId: string,
+): Promise<VfxInboxItemRead | null> {
   try {
     return await vfxFetch<VfxInboxItemRead>(`/vfx/inbox/${shotId}`);
   } catch (error) {

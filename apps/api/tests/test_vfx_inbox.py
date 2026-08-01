@@ -415,9 +415,7 @@ async def test_resolved_escalation_no_longer_surfaces(client: AsyncClient) -> No
     _project_id, shot_id = await _create_project_and_shot(client)
     task_id = await _create_task(client, shot_id)
     escalation = (
-        await client.post(
-            f"/tasks/{task_id}/escalate", json={"description": "x"}, headers=CG
-        )
+        await client.post(f"/tasks/{task_id}/escalate", json={"description": "x"}, headers=CG)
     ).json()
     await client.post(f"/tasks/{task_id}/dependencies/{escalation['id']}/resolve", headers=CG)
 

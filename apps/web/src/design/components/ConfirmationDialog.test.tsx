@@ -7,12 +7,16 @@ afterEach(() => {
   cleanup();
 });
 
-function baseProps(overrides: Partial<Parameters<typeof ConfirmationDialog>[0]> = {}) {
+function baseProps(
+  overrides: Partial<Parameters<typeof ConfirmationDialog>[0]> = {},
+) {
   return {
     open: true,
     title: "Confirm this Core Anchor revision?",
-    description: "You are confirming revision #2 as the shared creative intent for Shot 010.",
-    rationale: "Aligned the timing constraint after reviewing the cross-role assessment.",
+    description:
+      "You are confirming revision #2 as the shared creative intent for Shot 010.",
+    rationale:
+      "Aligned the timing constraint after reviewing the cross-role assessment.",
     confirmLabel: "Confirm",
     pendingLabel: "Confirming…",
     pending: false,
@@ -25,12 +29,18 @@ function baseProps(overrides: Partial<Parameters<typeof ConfirmationDialog>[0]> 
 describe("ConfirmationDialog", () => {
   it("shows the title, description, and echoed rationale read-only", () => {
     render(<ConfirmationDialog {...baseProps()} />);
-    expect(screen.getByText("Confirm this Core Anchor revision?")).toBeVisible();
     expect(
-      screen.getByText("You are confirming revision #2 as the shared creative intent for Shot 010."),
+      screen.getByText("Confirm this Core Anchor revision?"),
     ).toBeVisible();
     expect(
-      screen.getByText("Aligned the timing constraint after reviewing the cross-role assessment."),
+      screen.getByText(
+        "You are confirming revision #2 as the shared creative intent for Shot 010.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "Aligned the timing constraint after reviewing the cross-role assessment.",
+      ),
     ).toBeVisible();
   });
 
@@ -71,7 +81,9 @@ describe("ConfirmationDialog", () => {
 
   it("does not close on Escape while pending (no double-submit escape hatch)", () => {
     const onCancel = vi.fn();
-    const { container } = render(<ConfirmationDialog {...baseProps({ pending: true, onCancel })} />);
+    const { container } = render(
+      <ConfirmationDialog {...baseProps({ pending: true, onCancel })} />,
+    );
     const dialog = container.querySelector("dialog") as HTMLDialogElement;
     const cancelEvent = new Event("cancel", { cancelable: true });
     dialog.dispatchEvent(cancelEvent);
@@ -81,7 +93,9 @@ describe("ConfirmationDialog", () => {
 
   it("closes on Escape (cancel event) when not pending", () => {
     const onCancel = vi.fn();
-    const { container } = render(<ConfirmationDialog {...baseProps({ onCancel })} />);
+    const { container } = render(
+      <ConfirmationDialog {...baseProps({ onCancel })} />,
+    );
     const dialog = container.querySelector("dialog") as HTMLDialogElement;
     dialog.dispatchEvent(new Event("cancel", { cancelable: true }));
     expect(onCancel).toHaveBeenCalledTimes(1);
@@ -92,7 +106,8 @@ describe("ConfirmationDialog", () => {
     render(
       <ConfirmationDialog
         {...baseProps({
-          conflictMessage: "This was already confirmed or rejected elsewhere -- reload to see the current state.",
+          conflictMessage:
+            "This was already confirmed or rejected elsewhere -- reload to see the current state.",
           onReload,
         })}
       />,
@@ -102,15 +117,21 @@ describe("ConfirmationDialog", () => {
         "This was already confirmed or rejected elsewhere -- reload to see the current state.",
       ),
     ).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Confirm" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Cancel" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Confirm" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancel" }),
+    ).not.toBeInTheDocument();
     const reloadButton = screen.getByRole("button", { name: "Reload" });
     fireEvent.click(reloadButton);
     expect(onReload).toHaveBeenCalledTimes(1);
   });
 
   it("renders nothing visible via the native dialog when open is false", () => {
-    const { container } = render(<ConfirmationDialog {...baseProps({ open: false })} />);
+    const { container } = render(
+      <ConfirmationDialog {...baseProps({ open: false })} />,
+    );
     const dialog = container.querySelector("dialog") as HTMLDialogElement;
     expect(dialog.open).toBe(false);
   });

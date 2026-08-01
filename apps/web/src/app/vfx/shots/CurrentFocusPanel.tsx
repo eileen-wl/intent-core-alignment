@@ -21,7 +21,11 @@ export function CurrentFocusPanel({
     <Panel tone="elevated" className={styles.panel}>
       <div className={styles.label}>
         <StatusBadge
-          status={focus.focus_type === "core_anchor_gate_pending" ? "attention" : "neutral"}
+          status={
+            focus.focus_type === "core_anchor_gate_pending"
+              ? "attention"
+              : "neutral"
+          }
           label="Current focus"
         />
       </div>

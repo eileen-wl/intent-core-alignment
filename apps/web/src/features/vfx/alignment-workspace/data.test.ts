@@ -13,7 +13,11 @@ function jsonResponse(status: number, body: unknown) {
   };
 }
 
-const ITEM = { shot_id: "s1", project_name: "D1 Demo Project", shot_name: "Shot 010" };
+const ITEM = {
+  shot_id: "s1",
+  project_name: "D1 Demo Project",
+  shot_name: "Shot 010",
+};
 
 beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
@@ -33,7 +37,9 @@ describe("loadAlignmentWorkspaceData", () => {
 
   it("propagates a genuine API failure instead of collapsing it into null", async () => {
     fetchMock.mockResolvedValue(jsonResponse(500, { detail: "boom" }));
-    await expect(loadAlignmentWorkspaceData("s1")).rejects.toMatchObject({ status: 500 });
+    await expect(loadAlignmentWorkspaceData("s1")).rejects.toMatchObject({
+      status: 500,
+    });
   });
 
   it("honestly returns an empty assessments array when none has ever been generated", async () => {
@@ -52,15 +58,28 @@ describe("loadAlignmentWorkspaceData", () => {
       .mockResolvedValueOnce(jsonResponse(200, ITEM))
       .mockResolvedValueOnce(
         jsonResponse(200, [
-          { id: "a1", version_id: "v1", core_anchor_revision_id: "r1", shot_id: "s1" },
+          {
+            id: "a1",
+            version_id: "v1",
+            core_anchor_revision_id: "r1",
+            shot_id: "s1",
+          },
         ]),
       )
-      .mockResolvedValueOnce(jsonResponse(200, [{ id: "v1", name: "SH010_v001" }]))
-      .mockResolvedValueOnce(jsonResponse(200, [{ id: "r1", revision_number: 1 }]));
+      .mockResolvedValueOnce(
+        jsonResponse(200, [{ id: "v1", name: "SH010_v001" }]),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, [{ id: "r1", revision_number: 1 }]),
+      );
 
     const result = await loadAlignmentWorkspaceData("s1");
     expect(result?.assessments).toHaveLength(1);
-    expect(result?.versionsById.get("v1")).toMatchObject({ name: "SH010_v001" });
-    expect(result?.revisionsById.get("r1")).toMatchObject({ revision_number: 1 });
+    expect(result?.versionsById.get("v1")).toMatchObject({
+      name: "SH010_v001",
+    });
+    expect(result?.revisionsById.get("r1")).toMatchObject({
+      revision_number: 1,
+    });
   });
 });

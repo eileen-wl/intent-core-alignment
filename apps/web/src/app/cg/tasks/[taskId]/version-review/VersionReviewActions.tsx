@@ -50,14 +50,16 @@ export function VersionReviewActions({
           onClick={() => {
             setError(null);
             startTransition(() => {
-              createReviewNoteAction(taskId, versionId, noteContent).then((result) => {
-                if (result.ok) {
-                  setNoteContent("");
-                  router.refresh();
-                } else {
-                  setError(result.error.message);
-                }
-              });
+              createReviewNoteAction(taskId, versionId, noteContent).then(
+                (result) => {
+                  if (result.ok) {
+                    setNoteContent("");
+                    router.refresh();
+                  } else {
+                    setError(result.error.message);
+                  }
+                },
+              );
             });
           }}
         >
@@ -72,7 +74,10 @@ export function VersionReviewActions({
             onClick={() => {
               setError(null);
               startTransition(() => {
-                generateCgSupervisorReviewAction(taskId, activeExecutionRevisionId).then((result) => {
+                generateCgSupervisorReviewAction(
+                  taskId,
+                  activeExecutionRevisionId,
+                ).then((result) => {
                   if (result.ok) {
                     router.refresh();
                   } else {
@@ -114,15 +119,17 @@ export function VersionReviewActions({
             onClick={() => {
               setError(null);
               startTransition(() => {
-                escalateTaskAction(taskId, escalationText, versionId).then((result) => {
-                  if (result.ok) {
-                    setEscalationText("");
-                    setShowEscalationForm(false);
-                    router.refresh();
-                  } else {
-                    setError(result.error.message);
-                  }
-                });
+                escalateTaskAction(taskId, escalationText, versionId).then(
+                  (result) => {
+                    if (result.ok) {
+                      setEscalationText("");
+                      setShowEscalationForm(false);
+                      router.refresh();
+                    } else {
+                      setError(result.error.message);
+                    }
+                  },
+                );
               });
             }}
           >

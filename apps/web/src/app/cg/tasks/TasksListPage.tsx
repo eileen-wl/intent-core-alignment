@@ -3,7 +3,13 @@
 import { useMemo, useState } from "react";
 import type { CgInboxItemRead, CgInboxRead } from "@intent-core/contracts";
 
-import { AppShell, Breadcrumbs, EmptyState, ErrorState, PageHeader } from "@/design";
+import {
+  AppShell,
+  Breadcrumbs,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+} from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import { executionAnchorStateLabel } from "../cgWording";
@@ -50,7 +56,10 @@ export function TasksListPage({
           description="The ICAS service could not be reached. Try refreshing the page."
         />
       ) : inbox.items.length === 0 ? (
-        <EmptyState title="No Tasks exist yet" description="Tasks will appear here once they exist." />
+        <EmptyState
+          title="No Tasks exist yet"
+          description="Tasks will appear here once they exist."
+        />
       ) : (
         <TasksListContent items={inbox.items} />
       )}
@@ -71,15 +80,25 @@ function TasksListContent({ items }: { items: CgInboxItemRead[] }) {
   const departments = useMemo(
     () =>
       Array.from(
-        new Set(items.map((item) => item.department).filter((d): d is string => Boolean(d))),
+        new Set(
+          items
+            .map((item) => item.department)
+            .filter((d): d is string => Boolean(d)),
+        ),
       ).sort(),
     [items],
   );
 
   const filtered = items.filter((item) => {
-    if (projectFilter !== ALL_VALUE && item.project_name !== projectFilter) return false;
-    if (stateFilter !== ALL_VALUE && item.execution_anchor_state !== stateFilter) return false;
-    if (departmentFilter !== ALL_VALUE && item.department !== departmentFilter) return false;
+    if (projectFilter !== ALL_VALUE && item.project_name !== projectFilter)
+      return false;
+    if (
+      stateFilter !== ALL_VALUE &&
+      item.execution_anchor_state !== stateFilter
+    )
+      return false;
+    if (departmentFilter !== ALL_VALUE && item.department !== departmentFilter)
+      return false;
     if (attentionOnly && !item.current_focus.actionable) return false;
     return true;
   });

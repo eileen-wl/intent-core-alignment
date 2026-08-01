@@ -42,7 +42,10 @@ describe("/cg/tasks/:taskId/activity page", () => {
   });
 
   it("passes the real loaded data through to TaskActivityPage", async () => {
-    const data = { item: { task_id: "t1" }, activity: { task_id: "t1", events: [] } };
+    const data = {
+      item: { task_id: "t1" },
+      activity: { task_id: "t1", events: [] },
+    };
     loadTaskActivityWorkspaceDataMock.mockResolvedValue(data);
 
     const result = await Page({ params });

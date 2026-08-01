@@ -67,7 +67,9 @@ export async function resolveIdentity(): Promise<ResolvedIdentity | null> {
  * from a `ResolvedIdentity` -- never from Client Component form state
  * (docs/step-7/14_STEP_7C0B_...md §7.2's locked boundary). The only
  * caller-visible shape; `actorId` itself is not re-exported. */
-export function actorHeaders(identity: ResolvedIdentity): Record<string, string> {
+export function actorHeaders(
+  identity: ResolvedIdentity,
+): Record<string, string> {
   return {
     "X-Actor-Role": identity.role,
     "X-Actor-Id": identity.actorId,

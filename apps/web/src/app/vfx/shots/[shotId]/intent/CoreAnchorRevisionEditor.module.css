@@ -483,7 +483,10 @@
 
 .firstDraftActions {
   display: grid;
-  grid-template-columns: minmax(6.5rem, auto) minmax(6.5rem, auto) minmax(13rem, 1fr);
+  grid-template-columns: minmax(6.5rem, auto) minmax(6.5rem, auto) minmax(
+      13rem,
+      1fr
+    );
   gap: var(--space-2);
 }
 

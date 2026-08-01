@@ -1,4 +1,7 @@
-import type { CgInboxItemRead, TaskActivityEventRead } from "@intent-core/contracts";
+import type {
+  CgInboxItemRead,
+  TaskActivityEventRead,
+} from "@intent-core/contracts";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -40,7 +43,9 @@ function item(overrides: Partial<CgInboxItemRead> = {}): CgInboxItemRead {
   };
 }
 
-function event(overrides: Partial<TaskActivityEventRead> = {}): TaskActivityEventRead {
+function event(
+  overrides: Partial<TaskActivityEventRead> = {},
+): TaskActivityEventRead {
   return {
     id: "e1",
     event_type: "execution_anchor_draft_created",
@@ -56,7 +61,9 @@ function event(overrides: Partial<TaskActivityEventRead> = {}): TaskActivityEven
   };
 }
 
-function data(overrides: Partial<TaskActivityWorkspaceData> = {}): TaskActivityWorkspaceData {
+function data(
+  overrides: Partial<TaskActivityWorkspaceData> = {},
+): TaskActivityWorkspaceData {
   return {
     item: item(),
     activity: { task_id: "t1", events: [event()] },
@@ -66,7 +73,14 @@ function data(overrides: Partial<TaskActivityWorkspaceData> = {}): TaskActivityW
 
 describe("TaskActivityPage", () => {
   it("renders Project > Shot > Task > Activity breadcrumbs, tab active", () => {
-    render(<TaskActivityPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <TaskActivityPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByRole("link", { name: "Activity" })).toHaveAttribute(
       "aria-current",
       "page",
@@ -74,7 +88,14 @@ describe("TaskActivityPage", () => {
   });
 
   it("shows an honest unavailable state when the API could not be reached", () => {
-    render(<TaskActivityPage taskId="t1" data={null} unavailable onExitRole={vi.fn()} />);
+    render(
+      <TaskActivityPage
+        taskId="t1"
+        data={null}
+        unavailable
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText("This Task is unavailable")).toBeVisible();
   });
 
@@ -87,13 +108,25 @@ describe("TaskActivityPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByText("No recorded activity exists for this Task yet.")).toBeVisible();
+    expect(
+      screen.getByText("No recorded activity exists for this Task yet."),
+    ).toBeVisible();
   });
 
   it("renders real records in the exact order the backend delivers (already newest-first)", () => {
     const events = [
-      event({ id: "e2", event_type: "execution_anchor_confirmed", summary: "Revision 1 confirmed", occurred_at: "2026-01-02T00:00:00Z" }),
-      event({ id: "e1", event_type: "execution_anchor_draft_created", summary: "Revision 1 draft created", occurred_at: "2026-01-01T00:00:00Z" }),
+      event({
+        id: "e2",
+        event_type: "execution_anchor_confirmed",
+        summary: "Revision 1 confirmed",
+        occurred_at: "2026-01-02T00:00:00Z",
+      }),
+      event({
+        id: "e1",
+        event_type: "execution_anchor_draft_created",
+        summary: "Revision 1 draft created",
+        occurred_at: "2026-01-01T00:00:00Z",
+      }),
     ];
     render(
       <TaskActivityPage
@@ -103,10 +136,16 @@ describe("TaskActivityPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    const timeline = screen.getByRole("list", { name: "Task activity timeline" });
+    const timeline = screen.getByRole("list", {
+      name: "Task activity timeline",
+    });
     const items = within(timeline).getAllByRole("listitem");
-    expect(within(items[0]).getByText("Execution Anchor confirmed")).toBeVisible();
-    expect(within(items[1]).getByText("Execution Anchor draft created")).toBeVisible();
+    expect(
+      within(items[0]).getByText("Execution Anchor confirmed"),
+    ).toBeVisible();
+    expect(
+      within(items[1]).getByText("Execution Anchor draft created"),
+    ).toBeVisible();
   });
 
   it("shows real Human Decisions in the Activity timeline, distinct from the Execution Anchor event", () => {
@@ -117,11 +156,16 @@ describe("TaskActivityPage", () => {
           activity: {
             task_id: "t1",
             events: [
-              event({ id: "e2", event_type: "execution_anchor_confirmed", summary: "Revision 1 confirmed" }),
+              event({
+                id: "e2",
+                event_type: "execution_anchor_confirmed",
+                summary: "Revision 1 confirmed",
+              }),
               event({
                 id: "e1",
                 event_type: "human_decision_recorded",
-                summary: "Decision recorded: Human cg_supervisor confirm execution anchor (Revision 1)",
+                summary:
+                  "Decision recorded: Human cg_supervisor confirm execution anchor (Revision 1)",
                 related_entity_type: "decision",
                 related_entity_id: "dec1",
               }),

@@ -14,7 +14,9 @@ afterEach(() => {
   cleanup();
 });
 
-function item(overrides: Partial<ArtistInboxItemRead> = {}): ArtistInboxItemRead {
+function item(
+  overrides: Partial<ArtistInboxItemRead> = {},
+): ArtistInboxItemRead {
   return {
     task_id: "t1",
     task_name: "Compositing Review",
@@ -26,7 +28,8 @@ function item(overrides: Partial<ArtistInboxItemRead> = {}): ArtistInboxItemRead
     project_name: "D1 Demo Project",
     execution_anchor_state: "confirmed",
     active_execution_anchor_revision_id: "ea1",
-    active_execution_anchor_summary: "Keep the silhouette readable against the backlight.",
+    active_execution_anchor_summary:
+      "Keep the silhouette readable against the backlight.",
     latest_version_id: null,
     latest_version_name: null,
     latest_version_number: null,
@@ -60,16 +63,25 @@ function data(overrides: Partial<TaskOverviewData> = {}): TaskOverviewData {
 
 describe("TaskOverviewPage", () => {
   it("renders Project > Shot > Task > Task Overview breadcrumbs and all three real Context Tabs, Task Overview active", () => {
-    render(<TaskOverviewPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "D1 Demo Project" })).toHaveAttribute(
-      "href",
-      "/artist/tasks",
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
     );
+    expect(
+      screen.getByRole("link", { name: "D1 Demo Project" }),
+    ).toHaveAttribute("href", "/artist/tasks");
     for (const [label, href] of [
       ["Current Version", "/artist/tasks/t1/current-version"],
       ["Feedback History", "/artist/tasks/t1/feedback-history"],
     ] as const) {
-      expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", href);
+      expect(screen.getByRole("link", { name: label })).toHaveAttribute(
+        "href",
+        href,
+      );
     }
     expect(screen.getByRole("link", { name: "Task Overview" })).toHaveAttribute(
       "aria-current",
@@ -78,30 +90,68 @@ describe("TaskOverviewPage", () => {
   });
 
   it("does not render Intent, Execution, Dependencies, or Activity tabs", () => {
-    render(<TaskOverviewPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.queryByRole("link", { name: "Intent" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Execution" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Dependencies" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Activity" })).not.toBeInTheDocument();
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("link", { name: "Intent" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Execution" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Dependencies" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Activity" }),
+    ).not.toBeInTheDocument();
   });
 
   it("Tasks stays the active sidebar item, never Review Inbox", () => {
-    render(<TaskOverviewPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "Tasks" })).toHaveAttribute("aria-current", "page");
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Tasks" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("shows an honest unavailable state when the API could not be reached", () => {
-    render(<TaskOverviewPage taskId="t1" data={null} unavailable onExitRole={vi.fn()} />);
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={null}
+        unavailable
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText("This Task is unavailable")).toBeVisible();
   });
 
   it("renders exactly one Current focus with its real primary action", () => {
-    render(<TaskOverviewPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByText("New Artist guidance is available")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Review guidance" })).toHaveAttribute(
-      "href",
-      "/artist/tasks/t1",
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
     );
+    expect(screen.getByText("New Artist guidance is available")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Review guidance" }),
+    ).toHaveAttribute("href", "/artist/tasks/t1");
   });
 
   it("shows Core Anchor context as honestly read-only, never an edit or confirm control", () => {
@@ -120,7 +170,8 @@ describe("TaskOverviewPage", () => {
             rhythm_intensity: null,
             character_relationship: null,
             narrative_priority: null,
-            core_summary: "The final confrontation should feel restrained, not spectacular.",
+            core_summary:
+              "The final confrontation should feel restrained, not spectacular.",
             created_by_actor_kind: "human",
             created_by_actor_id: "vfx-1",
             created_by_human_role: "vfx_supervisor",
@@ -147,13 +198,26 @@ describe("TaskOverviewPage", () => {
     );
     expect(screen.getByText("Why: Creative Intent")).toBeVisible();
     expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
-    expect(screen.queryByRole("button", { name: /confirm/i })).not.toBeInTheDocument();
-    expect(screen.getAllByText("Read-only for your role").length).toBeGreaterThan(0);
+    expect(
+      screen.queryByRole("button", { name: /confirm/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getAllByText("Read-only for your role").length,
+    ).toBeGreaterThan(0);
   });
 
   it("honestly states no Core Anchor when none is confirmed", () => {
-    render(<TaskOverviewPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByText("No Core Anchor is confirmed for this Shot yet.")).toBeVisible();
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("No Core Anchor is confirmed for this Shot yet."),
+    ).toBeVisible();
   });
 
   it("honestly states no Execution Anchor when none is confirmed", () => {
@@ -165,31 +229,55 @@ describe("TaskOverviewPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByText("No Execution Anchor is confirmed for this Task yet.")).toBeVisible();
+    expect(
+      screen.getByText("No Execution Anchor is confirmed for this Task yet."),
+    ).toBeVisible();
   });
 
   it("honestly states no Artist guidance has been generated yet, with no fabricated content", () => {
-    render(<TaskOverviewPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(
-      screen.getByText("No Artist guidance has been generated for this Task yet."),
+      screen.getByText(
+        "No Artist guidance has been generated for this Task yet.",
+      ),
     ).toBeVisible();
   });
 
   it("does not offer a Generate guidance action when there is no latest Version", () => {
-    render(<TaskOverviewPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.queryByRole("button", { name: /generate guidance/i })).not.toBeInTheDocument();
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /generate guidance/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("offers a Generate guidance action when a latest Version exists and no guidance yet", () => {
     render(
       <TaskOverviewPage
         taskId="t1"
-        data={data({ item: item({ latest_version_id: "v1", latest_version_name: "v001" }) })}
+        data={data({
+          item: item({ latest_version_id: "v1", latest_version_name: "v001" }),
+        })}
         unavailable={false}
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: "Generate guidance" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Generate guidance" }),
+    ).toBeVisible();
   });
 
   it("offers a Regenerate guidance action and an outdated notice when guidance is outdated", () => {
@@ -213,9 +301,30 @@ describe("TaskOverviewPage", () => {
             agent_run_id: "run1",
             guidance_output: {
               executive_summary: "Push the rim light slightly warmer.",
-              creative_intent_read: { summary: "s", why_it_matters: "w", priority: "medium", evidence: [{ source_type: "shot", source_id: "s1", label: "Shot" }] },
-              task_goal: { summary: "s", why_it_matters: "w", priority: "medium", evidence: [{ source_type: "task", source_id: "t1", label: "Task" }] },
-              current_iteration_read: { summary: "s", why_it_matters: "w", priority: "medium", evidence: [{ source_type: "version", source_id: "v1", label: "Version" }] },
+              creative_intent_read: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [
+                  { source_type: "shot", source_id: "s1", label: "Shot" },
+                ],
+              },
+              task_goal: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [
+                  { source_type: "task", source_id: "t1", label: "Task" },
+                ],
+              },
+              current_iteration_read: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [
+                  { source_type: "version", source_id: "v1", label: "Version" },
+                ],
+              },
               non_negotiables: [],
               allowed_variations: [],
               feedback_translations: [],
@@ -231,15 +340,30 @@ describe("TaskOverviewPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: "Regenerate guidance" })).toBeVisible();
     expect(
-      screen.getByText(/This guidance references an earlier confirmed Execution Anchor revision/),
+      screen.getByRole("button", { name: "Regenerate guidance" }),
     ).toBeVisible();
-    expect(screen.getByText("Push the rim light slightly warmer.")).toBeVisible();
+    expect(
+      screen.getByText(
+        /This guidance references an earlier confirmed Execution Anchor revision/,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Push the rim light slightly warmer."),
+    ).toBeVisible();
   });
 
   it("honestly states no dependencies have been recorded for a genuinely bare Task", () => {
-    render(<TaskOverviewPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByText("No dependencies have been recorded for this Task yet.")).toBeVisible();
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("No dependencies have been recorded for this Task yet."),
+    ).toBeVisible();
   });
 });

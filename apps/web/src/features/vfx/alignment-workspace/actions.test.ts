@@ -44,7 +44,8 @@ describe("generateAssessmentAction", () => {
       ok: false,
       error: {
         kind: "forbidden",
-        message: "Generating a Cross-role Assessment is owned by the VFX Supervisor.",
+        message:
+          "Generating a Cross-role Assessment is owned by the VFX Supervisor.",
       },
     });
     expect(fetchMock).not.toHaveBeenCalled();
@@ -63,14 +64,21 @@ describe("generateAssessmentAction", () => {
 
     expect(result).toEqual({ ok: true, assessment: ASSESSMENT });
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/intent/versions/v1/cross-role-assessments/generate"),
+      expect.stringContaining(
+        "/intent/versions/v1/cross-role-assessments/generate",
+      ),
       expect.objectContaining({
         method: "POST",
-        headers: expect.objectContaining({ "X-Actor-Role": "vfx_supervisor", "X-Actor-Id": "vfx-1" }),
+        headers: expect.objectContaining({
+          "X-Actor-Role": "vfx_supervisor",
+          "X-Actor-Id": "vfx-1",
+        }),
         body: JSON.stringify({ task_id: "t1" }),
       }),
     );
-    expect(revalidatePathMock).toHaveBeenCalledWith("/vfx/shots/shot-1/alignment");
+    expect(revalidatePathMock).toHaveBeenCalledWith(
+      "/vfx/shots/shot-1/alignment",
+    );
     expect(revalidatePathMock).toHaveBeenCalledWith("/vfx/shots/shot-1");
     expect(revalidatePathMock).toHaveBeenCalledWith("/vfx");
   });
@@ -82,7 +90,9 @@ describe("generateAssessmentAction", () => {
   });
 
   it("maps a 409 (prerequisites no longer satisfied for this pair) to a conflict result", async () => {
-    fetchMock.mockResolvedValue(jsonResponse(409, { detail: "prerequisites changed" }));
+    fetchMock.mockResolvedValue(
+      jsonResponse(409, { detail: "prerequisites changed" }),
+    );
     const result = await generateAssessmentAction("shot-1", "v1", "t1");
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.kind).toBe("conflict");

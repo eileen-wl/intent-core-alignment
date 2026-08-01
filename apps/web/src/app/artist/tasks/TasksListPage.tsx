@@ -1,9 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { ArtistInboxItemRead, ArtistInboxRead } from "@intent-core/contracts";
+import type {
+  ArtistInboxItemRead,
+  ArtistInboxRead,
+} from "@intent-core/contracts";
 
-import { AppShell, Breadcrumbs, EmptyState, ErrorState, PageHeader } from "@/design";
+import {
+  AppShell,
+  Breadcrumbs,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+} from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import { guidanceStateLabel } from "../artistWording";
@@ -11,7 +20,11 @@ import { ArtistTaskListRow } from "./ArtistTaskListRow";
 import styles from "./TasksListPage.module.css";
 
 const ALL_VALUE = "__all__";
-const GUIDANCE_STATES: ArtistInboxItemRead["guidance_state"][] = ["none", "outdated", "current"];
+const GUIDANCE_STATES: ArtistInboxItemRead["guidance_state"][] = [
+  "none",
+  "outdated",
+  "current",
+];
 
 /** `/artist/tasks` -- Tasks (Step 7C-5), mirroring
  * `app/cg/tasks/TasksListPage.tsx`'s pattern: browsing and opening
@@ -46,7 +59,10 @@ export function TasksListPage({
           description="The ICAS service could not be reached. Try refreshing the page."
         />
       ) : inbox.items.length === 0 ? (
-        <EmptyState title="No Tasks exist yet" description="Tasks will appear here once they exist." />
+        <EmptyState
+          title="No Tasks exist yet"
+          description="Tasks will appear here once they exist."
+        />
       ) : (
         <TasksListContent items={inbox.items} />
       )}
@@ -68,17 +84,26 @@ function TasksListContent({ items }: { items: ArtistInboxItemRead[] }) {
   const departments = useMemo(
     () =>
       Array.from(
-        new Set(items.map((item) => item.department).filter((d): d is string => Boolean(d))),
+        new Set(
+          items
+            .map((item) => item.department)
+            .filter((d): d is string => Boolean(d)),
+        ),
       ).sort(),
     [items],
   );
 
   const filtered = items.filter((item) => {
-    if (projectFilter !== ALL_VALUE && item.project_name !== projectFilter) return false;
-    if (departmentFilter !== ALL_VALUE && item.department !== departmentFilter) return false;
-    if (guidanceFilter !== ALL_VALUE && item.guidance_state !== guidanceFilter) return false;
-    if (versionFilter === "has_version" && item.latest_version_id === null) return false;
-    if (versionFilter === "no_version" && item.latest_version_id !== null) return false;
+    if (projectFilter !== ALL_VALUE && item.project_name !== projectFilter)
+      return false;
+    if (departmentFilter !== ALL_VALUE && item.department !== departmentFilter)
+      return false;
+    if (guidanceFilter !== ALL_VALUE && item.guidance_state !== guidanceFilter)
+      return false;
+    if (versionFilter === "has_version" && item.latest_version_id === null)
+      return false;
+    if (versionFilter === "no_version" && item.latest_version_id !== null)
+      return false;
     if (attentionOnly && !item.current_focus.actionable) return false;
     return true;
   });

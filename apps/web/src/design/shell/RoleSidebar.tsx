@@ -67,10 +67,14 @@ function initials(name: string) {
  * `/vfx/shots/{id}/intent` without `Workspace Home` (`/vfx`) also
  * claiming it, and without `/vfx` ever prefix-matching every VFX page
  * (docs/step-7 Step 7C-1 locked IA §6). */
-function currentItemId(items: SidebarNavItem[], currentPath: string): string | null {
+function currentItemId(
+  items: SidebarNavItem[],
+  currentPath: string,
+): string | null {
   let best: SidebarNavItem | null = null;
   for (const item of items) {
-    const matches = currentPath === item.href || currentPath.startsWith(`${item.href}/`);
+    const matches =
+      currentPath === item.href || currentPath.startsWith(`${item.href}/`);
     if (matches && (best === null || item.href.length > best.href.length)) {
       best = item;
     }
@@ -97,7 +101,9 @@ export function RoleSidebar({
           const content = (
             <>
               <NavigationIcon label={item.label} />
-              <span aria-disabled={!item.implemented ? "true" : undefined}>{item.label}</span>
+              <span aria-disabled={!item.implemented ? "true" : undefined}>
+                {item.label}
+              </span>
             </>
           );
 

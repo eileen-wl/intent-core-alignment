@@ -1,7 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import type { CoreAnchorRevisionRead, CrossRoleFinding, VersionRead } from "@intent-core/contracts";
+import type {
+  CoreAnchorRevisionRead,
+  CrossRoleFinding,
+  VersionRead,
+} from "@intent-core/contracts";
 
 import {
   AppShell,
@@ -22,7 +26,9 @@ import styles from "./AlignmentWorkspacePage.module.css";
 
 function versionLabel(version: VersionRead | undefined): string {
   if (!version) return "Unknown Production Version";
-  return version.version_number ? `${version.name} (v${version.version_number})` : version.name;
+  return version.version_number
+    ? `${version.name} (v${version.version_number})`
+    : version.name;
 }
 
 function revisionLabel(revision: CoreAnchorRevisionRead | undefined): string {
@@ -30,7 +36,13 @@ function revisionLabel(revision: CoreAnchorRevisionRead | undefined): string {
   return `Revision ${revision.revision_number}${revision.core_summary ? ` — ${revision.core_summary}` : ""}`;
 }
 
-function FindingGroup({ title, findings }: { title: string; findings: CrossRoleFinding[] }) {
+function FindingGroup({
+  title,
+  findings,
+}: {
+  title: string;
+  findings: CrossRoleFinding[];
+}) {
   if (findings.length === 0) return null;
   return (
     <section className={styles.findingGroup}>
@@ -54,7 +66,9 @@ function FindingGroup({ title, findings }: { title: string; findings: CrossRoleF
               </span>
             </div>
             <p className={styles.findingWhy}>{finding.why_it_matters}</p>
-            <p className={styles.findingRoles}>Affects: {finding.affected_roles.join(", ")}</p>
+            <p className={styles.findingRoles}>
+              Affects: {finding.affected_roles.join(", ")}
+            </p>
           </li>
         ))}
       </ul>
@@ -82,7 +96,8 @@ export function AlignmentWorkspacePage({
   unavailable: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
-  const current = data && data.assessments.length > 0 ? data.assessments[0] : null;
+  const current =
+    data && data.assessments.length > 0 ? data.assessments[0] : null;
   const history = data ? data.assessments.slice(1) : [];
 
   return (
@@ -95,9 +110,18 @@ export function AlignmentWorkspacePage({
     >
       {unavailable || data === null ? (
         <>
-          <Breadcrumbs items={[{ label: "Shots", href: "/vfx/shots" }, { label: "Alignment" }]} />
+          <Breadcrumbs
+            items={[
+              { label: "Shots", href: "/vfx/shots" },
+              { label: "Alignment" },
+            ]}
+          />
           <ErrorState
-            title={unavailable ? "This Shot is unavailable" : "This Shot could not be found"}
+            title={
+              unavailable
+                ? "This Shot is unavailable"
+                : "This Shot could not be found"
+            }
             description={
               unavailable
                 ? "The ICAS service could not be reached. Try refreshing the page."
@@ -118,11 +142,31 @@ export function AlignmentWorkspacePage({
           <ContextTabs
             activeTabId="alignment"
             tabs={[
-              { id: "overview", label: "Overview", href: `/vfx/shots/${shotId}` },
-              { id: "intent", label: "Intent", href: `/vfx/shots/${shotId}/intent` },
-              { id: "versions", label: "Versions", href: `/vfx/shots/${shotId}/versions` },
-              { id: "alignment", label: "Alignment", href: `/vfx/shots/${shotId}/alignment` },
-              { id: "activity", label: "Activity", href: `/vfx/shots/${shotId}/activity` },
+              {
+                id: "overview",
+                label: "Overview",
+                href: `/vfx/shots/${shotId}`,
+              },
+              {
+                id: "intent",
+                label: "Intent",
+                href: `/vfx/shots/${shotId}/intent`,
+              },
+              {
+                id: "versions",
+                label: "Versions",
+                href: `/vfx/shots/${shotId}/versions`,
+              },
+              {
+                id: "alignment",
+                label: "Alignment",
+                href: `/vfx/shots/${shotId}/alignment`,
+              },
+              {
+                id: "activity",
+                label: "Activity",
+                href: `/vfx/shots/${shotId}/activity`,
+              },
             ]}
           />
 
@@ -136,7 +180,8 @@ export function AlignmentWorkspacePage({
           </div>
 
           {current === null ? (
-            data.item.generation_ready_task_id && data.item.generation_ready_version_id ? (
+            data.item.generation_ready_task_id &&
+            data.item.generation_ready_version_id ? (
               <EmptyState
                 title="A new Cross-role Assessment can be generated for this Shot"
                 description={`Role outputs from the VFX Supervisor, CG Supervisor, and Artist Agent are all available for ${versionLabel(
@@ -169,14 +214,24 @@ export function AlignmentWorkspacePage({
                   items={[
                     {
                       label: "Assessed Version",
-                      value: versionLabel(data.versionsById.get(current.version_id)),
+                      value: versionLabel(
+                        data.versionsById.get(current.version_id),
+                      ),
                     },
                     {
                       label: "Core Anchor used",
-                      value: revisionLabel(data.revisionsById.get(current.core_anchor_revision_id)),
+                      value: revisionLabel(
+                        data.revisionsById.get(current.core_anchor_revision_id),
+                      ),
                     },
-                    { label: "Assessed at", value: new Date(current.created_at).toLocaleString() },
-                    { label: "Assessor", value: "Core Agent · cross-role assessment" },
+                    {
+                      label: "Assessed at",
+                      value: new Date(current.created_at).toLocaleString(),
+                    },
+                    {
+                      label: "Assessor",
+                      value: "Core Agent · cross-role assessment",
+                    },
                   ]}
                 />
               </section>
@@ -201,17 +256,22 @@ export function AlignmentWorkspacePage({
                 />
                 <FindingGroup
                   title="Advisory recommendations"
-                  findings={current.assessment_output.human_coordination_priorities}
+                  findings={
+                    current.assessment_output.human_coordination_priorities
+                  }
                 />
 
                 {(() => {
-                  const revision = data.revisionsById.get(current.core_anchor_revision_id);
+                  const revision = data.revisionsById.get(
+                    current.core_anchor_revision_id,
+                  );
                   const driftRisks = revision?.drift_risks ?? [];
                   if (driftRisks.length === 0) return null;
                   return (
                     <section className={styles.findingGroup}>
                       <h3 className={styles.findingGroupTitle}>
-                        Drift risks on the active Core Anchor ({driftRisks.length})
+                        Drift risks on the active Core Anchor (
+                        {driftRisks.length})
                       </h3>
                       <ul className={styles.plainList}>
                         {driftRisks.map((risk) => (
@@ -225,7 +285,9 @@ export function AlignmentWorkspacePage({
 
               <section className={styles.nextActionSection}>
                 <h2 className={styles.sectionTitle}>Recommended next action</h2>
-                <p className={styles.nextActionText}>{current.intent_signal.signal_output.summary}</p>
+                <p className={styles.nextActionText}>
+                  {current.intent_signal.signal_output.summary}
+                </p>
                 <p className={styles.nextActionMeta} role="status">
                   {current.intent_signal.attention_level === "low"
                     ? "No human review is required based on this assessment."
@@ -236,7 +298,10 @@ export function AlignmentWorkspacePage({
                   <div className={styles.proposalCard}>
                     <AuthorityLabel variant="ai-proposal" />
                     <p className={styles.proposalReason}>
-                      {current.re_anchor_proposal.proposal_output.reason_for_consideration}
+                      {
+                        current.re_anchor_proposal.proposal_output
+                          .reason_for_consideration
+                      }
                     </p>
                     <Link
                       href={`/vfx/shots/${shotId}/intent`}

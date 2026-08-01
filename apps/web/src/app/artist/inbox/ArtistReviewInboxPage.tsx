@@ -1,7 +1,13 @@
 import type { ArtistInboxRead } from "@intent-core/contracts";
 import Link from "next/link";
 
-import { AppShell, Breadcrumbs, EmptyState, ErrorState, PageHeader } from "@/design";
+import {
+  AppShell,
+  Breadcrumbs,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+} from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import { adaptArtistCurrentFocusToWorkItems } from "@/features/artist/reviewInbox";
@@ -22,7 +28,9 @@ export function ArtistReviewInboxPage({
   inbox: ArtistInboxRead | null;
   onExitRole: () => void | Promise<void>;
 }) {
-  const workItems = inbox ? adaptArtistCurrentFocusToWorkItems(inbox.items) : null;
+  const workItems = inbox
+    ? adaptArtistCurrentFocusToWorkItems(inbox.items)
+    : null;
 
   return (
     <AppShell

@@ -23,7 +23,9 @@ export function StartDraftButton({
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const buttonClassName =
-    variant === "primary" ? `${styles.button} ${styles.primary}` : styles.button;
+    variant === "primary"
+      ? `${styles.button} ${styles.primary}`
+      : styles.button;
 
   return (
     <div className={styles.wrapper}>

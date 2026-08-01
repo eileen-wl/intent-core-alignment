@@ -31,9 +31,9 @@ describe("RoleSidebar", () => {
     expect(
       screen.getByRole("link", { name: "Review Inbox" }),
     ).not.toHaveAttribute("aria-current");
-    expect(
-      screen.getByRole("link", { name: "Shots" }),
-    ).not.toHaveAttribute("aria-current");
+    expect(screen.getByRole("link", { name: "Shots" })).not.toHaveAttribute(
+      "aria-current",
+    );
   });
 
   it("never lets /vfx boundary-prefix-match every VFX page (Step 7C-1 locked IA §6)", () => {
@@ -43,9 +43,10 @@ describe("RoleSidebar", () => {
         currentPath="/vfx/shots"
       />,
     );
-    expect(
-      screen.getByRole("link", { name: "Shots" }),
-    ).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Shots" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     expect(
       screen.getByRole("link", { name: "Workspace Home" }),
     ).not.toHaveAttribute("aria-current");
@@ -58,9 +59,10 @@ describe("RoleSidebar", () => {
         currentPath="/vfx/shots/s1/intent"
       />,
     );
-    expect(
-      screen.getByRole("link", { name: "Shots" }),
-    ).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Shots" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     expect(
       screen.getByRole("link", { name: "Workspace Home" }),
     ).not.toHaveAttribute("aria-current");
@@ -76,9 +78,10 @@ describe("RoleSidebar", () => {
         currentPath="/vfx/inbox"
       />,
     );
-    expect(
-      screen.getByRole("link", { name: "Review Inbox" }),
-    ).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Review Inbox" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
     expect(
       screen.getByRole("link", { name: "Workspace Home" }),
     ).not.toHaveAttribute("aria-current");
@@ -92,8 +95,18 @@ describe("RoleSidebar", () => {
     render(
       <RoleSidebar
         items={[
-          { id: "workspace-home", label: "Workspace Home", href: "/artist", implemented: true },
-          { id: "future-page", label: "Future Page", href: "/artist/future", implemented: false },
+          {
+            id: "workspace-home",
+            label: "Workspace Home",
+            href: "/artist",
+            implemented: true,
+          },
+          {
+            id: "future-page",
+            label: "Future Page",
+            href: "/artist/future",
+            implemented: false,
+          },
         ]}
         currentPath="/artist"
       />,

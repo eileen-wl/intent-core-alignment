@@ -1,4 +1,7 @@
-import type { ArtistCurrentFocusType, ArtistInboxItemRead } from "@intent-core/contracts";
+import type {
+  ArtistCurrentFocusType,
+  ArtistInboxItemRead,
+} from "@intent-core/contracts";
 
 /** Artist Review Inbox work-item model (Step 7C-5) -- mirrors
  * `features/cg/reviewInbox.ts`'s shape (work-item-first, not a Task-led
@@ -54,7 +57,9 @@ function categoryForFocusType(focusType: ArtistCurrentFocusType): string {
     case "guidance_available":
       return "Guidance available";
     case "none":
-      throw new Error('focus_type "none" is never actionable and must never become a work item');
+      throw new Error(
+        'focus_type "none" is never actionable and must never become a work item',
+      );
   }
 }
 
@@ -82,7 +87,11 @@ export function adaptArtistCurrentFocusToWorkItems(
       actionLabel: focus.primary_action_label,
       project: { id: item.project_id, name: item.project_name },
       shot: { id: item.shot_id, name: item.shot_name },
-      task: { id: item.task_id, name: item.task_name, department: item.department },
+      task: {
+        id: item.task_id,
+        name: item.task_name,
+        department: item.department,
+      },
       executionAnchorState: item.execution_anchor_state,
       route: focus.target_route,
     });

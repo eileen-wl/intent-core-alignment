@@ -8,7 +8,9 @@ afterEach(() => {
   cleanup();
 });
 
-function buildItem(overrides: Partial<VfxInboxItemRead> = {}): VfxInboxItemRead {
+function buildItem(
+  overrides: Partial<VfxInboxItemRead> = {},
+): VfxInboxItemRead {
   return {
     project_id: "p1",
     project_name: "D1 Demo Project",
@@ -34,7 +36,8 @@ function buildItem(overrides: Partial<VfxInboxItemRead> = {}): VfxInboxItemRead 
     current_focus: {
       focus_type: "core_anchor_gate_pending",
       title: "Core Anchor draft awaiting your confirmation",
-      explanation: "A proposed revision to the shared creative intent is ready for your review.",
+      explanation:
+        "A proposed revision to the shared creative intent is ready for your review.",
       target_route: "/vfx/shots/s1/intent",
       primary_action_label: "Review and confirm",
       actionable: true,
@@ -45,7 +48,9 @@ function buildItem(overrides: Partial<VfxInboxItemRead> = {}): VfxInboxItemRead 
   };
 }
 
-function inactiveItem(overrides: Partial<VfxInboxItemRead> = {}): VfxInboxItemRead {
+function inactiveItem(
+  overrides: Partial<VfxInboxItemRead> = {},
+): VfxInboxItemRead {
   return buildItem({
     current_focus: {
       focus_type: "none",
@@ -66,9 +71,10 @@ function buildInbox(items: VfxInboxItemRead[]): VfxInboxRead {
 describe("ReviewInboxPage", () => {
   it("marks Review Inbox current in the sidebar", () => {
     render(<ReviewInboxPage inbox={buildInbox([])} onExitRole={vi.fn()} />);
-    expect(
-      screen.getByRole("link", { name: "Review Inbox" }),
-    ).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: "Review Inbox" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("shows an honest error state when the Inbox failed to load", () => {
@@ -78,16 +84,20 @@ describe("ReviewInboxPage", () => {
 
   it("shows an honest clear-inbox empty state when no work items exist, with a route to Shots", () => {
     render(
-      <ReviewInboxPage inbox={buildInbox([inactiveItem({ shot_id: "s2" })])} onExitRole={vi.fn()} />,
+      <ReviewInboxPage
+        inbox={buildInbox([inactiveItem({ shot_id: "s2" })])}
+        onExitRole={vi.fn()}
+      />,
     );
     expect(screen.getByText("Review Inbox is clear")).toBeVisible();
     expect(
-      screen.getByText("No review or interpretation currently requires your attention."),
+      screen.getByText(
+        "No review or interpretation currently requires your attention.",
+      ),
     ).toBeVisible();
-    expect(screen.getByRole("link", { name: "Browse Shots →" })).toHaveAttribute(
-      "href",
-      "/vfx/shots",
-    );
+    expect(
+      screen.getByRole("link", { name: "Browse Shots →" }),
+    ).toHaveAttribute("href", "/vfx/shots");
   });
 
   it("only actionable work items appear, with the required action as the primary title", () => {
@@ -101,26 +111,50 @@ describe("ReviewInboxPage", () => {
       />,
     );
     expect(screen.getByText("Showing 1 items requiring review")).toBeVisible();
-    expect(screen.getByText("Core Anchor draft awaiting your confirmation")).toBeVisible();
+    expect(
+      screen.getByText("Core Anchor draft awaiting your confirmation"),
+    ).toBeVisible();
   });
 
   it("shows the honest category and Shot as supporting context, not the primary title", () => {
-    render(<ReviewInboxPage inbox={buildInbox([buildItem({ shot_id: "s1" })])} onExitRole={vi.fn()} />);
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText("Core Anchor confirmation")).toBeVisible();
-    const title = screen.getByText("Core Anchor draft awaiting your confirmation");
+    const title = screen.getByText(
+      "Core Anchor draft awaiting your confirmation",
+    );
     const row = title.closest("a");
     expect(row).toHaveTextContent("Shot 010 — Final confrontation");
     // Shot name must not itself be the row's <a> accessible name lead --
     // the required-action title comes first in reading order.
-    expect(row?.textContent?.indexOf("Core Anchor draft awaiting your confirmation")).toBeLessThan(
+    expect(
+      row?.textContent?.indexOf("Core Anchor draft awaiting your confirmation"),
+    ).toBeLessThan(
       row?.textContent?.indexOf("Shot 010 — Final confrontation") ?? -1,
     );
   });
 
   it("never fabricates HumanGate/Assessment/Proposal/Decision language on a work-item row", () => {
-    render(<ReviewInboxPage inbox={buildInbox([buildItem({ shot_id: "s1" })])} onExitRole={vi.fn()} />);
-    const row = screen.getByText("Core Anchor draft awaiting your confirmation").closest("a");
-    for (const forbidden of ["HumanGate", "Human Gate", "Decision", "Escalat", "Proposal"]) {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const row = screen
+      .getByText("Core Anchor draft awaiting your confirmation")
+      .closest("a");
+    for (const forbidden of [
+      "HumanGate",
+      "Human Gate",
+      "Decision",
+      "Escalat",
+      "Proposal",
+    ]) {
       expect(row?.textContent ?? "").not.toMatch(new RegExp(forbidden, "i"));
     }
   });
@@ -134,7 +168,8 @@ describe("ReviewInboxPage", () => {
             current_focus: {
               focus_type: "core_anchor_draft_needs_review",
               title: "Core Anchor draft in progress",
-              explanation: "A draft revision exists but has not yet been submitted for confirmation.",
+              explanation:
+                "A draft revision exists but has not yet been submitted for confirmation.",
               target_route: "/vfx/shots/s1/intent",
               primary_action_label: "Review draft",
               actionable: true,
@@ -146,7 +181,8 @@ describe("ReviewInboxPage", () => {
             current_focus: {
               focus_type: "re_anchor_proposal_present",
               title: "Re-anchor proposal available for consideration",
-              explanation: "The latest assessment includes an advisory suggestion for the Core Anchor.",
+              explanation:
+                "The latest assessment includes an advisory suggestion for the Core Anchor.",
               target_route: "/vfx/shots/s2/alignment",
               primary_action_label: "Review proposal",
               actionable: true,
@@ -160,7 +196,9 @@ describe("ReviewInboxPage", () => {
       screen.getByText("Core Anchor draft in progress").closest("a"),
     ).toHaveAttribute("href", "/vfx/shots/s1/intent");
     expect(
-      screen.getByText("Re-anchor proposal available for consideration").closest("a"),
+      screen
+        .getByText("Re-anchor proposal available for consideration")
+        .closest("a"),
     ).toHaveAttribute("href", "/vfx/shots/s2/alignment");
   });
 
@@ -211,7 +249,9 @@ describe("ReviewInboxPage", () => {
     // The Shot's current_focus item and the new version_review item both
     // appear -- two independent work items for the same Shot.
     expect(screen.getByText("Showing 2 items requiring review")).toBeVisible();
-    expect(screen.getByText("New Production Version awaiting review")).toBeVisible();
+    expect(
+      screen.getByText("New Production Version awaiting review"),
+    ).toBeVisible();
     expect(
       screen.getByText("New Production Version awaiting review").closest("a"),
     ).toHaveAttribute("href", "/vfx/shots/s1/versions");
@@ -231,7 +271,9 @@ describe("ReviewInboxPage", () => {
       />,
     );
     expect(screen.getByText("Review Inbox is clear")).toBeVisible();
-    expect(screen.queryByText("New Production Version awaiting review")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("New Production Version awaiting review"),
+    ).not.toBeInTheDocument();
   });
 
   it("supports two work items that reference the same Shot", () => {
@@ -265,7 +307,11 @@ describe("ReviewInboxPage", () => {
       />,
     );
     expect(screen.getByText("Showing 2 items requiring review")).toBeVisible();
-    expect(screen.getByText("Core Anchor draft awaiting your confirmation")).toBeVisible();
-    expect(screen.getByText("Re-anchor proposal available for consideration")).toBeVisible();
+    expect(
+      screen.getByText("Core Anchor draft awaiting your confirmation"),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Re-anchor proposal available for consideration"),
+    ).toBeVisible();
   });
 });

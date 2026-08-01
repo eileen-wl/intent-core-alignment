@@ -30,7 +30,8 @@ function buildItem(overrides: Partial<CgInboxItemRead> = {}): CgInboxItemRead {
     current_focus: {
       focus_type: "execution_anchor_gate_pending",
       title: "Execution Anchor draft awaiting your confirmation",
-      explanation: "A proposed department execution translation is ready for your review.",
+      explanation:
+        "A proposed department execution translation is ready for your review.",
       target_route: "/cg/tasks/44444444-4444-4444-4444-444444444444/execution",
       primary_action_label: "Review and confirm",
       actionable: true,
@@ -40,7 +41,9 @@ function buildItem(overrides: Partial<CgInboxItemRead> = {}): CgInboxItemRead {
   };
 }
 
-function inactiveItem(overrides: Partial<CgInboxItemRead> = {}): CgInboxItemRead {
+function inactiveItem(
+  overrides: Partial<CgInboxItemRead> = {},
+): CgInboxItemRead {
   return buildItem({
     execution_anchor_state: "none",
     pending_human_gate_id: null,
@@ -62,17 +65,26 @@ function buildInbox(items: CgInboxItemRead[]): CgInboxRead {
 
 describe("CgWorkspacePage", () => {
   it("renders the correct App Shell with fixed CG Supervisor identity", () => {
-    render(<CgWorkspacePage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />);
+    render(
+      <CgWorkspacePage
+        inbox={buildInbox([buildItem()])}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText("Daniel Ross")).toBeVisible();
     expect(screen.getByText("CG Supervisor")).toBeVisible();
   });
 
   it("renders the CG role sidebar with Workspace Home current", () => {
-    render(<CgWorkspacePage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "Workspace Home" })).toHaveAttribute(
-      "aria-current",
-      "page",
+    render(
+      <CgWorkspacePage
+        inbox={buildInbox([buildItem()])}
+        onExitRole={vi.fn()}
+      />,
     );
+    expect(
+      screen.getByRole("link", { name: "Workspace Home" }),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   it("shows an honest error state when the Inbox failed to load", () => {
@@ -95,14 +107,22 @@ describe("CgWorkspacePage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    const overview = within(screen.getByRole("region", { name: "Production overview" }));
+    const overview = within(
+      screen.getByRole("region", { name: "Production overview" }),
+    );
     expect(overview.getByText("Total Tasks")).toBeVisible();
     expect(overview.getByText("Requiring attention")).toBeVisible();
-    expect(overview.getByText("Execution Anchors awaiting action")).toBeVisible();
-    expect(overview.getByText("Version reviews requiring action")).toBeVisible();
+    expect(
+      overview.getByText("Execution Anchors awaiting action"),
+    ).toBeVisible();
+    expect(
+      overview.getByText("Version reviews requiring action"),
+    ).toBeVisible();
     expect(overview.getByText("Unresolved dependencies")).toBeVisible();
 
-    const totalCard = overview.getByText("Total Tasks").closest("div") as HTMLElement;
+    const totalCard = overview
+      .getByText("Total Tasks")
+      .closest("div") as HTMLElement;
     expect(totalCard).toHaveTextContent("2");
   });
 
@@ -123,30 +143,51 @@ describe("CgWorkspacePage", () => {
       }),
     );
     render(<CgWorkspacePage inbox={buildInbox(items)} onExitRole={vi.fn()} />);
-    const priorityActions = within(screen.getByRole("region", { name: "Priority actions" }));
+    const priorityActions = within(
+      screen.getByRole("region", { name: "Priority actions" }),
+    );
     expect(priorityActions.getByText("Required action 0")).toBeVisible();
     expect(priorityActions.getByText("Required action 1")).toBeVisible();
     expect(priorityActions.getByText("Required action 2")).toBeVisible();
-    expect(priorityActions.queryByText("Required action 3")).not.toBeInTheDocument();
+    expect(
+      priorityActions.queryByText("Required action 3"),
+    ).not.toBeInTheDocument();
     expect(priorityActions.getByText("Task 0")).toBeVisible();
   });
 
   it("Priority actions opens Execution work in the real Execution route", () => {
-    render(<CgWorkspacePage inbox={buildInbox([buildItem({ task_id: "t1" })])} onExitRole={vi.fn()} />);
-    const priorityActions = within(screen.getByRole("region", { name: "Priority actions" }));
+    render(
+      <CgWorkspacePage
+        inbox={buildInbox([buildItem({ task_id: "t1" })])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const priorityActions = within(
+      screen.getByRole("region", { name: "Priority actions" }),
+    );
     const link = priorityActions
       .getByText("Execution Anchor draft awaiting your confirmation")
       .closest("a");
-    expect(link).toHaveAttribute("href", "/cg/tasks/44444444-4444-4444-4444-444444444444/execution");
+    expect(link).toHaveAttribute(
+      "href",
+      "/cg/tasks/44444444-4444-4444-4444-444444444444/execution",
+    );
   });
 
   it("shows an honest no-priority-actions state without hiding overview or Tasks access", () => {
     render(
-      <CgWorkspacePage inbox={buildInbox([inactiveItem({ task_id: "t1" })])} onExitRole={vi.fn()} />,
+      <CgWorkspacePage
+        inbox={buildInbox([inactiveItem({ task_id: "t1" })])}
+        onExitRole={vi.fn()}
+      />,
     );
-    expect(screen.getByText("No priority actions require your attention")).toBeVisible();
+    expect(
+      screen.getByText("No priority actions require your attention"),
+    ).toBeVisible();
     expect(screen.getByText("Total Tasks")).toBeVisible();
-    expect(screen.getByRole("link", { name: "View all Tasks →" })).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "View all Tasks →" }),
+    ).toBeVisible();
   });
 
   it("Important Tasks contains at most 3 Tasks and never the complete catalogue", () => {
@@ -159,24 +200,34 @@ describe("CgWorkspacePage", () => {
     expect(screen.getByText("Task 1")).toBeVisible();
     expect(screen.getByText("Task 2")).toBeVisible();
     expect(screen.queryByText("Task 5")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "View all Tasks →" })).toHaveAttribute(
-      "href",
-      "/cg/tasks",
-    );
+    expect(
+      screen.getByRole("link", { name: "View all Tasks →" }),
+    ).toHaveAttribute("href", "/cg/tasks");
   });
 
   it("links Priority actions' Review Inbox action into /cg/inbox", () => {
-    render(<CgWorkspacePage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "Go to Review Inbox →" })).toHaveAttribute(
-      "href",
-      "/cg/inbox",
+    render(
+      <CgWorkspacePage
+        inbox={buildInbox([buildItem()])}
+        onExitRole={vi.fn()}
+      />,
     );
+    expect(
+      screen.getByRole("link", { name: "Go to Review Inbox →" }),
+    ).toHaveAttribute("href", "/cg/inbox");
   });
 
   it("wires Exit role view to the provided callback", async () => {
     const onExitRole = vi.fn();
-    render(<CgWorkspacePage inbox={buildInbox([buildItem()])} onExitRole={onExitRole} />);
-    await userEvent.click(screen.getByRole("button", { name: "Exit role view" }));
+    render(
+      <CgWorkspacePage
+        inbox={buildInbox([buildItem()])}
+        onExitRole={onExitRole}
+      />,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Exit role view" }),
+    );
     expect(onExitRole).toHaveBeenCalled();
   });
 });

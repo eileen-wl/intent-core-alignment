@@ -11,7 +11,9 @@ import { ConfirmedAnchorSummary } from "./ConfirmedAnchorSummary";
 let replaceStateSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
-  replaceStateSpy = vi.spyOn(window.history, "replaceState").mockImplementation(() => {});
+  replaceStateSpy = vi
+    .spyOn(window.history, "replaceState")
+    .mockImplementation(() => {});
 });
 
 afterEach(() => {
@@ -20,7 +22,9 @@ afterEach(() => {
   replaceStateSpy.mockRestore();
 });
 
-function revision(overrides: Partial<CoreAnchorRevisionRead> = {}): CoreAnchorRevisionRead {
+function revision(
+  overrides: Partial<CoreAnchorRevisionRead> = {},
+): CoreAnchorRevisionRead {
   return {
     id: "r2",
     core_anchor_id: "a1",
@@ -73,8 +77,12 @@ describe("ConfirmedAnchorSummary", () => {
       />,
     );
     expect(screen.getByText("Decision recorded")).toBeVisible();
-    expect(screen.getByText("Downstream work should align to this revision.")).toBeVisible();
-    expect(screen.queryByText("Shared intent is active")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Downstream work should align to this revision."),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("Shared intent is active"),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText(/What changed/)).not.toBeInTheDocument();
     expect(screen.queryByText(/What was established/)).not.toBeInTheDocument();
   });
@@ -102,8 +110,12 @@ describe("ConfirmedAnchorSummary", () => {
         decisionRationale="Matches the director's note on restraint."
       />,
     );
-    expect(screen.getByText("Matches the director's note on restraint.")).toBeVisible();
-    expect(screen.queryByText("No rationale was provided.")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Matches the director's note on restraint."),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("No rationale was provided."),
+    ).not.toBeInTheDocument();
   });
 
   it("Normal Confirmed: shows Supersedes Revision N-1 only when the confirmed revision genuinely supersedes one", () => {
@@ -115,7 +127,11 @@ describe("ConfirmedAnchorSummary", () => {
           confirmed_by_human_role: "vfx_supervisor",
           confirmed_at: "2026-01-01T00:00:00Z",
         })}
-        previousConfirmedRevision={revision({ id: "r1", revision_number: 1, supersedes_revision_id: null })}
+        previousConfirmedRevision={revision({
+          id: "r1",
+          revision_number: 1,
+          supersedes_revision_id: null,
+        })}
       />,
     );
     expect(screen.getByText("Supersedes Revision 1")).toBeVisible();
@@ -142,7 +158,13 @@ describe("ConfirmedAnchorSummary", () => {
           confirmed_at: "2026-01-01T00:00:00Z",
         })}
         evidenceData={{
-          evidence: [{ source_type: "core_anchor_revision", source_id: "r1", label: "Previous confirmed revision" }],
+          evidence: [
+            {
+              source_type: "core_anchor_revision",
+              source_id: "r1",
+              label: "Previous confirmed revision",
+            },
+          ],
           run: null,
           snapshot: null,
           decompositions: [],
@@ -154,7 +176,9 @@ describe("ConfirmedAnchorSummary", () => {
   });
 
   it("shows Revision N · Active identity badges on the main card", () => {
-    render(<ConfirmedAnchorSummary revision={revision({ revision_number: 3 })} />);
+    render(
+      <ConfirmedAnchorSummary revision={revision({ revision_number: 3 })} />,
+    );
     expect(screen.getByText("Revision 3")).toBeVisible();
     expect(screen.getByText("Active")).toBeVisible();
   });
@@ -171,14 +195,20 @@ describe("ConfirmedAnchorSummary", () => {
       />,
     );
     expect(screen.getByText("Decision recorded")).toBeVisible();
-    expect(screen.queryByText("Shared intent is active")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Shared intent is active"),
+    ).not.toBeInTheDocument();
   });
 
   it("Just-confirmed Success: the compact next-step statement names the newly active revision", () => {
     render(
       <ConfirmedAnchorSummary
         revision={revision({ revision_number: 2 })}
-        previousConfirmedRevision={revision({ id: "r1", revision_number: 1, supersedes_revision_id: null })}
+        previousConfirmedRevision={revision({
+          id: "r1",
+          revision_number: 1,
+          supersedes_revision_id: null,
+        })}
         justConfirmed
       />,
     );
@@ -213,7 +243,9 @@ describe("ConfirmedAnchorSummary", () => {
         justConfirmed
       />,
     );
-    expect(screen.getByRole("status")).toHaveTextContent("Revision 2 confirmed successfully");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Revision 2 confirmed successfully",
+    );
   });
 
   it("Just-confirmed Success, later revision: shows a real change summary, computed from the genuinely superseded revision, in a What changed from Revision N-1 card", () => {
@@ -224,14 +256,20 @@ describe("ConfirmedAnchorSummary", () => {
       supersedes_revision_id: null,
     });
     render(
-      <ConfirmedAnchorSummary revision={revision()} previousConfirmedRevision={previous} justConfirmed />,
+      <ConfirmedAnchorSummary
+        revision={revision()}
+        previousConfirmedRevision={previous}
+        justConfirmed
+      />,
     );
     expect(screen.getByText("What changed from Revision 1")).toBeVisible();
     expect(screen.getByText("Core summary changed")).toBeVisible();
     expect(screen.queryByText(/What was established/)).not.toBeInTheDocument();
     // The transient banner itself no longer embeds the change summary
     // text -- the two are now visually and semantically separate cards.
-    expect(screen.getByRole("status")).toHaveTextContent("Revision 2 confirmed successfully");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Revision 2 confirmed successfully",
+    );
   });
 
   it("Just-confirmed Success, first-ever confirmation: shows What was established (real content), never What changed in Revision 1", () => {
@@ -241,7 +279,12 @@ describe("ConfirmedAnchorSummary", () => {
           revision_number: 1,
           core_summary: "A restrained dusk confrontation.",
           constraints: [
-            { id: "c1", order_index: 0, content: "No character dialogue", created_at: "2026-01-01T00:00:00Z" },
+            {
+              id: "c1",
+              order_index: 0,
+              content: "No character dialogue",
+              created_at: "2026-01-01T00:00:00Z",
+            },
           ],
         })}
         previousConfirmedRevision={null}
@@ -252,7 +295,9 @@ describe("ConfirmedAnchorSummary", () => {
     // summarizeEstablishedContent(revision) path, never a fabricated
     // "changed" claim about a Revision 1 that had nothing to change from.
     expect(screen.getByText("What was established")).toBeVisible();
-    expect(screen.getByText("Shared creative direction established")).toBeVisible();
+    expect(
+      screen.getByText("Shared creative direction established"),
+    ).toBeVisible();
     expect(screen.getByText("1 confirmed constraint")).toBeVisible();
     expect(screen.queryByText(/What changed/)).not.toBeInTheDocument();
   });
@@ -265,7 +310,11 @@ describe("ConfirmedAnchorSummary", () => {
         justConfirmed
       />,
     );
-    expect(replaceStateSpy).toHaveBeenCalledWith(null, "", "/vfx/shots/s1/intent");
+    expect(replaceStateSpy).toHaveBeenCalledWith(
+      null,
+      "",
+      "/vfx/shots/s1/intent",
+    );
   });
 
   it("does not touch the URL when justConfirmed is false", () => {
@@ -285,7 +334,9 @@ describe("ConfirmedAnchorSummary", () => {
     // synchronously by Testing Library) -- the success view must still
     // be exactly as visible as it was before the URL was cleaned.
     expect(replaceStateSpy).toHaveBeenCalled();
-    expect(screen.getByRole("status")).toHaveTextContent("Revision 2 confirmed successfully");
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Revision 2 confirmed successfully",
+    );
     expect(screen.getByText("What was established")).toBeVisible();
   });
 });

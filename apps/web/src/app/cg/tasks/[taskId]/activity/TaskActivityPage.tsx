@@ -1,7 +1,13 @@
 import Link from "next/link";
 import type { TaskActivityEventType } from "@intent-core/contracts";
 
-import { AppShell, Breadcrumbs, ContextTabs, EmptyState, ErrorState } from "@/design";
+import {
+  AppShell,
+  Breadcrumbs,
+  ContextTabs,
+  EmptyState,
+  ErrorState,
+} from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import type { TaskActivityWorkspaceData } from "@/features/cg/activity-workspace/data";
@@ -48,9 +54,18 @@ export function TaskActivityPage({
     >
       {unavailable || data === null ? (
         <>
-          <Breadcrumbs items={[{ label: "Tasks", href: "/cg/tasks" }, { label: "Activity" }]} />
+          <Breadcrumbs
+            items={[
+              { label: "Tasks", href: "/cg/tasks" },
+              { label: "Activity" },
+            ]}
+          />
           <ErrorState
-            title={unavailable ? "This Task is unavailable" : "This Task could not be found"}
+            title={
+              unavailable
+                ? "This Task is unavailable"
+                : "This Task could not be found"
+            }
             description={
               unavailable
                 ? "The ICAS service could not be reached. Try refreshing the page."
@@ -72,8 +87,16 @@ export function TaskActivityPage({
           <ContextTabs
             activeTabId="activity"
             tabs={[
-              { id: "overview", label: "Overview", href: `/cg/tasks/${taskId}` },
-              { id: "execution", label: "Execution", href: `/cg/tasks/${taskId}/execution` },
+              {
+                id: "overview",
+                label: "Overview",
+                href: `/cg/tasks/${taskId}`,
+              },
+              {
+                id: "execution",
+                label: "Execution",
+                href: `/cg/tasks/${taskId}/execution`,
+              },
               {
                 id: "version-review",
                 label: "Version Review",
@@ -84,7 +107,11 @@ export function TaskActivityPage({
                 label: "Dependencies",
                 href: `/cg/tasks/${taskId}/dependencies`,
               },
-              { id: "activity", label: "Activity", href: `/cg/tasks/${taskId}/activity` },
+              {
+                id: "activity",
+                label: "Activity",
+                href: `/cg/tasks/${taskId}/activity`,
+              },
             ]}
           />
 
@@ -95,7 +122,9 @@ export function TaskActivityPage({
               {data.activity.events.map((event) => (
                 <li key={event.id} className={styles.event}>
                   <div className={styles.eventMain}>
-                    <span className={styles.eventType}>{EVENT_TYPE_LABEL[event.event_type]}</span>
+                    <span className={styles.eventType}>
+                      {EVENT_TYPE_LABEL[event.event_type]}
+                    </span>
                     <span className={styles.eventTime}>
                       {new Date(event.occurred_at).toLocaleString()}
                     </span>

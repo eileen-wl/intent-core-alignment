@@ -8,15 +8,16 @@ import type { CoreAnchorRevisionRead } from "@intent-core/contracts";
  * newly added content, which is honest: there is nothing to compare
  * against. */
 
-const SCALAR_FIELDS: { field: keyof CoreAnchorRevisionRead; label: string }[] = [
-  { field: "shot_objective", label: "Shot objective" },
-  { field: "emotional_tone", label: "Emotional tone" },
-  { field: "visual_focus", label: "Visual focus" },
-  { field: "rhythm_intensity", label: "Rhythm and intensity" },
-  { field: "character_relationship", label: "Character relationship" },
-  { field: "narrative_priority", label: "Narrative priority" },
-  { field: "core_summary", label: "Core summary" },
-];
+const SCALAR_FIELDS: { field: keyof CoreAnchorRevisionRead; label: string }[] =
+  [
+    { field: "shot_objective", label: "Shot objective" },
+    { field: "emotional_tone", label: "Emotional tone" },
+    { field: "visual_focus", label: "Visual focus" },
+    { field: "rhythm_intensity", label: "Rhythm and intensity" },
+    { field: "character_relationship", label: "Character relationship" },
+    { field: "narrative_priority", label: "Narrative priority" },
+    { field: "core_summary", label: "Core summary" },
+  ];
 
 const COLLECTION_FIELDS: {
   field: keyof CoreAnchorRevisionRead;
@@ -24,15 +25,26 @@ const COLLECTION_FIELDS: {
   plural: string;
 }[] = [
   { field: "constraints", singular: "constraint", plural: "constraints" },
-  { field: "variation_zones", singular: "variation zone", plural: "variation zones" },
+  {
+    field: "variation_zones",
+    singular: "variation zone",
+    plural: "variation zones",
+  },
   { field: "drift_risks", singular: "drift risk", plural: "drift risks" },
   { field: "references", singular: "reference", plural: "references" },
-  { field: "open_questions", singular: "open question", plural: "open questions" },
+  {
+    field: "open_questions",
+    singular: "open question",
+    plural: "open questions",
+  },
 ];
 
 const METADATA_KEYS = new Set(["id", "order_index", "created_at"]);
 
-function collectionContent(revision: CoreAnchorRevisionRead | null, field: keyof CoreAnchorRevisionRead): string[] {
+function collectionContent(
+  revision: CoreAnchorRevisionRead | null,
+  field: keyof CoreAnchorRevisionRead,
+): string[] {
   if (revision === null) return [];
   const items = (revision[field] as Array<Record<string, unknown>>) ?? [];
   return items.map((item) => {
@@ -87,7 +99,9 @@ export function computeChangeSummary(
  * about a Revision 1 that had nothing to change from. Every line is
  * gated on real populated content on `revision` itself; nothing here is
  * invented when a field happens to be empty. */
-export function summarizeEstablishedContent(revision: CoreAnchorRevisionRead): string[] {
+export function summarizeEstablishedContent(
+  revision: CoreAnchorRevisionRead,
+): string[] {
   const items: string[] = [];
 
   if (revision.core_summary || revision.shot_objective) {
@@ -95,15 +109,21 @@ export function summarizeEstablishedContent(revision: CoreAnchorRevisionRead): s
   }
   if (revision.constraints.length > 0) {
     const count = revision.constraints.length;
-    items.push(`${count} confirmed ${count === 1 ? "constraint" : "constraints"}`);
+    items.push(
+      `${count} confirmed ${count === 1 ? "constraint" : "constraints"}`,
+    );
   }
   if (revision.variation_zones.length > 0) {
     const count = revision.variation_zones.length;
-    items.push(`${count} confirmed variation ${count === 1 ? "boundary" : "boundaries"}`);
+    items.push(
+      `${count} confirmed variation ${count === 1 ? "boundary" : "boundaries"}`,
+    );
   }
   if (revision.open_questions.length > 0) {
     const count = revision.open_questions.length;
-    items.push(`${count} recorded open ${count === 1 ? "question" : "questions"}`);
+    items.push(
+      `${count} recorded open ${count === 1 ? "question" : "questions"}`,
+    );
   }
 
   return items;

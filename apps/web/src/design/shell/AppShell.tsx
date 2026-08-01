@@ -24,7 +24,11 @@ export function AppShell({
     <div className={styles.shell}>
       <TopBar name={name} role={role} onExitRole={onExitRole} />
       <div className={styles.body}>
-        <RoleSidebar items={sidebarItems} currentPath={currentPath} name={name} />
+        <RoleSidebar
+          items={sidebarItems}
+          currentPath={currentPath}
+          name={name}
+        />
         <main className={styles.main}>{children}</main>
       </div>
     </div>

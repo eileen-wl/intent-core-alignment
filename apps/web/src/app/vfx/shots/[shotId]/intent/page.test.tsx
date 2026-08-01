@@ -33,7 +33,9 @@ beforeEach(() => {
   cookieStore.get.mockReturnValue({ value: "vfx_supervisor" });
 });
 
-function confirmedRevision(overrides: Partial<CoreAnchorRevisionRead> = {}): CoreAnchorRevisionRead {
+function confirmedRevision(
+  overrides: Partial<CoreAnchorRevisionRead> = {},
+): CoreAnchorRevisionRead {
   return {
     id: "r2",
     core_anchor_id: "a1",
@@ -102,7 +104,9 @@ describe("/vfx/shots/:shotId/intent page", () => {
 
     const result = await Page({
       params,
-      searchParams: Promise.resolve({ justConfirmed: "some-other-revision-id" }),
+      searchParams: Promise.resolve({
+        justConfirmed: "some-other-revision-id",
+      }),
     });
 
     expect(result.props.justConfirmed).toBe(false);

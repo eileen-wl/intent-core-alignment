@@ -39,7 +39,10 @@ import { resolveD1DemoShotId } from "@/features/session/demoScenario";
  * not just through `RoleEntryButton`'s own (already-gated) prop. Falls
  * back to the role's fixed workspace home exactly as before whenever
  * `returnTo` is absent or fails either check. */
-export async function enterDemoRole(role: HumanRole, returnTo?: string | null): Promise<void> {
+export async function enterDemoRole(
+  role: HumanRole,
+  returnTo?: string | null,
+): Promise<void> {
   if (!isDemoRole(role)) {
     redirect("/");
   }
@@ -51,7 +54,11 @@ export async function enterDemoRole(role: HumanRole, returnTo?: string | null): 
     path: "/",
   });
 
-  if (role === "vfx_supervisor" || role === "cg_supervisor" || role === "artist") {
+  if (
+    role === "vfx_supervisor" ||
+    role === "cg_supervisor" ||
+    role === "artist"
+  ) {
     try {
       await resolveD1DemoShotId();
     } catch {

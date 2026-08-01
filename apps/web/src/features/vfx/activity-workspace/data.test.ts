@@ -13,7 +13,11 @@ function jsonResponse(status: number, body: unknown) {
   };
 }
 
-const ITEM = { shot_id: "s1", project_name: "D1 Demo Project", shot_name: "Shot 010" };
+const ITEM = {
+  shot_id: "s1",
+  project_name: "D1 Demo Project",
+  shot_name: "Shot 010",
+};
 
 beforeEach(() => {
   vi.stubGlobal("fetch", fetchMock);
@@ -33,13 +37,31 @@ describe("loadActivityWorkspaceData", () => {
 
   it("propagates a genuine API failure instead of collapsing it into null", async () => {
     fetchMock.mockResolvedValue(jsonResponse(500, { detail: "boom" }));
-    await expect(loadActivityWorkspaceData("s1")).rejects.toMatchObject({ status: 500 });
+    await expect(loadActivityWorkspaceData("s1")).rejects.toMatchObject({
+      status: 500,
+    });
   });
 
   it("returns the real activity timeline exactly as the backend delivers it", async () => {
     const events = [
-      { id: "e2", event_type: "core_anchor_confirmed", occurred_at: "2026-01-02T00:00:00Z", summary: "s2", related_entity_type: "decision", related_entity_id: "d1", route: "/vfx/shots/s1/intent" },
-      { id: "e1", event_type: "core_anchor_draft_created", occurred_at: "2026-01-01T00:00:00Z", summary: "s1", related_entity_type: "core_anchor_revision", related_entity_id: "r1", route: "/vfx/shots/s1/intent" },
+      {
+        id: "e2",
+        event_type: "core_anchor_confirmed",
+        occurred_at: "2026-01-02T00:00:00Z",
+        summary: "s2",
+        related_entity_type: "decision",
+        related_entity_id: "d1",
+        route: "/vfx/shots/s1/intent",
+      },
+      {
+        id: "e1",
+        event_type: "core_anchor_draft_created",
+        occurred_at: "2026-01-01T00:00:00Z",
+        summary: "s1",
+        related_entity_type: "core_anchor_revision",
+        related_entity_id: "r1",
+        route: "/vfx/shots/s1/intent",
+      },
     ];
     fetchMock
       .mockResolvedValueOnce(jsonResponse(200, ITEM))

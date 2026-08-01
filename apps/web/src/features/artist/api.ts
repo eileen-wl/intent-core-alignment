@@ -84,7 +84,11 @@ async function artistFetchOrNull<T>(path: string): Promise<T | null> {
  * see `features/session/identity.ts`'s `actorHeaders()`. */
 type ActorHeaders = Record<string, string>;
 
-function mutationInit(method: "POST", body: unknown, actorHeaders: ActorHeaders): RequestInit {
+function mutationInit(
+  method: "POST",
+  body: unknown,
+  actorHeaders: ActorHeaders,
+): RequestInit {
   return {
     method,
     headers: { "Content-Type": "application/json", ...actorHeaders },
@@ -103,7 +107,9 @@ export function fetchArtistInbox(): Promise<ArtistInboxRead> {
 /** `GET /artist/inbox/{task_id}` -- one Task's derived Inbox row, reused
  * as the primary context/header data on every Artist Task page. `null`
  * only on a real 404. */
-export function fetchArtistInboxItem(taskId: string): Promise<ArtistInboxItemRead | null> {
+export function fetchArtistInboxItem(
+  taskId: string,
+): Promise<ArtistInboxItemRead | null> {
   return artistFetchOrNull<ArtistInboxItemRead>(`/artist/inbox/${taskId}`);
 }
 
@@ -118,18 +124,30 @@ export function listTasksForShot(shotId: string): Promise<TaskRead[]> {
 // --- Core Anchor / Execution Anchor read-only context (never edited from Artist) --
 
 export function getCoreAnchor(shotId: string): Promise<CoreAnchorRead | null> {
-  return artistFetchOrNull<CoreAnchorRead>(`/intent/shots/${shotId}/core-anchor`);
+  return artistFetchOrNull<CoreAnchorRead>(
+    `/intent/shots/${shotId}/core-anchor`,
+  );
 }
 
-export function listCoreAnchorRevisions(shotId: string): Promise<CoreAnchorRevisionRead[]> {
-  return artistFetch<CoreAnchorRevisionRead[]>(`/intent/shots/${shotId}/core-anchor/revisions`);
+export function listCoreAnchorRevisions(
+  shotId: string,
+): Promise<CoreAnchorRevisionRead[]> {
+  return artistFetch<CoreAnchorRevisionRead[]>(
+    `/intent/shots/${shotId}/core-anchor/revisions`,
+  );
 }
 
-export function getExecutionAnchor(taskId: string): Promise<ExecutionAnchorRead | null> {
-  return artistFetchOrNull<ExecutionAnchorRead>(`/intent/tasks/${taskId}/execution-anchor`);
+export function getExecutionAnchor(
+  taskId: string,
+): Promise<ExecutionAnchorRead | null> {
+  return artistFetchOrNull<ExecutionAnchorRead>(
+    `/intent/tasks/${taskId}/execution-anchor`,
+  );
 }
 
-export function listExecutionAnchorRevisions(taskId: string): Promise<ExecutionAnchorRevisionRead[]> {
+export function listExecutionAnchorRevisions(
+  taskId: string,
+): Promise<ExecutionAnchorRevisionRead[]> {
   return artistFetch<ExecutionAnchorRevisionRead[]>(
     `/intent/tasks/${taskId}/execution-anchor/revisions`,
   );
@@ -145,14 +163,20 @@ export function listVersionsForShot(shotId: string): Promise<VersionRead[]> {
   return artistFetch<VersionRead[]>(`/shots/${shotId}/versions`);
 }
 
-export function listReviewNotesForVersion(versionId: string): Promise<ReviewNoteRead[]> {
+export function listReviewNotesForVersion(
+  versionId: string,
+): Promise<ReviewNoteRead[]> {
   return artistFetch<ReviewNoteRead[]>(`/versions/${versionId}/review-notes`);
 }
 
 // --- Artist Agent guidance ---------------------------------------------------
 
-export function listArtistGuidancesForVersion(versionId: string): Promise<ArtistAgentGuidanceRead[]> {
-  return artistFetch<ArtistAgentGuidanceRead[]>(`/intent/versions/${versionId}/artist-guidances`);
+export function listArtistGuidancesForVersion(
+  versionId: string,
+): Promise<ArtistAgentGuidanceRead[]> {
+  return artistFetch<ArtistAgentGuidanceRead[]>(
+    `/intent/versions/${versionId}/artist-guidances`,
+  );
 }
 
 /** Real Agent-assisted generation: reads the Task's active confirmed
@@ -176,7 +200,9 @@ export function generateArtistGuidance(
 
 // --- Related cross-role evidence (read-only, "where available") -------------
 
-export function listCgSupervisorReviews(revisionId: string): Promise<CGSupervisorReviewRead[]> {
+export function listCgSupervisorReviews(
+  revisionId: string,
+): Promise<CGSupervisorReviewRead[]> {
   return artistFetch<CGSupervisorReviewRead[]>(
     `/intent/execution-anchor-revisions/${revisionId}/cg-supervisor-reviews`,
   );
@@ -193,12 +219,18 @@ export function listCrossRoleAssessmentsForVersion(
 
 // --- Dependencies (read-only context for blockers) ---------------------------
 
-export function listDependenciesForTask(taskId: string): Promise<TaskDependencyRead[]> {
+export function listDependenciesForTask(
+  taskId: string,
+): Promise<TaskDependencyRead[]> {
   return artistFetch<TaskDependencyRead[]>(`/tasks/${taskId}/dependencies`);
 }
 
 // --- Feedback History ----------------------------------------------------------
 
-export function getTaskFeedbackHistory(taskId: string): Promise<ArtistFeedbackHistoryRead> {
-  return artistFetch<ArtistFeedbackHistoryRead>(`/tasks/${taskId}/feedback-history`);
+export function getTaskFeedbackHistory(
+  taskId: string,
+): Promise<ArtistFeedbackHistoryRead> {
+  return artistFetch<ArtistFeedbackHistoryRead>(
+    `/tasks/${taskId}/feedback-history`,
+  );
 }

@@ -4,7 +4,10 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { TaskDependencyRead } from "@intent-core/contracts";
 
-import { acknowledgeDependencyAction, resolveDependencyAction } from "@/features/cg/actions";
+import {
+  acknowledgeDependencyAction,
+  resolveDependencyAction,
+} from "@/features/cg/actions";
 import styles from "./DependencyRow.module.css";
 
 export function DependencyRow({
@@ -26,8 +29,8 @@ export function DependencyRow({
         </span>
         <p className={styles.description}>{dependency.description}</p>
         <p className={styles.meta}>
-          {dependency.created_by_human_role ?? dependency.created_by_actor_kind} ·{" "}
-          {new Date(dependency.created_at).toLocaleString()}
+          {dependency.created_by_human_role ?? dependency.created_by_actor_kind}{" "}
+          · {new Date(dependency.created_at).toLocaleString()}
           {dependency.severity ? ` · ${dependency.severity} severity` : ""}
         </p>
       </div>
@@ -42,13 +45,15 @@ export function DependencyRow({
               onClick={() => {
                 setError(null);
                 startTransition(() => {
-                  acknowledgeDependencyAction(taskId, dependency.id).then((result) => {
-                    if (result.ok) {
-                      router.refresh();
-                    } else {
-                      setError(result.error.message);
-                    }
-                  });
+                  acknowledgeDependencyAction(taskId, dependency.id).then(
+                    (result) => {
+                      if (result.ok) {
+                        router.refresh();
+                      } else {
+                        setError(result.error.message);
+                      }
+                    },
+                  );
                 });
               }}
             >
@@ -61,13 +66,15 @@ export function DependencyRow({
               onClick={() => {
                 setError(null);
                 startTransition(() => {
-                  resolveDependencyAction(taskId, dependency.id).then((result) => {
-                    if (result.ok) {
-                      router.refresh();
-                    } else {
-                      setError(result.error.message);
-                    }
-                  });
+                  resolveDependencyAction(taskId, dependency.id).then(
+                    (result) => {
+                      if (result.ok) {
+                        router.refresh();
+                      } else {
+                        setError(result.error.message);
+                      }
+                    },
+                  );
                 });
               }}
             >
@@ -83,13 +90,15 @@ export function DependencyRow({
             onClick={() => {
               setError(null);
               startTransition(() => {
-                resolveDependencyAction(taskId, dependency.id).then((result) => {
-                  if (result.ok) {
-                    router.refresh();
-                  } else {
-                    setError(result.error.message);
-                  }
-                });
+                resolveDependencyAction(taskId, dependency.id).then(
+                  (result) => {
+                    if (result.ok) {
+                      router.refresh();
+                    } else {
+                      setError(result.error.message);
+                    }
+                  },
+                );
               });
             }}
           >

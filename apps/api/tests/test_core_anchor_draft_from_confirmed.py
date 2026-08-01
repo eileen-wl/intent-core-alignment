@@ -31,9 +31,7 @@ async def _create_and_confirm_revision(
     client: AsyncClient, shot_id: str, **content: Any
 ) -> dict[str, Any]:
     draft = (
-        await client.post(
-            f"/intent/shots/{shot_id}/core-anchor/drafts", json=content, headers=VFX
-        )
+        await client.post(f"/intent/shots/{shot_id}/core-anchor/drafts", json=content, headers=VFX)
     ).json()
     confirmed = (
         await client.post(
@@ -80,9 +78,7 @@ async def test_creates_pending_human_gate_atomically(client: AsyncClient) -> Non
     await _create_and_confirm_revision(client, shot_id, core_summary="Baseline")
 
     draft = (
-        await client.post(
-            f"/intent/shots/{shot_id}/core-anchor/drafts/from-confirmed", headers=VFX
-        )
+        await client.post(f"/intent/shots/{shot_id}/core-anchor/drafts/from-confirmed", headers=VFX)
     ).json()
 
     gate_response = await client.get(f"/intent/core-anchor-revisions/{draft['id']}/human-gate")
@@ -99,16 +95,18 @@ async def test_no_decision_created_until_confirm_or_reject(
     await _create_and_confirm_revision(client, shot_id, core_summary="Baseline")
 
     draft = (
-        await client.post(
-            f"/intent/shots/{shot_id}/core-anchor/drafts/from-confirmed", headers=VFX
-        )
+        await client.post(f"/intent/shots/{shot_id}/core-anchor/drafts/from-confirmed", headers=VFX)
     ).json()
 
     decisions = (
-        await session.execute(
-            select(Decision).where(Decision.entity_id == uuid.UUID(draft["id"]))
+        (
+            await session.execute(
+                select(Decision).where(Decision.entity_id == uuid.UUID(draft["id"]))
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert decisions == []
 
 
@@ -169,7 +167,5 @@ async def test_no_write_back_record_created(client: AsyncClient, session: AsyncS
 
     await client.post(f"/intent/shots/{shot_id}/core-anchor/drafts/from-confirmed", headers=VFX)
 
-    count = (
-        await session.execute(select(func.count()).select_from(WritebackRecord))
-    ).scalar_one()
+    count = (await session.execute(select(func.count()).select_from(WritebackRecord))).scalar_one()
     assert count == 0

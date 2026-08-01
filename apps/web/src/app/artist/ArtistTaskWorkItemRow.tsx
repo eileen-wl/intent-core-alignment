@@ -8,7 +8,11 @@ import styles from "./ArtistTaskWorkItemRow.module.css";
  * category -> required-action title -> explanation -> supporting
  * production context (Task, Shot, Project). Mirrors
  * `app/cg/CgTaskWorkItemRow.tsx`. */
-export function ArtistTaskWorkItemRow({ item }: { item: ArtistReviewWorkItem }) {
+export function ArtistTaskWorkItemRow({
+  item,
+}: {
+  item: ArtistReviewWorkItem;
+}) {
   return (
     <Link href={item.route} className={styles.row}>
       <span className={styles.main}>

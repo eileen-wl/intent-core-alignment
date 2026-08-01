@@ -4,8 +4,11 @@ import type { IntentEvidenceData } from "@/features/vfx/intent-workspace/data";
 import { taskDisplayText, versionDisplayText } from "../../../vfxWording";
 import styles from "./IntentSourceContext.module.css";
 
-
-function SourceIcon({ kind }: { kind: "evidence" | "decomposition" | "reconstruction" }) {
+function SourceIcon({
+  kind,
+}: {
+  kind: "evidence" | "decomposition" | "reconstruction";
+}) {
   if (kind === "decomposition") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -67,7 +70,9 @@ export function IntentSourceContext({
       <div className={`${styles.panel} ${styles.firstDraftPanel}`}>
         <div className={styles.firstDraftHeadingGroup}>
           <h2 className={styles.heading}>Source and supporting context</h2>
-          <p className={styles.firstDraftIntro}>What I&apos;m using to write this draft</p>
+          <p className={styles.firstDraftIntro}>
+            What I&apos;m using to write this draft
+          </p>
         </div>
 
         <div className={styles.sourceCards}>
@@ -81,7 +86,8 @@ export function IntentSourceContext({
                   Brief, notes &amp; source evidence
                 </span>
                 <span className={styles.sourceSummaryDescription}>
-                  Available creative direction, production notes, and reference material.
+                  Available creative direction, production notes, and reference
+                  material.
                 </span>
               </span>
               <span className={styles.sourceCount}>{evidenceCount}</span>
@@ -103,9 +109,12 @@ export function IntentSourceContext({
                 <SourceIcon kind="decomposition" />
               </span>
               <span className={styles.sourceSummaryCopy}>
-                <span className={styles.sourceSummaryTitle}>Intent Decomposition</span>
+                <span className={styles.sourceSummaryTitle}>
+                  Intent Decomposition
+                </span>
                 <span className={styles.sourceSummaryDescription}>
-                  Breaks the Shot into structured intent elements for this draft.
+                  Breaks the Shot into structured intent elements for this
+                  draft.
                 </span>
               </span>
               <span className={styles.sourceCount}>
@@ -116,11 +125,15 @@ export function IntentSourceContext({
               {hasDecompositions ? (
                 <ul className={styles.sourceList}>
                   {evidenceData?.decompositions.map((decomposition) => (
-                    <li key={decomposition.id}>{decomposition.core_intent_summary}</li>
+                    <li key={decomposition.id}>
+                      {decomposition.core_intent_summary}
+                    </li>
                   ))}
                 </ul>
               ) : (
-                <p className={styles.empty}>No Intent Decomposition has been generated yet.</p>
+                <p className={styles.empty}>
+                  No Intent Decomposition has been generated yet.
+                </p>
               )}
             </div>
           </details>
@@ -131,9 +144,12 @@ export function IntentSourceContext({
                 <SourceIcon kind="reconstruction" />
               </span>
               <span className={styles.sourceSummaryCopy}>
-                <span className={styles.sourceSummaryTitle}>Context Reconstruction</span>
+                <span className={styles.sourceSummaryTitle}>
+                  Context Reconstruction
+                </span>
                 <span className={styles.sourceSummaryDescription}>
-                  Summarises scene purpose, continuity, and neighbouring context.
+                  Summarises scene purpose, continuity, and neighbouring
+                  context.
                 </span>
               </span>
               <span className={styles.sourceCount}>
@@ -150,7 +166,9 @@ export function IntentSourceContext({
                   ))}
                 </ul>
               ) : (
-                <p className={styles.empty}>No Context Reconstruction has been generated yet.</p>
+                <p className={styles.empty}>
+                  No Context Reconstruction has been generated yet.
+                </p>
               )}
             </div>
           </details>
@@ -202,7 +220,9 @@ export function IntentSourceContext({
 
       {evidenceData === null ? (
         <p className={styles.empty}>
-          No creative-intent source or supporting evidence is linked to this Shot yet. You can still create the first draft from the available Shot context.
+          No creative-intent source or supporting evidence is linked to this
+          Shot yet. You can still create the first draft from the available Shot
+          context.
         </p>
       ) : (
         <div className={styles.sources}>
@@ -211,7 +231,9 @@ export function IntentSourceContext({
               <h3 className={styles.sourceLabel}>Intent Decomposition</h3>
               <ul className={styles.sourceList}>
                 {evidenceData.decompositions.map((decomposition) => (
-                  <li key={decomposition.id}>{decomposition.core_intent_summary}</li>
+                  <li key={decomposition.id}>
+                    {decomposition.core_intent_summary}
+                  </li>
                 ))}
               </ul>
             </div>
@@ -230,11 +252,13 @@ export function IntentSourceContext({
           )}
           {!hasDecompositions && !hasReconstructions && (
             <p className={styles.empty}>
-              No Intent Decomposition or Context Reconstruction has been generated for this Shot yet.
+              No Intent Decomposition or Context Reconstruction has been
+              generated for this Shot yet.
             </p>
           )}
           <p className={styles.evidenceCount}>
-            {evidenceCount} evidence {evidenceCount === 1 ? "source" : "sources"} -- see Evidence and
+            {evidenceCount} evidence{" "}
+            {evidenceCount === 1 ? "source" : "sources"} -- see Evidence and
             provenance below.
           </p>
         </div>

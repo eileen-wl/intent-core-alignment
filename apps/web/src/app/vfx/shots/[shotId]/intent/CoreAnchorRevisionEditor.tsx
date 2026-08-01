@@ -1,6 +1,11 @@
 "use client";
 
-import type { CoreAnchorRevisionRead, CoreAnchorRevisionUpdate, HumanGateRead, VfxInboxItemRead } from "@intent-core/contracts";
+import type {
+  CoreAnchorRevisionRead,
+  CoreAnchorRevisionUpdate,
+  HumanGateRead,
+  VfxInboxItemRead,
+} from "@intent-core/contracts";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
@@ -78,10 +83,22 @@ function toFormState(revision: CoreAnchorRevisionRead): FormState {
       character_relationship: revision.character_relationship ?? "",
       narrative_priority: revision.narrative_priority ?? "",
     },
-    constraints: revision.constraints.map((item) => ({ key: newKey(), text: item.content })),
-    variation_zones: revision.variation_zones.map((item) => ({ key: newKey(), text: item.content })),
-    drift_risks: revision.drift_risks.map((item) => ({ key: newKey(), text: item.description })),
-    open_questions: revision.open_questions.map((item) => ({ key: newKey(), text: item.question })),
+    constraints: revision.constraints.map((item) => ({
+      key: newKey(),
+      text: item.content,
+    })),
+    variation_zones: revision.variation_zones.map((item) => ({
+      key: newKey(),
+      text: item.content,
+    })),
+    drift_risks: revision.drift_risks.map((item) => ({
+      key: newKey(),
+      text: item.description,
+    })),
+    open_questions: revision.open_questions.map((item) => ({
+      key: newKey(),
+      text: item.question,
+    })),
     references: revision.references.map((item) => ({
       key: newKey(),
       label: item.label,
@@ -95,9 +112,13 @@ function toUpdatePayload(form: FormState): CoreAnchorRevisionUpdate {
   return {
     ...form.scalars,
     constraints: form.constraints.map((item) => ({ content: item.text })),
-    variation_zones: form.variation_zones.map((item) => ({ content: item.text })),
+    variation_zones: form.variation_zones.map((item) => ({
+      content: item.text,
+    })),
     drift_risks: form.drift_risks.map((item) => ({ description: item.text })),
-    open_questions: form.open_questions.map((item) => ({ question: item.text })),
+    open_questions: form.open_questions.map((item) => ({
+      question: item.text,
+    })),
     references: form.references.map((item) => ({
       label: item.label,
       uri: item.uri || null,
@@ -111,7 +132,9 @@ const SIMPLE_COLLECTIONS: {
   label: string;
   addLabel: string;
   placeholder: string;
-  confirmedText: (item: { content: string } | { description: string } | { question: string }) => string;
+  confirmedText: (
+    item: { content: string } | { description: string } | { question: string },
+  ) => string;
 }[] = [
   {
     field: "constraints",
@@ -163,7 +186,9 @@ function referencesChanged(
   confirmed: CoreAnchorRevisionRead["references"],
   form: ReferenceItem[],
 ): boolean {
-  const before = confirmed.map((item) => `${item.label}|${item.uri ?? ""}|${item.note ?? ""}`);
+  const before = confirmed.map(
+    (item) => `${item.label}|${item.uri ?? ""}|${item.note ?? ""}`,
+  );
   const after = form.map((item) => `${item.label}|${item.uri}|${item.note}`);
   return JSON.stringify(before) !== JSON.stringify(after);
 }
@@ -196,17 +221,24 @@ export function CoreAnchorRevisionEditor({
   // revision (the backend call sends only `revisionId`, never the live
   // form), so confirming while this differs from `form` would silently
   // discard in-progress edits -- see `hasUnsavedChanges`.
-  const [lastSavedForm, setLastSavedForm] = useState<FormState>(() => toFormState(draftRevision));
+  const [lastSavedForm, setLastSavedForm] = useState<FormState>(() =>
+    toFormState(draftRevision),
+  );
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [saveState, setSaveState] = useState<
+    "idle" | "saving" | "saved" | "error"
+  >("idle");
   const [saveError, setSaveError] = useState<string | null>(null);
   const [rationale, setRationale] = useState("");
-  const [dialogMode, setDialogMode] = useState<"confirm" | "reject" | null>(null);
-  const [dialogPending, setDialogPending] = useState(false);
-  const [dialogConflict, setDialogConflict] = useState<string | null>(null);
-  const [decisionOutcome, setDecisionOutcome] = useState<{ kind: "discarded"; at: string } | null>(
+  const [dialogMode, setDialogMode] = useState<"confirm" | "reject" | null>(
     null,
   );
+  const [dialogPending, setDialogPending] = useState(false);
+  const [dialogConflict, setDialogConflict] = useState<string | null>(null);
+  const [decisionOutcome, setDecisionOutcome] = useState<{
+    kind: "discarded";
+    at: string;
+  } | null>(null);
   // Purely presentational: whether the restrained per-field "Changed"
   // indicators are shown on the REVISION DRAFT comparison. Never
   // affects which data is saved/confirmed/rejected.
@@ -239,7 +271,8 @@ export function CoreAnchorRevisionEditor({
   // `intent.human_gate_service` documents) is deliberately NOT a
   // blocking reason here -- the real backend confirm/reject call creates
   // that missing gate atomically with the resolution itself.
-  const hasUnsavedChanges = JSON.stringify(form) !== JSON.stringify(lastSavedForm);
+  const hasUnsavedChanges =
+    JSON.stringify(form) !== JSON.stringify(lastSavedForm);
   const requestInFlight = isSaving || dialogPending;
   const confirmDisabled = requestInFlight || hasUnsavedChanges;
   const rejectDisabled = requestInFlight;
@@ -258,7 +291,9 @@ export function CoreAnchorRevisionEditor({
   ) {
     setForm((previous) => ({
       ...previous,
-      [field]: previous[field].map((item) => (item.key === key ? { ...item, text } : item)),
+      [field]: previous[field].map((item) =>
+        item.key === key ? { ...item, text } : item,
+      ),
     }));
   }
 
@@ -269,7 +304,10 @@ export function CoreAnchorRevisionEditor({
     }));
   }
 
-  function removeSimpleItem(field: (typeof SIMPLE_COLLECTIONS)[number]["field"], key: string) {
+  function removeSimpleItem(
+    field: (typeof SIMPLE_COLLECTIONS)[number]["field"],
+    key: string,
+  ) {
     setForm((previous) => ({
       ...previous,
       [field]: previous[field].filter((item) => item.key !== key),
@@ -303,7 +341,11 @@ export function CoreAnchorRevisionEditor({
     setSaveState("saving");
     setSaveError(null);
     startSaveTransition(() => {
-      saveCoreAnchorDraftAction(shotId, draftRevision.id, toUpdatePayload(form)).then((result) => {
+      saveCoreAnchorDraftAction(
+        shotId,
+        draftRevision.id,
+        toUpdatePayload(form),
+      ).then((result) => {
         if (result.ok) {
           setSaveState("saved");
           syncedKeyRef.current = `${result.revision.id}:${result.revision.updated_at}`;
@@ -331,32 +373,42 @@ export function CoreAnchorRevisionEditor({
   function submitDialog() {
     setDialogPending(true);
     const mode = dialogMode;
-    const submit = mode === "confirm" ? confirmCoreAnchorRevisionAction : rejectCoreAnchorRevisionAction;
+    const submit =
+      mode === "confirm"
+        ? confirmCoreAnchorRevisionAction
+        : rejectCoreAnchorRevisionAction;
     // `humanGate` may legitimately be null here -- a legacy draft that
     // has never had a gate created for it. The Server Action's own
     // `validateGateAndRevision` treats that as safe to proceed (the real
     // backend confirm/reject call creates the missing gate atomically),
     // never as a stale conflict.
-    submit(shotId, draftRevision.id, humanGate?.id ?? null, rationale).then((result) => {
-      setDialogPending(false);
-      if (result.ok) {
-        setDialogMode(null);
-        if (mode === "confirm") {
-          // Step 7C-2: no local "just confirmed" message here -- the
-          // draft is gone the moment this succeeds, so this component
-          // is about to unmount. The transient success presentation
-          // moves to `ConfirmedAnchorSummary` via a `?justConfirmed=`
-          // navigation, which also forces the fresh server data
-          // (confirmedRevision now set, draftRevision now null) that
-          // rendering it correctly depends on.
-          router.push(`/vfx/shots/${shotId}/intent?justConfirmed=${result.revision.id}`);
+    submit(shotId, draftRevision.id, humanGate?.id ?? null, rationale).then(
+      (result) => {
+        setDialogPending(false);
+        if (result.ok) {
+          setDialogMode(null);
+          if (mode === "confirm") {
+            // Step 7C-2: no local "just confirmed" message here -- the
+            // draft is gone the moment this succeeds, so this component
+            // is about to unmount. The transient success presentation
+            // moves to `ConfirmedAnchorSummary` via a `?justConfirmed=`
+            // navigation, which also forces the fresh server data
+            // (confirmedRevision now set, draftRevision now null) that
+            // rendering it correctly depends on.
+            router.push(
+              `/vfx/shots/${shotId}/intent?justConfirmed=${result.revision.id}`,
+            );
+          } else {
+            setDecisionOutcome({
+              kind: "discarded",
+              at: new Date().toLocaleString(),
+            });
+          }
         } else {
-          setDecisionOutcome({ kind: "discarded", at: new Date().toLocaleString() });
+          setDialogConflict(result.error.message);
         }
-      } else {
-        setDialogConflict(result.error.message);
-      }
-    });
+      },
+    );
   }
 
   function scalarField(field: keyof FormState["scalars"], label: string) {
@@ -380,7 +432,6 @@ export function CoreAnchorRevisionEditor({
       </label>
     );
   }
-
 
   function firstDraftScalarField(
     field: keyof FormState["scalars"],
@@ -408,9 +459,14 @@ export function CoreAnchorRevisionEditor({
     );
   }
 
-  function firstDraftCollectionSection(entry: (typeof SIMPLE_COLLECTIONS)[number]) {
+  function firstDraftCollectionSection(
+    entry: (typeof SIMPLE_COLLECTIONS)[number],
+  ) {
     const { field, label, addLabel, placeholder } = entry;
-    const emptyCopy: Record<(typeof SIMPLE_COLLECTIONS)[number]["field"], string> = {
+    const emptyCopy: Record<
+      (typeof SIMPLE_COLLECTIONS)[number]["field"],
+      string
+    > = {
       constraints: "No constraints added yet.",
       variation_zones: "No variation zones added yet.",
       drift_risks: "No drift risks identified yet.",
@@ -444,7 +500,9 @@ export function CoreAnchorRevisionEditor({
                   className={styles.firstDraftCollectionInput}
                   value={item.text}
                   placeholder={placeholder}
-                  onChange={(event) => updateSimpleCollection(field, item.key, event.target.value)}
+                  onChange={(event) =>
+                    updateSimpleCollection(field, item.key, event.target.value)
+                  }
                   aria-invalid={Boolean(fieldErrors[`${field}:${item.key}`])}
                 />
                 <button
@@ -456,7 +514,9 @@ export function CoreAnchorRevisionEditor({
                   Remove
                 </button>
                 {fieldErrors[`${field}:${item.key}`] && (
-                  <p className={styles.fieldError}>{fieldErrors[`${field}:${item.key}`]}</p>
+                  <p className={styles.fieldError}>
+                    {fieldErrors[`${field}:${item.key}`]}
+                  </p>
                 )}
               </div>
             ))}
@@ -491,7 +551,9 @@ export function CoreAnchorRevisionEditor({
       </div>
 
       {form.references.length === 0 ? (
-        <p className={styles.firstDraftCollectionEmpty}>No references linked yet.</p>
+        <p className={styles.firstDraftCollectionEmpty}>
+          No references linked yet.
+        </p>
       ) : (
         <div className={styles.firstDraftReferenceItems}>
           {form.references.map((reference) => (
@@ -512,7 +574,9 @@ export function CoreAnchorRevisionEditor({
                       ),
                     }))
                   }
-                  aria-invalid={Boolean(fieldErrors[`references:${reference.key}`])}
+                  aria-invalid={Boolean(
+                    fieldErrors[`references:${reference.key}`],
+                  )}
                 />
                 <input
                   type="text"
@@ -573,7 +637,9 @@ export function CoreAnchorRevisionEditor({
     </section>
   );
 
-  function simpleCollectionFieldset(entry: (typeof SIMPLE_COLLECTIONS)[number]) {
+  function simpleCollectionFieldset(
+    entry: (typeof SIMPLE_COLLECTIONS)[number],
+  ) {
     const { field, label, addLabel, placeholder } = entry;
     return (
       <fieldset key={field} className={styles.collectionField}>
@@ -588,7 +654,9 @@ export function CoreAnchorRevisionEditor({
               className={styles.textInput}
               value={item.text}
               placeholder={placeholder}
-              onChange={(event) => updateSimpleCollection(field, item.key, event.target.value)}
+              onChange={(event) =>
+                updateSimpleCollection(field, item.key, event.target.value)
+              }
               aria-invalid={Boolean(fieldErrors[`${field}:${item.key}`])}
             />
             <button
@@ -600,11 +668,17 @@ export function CoreAnchorRevisionEditor({
               Remove
             </button>
             {fieldErrors[`${field}:${item.key}`] && (
-              <p className={styles.fieldError}>{fieldErrors[`${field}:${item.key}`]}</p>
+              <p className={styles.fieldError}>
+                {fieldErrors[`${field}:${item.key}`]}
+              </p>
             )}
           </div>
         ))}
-        <button type="button" className={styles.addButton} onClick={() => addSimpleItem(field)}>
+        <button
+          type="button"
+          className={styles.addButton}
+          onClick={() => addSimpleItem(field)}
+        >
           {addLabel}
         </button>
       </fieldset>
@@ -628,7 +702,9 @@ export function CoreAnchorRevisionEditor({
               setForm((previous) => ({
                 ...previous,
                 references: previous.references.map((item) =>
-                  item.key === reference.key ? { ...item, label: event.target.value } : item,
+                  item.key === reference.key
+                    ? { ...item, label: event.target.value }
+                    : item,
                 ),
               }))
             }
@@ -643,7 +719,9 @@ export function CoreAnchorRevisionEditor({
               setForm((previous) => ({
                 ...previous,
                 references: previous.references.map((item) =>
-                  item.key === reference.key ? { ...item, uri: event.target.value } : item,
+                  item.key === reference.key
+                    ? { ...item, uri: event.target.value }
+                    : item,
                 ),
               }))
             }
@@ -657,7 +735,9 @@ export function CoreAnchorRevisionEditor({
               setForm((previous) => ({
                 ...previous,
                 references: previous.references.map((item) =>
-                  item.key === reference.key ? { ...item, note: event.target.value } : item,
+                  item.key === reference.key
+                    ? { ...item, note: event.target.value }
+                    : item,
                 ),
               }))
             }
@@ -668,14 +748,18 @@ export function CoreAnchorRevisionEditor({
             onClick={() =>
               setForm((previous) => ({
                 ...previous,
-                references: previous.references.filter((item) => item.key !== reference.key),
+                references: previous.references.filter(
+                  (item) => item.key !== reference.key,
+                ),
               }))
             }
           >
             Remove
           </button>
           {fieldErrors[`references:${reference.key}`] && (
-            <p className={styles.fieldError}>{fieldErrors[`references:${reference.key}`]}</p>
+            <p className={styles.fieldError}>
+              {fieldErrors[`references:${reference.key}`]}
+            </p>
           )}
         </div>
       ))}
@@ -685,7 +769,10 @@ export function CoreAnchorRevisionEditor({
         onClick={() =>
           setForm((previous) => ({
             ...previous,
-            references: [...previous.references, { key: newKey(), label: "", uri: "", note: "" }],
+            references: [
+              ...previous.references,
+              { key: newKey(), label: "", uri: "", note: "" },
+            ],
           }))
         }
       >
@@ -698,17 +785,25 @@ export function CoreAnchorRevisionEditor({
     <div className={styles.wrapper}>
       {decisionOutcome && (
         <p className={styles.outcome} role="status">
-          Revision {draftRevision.revision_number} was {decisionOutcome.kind} at {decisionOutcome.at}.
+          Revision {draftRevision.revision_number} was {decisionOutcome.kind} at{" "}
+          {decisionOutcome.at}.
         </p>
       )}
 
       {isFirstDraft ? (
         <div className={styles.firstDraftWorkspace}>
           <aside className={styles.sourceColumn}>
-            <IntentSourceContext item={item} evidenceData={evidenceData} firstDraft />
+            <IntentSourceContext
+              item={item}
+              evidenceData={evidenceData}
+              firstDraft
+            />
           </aside>
 
-          <section className={styles.firstDraftEditorCard} aria-labelledby="first-draft-title">
+          <section
+            className={styles.firstDraftEditorCard}
+            aria-labelledby="first-draft-title"
+          >
             <div className={styles.firstDraftHeader}>
               <div>
                 <p className={styles.editorEyebrow}>Revision 1 editor</p>
@@ -733,8 +828,16 @@ export function CoreAnchorRevisionEditor({
                   </legend>
                   <div className={styles.firstDraftScalarFields}>
                     {firstDraftScalarField("core_summary", "Core summary", 2)}
-                    {firstDraftScalarField("shot_objective", "Shot objective", 2)}
-                    {firstDraftScalarField("emotional_tone", "Emotional tone", 1)}
+                    {firstDraftScalarField(
+                      "shot_objective",
+                      "Shot objective",
+                      2,
+                    )}
+                    {firstDraftScalarField(
+                      "emotional_tone",
+                      "Emotional tone",
+                      1,
+                    )}
                     {firstDraftScalarField("visual_focus", "Visual focus", 1)}
                   </div>
                 </fieldset>
@@ -745,13 +848,21 @@ export function CoreAnchorRevisionEditor({
                     Detailed intent
                   </legend>
                   <div className={styles.firstDraftScalarFields}>
-                    {firstDraftScalarField("rhythm_intensity", "Rhythm and intensity", 1)}
+                    {firstDraftScalarField(
+                      "rhythm_intensity",
+                      "Rhythm and intensity",
+                      1,
+                    )}
                     {firstDraftScalarField(
                       "character_relationship",
                       "Character relationship",
                       1,
                     )}
-                    {firstDraftScalarField("narrative_priority", "Narrative priority", 1)}
+                    {firstDraftScalarField(
+                      "narrative_priority",
+                      "Narrative priority",
+                      1,
+                    )}
                   </div>
                 </fieldset>
               </div>
@@ -774,7 +885,10 @@ export function CoreAnchorRevisionEditor({
 
             <div className={styles.firstDraftRationale}>
               <div className={styles.firstDraftRationaleCopy}>
-                <label className={styles.rationaleLabel} htmlFor="core-anchor-rationale">
+                <label
+                  className={styles.rationaleLabel}
+                  htmlFor="core-anchor-rationale"
+                >
                   Decision rationale · Optional
                 </label>
                 <span className={styles.rationaleHint}>
@@ -792,14 +906,19 @@ export function CoreAnchorRevisionEditor({
             </div>
           </section>
 
-          <section className={styles.firstDraftFooter} aria-label="Draft status and actions">
+          <section
+            className={styles.firstDraftFooter}
+            aria-label="Draft status and actions"
+          >
             <div className={styles.draftStatusPanel}>
               <div className={styles.draftStatusCopy}>
                 <span className={styles.statusIcon} aria-hidden="true">
                   ✓
                 </span>
                 <div>
-                  <p className={styles.statusTitle}>Draft status: {draftStatusLabel}</p>
+                  <p className={styles.statusTitle}>
+                    Draft status: {draftStatusLabel}
+                  </p>
                   <p className={styles.statusDetail}>
                     {hasUnsavedChanges
                       ? "Save the working revision before confirming it."
@@ -812,7 +931,10 @@ export function CoreAnchorRevisionEditor({
 
               <div className={styles.contentOverviewBlock}>
                 <p className={styles.contentOverviewTitle}>Content overview</p>
-                <div className={styles.contentOverview} aria-label="Content overview">
+                <div
+                  className={styles.contentOverview}
+                  aria-label="Content overview"
+                >
                   {contentOverview.map((entry) => (
                     <div key={entry.label} className={styles.overviewMetric}>
                       <strong>{entry.value}</strong>
@@ -829,10 +951,12 @@ export function CoreAnchorRevisionEditor({
                   i
                 </span>
                 <p>
-                  <strong>Save draft:</strong> Keeps the working revision private and editable.
+                  <strong>Save draft:</strong> Keeps the working revision
+                  private and editable.
                   <br />
-                  <strong>Confirm:</strong> Submits this draft for the VFX Supervisor decision
-                  and makes Revision 1 the active shared intent.
+                  <strong>Confirm:</strong> Submits this draft for the VFX
+                  Supervisor decision and makes Revision 1 the active shared
+                  intent.
                 </p>
               </div>
 
@@ -887,7 +1011,10 @@ export function CoreAnchorRevisionEditor({
           </div>
           <div className={styles.gridHeaderSpacer} aria-hidden="true" />
           <div className={styles.gridHeaderRight}>
-            <span>Proposed: Revision {draftRevision.revision_number} · Draft in progress</span>
+            <span>
+              Proposed: Revision {draftRevision.revision_number} · Draft in
+              progress
+            </span>
             <label className={styles.showChangesToggle}>
               <input
                 type="checkbox"
@@ -906,7 +1033,9 @@ export function CoreAnchorRevisionEditor({
             // genuinely null on both sides would falsely flag as
             // "Changed" (null !== ""), violating no-meaningful-change
             // protection.
-            const changed = showChanges && (confirmedRevision[field] ?? "") !== form.scalars[field];
+            const changed =
+              showChanges &&
+              (confirmedRevision[field] ?? "") !== form.scalars[field];
             return (
               <div className={styles.fieldRow} key={field}>
                 <div className={styles.leftCell}>
@@ -914,12 +1043,21 @@ export function CoreAnchorRevisionEditor({
                     <FieldIcon field={field} />
                     {label}
                   </span>
-                  {confirmedValue && <p className={styles.fieldValue}>{confirmedValue}</p>}
+                  {confirmedValue && (
+                    <p className={styles.fieldValue}>{confirmedValue}</p>
+                  )}
                 </div>
                 <ArrowIcon />
-                <div className={[styles.rightCell, changed ? styles.changedCell : ""].join(" ")}>
+                <div
+                  className={[
+                    styles.rightCell,
+                    changed ? styles.changedCell : "",
+                  ].join(" ")}
+                >
                   {scalarField(field, label)}
-                  {changed && <span className={styles.changedDot} aria-label="Changed" />}
+                  {changed && (
+                    <span className={styles.changedDot} aria-label="Changed" />
+                  )}
                 </div>
               </div>
             );
@@ -928,7 +1066,12 @@ export function CoreAnchorRevisionEditor({
           {SIMPLE_COLLECTIONS.map((entry) => {
             const confirmedItems = confirmedRevision[entry.field] as unknown[];
             const changed =
-              showChanges && simpleCollectionChanged(confirmedItems, form[entry.field], entry.confirmedText as never);
+              showChanges &&
+              simpleCollectionChanged(
+                confirmedItems,
+                form[entry.field],
+                entry.confirmedText as never,
+              );
             return (
               <div className={styles.fieldRow} key={entry.field}>
                 <div className={styles.leftCell}>
@@ -940,15 +1083,24 @@ export function CoreAnchorRevisionEditor({
                     <ul className={styles.readOnlyList}>
                       {confirmedItems.map((confirmedItem, index) => (
                         // eslint-disable-next-line react/no-array-index-key -- read-only confirmed snapshot has no stable id beyond position here
-                        <li key={index}>{entry.confirmedText(confirmedItem as never)}</li>
+                        <li key={index}>
+                          {entry.confirmedText(confirmedItem as never)}
+                        </li>
                       ))}
                     </ul>
                   )}
                 </div>
                 <ArrowIcon />
-                <div className={[styles.rightCell, changed ? styles.changedCell : ""].join(" ")}>
+                <div
+                  className={[
+                    styles.rightCell,
+                    changed ? styles.changedCell : "",
+                  ].join(" ")}
+                >
                   {simpleCollectionFieldset(entry)}
-                  {changed && <span className={styles.changedDot} aria-label="Changed" />}
+                  {changed && (
+                    <span className={styles.changedDot} aria-label="Changed" />
+                  )}
                 </div>
               </div>
             );
@@ -975,15 +1127,20 @@ export function CoreAnchorRevisionEditor({
             <div
               className={[
                 styles.rightCell,
-                showChanges && referencesChanged(confirmedRevision.references, form.references)
+                showChanges &&
+                referencesChanged(confirmedRevision.references, form.references)
                   ? styles.changedCell
                   : "",
               ].join(" ")}
             >
               {referencesFieldset}
-              {showChanges && referencesChanged(confirmedRevision.references, form.references) && (
-                <span className={styles.changedDot} aria-label="Changed" />
-              )}
+              {showChanges &&
+                referencesChanged(
+                  confirmedRevision.references,
+                  form.references,
+                ) && (
+                  <span className={styles.changedDot} aria-label="Changed" />
+                )}
             </div>
           </div>
         </div>
@@ -992,12 +1149,17 @@ export function CoreAnchorRevisionEditor({
       {!isFirstDraft && (
         <>
           {changeSummary.length > 0 && (
-            <p className={styles.changeSummary}>Change summary: {changeSummary.join(", ")}</p>
+            <p className={styles.changeSummary}>
+              Change summary: {changeSummary.join(", ")}
+            </p>
           )}
 
           <div className={styles.decisionBlock}>
             <div className={styles.rationaleHeader}>
-              <label className={styles.rationaleLabel} htmlFor="core-anchor-rationale">
+              <label
+                className={styles.rationaleLabel}
+                htmlFor="core-anchor-rationale"
+              >
                 Decision rationale · Optional
               </label>
               <span className={styles.rationaleHint}>
@@ -1027,7 +1189,12 @@ export function CoreAnchorRevisionEditor({
               >
                 Discard draft
               </button>
-              <button type="button" className={styles.saveButton} onClick={handleSave} disabled={isSaving}>
+              <button
+                type="button"
+                className={styles.saveButton}
+                onClick={handleSave}
+                disabled={isSaving}
+              >
                 {isSaving ? "Saving…" : "Save draft"}
               </button>
               <button
@@ -1039,7 +1206,9 @@ export function CoreAnchorRevisionEditor({
                 Confirm revision
               </button>
             </div>
-            {saveState === "saved" && <span className={styles.savedNotice}>Changes saved.</span>}
+            {saveState === "saved" && (
+              <span className={styles.savedNotice}>Changes saved.</span>
+            )}
             {saveState === "error" && saveError && (
               <span className={styles.saveErrorNotice} role="alert">
                 {saveError}

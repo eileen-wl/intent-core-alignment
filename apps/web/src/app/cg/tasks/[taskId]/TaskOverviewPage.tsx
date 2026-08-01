@@ -1,6 +1,12 @@
 import Link from "next/link";
 
-import { AppShell, Breadcrumbs, ContextTabs, Divider, ErrorState } from "@/design";
+import {
+  AppShell,
+  Breadcrumbs,
+  ContextTabs,
+  Divider,
+  ErrorState,
+} from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import type { TaskOverviewData } from "@/features/cg/task-overview/data";
@@ -39,9 +45,15 @@ export function TaskOverviewPage({
     >
       {unavailable || data === null ? (
         <>
-          <Breadcrumbs items={[{ label: "Tasks", href: "/cg/tasks" }, { label: "Task" }]} />
+          <Breadcrumbs
+            items={[{ label: "Tasks", href: "/cg/tasks" }, { label: "Task" }]}
+          />
           <ErrorState
-            title={unavailable ? "This Task is unavailable" : "This Task could not be found"}
+            title={
+              unavailable
+                ? "This Task is unavailable"
+                : "This Task could not be found"
+            }
             description={
               unavailable
                 ? "The ICAS service could not be reached. Try refreshing the page."
@@ -63,8 +75,16 @@ export function TaskOverviewPage({
           <ContextTabs
             activeTabId="overview"
             tabs={[
-              { id: "overview", label: "Overview", href: `/cg/tasks/${taskId}` },
-              { id: "execution", label: "Execution", href: `/cg/tasks/${taskId}/execution` },
+              {
+                id: "overview",
+                label: "Overview",
+                href: `/cg/tasks/${taskId}`,
+              },
+              {
+                id: "execution",
+                label: "Execution",
+                href: `/cg/tasks/${taskId}/execution`,
+              },
               {
                 id: "version-review",
                 label: "Version Review",
@@ -75,7 +95,11 @@ export function TaskOverviewPage({
                 label: "Dependencies",
                 href: `/cg/tasks/${taskId}/dependencies`,
               },
-              { id: "activity", label: "Activity", href: `/cg/tasks/${taskId}/activity` },
+              {
+                id: "activity",
+                label: "Activity",
+                href: `/cg/tasks/${taskId}/activity`,
+              },
             ]}
           />
 
@@ -85,7 +109,10 @@ export function TaskOverviewPage({
 
           <dl>
             <dt>Confirmed Core Anchor (read-only)</dt>
-            <dd>{data.coreAnchorSummary ?? "No Core Anchor is confirmed for this Shot yet."}</dd>
+            <dd>
+              {data.coreAnchorSummary ??
+                "No Core Anchor is confirmed for this Shot yet."}
+            </dd>
 
             <dt>Execution Anchor</dt>
             <dd>
@@ -98,7 +125,9 @@ export function TaskOverviewPage({
             <dt>Latest Production Version</dt>
             <dd>
               {data.item.latest_version_name ? (
-                <Link href={`/cg/tasks/${taskId}/version-review`}>{versionDisplayText(data.item)}</Link>
+                <Link href={`/cg/tasks/${taskId}/version-review`}>
+                  {versionDisplayText(data.item)}
+                </Link>
               ) : (
                 "No Version recorded yet."
               )}
@@ -124,7 +153,9 @@ export function TaskOverviewPage({
                   ))}
                 </ul>
               )}
-              <Link href={`/cg/tasks/${taskId}/activity`}>View full activity →</Link>
+              <Link href={`/cg/tasks/${taskId}/activity`}>
+                View full activity →
+              </Link>
             </dd>
           </dl>
         </>

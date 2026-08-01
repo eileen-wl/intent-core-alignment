@@ -38,7 +38,9 @@ const searchParams = Promise.resolve({});
 describe("/artist/tasks/:taskId/current-version page", () => {
   it("redirects to /demo when the demo role cookie is not artist", async () => {
     cookieStore.get.mockReturnValue(undefined);
-    await expect(Page({ params, searchParams })).rejects.toThrow("NEXT_REDIRECT:/demo");
+    await expect(Page({ params, searchParams })).rejects.toThrow(
+      "NEXT_REDIRECT:/demo",
+    );
     expect(redirectSpy).toHaveBeenCalledWith("/demo");
   });
 

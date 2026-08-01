@@ -1,7 +1,13 @@
 import Link from "next/link";
 import type { ShotActivityEventType } from "@intent-core/contracts";
 
-import { AppShell, Breadcrumbs, ContextTabs, EmptyState, ErrorState } from "@/design";
+import {
+  AppShell,
+  Breadcrumbs,
+  ContextTabs,
+  EmptyState,
+  ErrorState,
+} from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import type { ActivityWorkspaceData } from "@/features/vfx/activity-workspace/data";
@@ -47,9 +53,18 @@ export function ActivityWorkspacePage({
     >
       {unavailable || data === null ? (
         <>
-          <Breadcrumbs items={[{ label: "Shots", href: "/vfx/shots" }, { label: "Activity" }]} />
+          <Breadcrumbs
+            items={[
+              { label: "Shots", href: "/vfx/shots" },
+              { label: "Activity" },
+            ]}
+          />
           <ErrorState
-            title={unavailable ? "This Shot is unavailable" : "This Shot could not be found"}
+            title={
+              unavailable
+                ? "This Shot is unavailable"
+                : "This Shot could not be found"
+            }
             description={
               unavailable
                 ? "The ICAS service could not be reached. Try refreshing the page."
@@ -70,11 +85,31 @@ export function ActivityWorkspacePage({
           <ContextTabs
             activeTabId="activity"
             tabs={[
-              { id: "overview", label: "Overview", href: `/vfx/shots/${shotId}` },
-              { id: "intent", label: "Intent", href: `/vfx/shots/${shotId}/intent` },
-              { id: "versions", label: "Versions", href: `/vfx/shots/${shotId}/versions` },
-              { id: "alignment", label: "Alignment", href: `/vfx/shots/${shotId}/alignment` },
-              { id: "activity", label: "Activity", href: `/vfx/shots/${shotId}/activity` },
+              {
+                id: "overview",
+                label: "Overview",
+                href: `/vfx/shots/${shotId}`,
+              },
+              {
+                id: "intent",
+                label: "Intent",
+                href: `/vfx/shots/${shotId}/intent`,
+              },
+              {
+                id: "versions",
+                label: "Versions",
+                href: `/vfx/shots/${shotId}/versions`,
+              },
+              {
+                id: "alignment",
+                label: "Alignment",
+                href: `/vfx/shots/${shotId}/alignment`,
+              },
+              {
+                id: "activity",
+                label: "Activity",
+                href: `/vfx/shots/${shotId}/activity`,
+              },
             ]}
           />
 
@@ -85,7 +120,9 @@ export function ActivityWorkspacePage({
               {data.activity.events.map((event) => (
                 <li key={event.id} className={styles.event}>
                   <div className={styles.eventMain}>
-                    <span className={styles.eventType}>{EVENT_TYPE_LABEL[event.event_type]}</span>
+                    <span className={styles.eventType}>
+                      {EVENT_TYPE_LABEL[event.event_type]}
+                    </span>
                     <span className={styles.eventTime}>
                       {new Date(event.occurred_at).toLocaleString()}
                     </span>

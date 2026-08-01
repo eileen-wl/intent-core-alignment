@@ -1,4 +1,9 @@
-import type { CrossRoleAssessmentRead, ReviewNoteRead, VersionRead, VfxInboxItemRead } from "@intent-core/contracts";
+import type {
+  CrossRoleAssessmentRead,
+  ReviewNoteRead,
+  VersionRead,
+  VfxInboxItemRead,
+} from "@intent-core/contracts";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -76,7 +81,9 @@ function note(overrides: Partial<ReviewNoteRead> = {}): ReviewNoteRead {
   };
 }
 
-function data(overrides: Partial<VersionsWorkspaceData> = {}): VersionsWorkspaceData {
+function data(
+  overrides: Partial<VersionsWorkspaceData> = {},
+): VersionsWorkspaceData {
   return {
     item: item(),
     versions: [{ version: version(), reviewNotes: [note()] }],
@@ -87,11 +94,17 @@ function data(overrides: Partial<VersionsWorkspaceData> = {}): VersionsWorkspace
 
 describe("VersionsWorkspacePage", () => {
   it("renders Project > Shot > Versions breadcrumbs and all five real Context Tabs, Versions active", () => {
-    render(<VersionsWorkspacePage shotId="s1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "D1 Demo Project" })).toHaveAttribute(
-      "href",
-      "/vfx/shots",
+    render(
+      <VersionsWorkspacePage
+        shotId="s1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
     );
+    expect(
+      screen.getByRole("link", { name: "D1 Demo Project" }),
+    ).toHaveAttribute("href", "/vfx/shots");
     expect(screen.getByText("Shot 010 — Final confrontation")).toBeVisible();
     for (const [label, href] of [
       ["Overview", "/vfx/shots/s1"],
@@ -99,7 +112,10 @@ describe("VersionsWorkspacePage", () => {
       ["Alignment", "/vfx/shots/s1/alignment"],
       ["Activity", "/vfx/shots/s1/activity"],
     ] as const) {
-      expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", href);
+      expect(screen.getByRole("link", { name: label })).toHaveAttribute(
+        "href",
+        href,
+      );
     }
     expect(screen.getByRole("link", { name: "Versions" })).toHaveAttribute(
       "aria-current",
@@ -108,27 +124,63 @@ describe("VersionsWorkspacePage", () => {
   });
 
   it("shows an honest unavailable state when the API could not be reached", () => {
-    render(<VersionsWorkspacePage shotId="s1" data={null} unavailable onExitRole={vi.fn()} />);
+    render(
+      <VersionsWorkspacePage
+        shotId="s1"
+        data={null}
+        unavailable
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText("This Shot is unavailable")).toBeVisible();
   });
 
   it("labels the list and detail area explicitly as Production Versions", () => {
-    render(<VersionsWorkspacePage shotId="s1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("heading", { name: "Production Versions" })).toBeVisible();
-    expect(screen.getByRole("heading", { name: "Production Version details" })).toBeVisible();
+    render(
+      <VersionsWorkspacePage
+        shotId="s1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Production Versions" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Production Version details" }),
+    ).toBeVisible();
     expect(screen.queryByText(/Core Anchor Revisions/)).not.toBeInTheDocument();
   });
 
   it("renders real Production Versions, newest first, never Core Anchor Revision wording", () => {
-    render(<VersionsWorkspacePage shotId="s1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /SH010_v001 \(v1\)/ })).toBeVisible();
+    render(
+      <VersionsWorkspacePage
+        shotId="s1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /SH010_v001 \(v1\)/ }),
+    ).toBeVisible();
     expect(screen.queryByText(/Core Anchor Revision/)).not.toBeInTheDocument();
     expect(screen.queryByText(/^Revision \d/)).not.toBeInTheDocument();
   });
 
   it("shows the selected Version's real Review Notes with author and timestamp", () => {
-    render(<VersionsWorkspacePage shotId="s1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByText("Tighten the timing on the push-in.")).toBeVisible();
+    render(
+      <VersionsWorkspacePage
+        shotId="s1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("Tighten the timing on the push-in."),
+    ).toBeVisible();
     expect(screen.getAllByText(/vfx_supervisor/).length).toBeGreaterThan(0);
   });
 
@@ -142,7 +194,9 @@ describe("VersionsWorkspacePage", () => {
       />,
     );
     expect(
-      screen.getByText("No Review Notes have been recorded for this Production Version yet."),
+      screen.getByText(
+        "No Review Notes have been recorded for this Production Version yet.",
+      ),
     ).toBeVisible();
   });
 
@@ -156,20 +210,33 @@ describe("VersionsWorkspacePage", () => {
       />,
     );
     expect(
-      screen.getByText("No Production Versions have been recorded for this Shot yet."),
+      screen.getByText(
+        "No Production Versions have been recorded for this Shot yet.",
+      ),
     ).toBeVisible();
   });
 
   it("switches the selected-version detail when a different Version row is clicked", () => {
-    const versionA = version({ id: "v1", name: "SH010_v001", version_number: 1 });
-    const versionB = version({ id: "v2", name: "SH010_v002", version_number: 2 });
+    const versionA = version({
+      id: "v1",
+      name: "SH010_v001",
+      version_number: 1,
+    });
+    const versionB = version({
+      id: "v2",
+      name: "SH010_v002",
+      version_number: 2,
+    });
     render(
       <VersionsWorkspacePage
         shotId="s1"
         data={data({
           versions: [
             { version: versionB, reviewNotes: [] },
-            { version: versionA, reviewNotes: [note({ id: "nA", content: "Note on v1 only" })] },
+            {
+              version: versionA,
+              reviewNotes: [note({ id: "nA", content: "Note on v1 only" })],
+            },
           ],
         })}
         unavailable={false}
@@ -182,7 +249,10 @@ describe("VersionsWorkspacePage", () => {
   });
 
   it("links to Alignment only when a real Cross-role Assessment exists for the selected Version", () => {
-    const assessment = { id: "a1", version_id: "v1" } as CrossRoleAssessmentRead;
+    const assessment = {
+      id: "a1",
+      version_id: "v1",
+    } as CrossRoleAssessmentRead;
     render(
       <VersionsWorkspacePage
         shotId="s1"
@@ -191,17 +261,27 @@ describe("VersionsWorkspacePage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByRole("link", { name: "Review in Alignment →" })).toHaveAttribute(
-      "href",
-      "/vfx/shots/s1/alignment",
-    );
+    expect(
+      screen.getByRole("link", { name: "Review in Alignment →" }),
+    ).toHaveAttribute("href", "/vfx/shots/s1/alignment");
   });
 
   it("honestly states no Alignment Assessment exists yet, and does not link, when none does", () => {
-    render(<VersionsWorkspacePage shotId="s1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <VersionsWorkspacePage
+        shotId="s1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(
-      screen.getByText("No Alignment Assessment has been generated for this Production Version yet."),
+      screen.getByText(
+        "No Alignment Assessment has been generated for this Production Version yet.",
+      ),
     ).toBeVisible();
-    expect(screen.queryByRole("link", { name: "Review in Alignment →" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Review in Alignment →" }),
+    ).not.toBeInTheDocument();
   });
 });

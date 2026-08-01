@@ -36,7 +36,8 @@ import {
  * affected routes. The Client never supplies `actorId`, `role`, or a
  * trusted identity. */
 
-export type CgActionErrorKind = "forbidden" | "not_found" | "conflict" | "validation" | "network";
+export type CgActionErrorKind =
+  "forbidden" | "not_found" | "conflict" | "validation" | "network";
 
 export interface CgActionError {
   kind: CgActionErrorKind;
@@ -52,8 +53,7 @@ export type CgSupervisorReviewActionResult =
   | { ok: false; error: CgActionError };
 
 export type ReviewNoteActionResult =
-  | { ok: true; note: ReviewNoteRead }
-  | { ok: false; error: CgActionError };
+  { ok: true; note: ReviewNoteRead } | { ok: false; error: CgActionError };
 
 export type DependencyActionResult =
   | { ok: true; dependency: TaskDependencyRead }
@@ -66,33 +66,49 @@ const FORBIDDEN_ERROR: CgActionError = {
 
 const STALE_CONFLICT_ERROR: CgActionError = {
   kind: "conflict",
-  message: "This was already acted on elsewhere -- reload to see the current state.",
+  message:
+    "This was already acted on elsewhere -- reload to see the current state.",
 };
 
 function mapThrownError(error: unknown): CgActionError {
   if (error instanceof CgApiError) {
     if (error.status === 403) return FORBIDDEN_ERROR;
-    if (error.status === 404) return { kind: "not_found", message: error.detail || "Not found." };
+    if (error.status === 404)
+      return { kind: "not_found", message: error.detail || "Not found." };
     if (error.status === 409) return STALE_CONFLICT_ERROR;
     if (error.status === 0) {
       return { kind: "network", message: "The ICAS service is unavailable." };
     }
-    return { kind: "validation", message: error.detail || "Something went wrong. Please try again." };
+    return {
+      kind: "validation",
+      message: error.detail || "Something went wrong. Please try again.",
+    };
   }
-  return { kind: "network", message: "Something went wrong. Please try again." };
+  return {
+    kind: "network",
+    message: "Something went wrong. Please try again.",
+  };
 }
 
 async function requireCgIdentity(): Promise<
-  { role: "cg_supervisor"; actorId: string; displayName: string } | { error: CgActionError }
+  | { role: "cg_supervisor"; actorId: string; displayName: string }
+  | { error: CgActionError }
 > {
   const identity = await resolveIdentity();
   if (identity === null || identity.role !== "cg_supervisor") {
     return { error: FORBIDDEN_ERROR };
   }
-  return { role: "cg_supervisor", actorId: identity.actorId, displayName: identity.displayName };
+  return {
+    role: "cg_supervisor",
+    actorId: identity.actorId,
+    displayName: identity.displayName,
+  };
 }
 
-function revalidateTaskRoutes(taskId: string, tab: "execution" | "version-review" | "dependencies"): void {
+function revalidateTaskRoutes(
+  taskId: string,
+  tab: "execution" | "version-review" | "dependencies",
+): void {
   revalidatePath(`/cg/tasks/${taskId}/${tab}`);
   revalidatePath(`/cg/tasks/${taskId}`);
   revalidatePath(`/cg/tasks/${taskId}/activity`);
@@ -107,7 +123,11 @@ export async function createExecutionAnchorDraftAction(
   if ("error" in identity) return { ok: false, error: identity.error };
 
   try {
-    const revision = await createExecutionAnchorDraft(taskId, {}, actorHeaders(identity));
+    const revision = await createExecutionAnchorDraft(
+      taskId,
+      {},
+      actorHeaders(identity),
+    );
     revalidateTaskRoutes(taskId, "execution");
     return { ok: true, revision };
   } catch (error) {
@@ -137,7 +157,10 @@ export async function createExecutionAnchorDraftFromConfirmedAction(
   if ("error" in identity) return { ok: false, error: identity.error };
 
   try {
-    const revision = await createExecutionAnchorDraftFromConfirmed(taskId, actorHeaders(identity));
+    const revision = await createExecutionAnchorDraftFromConfirmed(
+      taskId,
+      actorHeaders(identity),
+    );
     revalidateTaskRoutes(taskId, "execution");
     return { ok: true, revision };
   } catch (error) {
@@ -158,12 +181,19 @@ export async function saveExecutionAnchorDraftAction(
   if (target === undefined) {
     return {
       ok: false,
-      error: { kind: "not_found", message: "That revision does not belong to this Task." },
+      error: {
+        kind: "not_found",
+        message: "That revision does not belong to this Task.",
+      },
     };
   }
 
   try {
-    const revision = await updateExecutionAnchorDraft(revisionId, changes, actorHeaders(identity));
+    const revision = await updateExecutionAnchorDraft(
+      revisionId,
+      changes,
+      actorHeaders(identity),
+    );
     revalidatePath(`/cg/tasks/${taskId}/execution`);
     return { ok: true, revision };
   } catch (error) {
@@ -179,7 +209,10 @@ async function validateGateAndRevision(
   const revisions = await listExecutionAnchorRevisions(taskId);
   const target = revisions.find((revision) => revision.id === revisionId);
   if (target === undefined) {
-    return { kind: "not_found", message: "That revision does not belong to this Task." };
+    return {
+      kind: "not_found",
+      message: "That revision does not belong to this Task.",
+    };
   }
   if (target.status !== "draft") {
     return STALE_CONFLICT_ERROR;
@@ -209,7 +242,11 @@ export async function confirmExecutionAnchorRevisionAction(
   const identity = await requireCgIdentity();
   if ("error" in identity) return { ok: false, error: identity.error };
 
-  const validationError = await validateGateAndRevision(taskId, revisionId, humanGateId);
+  const validationError = await validateGateAndRevision(
+    taskId,
+    revisionId,
+    humanGateId,
+  );
   if (validationError) return { ok: false, error: validationError };
 
   try {
@@ -234,7 +271,11 @@ export async function rejectExecutionAnchorRevisionAction(
   const identity = await requireCgIdentity();
   if ("error" in identity) return { ok: false, error: identity.error };
 
-  const validationError = await validateGateAndRevision(taskId, revisionId, humanGateId);
+  const validationError = await validateGateAndRevision(
+    taskId,
+    revisionId,
+    humanGateId,
+  );
   if (validationError) return { ok: false, error: validationError };
 
   try {
@@ -258,7 +299,10 @@ export async function generateCgSupervisorReviewAction(
   if ("error" in identity) return { ok: false, error: identity.error };
 
   try {
-    const review = await generateCgSupervisorReview(revisionId, actorHeaders(identity));
+    const review = await generateCgSupervisorReview(
+      revisionId,
+      actorHeaders(identity),
+    );
     revalidateTaskRoutes(taskId, "version-review");
     return { ok: true, review };
   } catch (error) {
@@ -275,7 +319,11 @@ export async function createReviewNoteAction(
   if ("error" in identity) return { ok: false, error: identity.error };
 
   try {
-    const note = await createReviewNote(versionId, content, actorHeaders(identity));
+    const note = await createReviewNote(
+      versionId,
+      content,
+      actorHeaders(identity),
+    );
     revalidatePath(`/cg/tasks/${taskId}/version-review`);
     revalidatePath(`/cg/tasks/${taskId}/activity`);
     return { ok: true, note };
@@ -296,7 +344,12 @@ export async function createDependencyAction(
   try {
     const dependency = await createDependency(
       taskId,
-      { kind, description, severity: severity ?? undefined, related_version_id: undefined },
+      {
+        kind,
+        description,
+        severity: severity ?? undefined,
+        related_version_id: undefined,
+      },
       actorHeaders(identity),
     );
     revalidateTaskRoutes(taskId, "dependencies");
@@ -314,7 +367,11 @@ export async function acknowledgeDependencyAction(
   if ("error" in identity) return { ok: false, error: identity.error };
 
   try {
-    const dependency = await acknowledgeDependency(taskId, dependencyId, actorHeaders(identity));
+    const dependency = await acknowledgeDependency(
+      taskId,
+      dependencyId,
+      actorHeaders(identity),
+    );
     revalidateTaskRoutes(taskId, "dependencies");
     return { ok: true, dependency };
   } catch (error) {
@@ -330,7 +387,11 @@ export async function resolveDependencyAction(
   if ("error" in identity) return { ok: false, error: identity.error };
 
   try {
-    const dependency = await resolveDependency(taskId, dependencyId, actorHeaders(identity));
+    const dependency = await resolveDependency(
+      taskId,
+      dependencyId,
+      actorHeaders(identity),
+    );
     revalidateTaskRoutes(taskId, "dependencies");
     return { ok: true, dependency };
   } catch (error) {

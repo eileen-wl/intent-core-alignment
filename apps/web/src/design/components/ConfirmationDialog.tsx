@@ -65,7 +65,10 @@ export function ConfirmationDialog({
     if (!dialog) return;
     if (open && !dialog.open) {
       dialog.showModal();
-      (focusCancelFirst ? cancelButtonRef.current : confirmButtonRef.current)?.focus();
+      (focusCancelFirst
+        ? cancelButtonRef.current
+        : confirmButtonRef.current
+      )?.focus();
     } else if (!open && dialog.open) {
       dialog.close();
     }

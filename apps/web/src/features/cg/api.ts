@@ -111,7 +111,9 @@ export function fetchCgInbox(): Promise<CgInboxRead> {
 /** `GET /cg/inbox/{task_id}` -- one Task's derived Inbox row, reused as
  * the primary context/header data on every CG Task page (mirrors how
  * VFX Shot pages reuse `fetchVfxInboxItem`). `null` only on a real 404. */
-export function fetchCgInboxItem(taskId: string): Promise<CgInboxItemRead | null> {
+export function fetchCgInboxItem(
+  taskId: string,
+): Promise<CgInboxItemRead | null> {
   return cgFetchOrNull<CgInboxItemRead>(`/cg/inbox/${taskId}`);
 }
 
@@ -129,14 +131,22 @@ export function getCoreAnchor(shotId: string): Promise<CoreAnchorRead | null> {
   return cgFetchOrNull<CoreAnchorRead>(`/intent/shots/${shotId}/core-anchor`);
 }
 
-export function listCoreAnchorRevisions(shotId: string): Promise<CoreAnchorRevisionRead[]> {
-  return cgFetch<CoreAnchorRevisionRead[]>(`/intent/shots/${shotId}/core-anchor/revisions`);
+export function listCoreAnchorRevisions(
+  shotId: string,
+): Promise<CoreAnchorRevisionRead[]> {
+  return cgFetch<CoreAnchorRevisionRead[]>(
+    `/intent/shots/${shotId}/core-anchor/revisions`,
+  );
 }
 
 // --- Execution Anchor read model --------------------------------------------
 
-export function getExecutionAnchor(taskId: string): Promise<ExecutionAnchorRead | null> {
-  return cgFetchOrNull<ExecutionAnchorRead>(`/intent/tasks/${taskId}/execution-anchor`);
+export function getExecutionAnchor(
+  taskId: string,
+): Promise<ExecutionAnchorRead | null> {
+  return cgFetchOrNull<ExecutionAnchorRead>(
+    `/intent/tasks/${taskId}/execution-anchor`,
+  );
 }
 
 export function listExecutionAnchorRevisions(
@@ -175,7 +185,9 @@ export function createExecutionAnchorDraft(
  * a draft only -- advisory, never auto-confirmed. Mirrors the backend's
  * own no-actor-dependency convention for Agent-generation endpoints
  * (see `intent.router.generate_execution_anchor_draft`). */
-export function generateExecutionAnchorDraft(taskId: string): Promise<ExecutionAnchorRevisionRead> {
+export function generateExecutionAnchorDraft(
+  taskId: string,
+): Promise<ExecutionAnchorRevisionRead> {
   return cgFetch<ExecutionAnchorRevisionRead>(
     `/intent/tasks/${taskId}/execution-anchor/generate`,
     { method: "POST" },
@@ -229,7 +241,9 @@ export function rejectExecutionAnchorRevision(
 
 // --- CG Supervisor Agent review ---------------------------------------------
 
-export function listCgSupervisorReviews(revisionId: string): Promise<CGSupervisorReviewRead[]> {
+export function listCgSupervisorReviews(
+  revisionId: string,
+): Promise<CGSupervisorReviewRead[]> {
   return cgFetch<CGSupervisorReviewRead[]>(
     `/intent/execution-anchor-revisions/${revisionId}/cg-supervisor-reviews`,
   );
@@ -254,7 +268,9 @@ export function listVersionsForShot(shotId: string): Promise<VersionRead[]> {
   return cgFetch<VersionRead[]>(`/shots/${shotId}/versions`);
 }
 
-export function listReviewNotesForVersion(versionId: string): Promise<ReviewNoteRead[]> {
+export function listReviewNotesForVersion(
+  versionId: string,
+): Promise<ReviewNoteRead[]> {
   return cgFetch<ReviewNoteRead[]>(`/versions/${versionId}/review-notes`);
 }
 
@@ -271,7 +287,9 @@ export function createReviewNote(
 
 // --- Dependencies / conflicts / escalation ----------------------------------
 
-export function listDependenciesForTask(taskId: string): Promise<TaskDependencyRead[]> {
+export function listDependenciesForTask(
+  taskId: string,
+): Promise<TaskDependencyRead[]> {
   return cgFetch<TaskDependencyRead[]>(`/tasks/${taskId}/dependencies`);
 }
 

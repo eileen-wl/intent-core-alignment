@@ -9,7 +9,9 @@ afterEach(() => {
   cleanup();
 });
 
-function buildItem(overrides: Partial<VfxInboxItemRead> = {}): VfxInboxItemRead {
+function buildItem(
+  overrides: Partial<VfxInboxItemRead> = {},
+): VfxInboxItemRead {
   return {
     project_id: "p1",
     project_name: "D1 Demo Project",
@@ -84,16 +86,28 @@ describe("ShotsListPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByText("Shot 020 — Awaiting creative intent")).toBeVisible();
-    expect(screen.getByText("No Core Anchor", { selector: "span" })).toBeVisible();
+    expect(
+      screen.getByText("Shot 020 — Awaiting creative intent"),
+    ).toBeVisible();
+    expect(
+      screen.getByText("No Core Anchor", { selector: "span" }),
+    ).toBeVisible();
   });
 
   it("filters by Project", async () => {
     render(
       <ShotsListPage
         inbox={buildInbox([
-          buildItem({ shot_id: "s1", project_name: "D1 Demo Project", shot_name: "Shot A" }),
-          buildItem({ shot_id: "s2", project_name: "Other Project", shot_name: "Shot B" }),
+          buildItem({
+            shot_id: "s1",
+            project_name: "D1 Demo Project",
+            shot_name: "Shot A",
+          }),
+          buildItem({
+            shot_id: "s2",
+            project_name: "Other Project",
+            shot_name: "Shot B",
+          }),
         ])}
         onExitRole={vi.fn()}
       />,
@@ -112,8 +126,16 @@ describe("ShotsListPage", () => {
     render(
       <ShotsListPage
         inbox={buildInbox([
-          buildItem({ shot_id: "s1", shot_name: "Shot A", core_anchor_state: "confirmed" }),
-          buildItem({ shot_id: "s2", shot_name: "Shot B", core_anchor_state: "none" }),
+          buildItem({
+            shot_id: "s1",
+            shot_name: "Shot A",
+            core_anchor_state: "confirmed",
+          }),
+          buildItem({
+            shot_id: "s2",
+            shot_name: "Shot B",
+            core_anchor_state: "none",
+          }),
         ])}
         onExitRole={vi.fn()}
       />,
@@ -146,9 +168,14 @@ describe("ShotsListPage", () => {
 
   it("opening a row goes to the Shot's own Overview", () => {
     render(
-      <ShotsListPage inbox={buildInbox([buildItem({ shot_id: "s1" })])} onExitRole={vi.fn()} />,
+      <ShotsListPage
+        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
+        onExitRole={vi.fn()}
+      />,
     );
     const links = screen.getAllByRole("link");
-    expect(links.some((link) => link.getAttribute("href") === "/vfx/shots/s1")).toBe(true);
+    expect(
+      links.some((link) => link.getAttribute("href") === "/vfx/shots/s1"),
+    ).toBe(true);
   });
 });

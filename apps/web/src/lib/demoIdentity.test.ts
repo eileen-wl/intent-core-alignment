@@ -86,7 +86,9 @@ describe("demoIdentity", () => {
     });
 
     it("accepts a role-prefixed path with a query string", () => {
-      expect(isSafeReturnToPath("/vfx/shots/s1/intent?justConfirmed=r1")).toBe(true);
+      expect(isSafeReturnToPath("/vfx/shots/s1/intent?justConfirmed=r1")).toBe(
+        true,
+      );
     });
 
     it("rejects null, undefined, and empty values", () => {

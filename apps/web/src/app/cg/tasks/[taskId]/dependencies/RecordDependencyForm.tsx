@@ -22,7 +22,9 @@ export function RecordDependencyForm({ taskId }: { taskId: string }) {
           <select
             className={styles.select}
             value={kind}
-            onChange={(event) => setKind(event.target.value as "dependency" | "conflict")}
+            onChange={(event) =>
+              setKind(event.target.value as "dependency" | "conflict")
+            }
           >
             <option value="dependency">Dependency</option>
             <option value="conflict">Cross-role conflict</option>
@@ -33,7 +35,9 @@ export function RecordDependencyForm({ taskId }: { taskId: string }) {
           <select
             className={styles.select}
             value={severity}
-            onChange={(event) => setSeverity(event.target.value as "low" | "medium" | "high" | "")}
+            onChange={(event) =>
+              setSeverity(event.target.value as "low" | "medium" | "high" | "")
+            }
           >
             <option value="">Not set</option>
             <option value="low">Low</option>
@@ -58,7 +62,12 @@ export function RecordDependencyForm({ taskId }: { taskId: string }) {
         onClick={() => {
           setError(null);
           startTransition(() => {
-            createDependencyAction(taskId, kind, description, severity || null).then((result) => {
+            createDependencyAction(
+              taskId,
+              kind,
+              description,
+              severity || null,
+            ).then((result) => {
               if (result.ok) {
                 setDescription("");
                 router.refresh();

@@ -42,7 +42,10 @@ describe("/vfx/shots/:shotId/activity page", () => {
   });
 
   it("passes the real loaded data through to ActivityWorkspacePage", async () => {
-    const data = { item: { shot_id: "s1" }, activity: { shot_id: "s1", events: [] } };
+    const data = {
+      item: { shot_id: "s1" },
+      activity: { shot_id: "s1", events: [] },
+    };
     loadActivityWorkspaceDataMock.mockResolvedValue(data);
 
     const result = await Page({ params });

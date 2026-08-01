@@ -14,7 +14,8 @@ import { VfxApiError, generateCrossRoleAssessment } from "@/features/vfx/api";
  * endpoint, then revalidate so the persisted result is what renders --
  * never a fabricated result held only in client state. */
 
-export type AlignmentActionErrorKind = "forbidden" | "not_found" | "conflict" | "validation" | "network";
+export type AlignmentActionErrorKind =
+  "forbidden" | "not_found" | "conflict" | "validation" | "network";
 
 export interface AlignmentActionError {
   kind: AlignmentActionErrorKind;
@@ -33,19 +34,27 @@ const FORBIDDEN_ERROR: AlignmentActionError = {
 function mapThrownError(error: unknown): AlignmentActionError {
   if (error instanceof VfxApiError) {
     if (error.status === 403) return FORBIDDEN_ERROR;
-    if (error.status === 404) return { kind: "not_found", message: error.detail || "Not found." };
+    if (error.status === 404)
+      return { kind: "not_found", message: error.detail || "Not found." };
     if (error.status === 409) {
       return {
         kind: "conflict",
-        message: "This was already acted on elsewhere -- reload to see the current state.",
+        message:
+          "This was already acted on elsewhere -- reload to see the current state.",
       };
     }
     if (error.status === 0) {
       return { kind: "network", message: "The ICAS service is unavailable." };
     }
-    return { kind: "validation", message: error.detail || "Something went wrong. Please try again." };
+    return {
+      kind: "validation",
+      message: error.detail || "Something went wrong. Please try again.",
+    };
   }
-  return { kind: "network", message: "Something went wrong. Please try again." };
+  return {
+    kind: "network",
+    message: "Something went wrong. Please try again.",
+  };
 }
 
 /** Generates a Cross-role Assessment for the Shot's currently paired

@@ -5,28 +5,57 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
 import { HumanDecisionNotice } from "@/design";
-import { computeChangeSummary, summarizeEstablishedContent } from "@/features/vfx/intent-workspace/changeSummary";
+import {
+  computeChangeSummary,
+  summarizeEstablishedContent,
+} from "@/features/vfx/intent-workspace/changeSummary";
 import type { IntentEvidenceData } from "@/features/vfx/intent-workspace/data";
 import styles from "./ConfirmedAnchorSummary.module.css";
 
-const ALWAYS_VISIBLE_FIELDS: { field: keyof CoreAnchorRevisionRead; label: string }[] = [
+const ALWAYS_VISIBLE_FIELDS: {
+  field: keyof CoreAnchorRevisionRead;
+  label: string;
+}[] = [
   { field: "core_summary", label: "Core summary" },
   { field: "shot_objective", label: "Shot objective" },
   { field: "emotional_tone", label: "Emotional tone" },
   { field: "visual_focus", label: "Visual focus" },
 ];
 
-const EXPANDABLE_SCALAR_FIELDS: { field: keyof CoreAnchorRevisionRead; label: string }[] = [
+const EXPANDABLE_SCALAR_FIELDS: {
+  field: keyof CoreAnchorRevisionRead;
+  label: string;
+}[] = [
   { field: "rhythm_intensity", label: "Rhythm and intensity" },
   { field: "character_relationship", label: "Character relationship" },
   { field: "narrative_priority", label: "Narrative priority" },
 ];
 
-const COLLECTIONS: { field: "constraints" | "variation_zones" | "drift_risks" | "open_questions"; label: string; text: (item: never) => string }[] = [
-  { field: "constraints", label: "Constraints", text: (item: { content: string }) => item.content },
-  { field: "variation_zones", label: "Variation zones", text: (item: { content: string }) => item.content },
-  { field: "drift_risks", label: "Drift risks", text: (item: { description: string }) => item.description },
-  { field: "open_questions", label: "Open questions", text: (item: { question: string }) => item.question },
+const COLLECTIONS: {
+  field: "constraints" | "variation_zones" | "drift_risks" | "open_questions";
+  label: string;
+  text: (item: never) => string;
+}[] = [
+  {
+    field: "constraints",
+    label: "Constraints",
+    text: (item: { content: string }) => item.content,
+  },
+  {
+    field: "variation_zones",
+    label: "Variation zones",
+    text: (item: { content: string }) => item.content,
+  },
+  {
+    field: "drift_risks",
+    label: "Drift risks",
+    text: (item: { description: string }) => item.description,
+  },
+  {
+    field: "open_questions",
+    label: "Open questions",
+    text: (item: { question: string }) => item.question,
+  },
 ];
 
 /** NORMAL CONFIRMED and JUST-CONFIRMED SUCCESS (Step 7C-3 content/state
@@ -102,11 +131,15 @@ export function ConfirmedAnchorSummary({
       ? computeChangeSummary(previousConfirmedRevision, revision)
       : [];
   const establishedContent =
-    justConfirmed && isFirstConfirmation ? summarizeEstablishedContent(revision) : [];
+    justConfirmed && isFirstConfirmation
+      ? summarizeEstablishedContent(revision)
+      : [];
 
   const hasExpandableContent =
     EXPANDABLE_SCALAR_FIELDS.some(({ field }) => revision[field]) ||
-    COLLECTIONS.some(({ field }) => (revision[field] as unknown[]).length > 0) ||
+    COLLECTIONS.some(
+      ({ field }) => (revision[field] as unknown[]).length > 0,
+    ) ||
     revision.references.length > 0;
 
   const evidenceCount = evidenceData?.evidence.length ?? 0;
@@ -130,18 +163,24 @@ export function ConfirmedAnchorSummary({
               <h2 className={styles.mainHeading}>Core Anchor confirmed</h2>
             </div>
             <div className={styles.identityBadges}>
-              <span className={styles.revisionBadge}>Revision {revision.revision_number}</span>
+              <span className={styles.revisionBadge}>
+                Revision {revision.revision_number}
+              </span>
               <span className={styles.activeBadge}>Active</span>
             </div>
           </div>
 
           <dl className={styles.fields}>
-            {ALWAYS_VISIBLE_FIELDS.filter(({ field }) => revision[field]).map(({ field, label }) => (
-              <div key={field} className={styles.field}>
-                <dt className={styles.fieldLabel}>{label}</dt>
-                <dd className={styles.fieldValue}>{revision[field] as string}</dd>
-              </div>
-            ))}
+            {ALWAYS_VISIBLE_FIELDS.filter(({ field }) => revision[field]).map(
+              ({ field, label }) => (
+                <div key={field} className={styles.field}>
+                  <dt className={styles.fieldLabel}>{label}</dt>
+                  <dd className={styles.fieldValue}>
+                    {revision[field] as string}
+                  </dd>
+                </div>
+              ),
+            )}
           </dl>
 
           {hasExpandableContent && (
@@ -152,21 +191,29 @@ export function ConfirmedAnchorSummary({
                 aria-expanded={showAllDetails}
                 onClick={() => setShowAllDetails((previous) => !previous)}
               >
-                {showAllDetails ? "Hide intent details" : "Show all intent details"}
-                <span className={styles.chevron} data-open={showAllDetails} aria-hidden="true" />
+                {showAllDetails
+                  ? "Hide intent details"
+                  : "Show all intent details"}
+                <span
+                  className={styles.chevron}
+                  data-open={showAllDetails}
+                  aria-hidden="true"
+                />
               </button>
 
               {showAllDetails && (
                 <div className={styles.expandedContent}>
                   <dl className={styles.fields}>
-                    {EXPANDABLE_SCALAR_FIELDS.filter(({ field }) => revision[field]).map(
-                      ({ field, label }) => (
-                        <div key={field} className={styles.field}>
-                          <dt className={styles.fieldLabel}>{label}</dt>
-                          <dd className={styles.fieldValue}>{revision[field] as string}</dd>
-                        </div>
-                      ),
-                    )}
+                    {EXPANDABLE_SCALAR_FIELDS.filter(
+                      ({ field }) => revision[field],
+                    ).map(({ field, label }) => (
+                      <div key={field} className={styles.field}>
+                        <dt className={styles.fieldLabel}>{label}</dt>
+                        <dd className={styles.fieldValue}>
+                          {revision[field] as string}
+                        </dd>
+                      </div>
+                    ))}
                   </dl>
 
                   {COLLECTIONS.map(({ field, label, text }) => {
@@ -194,7 +241,10 @@ export function ConfirmedAnchorSummary({
                             {reference.label}
                             {reference.uri && <> — {reference.uri}</>}
                             {reference.note && (
-                              <span className={styles.referenceNote}> ({reference.note})</span>
+                              <span className={styles.referenceNote}>
+                                {" "}
+                                ({reference.note})
+                              </span>
                             )}
                           </li>
                         ))}
@@ -211,35 +261,44 @@ export function ConfirmedAnchorSummary({
               <span>
                 Confirmed by <strong>{revision.confirmed_by_human_role}</strong>
               </span>
-              <span>Confirmed at {new Date(revision.confirmed_at).toLocaleString()}</span>
+              <span>
+                Confirmed at {new Date(revision.confirmed_at).toLocaleString()}
+              </span>
             </p>
           )}
         </div>
 
         <div className={styles.supportingColumn}>
-          {justConfirmed && isFirstConfirmation && establishedContent.length > 0 && (
-            <div className={styles.supportingCard}>
-              <h3 className={styles.supportingHeading}>What was established</h3>
-              <ul className={styles.changeList}>
-                {establishedContent.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {justConfirmed &&
+            isFirstConfirmation &&
+            establishedContent.length > 0 && (
+              <div className={styles.supportingCard}>
+                <h3 className={styles.supportingHeading}>
+                  What was established
+                </h3>
+                <ul className={styles.changeList}>
+                  {establishedContent.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-          {justConfirmed && previousConfirmedRevision !== null && changeSummary.length > 0 && (
-            <div className={styles.supportingCard}>
-              <h3 className={styles.supportingHeading}>
-                What changed from Revision {previousConfirmedRevision.revision_number}
-              </h3>
-              <ul className={styles.changeList}>
-                {changeSummary.map((change) => (
-                  <li key={change}>{change}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {justConfirmed &&
+            previousConfirmedRevision !== null &&
+            changeSummary.length > 0 && (
+              <div className={styles.supportingCard}>
+                <h3 className={styles.supportingHeading}>
+                  What changed from Revision{" "}
+                  {previousConfirmedRevision.revision_number}
+                </h3>
+                <ul className={styles.changeList}>
+                  {changeSummary.map((change) => (
+                    <li key={change}>{change}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
           {revision.confirmed_by_human_role && revision.confirmed_at && (
             <div className={styles.supportingCard}>
@@ -252,12 +311,14 @@ export function ConfirmedAnchorSummary({
               />
               {revision.supersedes_revision_id && previousConfirmedRevision && (
                 <p className={styles.supportingText}>
-                  Supersedes Revision {previousConfirmedRevision.revision_number}
+                  Supersedes Revision{" "}
+                  {previousConfirmedRevision.revision_number}
                 </p>
               )}
               {evidenceData !== null && (
                 <p className={styles.supportingText}>
-                  {evidenceCount} evidence {evidenceCount === 1 ? "source" : "sources"} -- see Evidence
+                  {evidenceCount} evidence{" "}
+                  {evidenceCount === 1 ? "source" : "sources"} -- see Evidence
                   and provenance below.
                 </p>
               )}

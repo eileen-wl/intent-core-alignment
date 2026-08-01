@@ -26,7 +26,11 @@ export function TaskContextHeader({ item }: { item: CgInboxItemRead }) {
         <div className={styles.metaRight}>
           <FtrackLinkageBadge source={item.task_source} />
           <StatusBadge
-            status={item.execution_anchor_state === "confirmed" ? "confirmed" : "neutral"}
+            status={
+              item.execution_anchor_state === "confirmed"
+                ? "confirmed"
+                : "neutral"
+            }
             label={executionAnchorStateLabel(item.execution_anchor_state)}
           />
         </div>

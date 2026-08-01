@@ -29,7 +29,9 @@ import { enterDemoRole, exitRoleView } from "./actions";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  resolveD1DemoShotIdMock.mockResolvedValue("11111111-1111-1111-1111-111111111111");
+  resolveD1DemoShotIdMock.mockResolvedValue(
+    "11111111-1111-1111-1111-111111111111",
+  );
 });
 
 describe("enterDemoRole", () => {
@@ -61,7 +63,9 @@ describe("enterDemoRole", () => {
     const firstCall = cookieStore.set.mock.calls[0];
 
     vi.clearAllMocks();
-    resolveD1DemoShotIdMock.mockResolvedValue("11111111-1111-1111-1111-111111111111");
+    resolveD1DemoShotIdMock.mockResolvedValue(
+      "11111111-1111-1111-1111-111111111111",
+    );
 
     await expect(enterDemoRole("vfx_supervisor")).rejects.toThrow();
     const secondCall = cookieStore.set.mock.calls[0];

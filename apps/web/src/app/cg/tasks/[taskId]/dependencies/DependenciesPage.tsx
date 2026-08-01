@@ -1,4 +1,10 @@
-import { AppShell, Breadcrumbs, ContextTabs, EmptyState, ErrorState } from "@/design";
+import {
+  AppShell,
+  Breadcrumbs,
+  ContextTabs,
+  EmptyState,
+  ErrorState,
+} from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import type { DependenciesWorkspaceData } from "@/features/cg/dependencies-workspace/data";
@@ -35,9 +41,18 @@ export function DependenciesPage({
     >
       {unavailable || data === null ? (
         <>
-          <Breadcrumbs items={[{ label: "Tasks", href: "/cg/tasks" }, { label: "Dependencies" }]} />
+          <Breadcrumbs
+            items={[
+              { label: "Tasks", href: "/cg/tasks" },
+              { label: "Dependencies" },
+            ]}
+          />
           <ErrorState
-            title={unavailable ? "This Task is unavailable" : "This Task could not be found"}
+            title={
+              unavailable
+                ? "This Task is unavailable"
+                : "This Task could not be found"
+            }
             description={
               unavailable
                 ? "The ICAS service could not be reached. Try refreshing the page."
@@ -59,8 +74,16 @@ export function DependenciesPage({
           <ContextTabs
             activeTabId="dependencies"
             tabs={[
-              { id: "overview", label: "Overview", href: `/cg/tasks/${taskId}` },
-              { id: "execution", label: "Execution", href: `/cg/tasks/${taskId}/execution` },
+              {
+                id: "overview",
+                label: "Overview",
+                href: `/cg/tasks/${taskId}`,
+              },
+              {
+                id: "execution",
+                label: "Execution",
+                href: `/cg/tasks/${taskId}/execution`,
+              },
               {
                 id: "version-review",
                 label: "Version Review",
@@ -71,7 +94,11 @@ export function DependenciesPage({
                 label: "Dependencies",
                 href: `/cg/tasks/${taskId}/dependencies`,
               },
-              { id: "activity", label: "Activity", href: `/cg/tasks/${taskId}/activity` },
+              {
+                id: "activity",
+                label: "Activity",
+                href: `/cg/tasks/${taskId}/activity`,
+              },
             ]}
           />
 
@@ -80,7 +107,10 @@ export function DependenciesPage({
           {data.dependencies.length === 0 ? (
             <EmptyState title="No unresolved dependencies have been recorded for this Task." />
           ) : (
-            <DependenciesSections taskId={taskId} dependencies={data.dependencies} />
+            <DependenciesSections
+              taskId={taskId}
+              dependencies={data.dependencies}
+            />
           )}
         </>
       )}
@@ -96,12 +126,16 @@ function DependenciesSections({
   dependencies: DependenciesWorkspaceData["dependencies"];
 }) {
   const open = dependencies.filter(
-    (dependency) => dependency.kind !== "conflict" && dependency.status !== "resolved",
+    (dependency) =>
+      dependency.kind !== "conflict" && dependency.status !== "resolved",
   );
   const conflicts = dependencies.filter(
-    (dependency) => dependency.kind === "conflict" && dependency.status !== "resolved",
+    (dependency) =>
+      dependency.kind === "conflict" && dependency.status !== "resolved",
   );
-  const resolved = dependencies.filter((dependency) => dependency.status === "resolved");
+  const resolved = dependencies.filter(
+    (dependency) => dependency.status === "resolved",
+  );
 
   return (
     <>
@@ -112,7 +146,11 @@ function DependenciesSections({
         ) : (
           <ul className={styles.list}>
             {open.map((dependency) => (
-              <DependencyRow key={dependency.id} taskId={taskId} dependency={dependency} />
+              <DependencyRow
+                key={dependency.id}
+                taskId={taskId}
+                dependency={dependency}
+              />
             ))}
           </ul>
         )}
@@ -125,7 +163,11 @@ function DependenciesSections({
         ) : (
           <ul className={styles.list}>
             {conflicts.map((dependency) => (
-              <DependencyRow key={dependency.id} taskId={taskId} dependency={dependency} />
+              <DependencyRow
+                key={dependency.id}
+                taskId={taskId}
+                dependency={dependency}
+              />
             ))}
           </ul>
         )}
@@ -138,7 +180,11 @@ function DependenciesSections({
         ) : (
           <ul className={styles.list}>
             {resolved.map((dependency) => (
-              <DependencyRow key={dependency.id} taskId={taskId} dependency={dependency} />
+              <DependencyRow
+                key={dependency.id}
+                taskId={taskId}
+                dependency={dependency}
+              />
             ))}
           </ul>
         )}

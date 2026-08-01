@@ -1,4 +1,7 @@
-import type { ArtistInboxItemRead, ArtistInboxRead } from "@intent-core/contracts";
+import type {
+  ArtistInboxItemRead,
+  ArtistInboxRead,
+} from "@intent-core/contracts";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -8,7 +11,9 @@ afterEach(() => {
   cleanup();
 });
 
-function buildItem(overrides: Partial<ArtistInboxItemRead> = {}): ArtistInboxItemRead {
+function buildItem(
+  overrides: Partial<ArtistInboxItemRead> = {},
+): ArtistInboxItemRead {
   return {
     task_id: "t1",
     task_name: "Compositing Review",
@@ -20,7 +25,8 @@ function buildItem(overrides: Partial<ArtistInboxItemRead> = {}): ArtistInboxIte
     project_name: "D1 Demo Project",
     execution_anchor_state: "confirmed",
     active_execution_anchor_revision_id: "ea1",
-    active_execution_anchor_summary: "Keep the silhouette readable against the backlight.",
+    active_execution_anchor_summary:
+      "Keep the silhouette readable against the backlight.",
     latest_version_id: "v1",
     latest_version_name: "v001",
     latest_version_number: 1,
@@ -31,7 +37,8 @@ function buildItem(overrides: Partial<ArtistInboxItemRead> = {}): ArtistInboxIte
     current_focus: {
       focus_type: "guidance_outdated",
       title: "Artist guidance is outdated",
-      explanation: "A newer confirmed Execution Anchor exists since this guidance was generated.",
+      explanation:
+        "A newer confirmed Execution Anchor exists since this guidance was generated.",
       target_route: "/artist/tasks/t1",
       primary_action_label: "Review Task",
       actionable: true,
@@ -41,7 +48,9 @@ function buildItem(overrides: Partial<ArtistInboxItemRead> = {}): ArtistInboxIte
   };
 }
 
-function inactiveItem(overrides: Partial<ArtistInboxItemRead> = {}): ArtistInboxItemRead {
+function inactiveItem(
+  overrides: Partial<ArtistInboxItemRead> = {},
+): ArtistInboxItemRead {
   return buildItem({
     current_focus: {
       focus_type: "none",
@@ -61,7 +70,9 @@ function buildInbox(items: ArtistInboxItemRead[]): ArtistInboxRead {
 
 describe("ArtistReviewInboxPage", () => {
   it("marks Review Inbox current in the sidebar", () => {
-    render(<ArtistReviewInboxPage inbox={buildInbox([])} onExitRole={vi.fn()} />);
+    render(
+      <ArtistReviewInboxPage inbox={buildInbox([])} onExitRole={vi.fn()} />,
+    );
     expect(screen.getByRole("link", { name: "Review Inbox" })).toHaveAttribute(
       "aria-current",
       "page",
@@ -81,16 +92,18 @@ describe("ArtistReviewInboxPage", () => {
       />,
     );
     expect(screen.getByText("Review Inbox is clear")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Browse Tasks →" })).toHaveAttribute(
-      "href",
-      "/artist/tasks",
-    );
+    expect(
+      screen.getByRole("link", { name: "Browse Tasks →" }),
+    ).toHaveAttribute("href", "/artist/tasks");
   });
 
   it("only actionable work items appear, with the required action as the primary title", () => {
     render(
       <ArtistReviewInboxPage
-        inbox={buildInbox([buildItem({ task_id: "t1" }), inactiveItem({ task_id: "t2" })])}
+        inbox={buildInbox([
+          buildItem({ task_id: "t1" }),
+          inactiveItem({ task_id: "t2" }),
+        ])}
         onExitRole={vi.fn()}
       />,
     );
@@ -100,12 +113,14 @@ describe("ArtistReviewInboxPage", () => {
 
   it("routes guidance work to the real Task Overview route", () => {
     render(
-      <ArtistReviewInboxPage inbox={buildInbox([buildItem({ task_id: "t1" })])} onExitRole={vi.fn()} />,
+      <ArtistReviewInboxPage
+        inbox={buildInbox([buildItem({ task_id: "t1" })])}
+        onExitRole={vi.fn()}
+      />,
     );
-    expect(screen.getByText("Artist guidance is outdated").closest("a")).toHaveAttribute(
-      "href",
-      "/artist/tasks/t1",
-    );
+    expect(
+      screen.getByText("Artist guidance is outdated").closest("a"),
+    ).toHaveAttribute("href", "/artist/tasks/t1");
   });
 
   it("routes feedback (Review Note) work to the real Current Version route", () => {
@@ -117,7 +132,8 @@ describe("ArtistReviewInboxPage", () => {
             current_focus: {
               focus_type: "review_note_needs_response",
               title: "A Review Note is awaiting your response",
-              explanation: "A real recorded Review Note is on the latest Production Version.",
+              explanation:
+                "A real recorded Review Note is on the latest Production Version.",
               target_route: "/artist/tasks/t1/current-version",
               primary_action_label: "Review feedback",
               actionable: true,
@@ -127,10 +143,9 @@ describe("ArtistReviewInboxPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByText("A Review Note is awaiting your response").closest("a")).toHaveAttribute(
-      "href",
-      "/artist/tasks/t1/current-version",
-    );
+    expect(
+      screen.getByText("A Review Note is awaiting your response").closest("a"),
+    ).toHaveAttribute("href", "/artist/tasks/t1/current-version");
   });
 
   it("routes dependency work to the real Task Overview route", () => {
@@ -142,7 +157,8 @@ describe("ArtistReviewInboxPage", () => {
             current_focus: {
               focus_type: "dependency_needs_attention",
               title: "An unresolved dependency needs your attention",
-              explanation: "A real recorded dependency or cross-role conflict is still open.",
+              explanation:
+                "A real recorded dependency or cross-role conflict is still open.",
               target_route: "/artist/tasks/t1",
               primary_action_label: "Review Task",
               actionable: true,
@@ -153,7 +169,9 @@ describe("ArtistReviewInboxPage", () => {
       />,
     );
     expect(
-      screen.getByText("An unresolved dependency needs your attention").closest("a"),
+      screen
+        .getByText("An unresolved dependency needs your attention")
+        .closest("a"),
     ).toHaveAttribute("href", "/artist/tasks/t1");
   });
 });

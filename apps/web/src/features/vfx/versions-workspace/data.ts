@@ -69,7 +69,8 @@ export async function loadVersionsWorkspaceData(
   // Backend returns oldest-first (its own real `created_at` ordering);
   // this page's required layout is newest-first.
   const newestFirst = [...versions].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
 
   const versionsWithNotes = await Promise.all(

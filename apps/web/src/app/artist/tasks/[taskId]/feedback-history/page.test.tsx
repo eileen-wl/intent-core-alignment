@@ -42,7 +42,10 @@ describe("/artist/tasks/:taskId/feedback-history page", () => {
   });
 
   it("passes the real loaded data through to FeedbackHistoryPage", async () => {
-    const data = { item: { task_id: "t1" }, history: { task_id: "t1", events: [] } };
+    const data = {
+      item: { task_id: "t1" },
+      history: { task_id: "t1", events: [] },
+    };
     loadFeedbackHistoryDataMock.mockResolvedValue(data);
 
     const result = await Page({ params });

@@ -4,7 +4,10 @@ import { FtrackLinkageBadge, MetadataRow, StatusBadge } from "@/design";
 import { taskDisplayText, versionDisplayText } from "../vfxWording";
 import styles from "./ProductionContextHeader.module.css";
 
-const CORE_ANCHOR_STATE_LABEL: Record<VfxInboxItemRead["core_anchor_state"], string> = {
+const CORE_ANCHOR_STATE_LABEL: Record<
+  VfxInboxItemRead["core_anchor_state"],
+  string
+> = {
   none: "No Core Anchor",
   draft_pending: "Draft pending review",
   confirmed: "Confirmed",
@@ -35,7 +38,9 @@ export function ProductionContextHeader({ item }: { item: VfxInboxItemRead }) {
         <div className={styles.metaRight}>
           <FtrackLinkageBadge source={item.shot_source} />
           <StatusBadge
-            status={item.core_anchor_state === "confirmed" ? "confirmed" : "neutral"}
+            status={
+              item.core_anchor_state === "confirmed" ? "confirmed" : "neutral"
+            }
             label={CORE_ANCHOR_STATE_LABEL[item.core_anchor_state]}
           />
         </div>

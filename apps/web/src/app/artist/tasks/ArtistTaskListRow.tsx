@@ -2,7 +2,11 @@ import type { ArtistInboxItemRead } from "@intent-core/contracts";
 import Link from "next/link";
 
 import { FtrackLinkageBadge } from "@/design";
-import { executionAnchorStateLabel, guidanceStateLabel, versionDisplayText } from "../artistWording";
+import {
+  executionAnchorStateLabel,
+  guidanceStateLabel,
+  versionDisplayText,
+} from "../artistWording";
 import styles from "../ArtistTaskRow.module.css";
 
 /** One Tasks-list row (Step 7C-5): Task/Shot identity, the Task's real

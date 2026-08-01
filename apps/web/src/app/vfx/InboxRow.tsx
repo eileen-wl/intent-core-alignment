@@ -3,7 +3,11 @@ import Link from "next/link";
 
 import { FtrackLinkageBadge } from "@/design";
 import styles from "./InboxRow.module.css";
-import { signalStateLabel, taskDisplayText, versionDisplayText } from "./vfxWording";
+import {
+  signalStateLabel,
+  taskDisplayText,
+  versionDisplayText,
+} from "./vfxWording";
 
 /** One Alignment Inbox row (docs/step-7/16_STEP_7C0D_...md §5). First
  * scan path, in reading order: Shot -> Current focus -> why -> Open.

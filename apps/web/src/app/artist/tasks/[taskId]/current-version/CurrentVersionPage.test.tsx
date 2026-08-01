@@ -20,7 +20,9 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-function item(overrides: Partial<ArtistInboxItemRead> = {}): ArtistInboxItemRead {
+function item(
+  overrides: Partial<ArtistInboxItemRead> = {},
+): ArtistInboxItemRead {
   return {
     task_id: "t1",
     task_name: "Compositing Review",
@@ -32,7 +34,8 @@ function item(overrides: Partial<ArtistInboxItemRead> = {}): ArtistInboxItemRead
     project_name: "D1 Demo Project",
     execution_anchor_state: "confirmed",
     active_execution_anchor_revision_id: "ea1",
-    active_execution_anchor_summary: "Keep the silhouette readable against the backlight.",
+    active_execution_anchor_summary:
+      "Keep the silhouette readable against the backlight.",
     latest_version_id: "v1",
     latest_version_name: "SH010_v001",
     latest_version_number: 1,
@@ -100,15 +103,28 @@ function data(overrides: Partial<CurrentVersionData> = {}): CurrentVersionData {
 
 describe("CurrentVersionPage", () => {
   it("renders Project > Shot > Task > Current Version breadcrumbs, tab active", () => {
-    render(<CurrentVersionPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "Current Version" })).toHaveAttribute(
-      "aria-current",
-      "page",
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
     );
+    expect(
+      screen.getByRole("link", { name: "Current Version" }),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   it("shows an honest unavailable state when the API could not be reached", () => {
-    render(<CurrentVersionPage taskId="t1" data={null} unavailable onExitRole={vi.fn()} />);
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={null}
+        unavailable
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText("This Task is unavailable")).toBeVisible();
   });
 
@@ -122,19 +138,36 @@ describe("CurrentVersionPage", () => {
       />,
     );
     expect(
-      screen.getByText("No Production Versions have been recorded for this Task yet."),
+      screen.getByText(
+        "No Production Versions have been recorded for this Task yet.",
+      ),
     ).toBeVisible();
   });
 
   it("renders real Production Versions, never confusing them with a Core/Execution Anchor Revision", () => {
-    render(<CurrentVersionPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: /SH010_v001 \(v1\)/ })).toBeVisible();
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("link", { name: /SH010_v001 \(v1\)/ }),
+    ).toBeVisible();
     expect(screen.queryByText(/Core Anchor Revision/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Execution Anchor Revision/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Execution Anchor Revision/),
+    ).not.toBeInTheDocument();
   });
 
   it("links each Version row to its own ?version= route", () => {
-    const versionB = version({ id: "v2", name: "SH010_v002", version_number: 2 });
+    const versionB = version({
+      id: "v2",
+      name: "SH010_v002",
+      version_number: 2,
+    });
     render(
       <CurrentVersionPage
         taskId="t1"
@@ -143,14 +176,20 @@ describe("CurrentVersionPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByRole("link", { name: /SH010_v002 \(v2\)/ })).toHaveAttribute(
-      "href",
-      "/artist/tasks/t1/current-version?version=v2",
-    );
+    expect(
+      screen.getByRole("link", { name: /SH010_v002 \(v2\)/ }),
+    ).toHaveAttribute("href", "/artist/tasks/t1/current-version?version=v2");
   });
 
   it("shows the selected Version's real Review Notes", () => {
-    render(<CurrentVersionPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText("Contrast reads slightly hot.")).toBeVisible();
   });
 
@@ -164,7 +203,9 @@ describe("CurrentVersionPage", () => {
       />,
     );
     expect(
-      screen.getByText("No Review Notes have been recorded for this Production Version yet."),
+      screen.getByText(
+        "No Review Notes have been recorded for this Production Version yet.",
+      ),
     ).toBeVisible();
   });
 
@@ -210,12 +251,21 @@ describe("CurrentVersionPage", () => {
       />,
     );
     expect(screen.getByText("Active Core Anchor (read-only)")).toBeVisible();
-    expect(screen.getByText("Active Execution Anchor (read-only)")).toBeVisible();
+    expect(
+      screen.getByText("Active Execution Anchor (read-only)"),
+    ).toBeVisible();
     expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
   });
 
   it("honestly shows no CG Supervisor review has been generated yet", () => {
-    render(<CurrentVersionPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(
       screen.getByText(
         "No CG Supervisor review has been generated for the active Execution Anchor yet.",
@@ -224,8 +274,17 @@ describe("CurrentVersionPage", () => {
   });
 
   it("honestly shows no Cross-role Assessment involves this Version yet", () => {
-    render(<CurrentVersionPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByText("No Cross-role Assessment involves this Version yet.")).toBeVisible();
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("No Cross-role Assessment involves this Version yet."),
+    ).toBeVisible();
   });
 
   it("real Cross-role Assessment count renders honestly once one exists", () => {
@@ -250,7 +309,8 @@ describe("CurrentVersionPage", () => {
       context_snapshot_id: "cs1",
       agent_run_id: "run1",
       assessment_output: {
-        executive_summary: "The Version stays close to the confirmed Core Anchor.",
+        executive_summary:
+          "The Version stays close to the confirmed Core Anchor.",
         shared_intent_read: finding,
         role_perspectives: [],
         agreements: [],
@@ -275,7 +335,11 @@ describe("CurrentVersionPage", () => {
           label: "low_attention",
           summary: "No cross-role tension detected.",
           drivers: [],
-          role_coverage: { vfx_supervisor: true, cg_supervisor: true, artist: true },
+          role_coverage: {
+            vfx_supervisor: true,
+            cg_supervisor: true,
+            artist: true,
+          },
           re_anchor_proposal_present: false,
           caveats: [],
         },
@@ -295,18 +359,44 @@ describe("CurrentVersionPage", () => {
   });
 
   it("honestly shows no Artist guidance has been generated for this Version yet", () => {
-    render(<CurrentVersionPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(
-      screen.getByText("No Artist guidance has been generated for this Version yet."),
+      screen.getByText(
+        "No Artist guidance has been generated for this Version yet.",
+      ),
     ).toBeVisible();
-    expect(screen.getByRole("button", { name: "Generate guidance" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Generate guidance" }),
+    ).toBeVisible();
   });
 
   it("does not invent an upload/submit/approve/complete action anywhere on the page", () => {
-    render(<CurrentVersionPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.queryByRole("button", { name: /upload/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /submit/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /approve/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: /complete/i })).not.toBeInTheDocument();
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: /upload/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /submit/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /approve/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /complete/i }),
+    ).not.toBeInTheDocument();
   });
 });

@@ -1,4 +1,8 @@
-import type { VfxCurrentFocusType, VfxInboxCurrentFocusRead, VfxInboxItemRead } from "@intent-core/contracts";
+import type {
+  VfxCurrentFocusType,
+  VfxInboxCurrentFocusRead,
+  VfxInboxItemRead,
+} from "@intent-core/contracts";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -56,7 +60,14 @@ describe("adaptCurrentFocusToWorkItems", () => {
   it("creates a work item only for actionable focus records", () => {
     const items = [
       item({ shot_id: "s1", current_focus: focus("core_anchor_gate_pending") }),
-      item({ shot_id: "s2", current_focus: focus("none", { title: "Nothing requires your attention on this Shot right now", explanation: "", primary_action_label: null }) }),
+      item({
+        shot_id: "s2",
+        current_focus: focus("none", {
+          title: "Nothing requires your attention on this Shot right now",
+          explanation: "",
+          primary_action_label: null,
+        }),
+      }),
     ];
     const workItems = adaptCurrentFocusToWorkItems(items);
     expect(workItems).toHaveLength(1);
@@ -70,9 +81,21 @@ describe("adaptCurrentFocusToWorkItems", () => {
     expect(adaptCurrentFocusToWorkItems(items)).toEqual([]);
   });
 
-  const actionableTypes: { focusType: VfxCurrentFocusType; category: string; route: string }[] = [
-    { focusType: "core_anchor_gate_pending", category: "Core Anchor confirmation", route: "/vfx/shots/s1/intent" },
-    { focusType: "core_anchor_draft_needs_review", category: "Draft review", route: "/vfx/shots/s1/intent" },
+  const actionableTypes: {
+    focusType: VfxCurrentFocusType;
+    category: string;
+    route: string;
+  }[] = [
+    {
+      focusType: "core_anchor_gate_pending",
+      category: "Core Anchor confirmation",
+      route: "/vfx/shots/s1/intent",
+    },
+    {
+      focusType: "core_anchor_draft_needs_review",
+      category: "Draft review",
+      route: "/vfx/shots/s1/intent",
+    },
     {
       focusType: "alignment_not_followed_by_anchor_action",
       category: "Alignment interpretation",
@@ -148,7 +171,10 @@ describe("adaptCurrentFocusToWorkItems", () => {
     // property Step 7C-3's multi-source aggregation depends on.
     const workItems = adaptCurrentFocusToWorkItems([
       item({ shot_id: "s1", current_focus: focus("core_anchor_gate_pending") }),
-      item({ shot_id: "s1", current_focus: focus("re_anchor_proposal_present") }),
+      item({
+        shot_id: "s1",
+        current_focus: focus("re_anchor_proposal_present"),
+      }),
     ]);
     expect(workItems).toHaveLength(2);
     expect(workItems[0].shot?.id).toBe("s1");
@@ -194,7 +220,11 @@ describe("adaptVersionReviewWorkItems", () => {
     expect(workItems).toHaveLength(1);
     expect(workItems[0].sourceType).toBe("version_review");
     expect(workItems[0].id).toBe("version_review:v9");
-    expect(workItems[0].version).toEqual({ id: "v9", name: "SH010_v002", number: 2 });
+    expect(workItems[0].version).toEqual({
+      id: "v9",
+      name: "SH010_v002",
+      number: 2,
+    });
     expect(workItems[0].route).toBe("/vfx/shots/s1/versions");
   });
 
@@ -255,13 +285,16 @@ describe("adaptEscalationWorkItems", () => {
         shot_id: "s1",
         open_cg_escalation_task_id: "t9",
         open_cg_escalation_task_name: "Lighting Pass",
-        open_cg_escalation_summary: "Dusk tone reads too bright, needs VFX input.",
+        open_cg_escalation_summary:
+          "Dusk tone reads too bright, needs VFX input.",
       }),
     ]);
     expect(workItems).toHaveLength(1);
     expect(workItems[0].sourceType).toBe("escalation");
     expect(workItems[0].id).toBe("escalation:t9");
-    expect(workItems[0].explanation).toBe("Dusk tone reads too bright, needs VFX input.");
+    expect(workItems[0].explanation).toBe(
+      "Dusk tone reads too bright, needs VFX input.",
+    );
     expect(workItems[0].task).toEqual({ id: "t9", name: "Lighting Pass" });
     // No route into CG Task detail exists from VFX -- Shot Overview is
     // the honest fallback.

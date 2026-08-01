@@ -59,6 +59,8 @@ export async function loadAlignmentWorkspaceData(
     item,
     assessments,
     versionsById: new Map(versions.map((version) => [version.id, version])),
-    revisionsById: new Map(revisions.map((revision) => [revision.id, revision])),
+    revisionsById: new Map(
+      revisions.map((revision) => [revision.id, revision]),
+    ),
   };
 }

@@ -1,6 +1,12 @@
-import type { ArtistFeedbackHistoryRead, ArtistInboxItemRead } from "@intent-core/contracts";
+import type {
+  ArtistFeedbackHistoryRead,
+  ArtistInboxItemRead,
+} from "@intent-core/contracts";
 
-import { fetchArtistInboxItem, getTaskFeedbackHistory } from "@/features/artist/api";
+import {
+  fetchArtistInboxItem,
+  getTaskFeedbackHistory,
+} from "@/features/artist/api";
 
 /** `/artist/tasks/:taskId/feedback-history` (Step 7C-5) -- the real,
  * newest-first Feedback History timeline for this Task. This is the
@@ -11,7 +17,9 @@ export interface FeedbackHistoryData {
   history: ArtistFeedbackHistoryRead;
 }
 
-export async function loadFeedbackHistoryData(taskId: string): Promise<FeedbackHistoryData | null> {
+export async function loadFeedbackHistoryData(
+  taskId: string,
+): Promise<FeedbackHistoryData | null> {
   const item = await fetchArtistInboxItem(taskId);
   if (item === null) {
     return null;

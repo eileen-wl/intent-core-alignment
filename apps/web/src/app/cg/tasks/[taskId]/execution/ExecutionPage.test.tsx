@@ -1,4 +1,7 @@
-import type { CgInboxItemRead, ExecutionAnchorRevisionRead } from "@intent-core/contracts";
+import type {
+  CgInboxItemRead,
+  ExecutionAnchorRevisionRead,
+} from "@intent-core/contracts";
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -24,10 +27,12 @@ const {
 }));
 vi.mock("@/features/cg/actions", () => ({
   createExecutionAnchorDraftAction: createExecutionAnchorDraftActionMock,
-  createExecutionAnchorDraftFromConfirmedAction: createExecutionAnchorDraftFromConfirmedActionMock,
+  createExecutionAnchorDraftFromConfirmedAction:
+    createExecutionAnchorDraftFromConfirmedActionMock,
   generateExecutionAnchorDraftAction: generateExecutionAnchorDraftActionMock,
   saveExecutionAnchorDraftAction: saveExecutionAnchorDraftActionMock,
-  confirmExecutionAnchorRevisionAction: confirmExecutionAnchorRevisionActionMock,
+  confirmExecutionAnchorRevisionAction:
+    confirmExecutionAnchorRevisionActionMock,
   rejectExecutionAnchorRevisionAction: rejectExecutionAnchorRevisionActionMock,
 }));
 
@@ -70,7 +75,9 @@ function item(overrides: Partial<CgInboxItemRead> = {}): CgInboxItemRead {
   };
 }
 
-function revision(overrides: Partial<ExecutionAnchorRevisionRead> = {}): ExecutionAnchorRevisionRead {
+function revision(
+  overrides: Partial<ExecutionAnchorRevisionRead> = {},
+): ExecutionAnchorRevisionRead {
   return {
     id: "r1",
     execution_anchor_id: "ea1",
@@ -100,7 +107,9 @@ function revision(overrides: Partial<ExecutionAnchorRevisionRead> = {}): Executi
   };
 }
 
-function data(overrides: Partial<ExecutionWorkspaceData> = {}): ExecutionWorkspaceData {
+function data(
+  overrides: Partial<ExecutionWorkspaceData> = {},
+): ExecutionWorkspaceData {
   return {
     item: item(),
     confirmedRevision: null,
@@ -113,7 +122,14 @@ function data(overrides: Partial<ExecutionWorkspaceData> = {}): ExecutionWorkspa
 
 describe("ExecutionPage", () => {
   it("renders Project > Shot > Task > Execution breadcrumbs, Execution tab active", () => {
-    render(<ExecutionPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <ExecutionPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByRole("link", { name: "Execution" })).toHaveAttribute(
       "aria-current",
       "page",
@@ -121,7 +137,14 @@ describe("ExecutionPage", () => {
   });
 
   it("shows an honest unavailable state when the API could not be reached", () => {
-    render(<ExecutionPage taskId="t1" data={null} unavailable onExitRole={vi.fn()} />);
+    render(
+      <ExecutionPage
+        taskId="t1"
+        data={null}
+        unavailable
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText("This Task is unavailable")).toBeVisible();
   });
 
@@ -137,7 +160,9 @@ describe("ExecutionPage", () => {
     expect(
       screen.getByRole("button", { name: "Generate Execution Anchor draft" }),
     ).toBeVisible();
-    expect(screen.getByRole("button", { name: "Start blank draft" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Start blank draft" }),
+    ).toBeVisible();
   });
 
   it("no Execution Anchor: honestly blocks draft creation when the Core Anchor is not confirmed", () => {
@@ -149,9 +174,7 @@ describe("ExecutionPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(
-      screen.getByText(/requires a confirmed Core Anchor/),
-    ).toBeVisible();
+    expect(screen.getByText(/requires a confirmed Core Anchor/)).toBeVisible();
     expect(
       screen.queryByRole("button", { name: "Generate Execution Anchor draft" }),
     ).not.toBeInTheDocument();
@@ -169,9 +192,13 @@ describe("ExecutionPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByText(/owns Execution Anchor confirmation/)).toBeVisible();
+    expect(
+      screen.getByText(/owns Execution Anchor confirmation/),
+    ).toBeVisible();
     expect(screen.getByText("Technical boundaries")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Confirm Execution Anchor" })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Confirm Execution Anchor" }),
+    ).toBeEnabled();
     expect(screen.getByRole("button", { name: "Discard draft" })).toBeVisible();
   });
 
@@ -186,7 +213,9 @@ describe("ExecutionPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: "Confirm Execution Anchor" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Confirm Execution Anchor" }),
+    ).toBeDisabled();
     expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
     expect(
       screen.getByText(
@@ -204,7 +233,9 @@ describe("ExecutionPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: "Generate Execution Anchor draft" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Generate Execution Anchor draft" }),
+    ).toBeVisible();
 
     // Simulates the real post-action flow: a Server Action succeeds,
     // calls router.refresh(), and this same component instance
@@ -217,7 +248,8 @@ describe("ExecutionPage", () => {
         data={data({
           draftRevision: revision({
             id: "generated-1",
-            technical_boundaries: "Generated: real boundaries from the confirmed Core Anchor.",
+            technical_boundaries:
+              "Generated: real boundaries from the confirmed Core Anchor.",
           }),
           coreAnchorConfirmed: true,
         })}
@@ -228,7 +260,9 @@ describe("ExecutionPage", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByDisplayValue("Generated: real boundaries from the confirmed Core Anchor."),
+        screen.getByDisplayValue(
+          "Generated: real boundaries from the confirmed Core Anchor.",
+        ),
       ).toBeVisible();
     });
   });
@@ -252,7 +286,9 @@ describe("ExecutionPage", () => {
     expect(screen.getByText(/Confirmed Execution Anchor/)).toBeVisible();
     expect(screen.getByText("24fps, no motion blur.")).toBeVisible();
     expect(screen.getByText("Active Core Anchor (read-only)")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Create new revision" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Create new revision" }),
+    ).toBeVisible();
     expect(
       screen.queryByRole("button", { name: "Generate Execution Anchor draft" }),
     ).not.toBeInTheDocument();

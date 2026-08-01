@@ -55,7 +55,10 @@ export function CgWorkspacePage({
           description="The ICAS service could not be reached. Try refreshing the page."
         />
       ) : inbox.items.length === 0 ? (
-        <EmptyState title="No Tasks exist yet" description="Tasks will appear here once they exist." />
+        <EmptyState
+          title="No Tasks exist yet"
+          description="Tasks will appear here once they exist."
+        />
       ) : (
         <WorkspaceHomeContent items={inbox.items} />
       )}
@@ -65,23 +68,32 @@ export function CgWorkspacePage({
 
 function WorkspaceHomeContent({ items }: { items: CgInboxItemRead[] }) {
   const totalTasks = items.length;
-  const requiringAttention = items.filter((item) => item.current_focus.actionable).length;
+  const requiringAttention = items.filter(
+    (item) => item.current_focus.actionable,
+  ).length;
   const executionAwaitingAction = items.filter((item) =>
-    ["execution_anchor_gate_pending", "execution_anchor_draft_needs_review"].includes(
-      item.current_focus.focus_type,
-    ),
+    [
+      "execution_anchor_gate_pending",
+      "execution_anchor_draft_needs_review",
+    ].includes(item.current_focus.focus_type),
   ).length;
   const versionReviewsRequiringAction = items.filter(
     (item) => item.current_focus.focus_type === "version_review_available",
   ).length;
-  const unresolvedDependencies = items.reduce((sum, item) => sum + item.open_dependency_count, 0);
+  const unresolvedDependencies = items.reduce(
+    (sum, item) => sum + item.open_dependency_count,
+    0,
+  );
 
   // Priority actions: the shared CG Review work-item model, not a
   // Task-led list -- `items` already arrives sorted by the backend's
   // real priority ordering (`sort_rank`), and the adapter preserves
   // that order, so the first N *are* the highest-priority work. The
   // exact same ordering the CG Review Inbox itself uses.
-  const priorityActions = adaptCgCurrentFocusToWorkItems(items).slice(0, PRIORITY_ACTION_COUNT);
+  const priorityActions = adaptCgCurrentFocusToWorkItems(items).slice(
+    0,
+    PRIORITY_ACTION_COUNT,
+  );
 
   // Important Tasks: a small, clearly secondary, Task-led section --
   // never the complete catalogue (that is `/cg/tasks`'s job).
@@ -89,7 +101,12 @@ function WorkspaceHomeContent({ items }: { items: CgInboxItemRead[] }) {
 
   return (
     <Stack gap={6}>
-      <Grid minColumnWidth="13rem" gap={4} role="region" aria-label="Production overview">
+      <Grid
+        minColumnWidth="13rem"
+        gap={4}
+        role="region"
+        aria-label="Production overview"
+      >
         <SummaryCard label="Total Tasks" value={totalTasks} />
         <SummaryCard
           label="Requiring attention"
@@ -100,8 +117,14 @@ function WorkspaceHomeContent({ items }: { items: CgInboxItemRead[] }) {
           label="Execution Anchors awaiting action"
           value={executionAwaitingAction}
         />
-        <SummaryCard label="Version reviews requiring action" value={versionReviewsRequiringAction} />
-        <SummaryCard label="Unresolved dependencies" value={unresolvedDependencies} />
+        <SummaryCard
+          label="Version reviews requiring action"
+          value={versionReviewsRequiringAction}
+        />
+        <SummaryCard
+          label="Unresolved dependencies"
+          value={unresolvedDependencies}
+        />
       </Grid>
 
       <div role="region" aria-label="Priority actions">

@@ -13,12 +13,8 @@ VFX = {"X-Actor-Role": "vfx_supervisor", "X-Actor-Id": "vfx-1"}
 
 async def _create_project_shot_task(client: AsyncClient) -> tuple[str, str, str]:
     project = (await client.post("/projects", json={"name": "Demo Project"})).json()
-    shot = (
-        await client.post("/shots", json={"project_id": project["id"], "name": "SH010"})
-    ).json()
-    task = (
-        await client.post("/tasks", json={"shot_id": shot["id"], "name": "Lighting"})
-    ).json()
+    shot = (await client.post("/shots", json={"project_id": project["id"], "name": "SH010"})).json()
+    task = (await client.post("/tasks", json={"shot_id": shot["id"], "name": "Lighting"})).json()
     return str(project["id"]), str(shot["id"]), str(task["id"])
 
 

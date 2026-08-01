@@ -1,6 +1,12 @@
 import type { ExecutionAnchorRevisionRead } from "@intent-core/contracts";
 
-import { AppShell, Breadcrumbs, ContextTabs, ErrorState, MetadataRow } from "@/design";
+import {
+  AppShell,
+  Breadcrumbs,
+  ContextTabs,
+  ErrorState,
+  MetadataRow,
+} from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import type { ExecutionWorkspaceData } from "@/features/cg/execution-workspace/data";
@@ -12,9 +18,21 @@ function contentFieldRows(
   revision: ExecutionAnchorRevisionRead,
 ): { key: string; label: string; value: string }[] {
   return [
-    { key: "technical_boundaries", label: "Technical boundaries", value: revision.technical_boundaries },
-    { key: "parameter_ranges", label: "Parameter ranges", value: revision.parameter_ranges },
-    { key: "delivery_conditions", label: "Delivery conditions", value: revision.delivery_conditions },
+    {
+      key: "technical_boundaries",
+      label: "Technical boundaries",
+      value: revision.technical_boundaries,
+    },
+    {
+      key: "parameter_ranges",
+      label: "Parameter ranges",
+      value: revision.parameter_ranges,
+    },
+    {
+      key: "delivery_conditions",
+      label: "Delivery conditions",
+      value: revision.delivery_conditions,
+    },
     {
       key: "production_ready_criteria",
       label: "Production-ready criteria",
@@ -30,7 +48,11 @@ function contentFieldRows(
       label: "Publish requirements",
       value: revision.publish_requirements,
     },
-    { key: "allowed_refinements", label: "Allowed refinements", value: revision.allowed_refinements },
+    {
+      key: "allowed_refinements",
+      label: "Allowed refinements",
+      value: revision.allowed_refinements,
+    },
     {
       key: "escalation_conditions",
       label: "Escalation conditions",
@@ -66,9 +88,18 @@ export function ExecutionPage({
     >
       {unavailable || data === null ? (
         <>
-          <Breadcrumbs items={[{ label: "Tasks", href: "/cg/tasks" }, { label: "Execution" }]} />
+          <Breadcrumbs
+            items={[
+              { label: "Tasks", href: "/cg/tasks" },
+              { label: "Execution" },
+            ]}
+          />
           <ErrorState
-            title={unavailable ? "This Task is unavailable" : "This Task could not be found"}
+            title={
+              unavailable
+                ? "This Task is unavailable"
+                : "This Task could not be found"
+            }
             description={
               unavailable
                 ? "The ICAS service could not be reached. Try refreshing the page."
@@ -90,8 +121,16 @@ export function ExecutionPage({
           <ContextTabs
             activeTabId="execution"
             tabs={[
-              { id: "overview", label: "Overview", href: `/cg/tasks/${taskId}` },
-              { id: "execution", label: "Execution", href: `/cg/tasks/${taskId}/execution` },
+              {
+                id: "overview",
+                label: "Overview",
+                href: `/cg/tasks/${taskId}`,
+              },
+              {
+                id: "execution",
+                label: "Execution",
+                href: `/cg/tasks/${taskId}/execution`,
+              },
               {
                 id: "version-review",
                 label: "Version Review",
@@ -102,12 +141,18 @@ export function ExecutionPage({
                 label: "Dependencies",
                 href: `/cg/tasks/${taskId}/dependencies`,
               },
-              { id: "activity", label: "Activity", href: `/cg/tasks/${taskId}/activity` },
+              {
+                id: "activity",
+                label: "Activity",
+                href: `/cg/tasks/${taskId}/activity`,
+              },
             ]}
           />
 
           <section className={styles.section}>
-            <h3 className={styles.sectionHeading}>Active Core Anchor (read-only)</h3>
+            <h3 className={styles.sectionHeading}>
+              Active Core Anchor (read-only)
+            </h3>
             <p className={styles.contextText}>
               {data.coreAnchorConfirmed
                 ? "A confirmed Core Anchor exists for this Task's Shot."
@@ -118,41 +163,54 @@ export function ExecutionPage({
           {data.confirmedRevision && (
             <section className={styles.section}>
               <h3 className={styles.sectionHeading}>
-                Confirmed Execution Anchor (Revision {data.confirmedRevision.revision_number})
+                Confirmed Execution Anchor (Revision{" "}
+                {data.confirmedRevision.revision_number})
               </h3>
               <MetadataRow
                 items={[
                   {
                     label: "Confirmed by",
-                    value: data.confirmedRevision.confirmed_by_human_role ?? "Unknown",
+                    value:
+                      data.confirmedRevision.confirmed_by_human_role ??
+                      "Unknown",
                   },
                   {
                     label: "Confirmed at",
                     value: data.confirmedRevision.confirmed_at
-                      ? new Date(data.confirmedRevision.confirmed_at).toLocaleString()
+                      ? new Date(
+                          data.confirmedRevision.confirmed_at,
+                        ).toLocaleString()
                       : "Unknown",
                   },
                 ]}
               />
               <dl className={styles.readOnlyFields}>
-                {contentFieldRows(data.confirmedRevision).map(({ key, label, value }) => (
-                  <div key={key}>
-                    <dt>{label}</dt>
-                    <dd>{value}</dd>
-                  </div>
-                ))}
+                {contentFieldRows(data.confirmedRevision).map(
+                  ({ key, label, value }) => (
+                    <div key={key}>
+                      <dt>{label}</dt>
+                      <dd>{value}</dd>
+                    </div>
+                  ),
+                )}
               </dl>
             </section>
           )}
 
           <section className={styles.section}>
             <h3 className={styles.sectionHeading}>
-              {data.draftRevision ? "Draft Execution Anchor" : "Start Execution Anchor"}
+              {data.draftRevision
+                ? "Draft Execution Anchor"
+                : "Start Execution Anchor"}
             </h3>
             <ExecutionAnchorEditor
               taskId={taskId}
               draftRevision={data.draftRevision}
-              draftHumanGateId={data.draftRevision ? (data.item.pending_human_gate_id ?? null) : null}
+              draftHumanGateId={
+                data.draftRevision
+                  ? (data.item.pending_human_gate_id ?? null)
+                  : null
+              }
               coreAnchorConfirmed={data.coreAnchorConfirmed}
               hasConfirmedRevision={data.confirmedRevision !== null}
             />

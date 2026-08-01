@@ -106,8 +106,7 @@ def _human_decision_recorded_event(
         actor_id=decision.actor_id,
         actor_human_role=decision.actor_human_role,  # type: ignore[arg-type]
         summary=(
-            f"Decision recorded: Human {role_label} {decision_label} "
-            f"(Revision {revision_number})"
+            f"Decision recorded: Human {role_label} {decision_label} (Revision {revision_number})"
         ),
         related_entity_type="decision",
         related_entity_id=decision.id,

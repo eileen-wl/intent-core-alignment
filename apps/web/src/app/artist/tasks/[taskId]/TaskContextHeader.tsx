@@ -1,7 +1,10 @@
 import type { ArtistInboxItemRead } from "@intent-core/contracts";
 
 import { FtrackLinkageBadge, MetadataRow, StatusBadge } from "@/design";
-import { executionAnchorStateLabel, versionDisplayText } from "../../artistWording";
+import {
+  executionAnchorStateLabel,
+  versionDisplayText,
+} from "../../artistWording";
 import styles from "./TaskContextHeader.module.css";
 
 /** Compact, reusable production-context header (Step 7C-5) -- shared
@@ -26,7 +29,11 @@ export function TaskContextHeader({ item }: { item: ArtistInboxItemRead }) {
         <div className={styles.metaRight}>
           <FtrackLinkageBadge source={item.task_source} />
           <StatusBadge
-            status={item.execution_anchor_state === "confirmed" ? "confirmed" : "neutral"}
+            status={
+              item.execution_anchor_state === "confirmed"
+                ? "confirmed"
+                : "neutral"
+            }
             label={executionAnchorStateLabel(item.execution_anchor_state)}
           />
         </div>

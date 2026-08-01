@@ -1,4 +1,7 @@
-import type { VfxInboxItemRead, VfxCurrentFocusType } from "@intent-core/contracts";
+import type {
+  VfxInboxItemRead,
+  VfxCurrentFocusType,
+} from "@intent-core/contracts";
 
 /**
  * Review work-item architecture (Step 7C-1 content-architecture
@@ -145,10 +148,9 @@ export interface ReviewWorkItem {
   route: string;
 }
 
-const CORE_ANCHOR_ROUTE_FOCUS_TYPES: ReadonlySet<VfxCurrentFocusType> = new Set([
-  "core_anchor_gate_pending",
-  "core_anchor_draft_needs_review",
-]);
+const CORE_ANCHOR_ROUTE_FOCUS_TYPES: ReadonlySet<VfxCurrentFocusType> = new Set(
+  ["core_anchor_gate_pending", "core_anchor_draft_needs_review"],
+);
 
 /** The three alignment-family focus types: a Cross-role Assessment
  * awaiting interpretation, a Re-anchor Proposal available for
@@ -203,7 +205,9 @@ function workItemCategory(focusType: VfxCurrentFocusType): string {
     case "assessment_generation_available":
       return "Attention required";
     case "none":
-      throw new Error("focus_type \"none\" is never actionable and must never become a work item");
+      throw new Error(
+        'focus_type "none" is never actionable and must never become a work item',
+      );
   }
 }
 
@@ -213,7 +217,9 @@ function taskFrom(item: VfxInboxItemRead): ReviewWorkItemTask | undefined {
     : undefined;
 }
 
-function versionFrom(item: VfxInboxItemRead): ReviewWorkItemVersion | undefined {
+function versionFrom(
+  item: VfxInboxItemRead,
+): ReviewWorkItemVersion | undefined {
   return item.relevant_version_id && item.relevant_version_name
     ? {
         id: item.relevant_version_id,
@@ -235,7 +241,9 @@ function versionFrom(item: VfxInboxItemRead): ReviewWorkItemVersion | undefined 
  * and never every Review Note. Routes straight to the real Versions
  * workspace, never through `workItemRoute`'s Core-Anchor/Alignment
  * routing table (that table has no Versions destination). */
-export function adaptVersionReviewWorkItems(items: VfxInboxItemRead[]): ReviewWorkItem[] {
+export function adaptVersionReviewWorkItems(
+  items: VfxInboxItemRead[],
+): ReviewWorkItem[] {
   const workItems: ReviewWorkItem[] = [];
 
   for (const item of items) {
@@ -257,7 +265,11 @@ export function adaptVersionReviewWorkItems(items: VfxInboxItemRead[]): ReviewWo
       sortRank: item.sort_rank,
       actionLabel: "Review Version",
       project: { id: item.project_id, name: item.project_name },
-      shot: { id: item.shot_id, name: item.shot_name, source: item.shot_source },
+      shot: {
+        id: item.shot_id,
+        name: item.shot_name,
+        source: item.shot_source,
+      },
       version: {
         id: versionId,
         name: versionName,
@@ -278,7 +290,9 @@ export function adaptVersionReviewWorkItems(items: VfxInboxItemRead[]): ReviewWo
  * `ReviewWorkItem`. Routes to Shot Overview, not through
  * `workItemRoute`'s Core-Anchor/Alignment table: VFX has no route into
  * CG Task detail, so Overview is the honest fallback destination. */
-export function adaptEscalationWorkItems(items: VfxInboxItemRead[]): ReviewWorkItem[] {
+export function adaptEscalationWorkItems(
+  items: VfxInboxItemRead[],
+): ReviewWorkItem[] {
   const workItems: ReviewWorkItem[] = [];
 
   for (const item of items) {
@@ -297,7 +311,11 @@ export function adaptEscalationWorkItems(items: VfxInboxItemRead[]): ReviewWorkI
       sortRank: item.sort_rank,
       actionLabel: "Review escalation",
       project: { id: item.project_id, name: item.project_name },
-      shot: { id: item.shot_id, name: item.shot_name, source: item.shot_source },
+      shot: {
+        id: item.shot_id,
+        name: item.shot_name,
+        source: item.shot_source,
+      },
       task: taskName ? { id: taskId, name: taskName } : undefined,
       coreAnchorState: item.core_anchor_state,
       route: `/vfx/shots/${item.shot_id}`,
@@ -311,7 +329,9 @@ export function adaptEscalationWorkItems(items: VfxInboxItemRead[]): ReviewWorkI
  * becomes exactly one `ReviewWorkItem`. Non-actionable (`focus_type ===
  * "none"`) Shots contribute nothing -- an honest empty Review Inbox is
  * possible, and expected, whenever no Shot has real actionable work. */
-export function adaptCurrentFocusToWorkItems(items: VfxInboxItemRead[]): ReviewWorkItem[] {
+export function adaptCurrentFocusToWorkItems(
+  items: VfxInboxItemRead[],
+): ReviewWorkItem[] {
   const workItems: ReviewWorkItem[] = [];
 
   for (const item of items) {
@@ -328,7 +348,11 @@ export function adaptCurrentFocusToWorkItems(items: VfxInboxItemRead[]): ReviewW
       sortRank: item.sort_rank,
       actionLabel: focus.primary_action_label,
       project: { id: item.project_id, name: item.project_name },
-      shot: { id: item.shot_id, name: item.shot_name, source: item.shot_source },
+      shot: {
+        id: item.shot_id,
+        name: item.shot_name,
+        source: item.shot_source,
+      },
       task: taskFrom(item),
       version: versionFrom(item),
       coreAnchorState: item.core_anchor_state,

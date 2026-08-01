@@ -36,7 +36,9 @@ export interface TaskOverviewData {
   dependencies: TaskDependencyRead[];
 }
 
-export async function loadTaskOverviewData(taskId: string): Promise<TaskOverviewData | null> {
+export async function loadTaskOverviewData(
+  taskId: string,
+): Promise<TaskOverviewData | null> {
   const item = await fetchArtistInboxItem(taskId);
   if (item === null) {
     return null;
@@ -52,21 +54,29 @@ export async function loadTaskOverviewData(taskId: string): Promise<TaskOverview
   if (coreAnchor !== null && coreAnchor.active_revision_id !== null) {
     const revisions = await listCoreAnchorRevisions(item.shot_id);
     coreAnchorRevision =
-      revisions.find((revision) => revision.id === coreAnchor.active_revision_id) ?? null;
+      revisions.find(
+        (revision) => revision.id === coreAnchor.active_revision_id,
+      ) ?? null;
   }
 
   let executionAnchorRevision: ExecutionAnchorRevisionRead | null = null;
   if (executionAnchor !== null && executionAnchor.active_revision_id !== null) {
     const revisions = await listExecutionAnchorRevisions(taskId);
     executionAnchorRevision =
-      revisions.find((revision) => revision.id === executionAnchor.active_revision_id) ?? null;
+      revisions.find(
+        (revision) => revision.id === executionAnchor.active_revision_id,
+      ) ?? null;
   }
 
   let latestGuidance: ArtistAgentGuidanceRead | null = null;
   if (item.latest_version_id !== null) {
-    const guidances = await listArtistGuidancesForVersion(item.latest_version_id);
+    const guidances = await listArtistGuidancesForVersion(
+      item.latest_version_id,
+    );
     latestGuidance =
-      guidances.find((guidance) => guidance.task_id === taskId) ?? guidances[0] ?? null;
+      guidances.find((guidance) => guidance.task_id === taskId) ??
+      guidances[0] ??
+      null;
   }
 
   return {

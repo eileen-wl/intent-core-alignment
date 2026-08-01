@@ -1,6 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { DemoScenarioUnavailableError, resolveD1DemoShotId } from "./demoScenario";
+import {
+  DemoScenarioUnavailableError,
+  resolveD1DemoShotId,
+} from "./demoScenario";
 
 const fetchMock = vi.fn();
 
@@ -37,11 +40,15 @@ describe("resolveD1DemoShotId", () => {
 
   it("throws DemoScenarioUnavailableError on a non-2xx response", async () => {
     fetchMock.mockResolvedValue({ ok: false, status: 502 });
-    await expect(resolveD1DemoShotId()).rejects.toThrow(DemoScenarioUnavailableError);
+    await expect(resolveD1DemoShotId()).rejects.toThrow(
+      DemoScenarioUnavailableError,
+    );
   });
 
   it("throws DemoScenarioUnavailableError on a network failure", async () => {
     fetchMock.mockRejectedValue(new Error("network down"));
-    await expect(resolveD1DemoShotId()).rejects.toThrow(DemoScenarioUnavailableError);
+    await expect(resolveD1DemoShotId()).rejects.toThrow(
+      DemoScenarioUnavailableError,
+    );
   });
 });

@@ -11,7 +11,9 @@ function taskText(item: ReviewWorkItem): string {
 
 function versionText(item: ReviewWorkItem): string {
   if (!item.version) return "No Version recorded yet";
-  return item.version.number ? `${item.version.name} (v${item.version.number})` : item.version.name;
+  return item.version.number
+    ? `${item.version.name} (v${item.version.number})`
+    : item.version.name;
 }
 
 /** One Review work-item row (Step 7C-1 content-architecture correction).
@@ -34,7 +36,9 @@ export function WorkItemRow({ item }: { item: ReviewWorkItem }) {
           {item.project && <span>{item.project.name}</span>}
           <span>{taskText(item)}</span>
           <span>{versionText(item)}</span>
-          {item.coreAnchorState && <span>{coreAnchorStateLabel(item.coreAnchorState)}</span>}
+          {item.coreAnchorState && (
+            <span>{coreAnchorStateLabel(item.coreAnchorState)}</span>
+          )}
           {item.shot && <FtrackLinkageBadge source={item.shot.source} />}
         </span>
       </span>

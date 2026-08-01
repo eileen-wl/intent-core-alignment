@@ -99,11 +99,7 @@ async def _load_task_related_data(
             )
 
     dependency_rows = list(
-        (
-            await session.execute(
-                select(TaskDependency).where(TaskDependency.task_id == task_id)
-            )
-        )
+        (await session.execute(select(TaskDependency).where(TaskDependency.task_id == task_id)))
         .scalars()
         .all()
     )
@@ -200,9 +196,7 @@ async def build_task_inbox_item(
         pending_human_gate_id=data.pending_gate_id,
         latest_version_id=data.latest_version.id if data.latest_version else None,
         latest_version_name=data.latest_version.name if data.latest_version else None,
-        latest_version_number=(
-            data.latest_version.version_number if data.latest_version else None
-        ),
+        latest_version_number=(data.latest_version.version_number if data.latest_version else None),
         open_dependency_count=data.open_dependency_count,
         current_focus=current_focus,
         sort_rank=bucket * 1_000_000_000_000 + ordinal,
@@ -217,8 +211,8 @@ async def list_inbox_items(session: AsyncSession) -> CgInboxRead:
     shots: dict[uuid.UUID, Shot] = {}
     if shot_ids:
         shot_rows = (
-            await session.execute(select(Shot).where(Shot.id.in_(shot_ids)))
-        ).scalars().all()
+            (await session.execute(select(Shot).where(Shot.id.in_(shot_ids)))).scalars().all()
+        )
         shots = {shot.id: shot for shot in shot_rows}
 
     project_ids = {shot.project_id for shot in shots.values()}

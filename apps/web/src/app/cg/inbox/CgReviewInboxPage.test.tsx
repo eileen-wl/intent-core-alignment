@@ -29,7 +29,8 @@ function buildItem(overrides: Partial<CgInboxItemRead> = {}): CgInboxItemRead {
     current_focus: {
       focus_type: "execution_anchor_gate_pending",
       title: "Execution Anchor draft awaiting your confirmation",
-      explanation: "A proposed department execution translation is ready for your review.",
+      explanation:
+        "A proposed department execution translation is ready for your review.",
       target_route: "/cg/tasks/t1/execution",
       primary_action_label: "Review and confirm",
       actionable: true,
@@ -39,7 +40,9 @@ function buildItem(overrides: Partial<CgInboxItemRead> = {}): CgInboxItemRead {
   };
 }
 
-function inactiveItem(overrides: Partial<CgInboxItemRead> = {}): CgInboxItemRead {
+function inactiveItem(
+  overrides: Partial<CgInboxItemRead> = {},
+): CgInboxItemRead {
   return buildItem({
     current_focus: {
       focus_type: "none",
@@ -73,32 +76,44 @@ describe("CgReviewInboxPage", () => {
 
   it("shows an honest clear-inbox empty state when no work items exist, with a route to Tasks", () => {
     render(
-      <CgReviewInboxPage inbox={buildInbox([inactiveItem({ task_id: "t2" })])} onExitRole={vi.fn()} />,
+      <CgReviewInboxPage
+        inbox={buildInbox([inactiveItem({ task_id: "t2" })])}
+        onExitRole={vi.fn()}
+      />,
     );
     expect(screen.getByText("Review Inbox is clear")).toBeVisible();
-    expect(screen.getByRole("link", { name: "Browse Tasks →" })).toHaveAttribute(
-      "href",
-      "/cg/tasks",
-    );
+    expect(
+      screen.getByRole("link", { name: "Browse Tasks →" }),
+    ).toHaveAttribute("href", "/cg/tasks");
   });
 
   it("only actionable work items appear, with the required action as the primary title", () => {
     render(
       <CgReviewInboxPage
-        inbox={buildInbox([buildItem({ task_id: "t1" }), inactiveItem({ task_id: "t2" })])}
+        inbox={buildInbox([
+          buildItem({ task_id: "t1" }),
+          inactiveItem({ task_id: "t2" }),
+        ])}
         onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Showing 1 items requiring review")).toBeVisible();
-    expect(screen.getByText("Execution Anchor draft awaiting your confirmation")).toBeVisible();
+    expect(
+      screen.getByText("Execution Anchor draft awaiting your confirmation"),
+    ).toBeVisible();
   });
 
   it("routes Execution work to the real Execution route", () => {
     render(
-      <CgReviewInboxPage inbox={buildInbox([buildItem({ task_id: "t1" })])} onExitRole={vi.fn()} />,
+      <CgReviewInboxPage
+        inbox={buildInbox([buildItem({ task_id: "t1" })])}
+        onExitRole={vi.fn()}
+      />,
     );
     expect(
-      screen.getByText("Execution Anchor draft awaiting your confirmation").closest("a"),
+      screen
+        .getByText("Execution Anchor draft awaiting your confirmation")
+        .closest("a"),
     ).toHaveAttribute("href", "/cg/tasks/t1/execution");
   });
 
@@ -111,7 +126,8 @@ describe("CgReviewInboxPage", () => {
             current_focus: {
               focus_type: "dependency_needs_attention",
               title: "An unresolved dependency needs your interpretation",
-              explanation: "A real recorded dependency or cross-role conflict is still open.",
+              explanation:
+                "A real recorded dependency or cross-role conflict is still open.",
               target_route: "/cg/tasks/t1/dependencies",
               primary_action_label: "Review dependencies",
               actionable: true,
@@ -122,7 +138,9 @@ describe("CgReviewInboxPage", () => {
       />,
     );
     expect(
-      screen.getByText("An unresolved dependency needs your interpretation").closest("a"),
+      screen
+        .getByText("An unresolved dependency needs your interpretation")
+        .closest("a"),
     ).toHaveAttribute("href", "/cg/tasks/t1/dependencies");
   });
 
@@ -146,7 +164,9 @@ describe("CgReviewInboxPage", () => {
       />,
     );
     expect(
-      screen.getByText("A Production Version is ready for CG review").closest("a"),
+      screen
+        .getByText("A Production Version is ready for CG review")
+        .closest("a"),
     ).toHaveAttribute("href", "/cg/tasks/t1/version-review");
   });
 });

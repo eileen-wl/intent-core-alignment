@@ -1,7 +1,10 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { loadIntentWorkspaceData, type IntentWorkspaceData } from "@/features/vfx/intent-workspace/data";
+import {
+  loadIntentWorkspaceData,
+  type IntentWorkspaceData,
+} from "@/features/vfx/intent-workspace/data";
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
 import { exitRoleView } from "../../../../demo/actions";
 import { IntentWorkspacePage } from "./IntentWorkspacePage";

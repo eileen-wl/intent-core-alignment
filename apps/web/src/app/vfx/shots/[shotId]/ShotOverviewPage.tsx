@@ -48,7 +48,9 @@ export function ShotOverviewPage({
     >
       {item === null ? (
         <>
-          <Breadcrumbs items={[{ label: "Shots", href: "/vfx/shots" }, { label: "Shot" }]} />
+          <Breadcrumbs
+            items={[{ label: "Shots", href: "/vfx/shots" }, { label: "Shot" }]}
+          />
           <ErrorState
             title="This Shot is unavailable"
             description="The ICAS service could not be reached, or this Shot does not exist. Try refreshing the page."
@@ -67,11 +69,31 @@ export function ShotOverviewPage({
           <ContextTabs
             activeTabId="overview"
             tabs={[
-              { id: "overview", label: "Overview", href: `/vfx/shots/${item.shot_id}` },
-              { id: "intent", label: "Intent", href: `/vfx/shots/${item.shot_id}/intent` },
-              { id: "versions", label: "Versions", href: `/vfx/shots/${item.shot_id}/versions` },
-              { id: "alignment", label: "Alignment", href: `/vfx/shots/${item.shot_id}/alignment` },
-              { id: "activity", label: "Activity", href: `/vfx/shots/${item.shot_id}/activity` },
+              {
+                id: "overview",
+                label: "Overview",
+                href: `/vfx/shots/${item.shot_id}`,
+              },
+              {
+                id: "intent",
+                label: "Intent",
+                href: `/vfx/shots/${item.shot_id}/intent`,
+              },
+              {
+                id: "versions",
+                label: "Versions",
+                href: `/vfx/shots/${item.shot_id}/versions`,
+              },
+              {
+                id: "alignment",
+                label: "Alignment",
+                href: `/vfx/shots/${item.shot_id}/alignment`,
+              },
+              {
+                id: "activity",
+                label: "Activity",
+                href: `/vfx/shots/${item.shot_id}/activity`,
+              },
             ]}
           />
 
@@ -83,7 +105,10 @@ export function ShotOverviewPage({
 
           <dl>
             <dt>Confirmed Core Anchor</dt>
-            <dd>{item.active_core_anchor_summary ?? "No confirmed Core Anchor yet."}</dd>
+            <dd>
+              {item.active_core_anchor_summary ??
+                "No confirmed Core Anchor yet."}
+            </dd>
 
             <dt>Latest Version</dt>
             <dd>
@@ -116,7 +141,9 @@ export function ShotOverviewPage({
 
             <dt>Activity</dt>
             <dd>
-              <Link href={`/vfx/shots/${item.shot_id}/activity`}>View full activity →</Link>
+              <Link href={`/vfx/shots/${item.shot_id}/activity`}>
+                View full activity →
+              </Link>
             </dd>
           </dl>
         </>

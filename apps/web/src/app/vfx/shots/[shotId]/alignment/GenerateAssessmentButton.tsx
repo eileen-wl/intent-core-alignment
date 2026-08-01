@@ -34,13 +34,15 @@ export function GenerateAssessmentButton({
         onClick={() => {
           setError(null);
           startTransition(() => {
-            generateAssessmentAction(shotId, versionId, taskId).then((result) => {
-              if (result.ok) {
-                router.refresh();
-              } else {
-                setError(result.error.message);
-              }
-            });
+            generateAssessmentAction(shotId, versionId, taskId).then(
+              (result) => {
+                if (result.ok) {
+                  router.refresh();
+                } else {
+                  setError(result.error.message);
+                }
+              },
+            );
           });
         }}
       >

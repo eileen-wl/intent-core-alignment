@@ -1,4 +1,7 @@
-import type { ShotActivityRead, VfxInboxItemRead } from "@intent-core/contracts";
+import type {
+  ShotActivityRead,
+  VfxInboxItemRead,
+} from "@intent-core/contracts";
 
 import { fetchVfxInboxItem, getShotActivity } from "@/features/vfx/api";
 

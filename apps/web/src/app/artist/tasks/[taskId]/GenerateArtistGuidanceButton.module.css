@@ -16,7 +16,9 @@
   background: var(--accent-agent-surface);
   color: var(--text-primary);
   font-weight: 600;
-  transition: filter 120ms ease, transform 120ms ease;
+  transition:
+    filter 120ms ease,
+    transform 120ms ease;
 }
 
 .button:hover:not(:disabled),

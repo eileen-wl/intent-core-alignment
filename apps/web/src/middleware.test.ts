@@ -60,14 +60,20 @@ describe("middleware (role route protection)", () => {
   });
 
   it("preserves a deep sub-route (not just the workspace root) as returnTo", () => {
-    const response = middleware(requestFor("/cg/tasks/t1/execution", "vfx_supervisor"));
+    const response = middleware(
+      requestFor("/cg/tasks/t1/execution", "vfx_supervisor"),
+    );
     const location = new URL(response.headers.get("location") ?? "");
     expect(location.pathname).toBe("/");
-    expect(location.searchParams.get("returnTo")).toBe("/cg/tasks/t1/execution");
+    expect(location.searchParams.get("returnTo")).toBe(
+      "/cg/tasks/t1/execution",
+    );
   });
 
   it("preserves the query string of the intended route in returnTo", () => {
-    const response = middleware(requestFor("/vfx/shots/s1/intent?justConfirmed=r1"));
+    const response = middleware(
+      requestFor("/vfx/shots/s1/intent?justConfirmed=r1"),
+    );
     const location = new URL(response.headers.get("location") ?? "");
     expect(location.searchParams.get("returnTo")).toBe(
       "/vfx/shots/s1/intent?justConfirmed=r1",

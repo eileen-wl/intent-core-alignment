@@ -63,6 +63,9 @@ describe("RoleEntryButton", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Enter as CG Supervisor" }),
     );
-    expect(enterDemoRole).toHaveBeenCalledWith("cg_supervisor", "/cg/tasks/t1/execution");
+    expect(enterDemoRole).toHaveBeenCalledWith(
+      "cg_supervisor",
+      "/cg/tasks/t1/execution",
+    );
   });
 });

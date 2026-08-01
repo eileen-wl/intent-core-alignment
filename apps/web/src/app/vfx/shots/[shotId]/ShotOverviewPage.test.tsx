@@ -27,7 +27,9 @@ function focus(
   };
 }
 
-function buildItem(overrides: Partial<VfxInboxItemRead> = {}): VfxInboxItemRead {
+function buildItem(
+  overrides: Partial<VfxInboxItemRead> = {},
+): VfxInboxItemRead {
   return {
     project_id: "p1",
     project_name: "D1 Demo Project",
@@ -70,7 +72,9 @@ describe("ShotOverviewPage", () => {
     // Appears once in the compact header and once in supporting
     // context -- distinct UI regions with distinct jobs, not a
     // forbidden repeated-Signal duplication.
-    expect(screen.getAllByText("D1_STEP3_VFX_REVIEW_001 (v1)").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText("D1_STEP3_VFX_REVIEW_001 (v1)").length,
+    ).toBeGreaterThan(0);
   });
 
   it("renders all five contextual tabs as real, implemented links, Overview active", () => {
@@ -107,18 +111,21 @@ describe("ShotOverviewPage", () => {
     "none",
   ];
 
-  it.each(focusTypes)("renders exactly one Current focus for %s", (focusType) => {
-    const item = buildItem({
-      current_focus: focus(focusType, {
-        actionable: focusType !== "none",
-        primary_action_label: focusType === "none" ? null : "Act now",
-        title: `Title for ${focusType}`,
-      }),
-    });
-    render(<ShotOverviewPage item={item} onExitRole={vi.fn()} />);
-    expect(screen.getAllByText("Current focus")).toHaveLength(1);
-    expect(screen.getByText(`Title for ${focusType}`)).toBeVisible();
-  });
+  it.each(focusTypes)(
+    "renders exactly one Current focus for %s",
+    (focusType) => {
+      const item = buildItem({
+        current_focus: focus(focusType, {
+          actionable: focusType !== "none",
+          primary_action_label: focusType === "none" ? null : "Act now",
+          title: `Title for ${focusType}`,
+        }),
+      });
+      render(<ShotOverviewPage item={item} onExitRole={vi.fn()} />);
+      expect(screen.getAllByText("Current focus")).toHaveLength(1);
+      expect(screen.getByText(`Title for ${focusType}`)).toBeVisible();
+    },
+  );
 
   it("renders no action button at all for focus_type 'none'", () => {
     const item = buildItem({
@@ -129,7 +136,9 @@ describe("ShotOverviewPage", () => {
       }),
     });
     render(<ShotOverviewPage item={item} onExitRole={vi.fn()} />);
-    expect(screen.queryByRole("link", { name: "Act now" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Act now" }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders a real action link for an actionable focus", () => {
@@ -148,7 +157,8 @@ describe("ShotOverviewPage", () => {
   it("does not duplicate the Signal message when Current focus is alignment-driven", () => {
     const item = buildItem({
       current_focus: focus("alignment_not_followed_by_anchor_action", {
-        explanation: "No newer Core Anchor action has followed this assessment.",
+        explanation:
+          "No newer Core Anchor action has followed this assessment.",
       }),
     });
     render(<ShotOverviewPage item={item} onExitRole={vi.fn()} />);
@@ -177,9 +187,16 @@ describe("ShotOverviewPage", () => {
   });
 
   it("renders no 'Next in this Shot' heading or list when there are zero next candidates", () => {
-    render(<ShotOverviewPage item={buildItem({ next_candidates: [] })} onExitRole={vi.fn()} />);
+    render(
+      <ShotOverviewPage
+        item={buildItem({ next_candidates: [] })}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.queryByText("Next in this Shot")).not.toBeInTheDocument();
-    expect(screen.queryByRole("list", { name: "Next in this Shot" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("list", { name: "Next in this Shot" }),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the real backend-supplied 'Next in this Shot' items", () => {
@@ -188,7 +205,8 @@ describe("ShotOverviewPage", () => {
         {
           focus_type: "alignment_not_followed_by_anchor_action",
           title: "Cross-role assessment may need your interpretation",
-          explanation: "No newer Core Anchor action has followed this assessment.",
+          explanation:
+            "No newer Core Anchor action has followed this assessment.",
           target_route: "/vfx/shots/s1/alignment",
           primary_action_label: "Review alignment",
           actionable: true,
@@ -196,7 +214,8 @@ describe("ShotOverviewPage", () => {
         {
           focus_type: "re_anchor_proposal_present",
           title: "Re-anchor proposal available for consideration",
-          explanation: "The latest assessment includes an advisory suggestion for the Core Anchor.",
+          explanation:
+            "The latest assessment includes an advisory suggestion for the Core Anchor.",
           target_route: "/vfx/shots/s1/alignment",
           primary_action_label: "Review proposal",
           actionable: true,
@@ -208,7 +227,9 @@ describe("ShotOverviewPage", () => {
     expect(
       screen.getByText("Cross-role assessment may need your interpretation"),
     ).toBeVisible();
-    expect(screen.getByText("Re-anchor proposal available for consideration")).toBeVisible();
+    expect(
+      screen.getByText("Re-anchor proposal available for consideration"),
+    ).toBeVisible();
     const list = screen.getByRole("list", { name: "Next in this Shot" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(2);
   });
@@ -221,14 +242,16 @@ describe("ShotOverviewPage", () => {
     // future Alignment Workspace, Step 7C-3, not here).
     const item = buildItem({
       current_focus: focus("alignment_not_followed_by_anchor_action", {
-        explanation: "No newer Core Anchor action has followed this assessment.",
+        explanation:
+          "No newer Core Anchor action has followed this assessment.",
       }),
       re_anchor_proposal_present: true,
       next_candidates: [
         {
           focus_type: "re_anchor_proposal_present",
           title: "Re-anchor proposal available for consideration",
-          explanation: "The latest assessment includes an advisory suggestion for the Core Anchor.",
+          explanation:
+            "The latest assessment includes an advisory suggestion for the Core Anchor.",
           target_route: "/vfx/shots/s1/alignment",
           primary_action_label: "Review proposal",
           actionable: true,
@@ -238,8 +261,12 @@ describe("ShotOverviewPage", () => {
     render(<ShotOverviewPage item={item} onExitRole={vi.fn()} />);
     const list = screen.getByRole("list", { name: "Next in this Shot" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(1);
-    expect(screen.getByText("Re-anchor proposal available for consideration")).toBeVisible();
-    expect(screen.queryByText("A new cross-role assessment can be generated")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Re-anchor proposal available for consideration"),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("A new cross-role assessment can be generated"),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -250,25 +277,33 @@ describe("ShotOverviewPage", () => {
 describe("ShotOverviewPage as the real destination of a Shots row/Open action", () => {
   it("marks Shots (not Workspace Home or Review Inbox) current in the sidebar", () => {
     render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "Shots" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "Workspace Home" })).not.toHaveAttribute(
+    expect(screen.getByRole("link", { name: "Shots" })).toHaveAttribute(
       "aria-current",
+      "page",
     );
-    expect(screen.getByRole("link", { name: "Review Inbox" })).not.toHaveAttribute(
-      "aria-current",
-    );
+    expect(
+      screen.getByRole("link", { name: "Workspace Home" }),
+    ).not.toHaveAttribute("aria-current");
+    expect(
+      screen.getByRole("link", { name: "Review Inbox" }),
+    ).not.toHaveAttribute("aria-current");
   });
 
   it("renders the Project -> Shot -> Overview breadcrumb, never Workspace Home or Review Inbox as the structural parent", () => {
     render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
     const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
-    expect(within(breadcrumb).getByRole("link", { name: "D1 Demo Project" })).toHaveAttribute(
-      "href",
-      "/vfx/shots",
-    );
-    expect(within(breadcrumb).getByText("Shot 010 — Final confrontation")).toBeVisible();
+    expect(
+      within(breadcrumb).getByRole("link", { name: "D1 Demo Project" }),
+    ).toHaveAttribute("href", "/vfx/shots");
+    expect(
+      within(breadcrumb).getByText("Shot 010 — Final confrontation"),
+    ).toBeVisible();
     expect(within(breadcrumb).getByText("Overview")).toBeVisible();
-    expect(within(breadcrumb).queryByText("Workspace Home")).not.toBeInTheDocument();
-    expect(within(breadcrumb).queryByText("Review Inbox")).not.toBeInTheDocument();
+    expect(
+      within(breadcrumb).queryByText("Workspace Home"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(breadcrumb).queryByText("Review Inbox"),
+    ).not.toBeInTheDocument();
   });
 });

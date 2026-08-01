@@ -44,8 +44,10 @@ export async function loadExecutionWorkspaceData(
     listExecutionAnchorRevisions(taskId),
   ]);
 
-  const confirmedRevision = revisions.find((revision) => revision.status === "confirmed") ?? null;
-  const draftRevision = revisions.find((revision) => revision.status === "draft") ?? null;
+  const confirmedRevision =
+    revisions.find((revision) => revision.status === "confirmed") ?? null;
+  const draftRevision =
+    revisions.find((revision) => revision.status === "draft") ?? null;
   const draftHumanGate = draftRevision
     ? await getExecutionAnchorRevisionHumanGate(draftRevision.id)
     : null;
@@ -55,6 +57,7 @@ export async function loadExecutionWorkspaceData(
     confirmedRevision,
     draftRevision,
     draftHumanGate,
-    coreAnchorConfirmed: coreAnchor !== null && coreAnchor.active_revision_id !== null,
+    coreAnchorConfirmed:
+      coreAnchor !== null && coreAnchor.active_revision_id !== null,
   };
 }

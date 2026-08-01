@@ -196,9 +196,7 @@ _D1_REVIEW_NOTE_TEXT: Final = (
     f"{D1_MARKER} Contrast reads slightly hotter than the confirmed intent in the back half "
     "of the confrontation; confirm timing against the Core Anchor before the next pass."
 )
-_D1_CONFIRM_RATIONALE: Final = (
-    f"{D1_MARKER} Initial seeded baseline for the D1 demo scenario."
-)
+_D1_CONFIRM_RATIONALE: Final = f"{D1_MARKER} Initial seeded baseline for the D1 demo scenario."
 
 _SEED_ACTOR_ID: Final = "demo-seed"
 _SEED_ACTOR_VFX = ActorContext(
@@ -207,9 +205,7 @@ _SEED_ACTOR_VFX = ActorContext(
 _SEED_ACTOR_CG = ActorContext(
     actor_kind="human", actor_id=_SEED_ACTOR_ID, human_role="cg_supervisor"
 )
-_SEED_ACTOR_ARTIST = ActorContext(
-    actor_kind="human", actor_id=_SEED_ACTOR_ID, human_role="artist"
-)
+_SEED_ACTOR_ARTIST = ActorContext(actor_kind="human", actor_id=_SEED_ACTOR_ID, human_role="artist")
 
 
 @dataclass(frozen=True)
@@ -392,17 +388,14 @@ _CORE_ANCHOR_DRAFT_CONTENT: Final[dict[str, object]] = {
         "Preserve the restraint; do not let camera or compositing choices imply release."
     ),
     "core_summary": "A restrained dusk confrontation that stays internal and controlled.",
-    "constraints": [
-        {"content": "No jump cuts through the confrontation's central exchange."}
-    ],
+    "constraints": [{"content": "No jump cuts through the confrontation's central exchange."}],
     "variation_zones": [
         {"content": "Compositing contrast may vary within the confirmed restrained range."}
     ],
     "drift_risks": [
         {
             "description": (
-                "Camera timing or contrast choices reading as more overtly dramatic than "
-                "intended."
+                "Camera timing or contrast choices reading as more overtly dramatic than intended."
             )
         }
     ],
@@ -530,9 +523,7 @@ async def _ensure_confirmed_execution_anchor(
     )
 
 
-async def _ensure_cg_demo_task(
-    session: AsyncSession, shot: Shot
-) -> tuple[Task, TaskDependency]:
+async def _ensure_cg_demo_task(session: AsyncSession, shot: Shot) -> tuple[Task, TaskDependency]:
     """Step 7C-4: a second, real Task under the rich D1 Shot whose
     Execution Anchor is deliberately left at draft (never confirmed),
     plus one real open `TaskDependency` recorded against it -- so the CG

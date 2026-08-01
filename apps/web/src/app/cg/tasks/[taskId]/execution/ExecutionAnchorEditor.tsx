@@ -42,7 +42,9 @@ type FieldValues = Record<
   string
 >;
 
-function fieldValuesFromRevision(revision: ExecutionAnchorRevisionRead | null): FieldValues {
+function fieldValuesFromRevision(
+  revision: ExecutionAnchorRevisionRead | null,
+): FieldValues {
   return {
     technical_boundaries: revision?.technical_boundaries ?? "",
     parameter_ranges: revision?.parameter_ranges ?? "",
@@ -85,7 +87,9 @@ export function ExecutionAnchorEditor({
   const [error, setError] = useState<string | null>(null);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
   const [rationale, setRationale] = useState("");
-  const [values, setValues] = useState<FieldValues>(() => fieldValuesFromRevision(draftRevision));
+  const [values, setValues] = useState<FieldValues>(() =>
+    fieldValuesFromRevision(draftRevision),
+  );
 
   // Re-sync `values` whenever the server hands us a genuinely different
   // revision -- a new draft appearing (Generate/Create-new-revision/Start
@@ -96,7 +100,9 @@ export function ExecutionAnchorEditor({
   // fields until a manual page reload. Mirrors
   // `CoreAnchorRevisionEditor.tsx`'s identical `syncedKeyRef` pattern.
   const syncedKeyRef = useRef<string>("");
-  const revisionKey = draftRevision ? `${draftRevision.id}:${draftRevision.updated_at}` : "none";
+  const revisionKey = draftRevision
+    ? `${draftRevision.id}:${draftRevision.updated_at}`
+    : "none";
   useEffect(() => {
     if (syncedKeyRef.current !== revisionKey) {
       setValues(fieldValuesFromRevision(draftRevision));
@@ -105,7 +111,9 @@ export function ExecutionAnchorEditor({
   }, [revisionKey, draftRevision]);
 
   if (draftRevision === null) {
-    function runStartAction(action: () => Promise<{ ok: boolean; error?: { message: string } }>) {
+    function runStartAction(
+      action: () => Promise<{ ok: boolean; error?: { message: string } }>,
+    ) {
       setError(null);
       startTransition(() => {
         action().then((result) => {
@@ -125,7 +133,11 @@ export function ExecutionAnchorEditor({
             type="button"
             className={styles.primaryButton}
             disabled={isPending}
-            onClick={() => runStartAction(() => createExecutionAnchorDraftFromConfirmedAction(taskId))}
+            onClick={() =>
+              runStartAction(() =>
+                createExecutionAnchorDraftFromConfirmedAction(taskId),
+              )
+            }
           >
             {isPending ? "Starting…" : "Create new revision"}
           </button>
@@ -135,7 +147,9 @@ export function ExecutionAnchorEditor({
               type="button"
               className={styles.primaryButton}
               disabled={isPending}
-              onClick={() => runStartAction(() => generateExecutionAnchorDraftAction(taskId))}
+              onClick={() =>
+                runStartAction(() => generateExecutionAnchorDraftAction(taskId))
+              }
             >
               {isPending ? "Generating…" : "Generate Execution Anchor draft"}
             </button>
@@ -143,15 +157,17 @@ export function ExecutionAnchorEditor({
               type="button"
               className={styles.secondaryButton}
               disabled={isPending}
-              onClick={() => runStartAction(() => createExecutionAnchorDraftAction(taskId))}
+              onClick={() =>
+                runStartAction(() => createExecutionAnchorDraftAction(taskId))
+              }
             >
               {isPending ? "Starting draft…" : "Start blank draft"}
             </button>
           </div>
         ) : (
           <p className={styles.empty}>
-            Starting an Execution Anchor draft requires a confirmed Core Anchor for this
-            Task&apos;s Shot, which does not exist yet.
+            Starting an Execution Anchor draft requires a confirmed Core Anchor
+            for this Task&apos;s Shot, which does not exist yet.
           </p>
         )}
         {error && (
@@ -163,7 +179,9 @@ export function ExecutionAnchorEditor({
     );
   }
 
-  const hasMeaningfulContent = Object.values(values).some((value) => value.trim().length > 0);
+  const hasMeaningfulContent = Object.values(values).some(
+    (value) => value.trim().length > 0,
+  );
   const confirmDisabled = isPending || !hasMeaningfulContent;
 
   return (
@@ -182,7 +200,9 @@ export function ExecutionAnchorEditor({
             <textarea
               className={styles.fieldInput}
               value={values[key]}
-              onChange={(event) => setValues((prev) => ({ ...prev, [key]: event.target.value }))}
+              onChange={(event) =>
+                setValues((prev) => ({ ...prev, [key]: event.target.value }))
+              }
               rows={2}
             />
           </label>
@@ -198,7 +218,11 @@ export function ExecutionAnchorEditor({
             setError(null);
             setSaveStatus(null);
             startTransition(() => {
-              saveExecutionAnchorDraftAction(taskId, draftRevision.id, values).then((result) => {
+              saveExecutionAnchorDraftAction(
+                taskId,
+                draftRevision.id,
+                values,
+              ).then((result) => {
                 if (result.ok) {
                   setSaveStatus("Changes saved.");
                   router.refresh();

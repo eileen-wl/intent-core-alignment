@@ -21,7 +21,9 @@ beforeEach(() => {
 });
 
 function callHomePage(returnTo?: string) {
-  return HomePage({ searchParams: Promise.resolve(returnTo ? { returnTo } : {}) });
+  return HomePage({
+    searchParams: Promise.resolve(returnTo ? { returnTo } : {}),
+  });
 }
 
 describe("/ Home page (Step 7C-1 locked IA §1)", () => {

@@ -2,7 +2,12 @@ import type { VfxInboxItemRead } from "@intent-core/contracts";
 import Link from "next/link";
 
 import { FtrackLinkageBadge } from "@/design";
-import { coreAnchorStateLabel, signalStateLabel, taskDisplayText, versionDisplayText } from "../vfxWording";
+import {
+  coreAnchorStateLabel,
+  signalStateLabel,
+  taskDisplayText,
+  versionDisplayText,
+} from "../vfxWording";
 import styles from "../InboxRow.module.css";
 
 /** One Shots-list row (Step 7C-1 locked IA §9). Unlike a Review Inbox
@@ -20,7 +25,9 @@ export function ShotRow({ item }: { item: VfxInboxItemRead }) {
           <span className={styles.shotName}>{item.shot_name}</span>
           <span className={styles.projectName}>{item.project_name}</span>
         </span>
-        <span className={styles.focusTitle}>{coreAnchorStateLabel(item.core_anchor_state)}</span>
+        <span className={styles.focusTitle}>
+          {coreAnchorStateLabel(item.core_anchor_state)}
+        </span>
         <span className={styles.secondaryLine}>
           <span>{signalStateLabel(item.latest_signal_attention_level)}</span>
           <span>{taskDisplayText(item)}</span>

@@ -17,7 +17,9 @@ export function executionAnchorStateLabel(
   }
 }
 
-export function guidanceStateLabel(state: ArtistInboxItemRead["guidance_state"]): string {
+export function guidanceStateLabel(
+  state: ArtistInboxItemRead["guidance_state"],
+): string {
   switch (state) {
     case "current":
       return "Guidance up to date";

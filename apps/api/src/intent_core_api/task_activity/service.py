@@ -170,11 +170,7 @@ async def build_task_activity(session: AsyncSession, task_id: uuid.UUID) -> Task
         )
 
     dependencies = list(
-        (
-            await session.execute(
-                select(TaskDependency).where(TaskDependency.task_id == task_id)
-            )
-        )
+        (await session.execute(select(TaskDependency).where(TaskDependency.task_id == task_id)))
         .scalars()
         .all()
     )

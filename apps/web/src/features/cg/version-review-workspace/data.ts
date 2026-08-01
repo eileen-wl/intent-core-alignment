@@ -59,14 +59,17 @@ export async function loadVersionReviewWorkspaceData(
 
   let coreAnchorSummary: string | null = null;
   if (coreAnchor !== null && coreAnchor.active_revision_id !== null) {
-    const coreRevisions: CoreAnchorRevisionRead[] = await listCoreAnchorRevisions(item.shot_id);
+    const coreRevisions: CoreAnchorRevisionRead[] =
+      await listCoreAnchorRevisions(item.shot_id);
     coreAnchorSummary =
-      coreRevisions.find((revision) => revision.id === coreAnchor.active_revision_id)
-        ?.core_summary ?? null;
+      coreRevisions.find(
+        (revision) => revision.id === coreAnchor.active_revision_id,
+      )?.core_summary ?? null;
   }
 
   const activeExecutionRevision =
-    executionRevisions.find((revision) => revision.status === "confirmed") ?? null;
+    executionRevisions.find((revision) => revision.status === "confirmed") ??
+    null;
   const cgSupervisorReviews = activeExecutionRevision
     ? await listCgSupervisorReviews(activeExecutionRevision.id)
     : [];

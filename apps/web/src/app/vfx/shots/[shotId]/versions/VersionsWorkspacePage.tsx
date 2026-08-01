@@ -37,7 +37,9 @@ export function VersionsWorkspacePage({
   unavailable: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
-  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(
+    null,
+  );
 
   const selected = data
     ? (data.versions.find((entry) => entry.version.id === selectedVersionId) ??
@@ -55,9 +57,18 @@ export function VersionsWorkspacePage({
     >
       {unavailable || data === null ? (
         <>
-          <Breadcrumbs items={[{ label: "Shots", href: "/vfx/shots" }, { label: "Versions" }]} />
+          <Breadcrumbs
+            items={[
+              { label: "Shots", href: "/vfx/shots" },
+              { label: "Versions" },
+            ]}
+          />
           <ErrorState
-            title={unavailable ? "This Shot is unavailable" : "This Shot could not be found"}
+            title={
+              unavailable
+                ? "This Shot is unavailable"
+                : "This Shot could not be found"
+            }
             description={
               unavailable
                 ? "The ICAS service could not be reached. Try refreshing the page."
@@ -78,11 +89,31 @@ export function VersionsWorkspacePage({
           <ContextTabs
             activeTabId="versions"
             tabs={[
-              { id: "overview", label: "Overview", href: `/vfx/shots/${shotId}` },
-              { id: "intent", label: "Intent", href: `/vfx/shots/${shotId}/intent` },
-              { id: "versions", label: "Versions", href: `/vfx/shots/${shotId}/versions` },
-              { id: "alignment", label: "Alignment", href: `/vfx/shots/${shotId}/alignment` },
-              { id: "activity", label: "Activity", href: `/vfx/shots/${shotId}/activity` },
+              {
+                id: "overview",
+                label: "Overview",
+                href: `/vfx/shots/${shotId}`,
+              },
+              {
+                id: "intent",
+                label: "Intent",
+                href: `/vfx/shots/${shotId}/intent`,
+              },
+              {
+                id: "versions",
+                label: "Versions",
+                href: `/vfx/shots/${shotId}/versions`,
+              },
+              {
+                id: "alignment",
+                label: "Alignment",
+                href: `/vfx/shots/${shotId}/alignment`,
+              },
+              {
+                id: "activity",
+                label: "Activity",
+                href: `/vfx/shots/${shotId}/activity`,
+              },
             ]}
           />
 
@@ -93,125 +124,151 @@ export function VersionsWorkspacePage({
               <div className={styles.listColumn}>
                 <h2 className={styles.columnHeading}>Production Versions</h2>
                 <div className={styles.list}>
-                {data.versions.map(({ version, reviewNotes }) => {
-                  const isActive = selected?.version.id === version.id;
-                  return (
-                    <button
-                      key={version.id}
-                      type="button"
-                      className={isActive ? `${styles.row} ${styles.rowActive}` : styles.row}
-                      aria-current={isActive || undefined}
-                      onClick={() => setSelectedVersionId(version.id)}
-                    >
-                      <span className={styles.rowName}>
-                        {version.name}
-                        {version.version_number ? ` (v${version.version_number})` : ""}
-                      </span>
-                      <span className={styles.rowMeta}>
-                        <FtrackLinkageBadge source={version.source} />
-                        <span>{new Date(version.created_at).toLocaleString()}</span>
-                        <span>
-                          {reviewNotes.length} review{" "}
-                          {reviewNotes.length === 1 ? "note" : "notes"}
+                  {data.versions.map(({ version, reviewNotes }) => {
+                    const isActive = selected?.version.id === version.id;
+                    return (
+                      <button
+                        key={version.id}
+                        type="button"
+                        className={
+                          isActive
+                            ? `${styles.row} ${styles.rowActive}`
+                            : styles.row
+                        }
+                        aria-current={isActive || undefined}
+                        onClick={() => setSelectedVersionId(version.id)}
+                      >
+                        <span className={styles.rowName}>
+                          {version.name}
+                          {version.version_number
+                            ? ` (v${version.version_number})`
+                            : ""}
                         </span>
-                      </span>
-                    </button>
-                  );
-                })}
+                        <span className={styles.rowMeta}>
+                          <FtrackLinkageBadge source={version.source} />
+                          <span>
+                            {new Date(version.created_at).toLocaleString()}
+                          </span>
+                          <span>
+                            {reviewNotes.length} review{" "}
+                            {reviewNotes.length === 1 ? "note" : "notes"}
+                          </span>
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
               <div className={styles.detailColumn}>
-                <h2 className={styles.columnHeading}>Production Version details</h2>
+                <h2 className={styles.columnHeading}>
+                  Production Version details
+                </h2>
                 <div className={styles.detail}>
-                {selected && (
-                  <>
-                    <h3 className={styles.detailHeading}>
-                      {selected.version.name}
-                      {selected.version.version_number
-                        ? ` (v${selected.version.version_number})`
-                        : ""}
-                    </h3>
-                    <MetadataRow
-                      items={[
-                        {
-                          label: "Created",
-                          value: new Date(selected.version.created_at).toLocaleString(),
-                        },
-                        { label: "Source", value: selected.version.source },
-                        {
-                          label: "Recorded by",
-                          value:
-                            selected.version.created_by_human_role ??
-                            selected.version.created_by_actor_kind,
-                        },
-                      ]}
-                    />
-                    {selected.version.description && (
-                      <p className={styles.description}>{selected.version.description}</p>
-                    )}
-
-                    <section className={styles.section}>
-                      <h3 className={styles.sectionHeading}>Review notes</h3>
-                      {selected.reviewNotes.length === 0 ? (
-                        <p className={styles.empty}>
-                          No Review Notes have been recorded for this Production Version yet.
+                  {selected && (
+                    <>
+                      <h3 className={styles.detailHeading}>
+                        {selected.version.name}
+                        {selected.version.version_number
+                          ? ` (v${selected.version.version_number})`
+                          : ""}
+                      </h3>
+                      <MetadataRow
+                        items={[
+                          {
+                            label: "Created",
+                            value: new Date(
+                              selected.version.created_at,
+                            ).toLocaleString(),
+                          },
+                          { label: "Source", value: selected.version.source },
+                          {
+                            label: "Recorded by",
+                            value:
+                              selected.version.created_by_human_role ??
+                              selected.version.created_by_actor_kind,
+                          },
+                        ]}
+                      />
+                      {selected.version.description && (
+                        <p className={styles.description}>
+                          {selected.version.description}
                         </p>
-                      ) : (
-                        <ul className={styles.noteList}>
-                          {selected.reviewNotes.map((note) => (
-                            <li key={note.id} className={styles.note}>
-                              <p className={styles.noteContent}>{note.content}</p>
-                              <p className={styles.noteMeta}>
-                                {note.created_by_human_role ?? note.created_by_actor_kind} ·{" "}
-                                {new Date(note.created_at).toLocaleString()}
-                              </p>
-                            </li>
-                          ))}
-                        </ul>
                       )}
-                    </section>
 
-                    <section className={styles.section}>
-                      <h3 className={styles.sectionHeading}>Active Core Anchor</h3>
-                      <p className={styles.contextText}>
-                        {data.item.active_core_anchor_summary ??
-                          "No Core Anchor is confirmed for this Shot yet."}
-                      </p>
-                    </section>
+                      <section className={styles.section}>
+                        <h3 className={styles.sectionHeading}>Review notes</h3>
+                        {selected.reviewNotes.length === 0 ? (
+                          <p className={styles.empty}>
+                            No Review Notes have been recorded for this
+                            Production Version yet.
+                          </p>
+                        ) : (
+                          <ul className={styles.noteList}>
+                            {selected.reviewNotes.map((note) => (
+                              <li key={note.id} className={styles.note}>
+                                <p className={styles.noteContent}>
+                                  {note.content}
+                                </p>
+                                <p className={styles.noteMeta}>
+                                  {note.created_by_human_role ??
+                                    note.created_by_actor_kind}{" "}
+                                  · {new Date(note.created_at).toLocaleString()}
+                                </p>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </section>
 
-                    <section className={styles.section}>
-                      <h3 className={styles.sectionHeading}>Alignment Assessment</h3>
-                      {(() => {
-                        const assessments =
-                          data.assessmentsByVersionId.get(selected.version.id) ?? [];
-                        if (assessments.length === 0) {
+                      <section className={styles.section}>
+                        <h3 className={styles.sectionHeading}>
+                          Active Core Anchor
+                        </h3>
+                        <p className={styles.contextText}>
+                          {data.item.active_core_anchor_summary ??
+                            "No Core Anchor is confirmed for this Shot yet."}
+                        </p>
+                      </section>
+
+                      <section className={styles.section}>
+                        <h3 className={styles.sectionHeading}>
+                          Alignment Assessment
+                        </h3>
+                        {(() => {
+                          const assessments =
+                            data.assessmentsByVersionId.get(
+                              selected.version.id,
+                            ) ?? [];
+                          if (assessments.length === 0) {
+                            return (
+                              <p className={styles.empty}>
+                                No Alignment Assessment has been generated for
+                                this Production Version yet.
+                              </p>
+                            );
+                          }
                           return (
-                            <p className={styles.empty}>
-                              No Alignment Assessment has been generated for this Production
-                              Version yet.
-                            </p>
+                            <>
+                              <p className={styles.contextText}>
+                                {assessments.length} Cross-role{" "}
+                                {assessments.length === 1
+                                  ? "Assessment"
+                                  : "Assessments"}{" "}
+                                recorded for this Production Version.
+                              </p>
+                              <Link
+                                href={`/vfx/shots/${shotId}/alignment`}
+                                className={styles.alignmentLink}
+                              >
+                                Review in Alignment →
+                              </Link>
+                            </>
                           );
-                        }
-                        return (
-                          <>
-                            <p className={styles.contextText}>
-                              {assessments.length} Cross-role{" "}
-                              {assessments.length === 1 ? "Assessment" : "Assessments"} recorded
-                              for this Production Version.
-                            </p>
-                            <Link
-                              href={`/vfx/shots/${shotId}/alignment`}
-                              className={styles.alignmentLink}
-                            >
-                              Review in Alignment →
-                            </Link>
-                          </>
-                        );
-                      })()}
-                    </section>
-                  </>
-                )}
+                        })()}
+                      </section>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

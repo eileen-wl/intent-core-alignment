@@ -1,4 +1,7 @@
-import type { CgInboxItemRead, TaskDependencyRead } from "@intent-core/contracts";
+import type {
+  CgInboxItemRead,
+  TaskDependencyRead,
+} from "@intent-core/contracts";
 
 import { fetchCgInboxItem, listDependenciesForTask } from "@/features/cg/api";
 

@@ -502,15 +502,20 @@ async def test_baseline_seed_introduces_no_pending_human_gate(session: AsyncSess
     """
     result = await ensure_d1_scenario(session)
     rich_gate_statuses = (
-        await session.execute(
-            select(HumanGate.status).where(
-                or_(
-                    HumanGate.core_anchor_revision_id == result.core_anchor_revision_id,
-                    HumanGate.execution_anchor_revision_id == result.execution_anchor_revision_id,
+        (
+            await session.execute(
+                select(HumanGate.status).where(
+                    or_(
+                        HumanGate.core_anchor_revision_id == result.core_anchor_revision_id,
+                        HumanGate.execution_anchor_revision_id
+                        == result.execution_anchor_revision_id,
+                    )
                 )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     assert rich_gate_statuses, "expected the Core/Execution Anchor confirmation gates to exist"
     assert all(status != "pending" for status in rich_gate_statuses)
     item = await get_inbox_item_for_shot(session, result.shot_id)
@@ -892,9 +897,7 @@ async def test_cg_demo_reset_never_touches_other_tasks_or_shots(session: AsyncSe
 
     await reset_cg_demo_task_execution_anchor_state(session)
 
-    main_revision = await session.get(
-        ExecutionAnchorRevision, result.execution_anchor_revision_id
-    )
+    main_revision = await session.get(ExecutionAnchorRevision, result.execution_anchor_revision_id)
     assert main_revision is not None
     assert main_revision.status == "confirmed"
     assert await _count(session, Shot) == 2

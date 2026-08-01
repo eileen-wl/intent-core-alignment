@@ -1,4 +1,7 @@
-import type { CgInboxItemRead, TaskDependencyRead } from "@intent-core/contracts";
+import type {
+  CgInboxItemRead,
+  TaskDependencyRead,
+} from "@intent-core/contracts";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -42,7 +45,8 @@ function item(overrides: Partial<CgInboxItemRead> = {}): CgInboxItemRead {
     current_focus: {
       focus_type: "dependency_needs_attention",
       title: "An unresolved dependency needs your interpretation",
-      explanation: "A real recorded dependency or cross-role conflict is still open.",
+      explanation:
+        "A real recorded dependency or cross-role conflict is still open.",
       target_route: "/cg/tasks/t1/dependencies",
       primary_action_label: "Review dependencies",
       actionable: true,
@@ -52,7 +56,9 @@ function item(overrides: Partial<CgInboxItemRead> = {}): CgInboxItemRead {
   };
 }
 
-function dependency(overrides: Partial<TaskDependencyRead> = {}): TaskDependencyRead {
+function dependency(
+  overrides: Partial<TaskDependencyRead> = {},
+): TaskDependencyRead {
   return {
     id: "d1",
     project_id: "p1",
@@ -76,7 +82,9 @@ function dependency(overrides: Partial<TaskDependencyRead> = {}): TaskDependency
   };
 }
 
-function data(overrides: Partial<DependenciesWorkspaceData> = {}): DependenciesWorkspaceData {
+function data(
+  overrides: Partial<DependenciesWorkspaceData> = {},
+): DependenciesWorkspaceData {
   return {
     item: item(),
     dependencies: [dependency()],
@@ -86,7 +94,14 @@ function data(overrides: Partial<DependenciesWorkspaceData> = {}): DependenciesW
 
 describe("DependenciesPage", () => {
   it("renders Project > Shot > Task > Dependencies breadcrumbs, tab active", () => {
-    render(<DependenciesPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <DependenciesPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByRole("link", { name: "Dependencies" })).toHaveAttribute(
       "aria-current",
       "page",
@@ -94,7 +109,14 @@ describe("DependenciesPage", () => {
   });
 
   it("shows an honest unavailable state when the API could not be reached", () => {
-    render(<DependenciesPage taskId="t1" data={null} unavailable onExitRole={vi.fn()} />);
+    render(
+      <DependenciesPage
+        taskId="t1"
+        data={null}
+        unavailable
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText("This Task is unavailable")).toBeVisible();
   });
 
@@ -108,12 +130,21 @@ describe("DependenciesPage", () => {
       />,
     );
     expect(
-      screen.getByText("No unresolved dependencies have been recorded for this Task."),
+      screen.getByText(
+        "No unresolved dependencies have been recorded for this Task.",
+      ),
     ).toBeVisible();
   });
 
   it("renders a real open dependency under Open dependencies", () => {
-    render(<DependenciesPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <DependenciesPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText("Blocked on comp grade.")).toBeVisible();
     expect(screen.getByRole("button", { name: "Acknowledge" })).toBeVisible();
     expect(screen.getByRole("button", { name: "Resolve" })).toBeVisible();
@@ -124,7 +155,13 @@ describe("DependenciesPage", () => {
       <DependenciesPage
         taskId="t1"
         data={data({
-          dependencies: [dependency({ id: "c1", kind: "conflict", description: "Cross-role clash." })],
+          dependencies: [
+            dependency({
+              id: "c1",
+              kind: "conflict",
+              description: "Cross-role clash.",
+            }),
+          ],
         })}
         unavailable={false}
         onExitRole={vi.fn()}
@@ -152,11 +189,20 @@ describe("DependenciesPage", () => {
       />,
     );
     expect(screen.getByText("resolved")).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Resolve" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Resolve" }),
+    ).not.toBeInTheDocument();
   });
 
   it("provides the real Record dependency form", () => {
-    render(<DependenciesPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <DependenciesPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByRole("button", { name: "Record" })).toBeVisible();
   });
 });

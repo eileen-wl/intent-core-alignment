@@ -1,4 +1,9 @@
-import type { CGSupervisorReviewRead, CgInboxItemRead, ReviewNoteRead, VersionRead } from "@intent-core/contracts";
+import type {
+  CGSupervisorReviewRead,
+  CgInboxItemRead,
+  ReviewNoteRead,
+  VersionRead,
+} from "@intent-core/contracts";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -82,7 +87,9 @@ function note(overrides: Partial<ReviewNoteRead> = {}): ReviewNoteRead {
   };
 }
 
-function data(overrides: Partial<VersionReviewWorkspaceData> = {}): VersionReviewWorkspaceData {
+function data(
+  overrides: Partial<VersionReviewWorkspaceData> = {},
+): VersionReviewWorkspaceData {
   return {
     item: item(),
     versions: [{ version: version(), reviewNotes: [note()] }],
@@ -95,15 +102,28 @@ function data(overrides: Partial<VersionReviewWorkspaceData> = {}): VersionRevie
 
 describe("VersionReviewPage", () => {
   it("renders Project > Shot > Task > Version Review breadcrumbs, tab active", () => {
-    render(<VersionReviewPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "Version Review" })).toHaveAttribute(
-      "aria-current",
-      "page",
+    render(
+      <VersionReviewPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
     );
+    expect(
+      screen.getByRole("link", { name: "Version Review" }),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   it("shows an honest unavailable state when the API could not be reached", () => {
-    render(<VersionReviewPage taskId="t1" data={null} unavailable onExitRole={vi.fn()} />);
+    render(
+      <VersionReviewPage
+        taskId="t1"
+        data={null}
+        unavailable
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText("This Task is unavailable")).toBeVisible();
   });
 
@@ -117,32 +137,63 @@ describe("VersionReviewPage", () => {
       />,
     );
     expect(
-      screen.getByText("No Production Versions have been recorded for this Task yet."),
+      screen.getByText(
+        "No Production Versions have been recorded for this Task yet.",
+      ),
     ).toBeVisible();
   });
 
   it("renders real Production Versions, never confusing them with a Core/Execution Anchor Revision", () => {
-    render(<VersionReviewPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("button", { name: /SH010_v001 \(v1\)/ })).toBeVisible();
+    render(
+      <VersionReviewPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /SH010_v001 \(v1\)/ }),
+    ).toBeVisible();
     expect(screen.queryByText(/Core Anchor Revision/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/Execution Anchor Revision/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/Execution Anchor Revision/),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the selected Version's real Review Notes", () => {
-    render(<VersionReviewPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <VersionReviewPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText("Contrast reads slightly hot.")).toBeVisible();
   });
 
   it("switches the selected-version detail when a different Version row is clicked", () => {
-    const versionA = version({ id: "v1", name: "SH010_v001", version_number: 1 });
-    const versionB = version({ id: "v2", name: "SH010_v002", version_number: 2 });
+    const versionA = version({
+      id: "v1",
+      name: "SH010_v001",
+      version_number: 1,
+    });
+    const versionB = version({
+      id: "v2",
+      name: "SH010_v002",
+      version_number: 2,
+    });
     render(
       <VersionReviewPage
         taskId="t1"
         data={data({
           versions: [
             { version: versionB, reviewNotes: [] },
-            { version: versionA, reviewNotes: [note({ id: "nA", content: "Note on v1 only" })] },
+            {
+              version: versionA,
+              reviewNotes: [note({ id: "nA", content: "Note on v1 only" })],
+            },
           ],
         })}
         unavailable={false}
@@ -155,16 +206,34 @@ describe("VersionReviewPage", () => {
   });
 
   it("shows Core Anchor and Execution Anchor context as read-only", () => {
-    render(<VersionReviewPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <VersionReviewPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText("Active Core Anchor (read-only)")).toBeVisible();
-    expect(screen.getByText("Active Execution Anchor (read-only)")).toBeVisible();
+    expect(
+      screen.getByText("Active Execution Anchor (read-only)"),
+    ).toBeVisible();
     expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
   });
 
   it("honestly shows no CG Supervisor review has been generated yet", () => {
-    render(<VersionReviewPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <VersionReviewPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(
-      screen.getByText("No CG Supervisor review has been generated for the active Execution Anchor yet."),
+      screen.getByText(
+        "No CG Supervisor review has been generated for the active Execution Anchor yet.",
+      ),
     ).toBeVisible();
   });
 

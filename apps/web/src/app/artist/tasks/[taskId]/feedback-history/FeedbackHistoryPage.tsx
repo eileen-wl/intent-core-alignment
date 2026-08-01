@@ -1,7 +1,13 @@
 import Link from "next/link";
 import type { ArtistFeedbackEventType } from "@intent-core/contracts";
 
-import { AppShell, Breadcrumbs, ContextTabs, EmptyState, ErrorState } from "@/design";
+import {
+  AppShell,
+  Breadcrumbs,
+  ContextTabs,
+  EmptyState,
+  ErrorState,
+} from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import type { FeedbackHistoryData } from "@/features/artist/feedback-history/data";
@@ -52,10 +58,17 @@ export function FeedbackHistoryPage({
       {unavailable || data === null ? (
         <>
           <Breadcrumbs
-            items={[{ label: "Tasks", href: "/artist/tasks" }, { label: "Feedback History" }]}
+            items={[
+              { label: "Tasks", href: "/artist/tasks" },
+              { label: "Feedback History" },
+            ]}
           />
           <ErrorState
-            title={unavailable ? "This Task is unavailable" : "This Task could not be found"}
+            title={
+              unavailable
+                ? "This Task is unavailable"
+                : "This Task could not be found"
+            }
             description={
               unavailable
                 ? "The ICAS service could not be reached. Try refreshing the page."
@@ -77,7 +90,11 @@ export function FeedbackHistoryPage({
           <ContextTabs
             activeTabId="feedback-history"
             tabs={[
-              { id: "overview", label: "Task Overview", href: `/artist/tasks/${taskId}` },
+              {
+                id: "overview",
+                label: "Task Overview",
+                href: `/artist/tasks/${taskId}`,
+              },
               {
                 id: "current-version",
                 label: "Current Version",
@@ -98,7 +115,9 @@ export function FeedbackHistoryPage({
               {data.history.events.map((event) => (
                 <li key={event.id} className={styles.event}>
                   <div className={styles.eventMain}>
-                    <span className={styles.eventType}>{EVENT_TYPE_LABEL[event.event_type]}</span>
+                    <span className={styles.eventType}>
+                      {EVENT_TYPE_LABEL[event.event_type]}
+                    </span>
                     <span className={styles.eventTime}>
                       {new Date(event.occurred_at).toLocaleString()}
                     </span>

@@ -225,9 +225,7 @@ async def _load_shot_related_data(session: AsyncSession, shot_id: uuid.UUID) -> 
                 )
             )
         ).all()
-        tasks_with_artist_guidance_by_version = {
-            (row[0], row[1]) for row in artist_guidance_rows
-        }
+        tasks_with_artist_guidance_by_version = {(row[0], row[1]) for row in artist_guidance_rows}
 
     execution_revisions_with_cg_review: set[uuid.UUID] = set()
     if task_confirmed_execution_anchor:
@@ -355,9 +353,9 @@ def _to_shot_focus_inputs(
     )
 
 
-def _task_version_display(data: _ShotRelatedData) -> tuple[
-    uuid.UUID | None, str | None, uuid.UUID | None, str | None, int | None, bool
-]:
+def _task_version_display(
+    data: _ShotRelatedData,
+) -> tuple[uuid.UUID | None, str | None, uuid.UUID | None, str | None, int | None, bool]:
     """Honest Task/Version display (docs/step-7/15_STEP_7C0C_...md §3):
     the latest Assessment's own persisted pairing when one exists (an
     explicit, asserted pairing -- ``pairing_established=True``);
@@ -414,9 +412,7 @@ async def build_inbox_item(
     ]
 
     has_draft_or_gate = (
-        data.active_revision is not None
-        or data.draft_revision_without_gate
-        or data.pending_gate_id
+        data.active_revision is not None or data.draft_revision_without_gate or data.pending_gate_id
     )
     if data.core_anchor is None:
         core_anchor_state = "none"
@@ -535,8 +531,7 @@ async def list_inbox_items(session: AsyncSession) -> VfxInboxRead:
         projects = {row[0]: row[1] for row in rows}
 
     items = [
-        await build_inbox_item(session, shot, projects.get(shot.project_id, ""))
-        for shot in shots
+        await build_inbox_item(session, shot, projects.get(shot.project_id, "")) for shot in shots
     ]
     items.sort(key=lambda item: (item.sort_rank, str(item.shot_id)))
     return VfxInboxRead(items=items, generated_at=datetime.now(UTC))

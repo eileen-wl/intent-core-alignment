@@ -93,8 +93,12 @@ async function loadEvidenceData(
   }
 
   const [run, snapshot, decompositions, reconstructions] = await Promise.all([
-    revision.created_by_agent_run_id ? getAgentRun(revision.created_by_agent_run_id) : null,
-    revision.context_snapshot_id ? getContextSnapshot(revision.context_snapshot_id) : null,
+    revision.created_by_agent_run_id
+      ? getAgentRun(revision.created_by_agent_run_id)
+      : null,
+    revision.context_snapshot_id
+      ? getContextSnapshot(revision.context_snapshot_id)
+      : null,
     listIntentDecompositionsForShot(shotId),
     listContextReconstructionsForShot(shotId),
   ]);
@@ -106,9 +110,13 @@ async function loadEvidenceData(
  * `null` when none was provided -- never the reject Decision, and never
  * fabricated when the list is empty (a legacy-compatibility case the
  * same as `draftHumanGate`'s). */
-async function loadConfirmedDecisionRationale(revisionId: string): Promise<string | null> {
+async function loadConfirmedDecisionRationale(
+  revisionId: string,
+): Promise<string | null> {
   const decisions = await listDecisionsForRevision(revisionId);
-  const confirmDecision = decisions.find((decision) => decision.decision_type === "confirm_core_anchor");
+  const confirmDecision = decisions.find(
+    (decision) => decision.decision_type === "confirm_core_anchor",
+  );
   return confirmDecision?.rationale ?? null;
 }
 
@@ -117,25 +125,32 @@ async function loadConfirmedDecisionRationale(revisionId: string): Promise<strin
  * `VfxApiError`, so the caller can distinguish "this Shot does not
  * exist" from "the ICAS service is unavailable right now," per the
  * locked honest-state requirement. */
-export async function loadIntentWorkspaceData(shotId: string): Promise<IntentWorkspaceData | null> {
+export async function loadIntentWorkspaceData(
+  shotId: string,
+): Promise<IntentWorkspaceData | null> {
   const item = await fetchVfxInboxItem(shotId);
   if (item === null) {
     return null;
   }
 
   const revisions = await listCoreAnchorRevisions(shotId);
-  const confirmedRevision = revisions.find((revision) => revision.status === "confirmed") ?? null;
-  const draftRevision = revisions.find((revision) => revision.status === "draft") ?? null;
+  const confirmedRevision =
+    revisions.find((revision) => revision.status === "confirmed") ?? null;
+  const draftRevision =
+    revisions.find((revision) => revision.status === "draft") ?? null;
   const draftHumanGate = draftRevision
     ? await getHumanGateForRevision(draftRevision.id)
     : null;
 
   const relevantRevision = draftRevision ?? confirmedRevision;
-  const evidenceData = relevantRevision ? await loadEvidenceData(shotId, relevantRevision) : null;
+  const evidenceData = relevantRevision
+    ? await loadEvidenceData(shotId, relevantRevision)
+    : null;
 
   const previousConfirmedRevision = confirmedRevision?.supersedes_revision_id
-    ? (revisions.find((revision) => revision.id === confirmedRevision.supersedes_revision_id) ??
-      null)
+    ? (revisions.find(
+        (revision) => revision.id === confirmedRevision.supersedes_revision_id,
+      ) ?? null)
     : null;
 
   // Only fetched for Normal Confirmed / Just-confirmed Success (no

@@ -13,7 +13,11 @@ function jsonResponse(status: number, body: unknown) {
   };
 }
 
-const ITEM = { shot_id: "s1", project_name: "D1 Demo Project", shot_name: "Shot 010" };
+const ITEM = {
+  shot_id: "s1",
+  project_name: "D1 Demo Project",
+  shot_name: "Shot 010",
+};
 const VERSION_OLD = {
   id: "v1",
   shot_id: "s1",
@@ -52,7 +56,9 @@ describe("loadVersionsWorkspaceData", () => {
 
   it("propagates a genuine API failure instead of collapsing it into null", async () => {
     fetchMock.mockResolvedValue(jsonResponse(500, { detail: "boom" }));
-    await expect(loadVersionsWorkspaceData("s1")).rejects.toMatchObject({ status: 500 });
+    await expect(loadVersionsWorkspaceData("s1")).rejects.toMatchObject({
+      status: 500,
+    });
   });
 
   it("sorts real Production Versions newest first and attaches each Version's real Review Notes", async () => {
@@ -60,11 +66,27 @@ describe("loadVersionsWorkspaceData", () => {
       .mockResolvedValueOnce(jsonResponse(200, ITEM)) // fetchVfxInboxItem
       .mockResolvedValueOnce(jsonResponse(200, [VERSION_OLD, VERSION_NEW])) // listVersionsForShot (oldest first, real backend order)
       .mockResolvedValueOnce(jsonResponse(200, [])) // listCrossRoleAssessmentsForShot
-      .mockResolvedValueOnce(jsonResponse(200, [{ id: "n1", version_id: "v2", content: "Tighten the timing.", source: "manual", created_by_actor_kind: "human", created_by_actor_id: "vfx-1", created_by_human_role: "vfx_supervisor", created_at: "2026-02-02T00:00:00Z" }])) // review notes for v2 (newest, fetched first)
+      .mockResolvedValueOnce(
+        jsonResponse(200, [
+          {
+            id: "n1",
+            version_id: "v2",
+            content: "Tighten the timing.",
+            source: "manual",
+            created_by_actor_kind: "human",
+            created_by_actor_id: "vfx-1",
+            created_by_human_role: "vfx_supervisor",
+            created_at: "2026-02-02T00:00:00Z",
+          },
+        ]),
+      ) // review notes for v2 (newest, fetched first)
       .mockResolvedValueOnce(jsonResponse(200, [])); // review notes for v1
 
     const result = await loadVersionsWorkspaceData("s1");
-    expect(result?.versions.map((entry) => entry.version.id)).toEqual(["v2", "v1"]);
+    expect(result?.versions.map((entry) => entry.version.id)).toEqual([
+      "v2",
+      "v1",
+    ]);
     expect(result?.versions[0].reviewNotes).toHaveLength(1);
     expect(result?.versions[1].reviewNotes).toEqual([]);
   });

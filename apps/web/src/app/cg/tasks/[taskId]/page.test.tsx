@@ -42,7 +42,12 @@ describe("/cg/tasks/:taskId page", () => {
   });
 
   it("passes the real loaded data through to TaskOverviewPage", async () => {
-    const data = { item: { task_id: "t1" }, coreAnchorSummary: null, dependencies: [], recentActivity: [] };
+    const data = {
+      item: { task_id: "t1" },
+      coreAnchorSummary: null,
+      dependencies: [],
+      recentActivity: [],
+    };
     loadTaskOverviewDataMock.mockResolvedValue(data);
 
     const result = await Page({ params });

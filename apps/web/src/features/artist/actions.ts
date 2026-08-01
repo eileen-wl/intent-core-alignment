@@ -13,7 +13,8 @@ import { ArtistApiError, generateArtistGuidance } from "@/features/artist/api";
  * affected routes. The Client never supplies `actorId`, `role`, or a
  * trusted identity. */
 
-export type ArtistActionErrorKind = "forbidden" | "not_found" | "conflict" | "validation" | "network";
+export type ArtistActionErrorKind =
+  "forbidden" | "not_found" | "conflict" | "validation" | "network";
 
 export interface ArtistActionError {
   kind: ArtistActionErrorKind;
@@ -32,11 +33,14 @@ const FORBIDDEN_ERROR: ArtistActionError = {
 function mapThrownError(error: unknown): ArtistActionError {
   if (error instanceof ArtistApiError) {
     if (error.status === 403) return FORBIDDEN_ERROR;
-    if (error.status === 404) return { kind: "not_found", message: error.detail || "Not found." };
+    if (error.status === 404)
+      return { kind: "not_found", message: error.detail || "Not found." };
     if (error.status === 409) {
       return {
         kind: "conflict",
-        message: error.detail || "This was already acted on elsewhere -- reload to see the current state.",
+        message:
+          error.detail ||
+          "This was already acted on elsewhere -- reload to see the current state.",
       };
     }
     if (error.status === 0) {
@@ -45,22 +49,34 @@ function mapThrownError(error: unknown): ArtistActionError {
     if (error.status === 502) {
       return {
         kind: "network",
-        message: error.detail || "Guidance generation failed. Please try again.",
+        message:
+          error.detail || "Guidance generation failed. Please try again.",
       };
     }
-    return { kind: "validation", message: error.detail || "Something went wrong. Please try again." };
+    return {
+      kind: "validation",
+      message: error.detail || "Something went wrong. Please try again.",
+    };
   }
-  return { kind: "network", message: "Something went wrong. Please try again." };
+  return {
+    kind: "network",
+    message: "Something went wrong. Please try again.",
+  };
 }
 
 async function requireArtistIdentity(): Promise<
-  { role: "artist"; actorId: string; displayName: string } | { error: ArtistActionError }
+  | { role: "artist"; actorId: string; displayName: string }
+  | { error: ArtistActionError }
 > {
   const identity = await resolveIdentity();
   if (identity === null || identity.role !== "artist") {
     return { error: FORBIDDEN_ERROR };
   }
-  return { role: "artist", actorId: identity.actorId, displayName: identity.displayName };
+  return {
+    role: "artist",
+    actorId: identity.actorId,
+    displayName: identity.displayName,
+  };
 }
 
 function revalidateTaskRoutes(taskId: string): void {

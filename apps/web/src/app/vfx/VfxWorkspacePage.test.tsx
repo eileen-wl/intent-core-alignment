@@ -9,7 +9,9 @@ afterEach(() => {
   cleanup();
 });
 
-function buildItem(overrides: Partial<VfxInboxItemRead> = {}): VfxInboxItemRead {
+function buildItem(
+  overrides: Partial<VfxInboxItemRead> = {},
+): VfxInboxItemRead {
   return {
     project_id: "11111111-1111-1111-1111-111111111111",
     project_name: "D1 Demo Project",
@@ -35,7 +37,8 @@ function buildItem(overrides: Partial<VfxInboxItemRead> = {}): VfxInboxItemRead 
     current_focus: {
       focus_type: "core_anchor_gate_pending",
       title: "Core Anchor draft awaiting your confirmation",
-      explanation: "A proposed revision to the shared creative intent is ready for your review.",
+      explanation:
+        "A proposed revision to the shared creative intent is ready for your review.",
       target_route: "/vfx/shots/22222222-2222-2222-2222-222222222222/intent",
       primary_action_label: "Review and confirm",
       actionable: true,
@@ -46,7 +49,9 @@ function buildItem(overrides: Partial<VfxInboxItemRead> = {}): VfxInboxItemRead 
   };
 }
 
-function inactiveItem(overrides: Partial<VfxInboxItemRead> = {}): VfxInboxItemRead {
+function inactiveItem(
+  overrides: Partial<VfxInboxItemRead> = {},
+): VfxInboxItemRead {
   return buildItem({
     latest_signal_attention_level: null,
     current_focus: {
@@ -67,14 +72,24 @@ function buildInbox(items: VfxInboxItemRead[]): VfxInboxRead {
 
 describe("VfxWorkspacePage", () => {
   it("renders the correct App Shell with fixed VFX Supervisor identity", () => {
-    render(<VfxWorkspacePage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />);
+    render(
+      <VfxWorkspacePage
+        inbox={buildInbox([buildItem()])}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText("Maya Chen")).toBeVisible();
     expect(screen.getByText("VFX Supervisor")).toBeVisible();
     expect(screen.getByText("Demo mode")).toBeVisible();
   });
 
   it("renders the VFX role sidebar with Workspace Home current", () => {
-    render(<VfxWorkspacePage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />);
+    render(
+      <VfxWorkspacePage
+        inbox={buildInbox([buildItem()])}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(
       screen.getByRole("link", { name: "Workspace Home" }),
     ).toHaveAttribute("aria-current", "page");
@@ -100,7 +115,9 @@ describe("VfxWorkspacePage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    const overview = within(screen.getByRole("region", { name: "Production overview" }));
+    const overview = within(
+      screen.getByRole("region", { name: "Production overview" }),
+    );
     expect(overview.getByText("Total Shots")).toBeVisible();
     expect(overview.getByText("Requiring attention")).toBeVisible();
     expect(overview.getByText("Human review required")).toBeVisible();
@@ -109,9 +126,13 @@ describe("VfxWorkspacePage", () => {
     // "Requiring attention" and must be gone.
     expect(overview.queryByText("Attention needed")).not.toBeInTheDocument();
 
-    const totalCard = overview.getByText("Total Shots").closest("div") as HTMLElement;
+    const totalCard = overview
+      .getByText("Total Shots")
+      .closest("div") as HTMLElement;
     expect(totalCard).toHaveTextContent("2");
-    const noCoreAnchorCard = overview.getByText("No Core Anchor").closest("div") as HTMLElement;
+    const noCoreAnchorCard = overview
+      .getByText("No Core Anchor")
+      .closest("div") as HTMLElement;
     expect(noCoreAnchorCard).toHaveTextContent("1");
   });
 
@@ -132,11 +153,15 @@ describe("VfxWorkspacePage", () => {
       }),
     );
     render(<VfxWorkspacePage inbox={buildInbox(items)} onExitRole={vi.fn()} />);
-    const priorityActions = within(screen.getByRole("region", { name: "Priority actions" }));
+    const priorityActions = within(
+      screen.getByRole("region", { name: "Priority actions" }),
+    );
     expect(priorityActions.getByText("Required action 0")).toBeVisible();
     expect(priorityActions.getByText("Required action 1")).toBeVisible();
     expect(priorityActions.getByText("Required action 2")).toBeVisible();
-    expect(priorityActions.queryByText("Required action 3")).not.toBeInTheDocument();
+    expect(
+      priorityActions.queryByText("Required action 3"),
+    ).not.toBeInTheDocument();
     // Shot name is present only as supporting context, not the heading.
     expect(priorityActions.getByText("Shot 0")).toBeVisible();
   });
@@ -160,7 +185,9 @@ describe("VfxWorkspacePage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    const priorityActions = within(screen.getByRole("region", { name: "Priority actions" }));
+    const priorityActions = within(
+      screen.getByRole("region", { name: "Priority actions" }),
+    );
     const link = priorityActions
       .getByText("Core Anchor draft awaiting your confirmation")
       .closest("a");
@@ -176,7 +203,8 @@ describe("VfxWorkspacePage", () => {
             current_focus: {
               focus_type: "alignment_not_followed_by_anchor_action",
               title: "Cross-role assessment may need your interpretation",
-              explanation: "No newer Core Anchor action has followed this assessment.",
+              explanation:
+                "No newer Core Anchor action has followed this assessment.",
               target_route: "/vfx/shots/s1/alignment",
               primary_action_label: "Review alignment",
               actionable: true,
@@ -186,7 +214,9 @@ describe("VfxWorkspacePage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    const priorityActions = within(screen.getByRole("region", { name: "Priority actions" }));
+    const priorityActions = within(
+      screen.getByRole("region", { name: "Priority actions" }),
+    );
     const link = priorityActions
       .getByText("Cross-role assessment may need your interpretation")
       .closest("a");
@@ -195,12 +225,19 @@ describe("VfxWorkspacePage", () => {
 
   it("shows an honest no-priority-actions state without hiding overview, snapshot, or Shots access", () => {
     render(
-      <VfxWorkspacePage inbox={buildInbox([inactiveItem({ shot_id: "s1" })])} onExitRole={vi.fn()} />,
+      <VfxWorkspacePage
+        inbox={buildInbox([inactiveItem({ shot_id: "s1" })])}
+        onExitRole={vi.fn()}
+      />,
     );
-    expect(screen.getByText("No priority actions require your attention")).toBeVisible();
+    expect(
+      screen.getByText("No priority actions require your attention"),
+    ).toBeVisible();
     expect(screen.getByText("Total Shots")).toBeVisible();
     expect(screen.getByText("Production snapshot")).toBeVisible();
-    expect(screen.getByRole("link", { name: "View all Shots →" })).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "View all Shots →" }),
+    ).toBeVisible();
   });
 
   it("Production snapshot reflects real Core Anchor state counts", () => {
@@ -229,14 +266,18 @@ describe("VfxWorkspacePage", () => {
     expect(screen.getByText("Shot 1")).toBeVisible();
     expect(screen.getByText("Shot 2")).toBeVisible();
     expect(screen.queryByText("Shot 5")).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "View all Shots →" })).toHaveAttribute(
-      "href",
-      "/vfx/shots",
-    );
+    expect(
+      screen.getByRole("link", { name: "View all Shots →" }),
+    ).toHaveAttribute("href", "/vfx/shots");
   });
 
   it("links Priority actions' Review Inbox action into /vfx/inbox", () => {
-    render(<VfxWorkspacePage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />);
+    render(
+      <VfxWorkspacePage
+        inbox={buildInbox([buildItem()])}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(
       screen.getByRole("link", { name: "Go to Review Inbox →" }),
     ).toHaveAttribute("href", "/vfx/inbox");
@@ -244,7 +285,12 @@ describe("VfxWorkspacePage", () => {
 
   it("wires Exit role view to the provided callback", async () => {
     const onExitRole = vi.fn();
-    render(<VfxWorkspacePage inbox={buildInbox([buildItem()])} onExitRole={onExitRole} />);
+    render(
+      <VfxWorkspacePage
+        inbox={buildInbox([buildItem()])}
+        onExitRole={onExitRole}
+      />,
+    );
     await userEvent.click(
       screen.getByRole("button", { name: "Exit role view" }),
     );

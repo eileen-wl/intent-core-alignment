@@ -33,9 +33,7 @@ async def _confirm_core_anchor(client: AsyncClient, shot_id: str) -> None:
             headers=VFX,
         )
     ).json()
-    await client.post(
-        f"/intent/core-anchor-revisions/{draft['id']}/confirm", json={}, headers=VFX
-    )
+    await client.post(f"/intent/core-anchor-revisions/{draft['id']}/confirm", json={}, headers=VFX)
 
 
 async def _create_task(client: AsyncClient, shot_id: str, name: str = "Lighting") -> str:

@@ -68,7 +68,9 @@ function finding(overrides: Partial<CrossRoleFinding> = {}): CrossRoleFinding {
   };
 }
 
-function assessment(overrides: Partial<CrossRoleAssessmentRead> = {}): CrossRoleAssessmentRead {
+function assessment(
+  overrides: Partial<CrossRoleAssessmentRead> = {},
+): CrossRoleAssessmentRead {
   return {
     id: "a1",
     project_id: "p1",
@@ -83,7 +85,8 @@ function assessment(overrides: Partial<CrossRoleAssessmentRead> = {}): CrossRole
     context_snapshot_id: "cs1",
     agent_run_id: "run1",
     assessment_output: {
-      executive_summary: "The Version stays close to the confirmed Core Anchor.",
+      executive_summary:
+        "The Version stays close to the confirmed Core Anchor.",
       shared_intent_read: finding(),
       role_perspectives: [],
       agreements: [finding({ summary: "Restraint reads clearly." })],
@@ -108,7 +111,11 @@ function assessment(overrides: Partial<CrossRoleAssessmentRead> = {}): CrossRole
         label: "human_review_required",
         summary: "Human review required based on a cross-role tension.",
         drivers: [],
-        role_coverage: { vfx_supervisor: true, cg_supervisor: true, artist: true },
+        role_coverage: {
+          vfx_supervisor: true,
+          cg_supervisor: true,
+          artist: true,
+        },
         re_anchor_proposal_present: false,
         caveats: [],
       },
@@ -135,7 +142,9 @@ function version(overrides: Partial<VersionRead> = {}): VersionRead {
   };
 }
 
-function revision(overrides: Partial<CoreAnchorRevisionRead> = {}): CoreAnchorRevisionRead {
+function revision(
+  overrides: Partial<CoreAnchorRevisionRead> = {},
+): CoreAnchorRevisionRead {
   return {
     id: "r1",
     core_anchor_id: "ca1",
@@ -170,7 +179,9 @@ function revision(overrides: Partial<CoreAnchorRevisionRead> = {}): CoreAnchorRe
   };
 }
 
-function data(overrides: Partial<AlignmentWorkspaceData> = {}): AlignmentWorkspaceData {
+function data(
+  overrides: Partial<AlignmentWorkspaceData> = {},
+): AlignmentWorkspaceData {
   return {
     item: item(),
     assessments: [assessment()],
@@ -182,18 +193,27 @@ function data(overrides: Partial<AlignmentWorkspaceData> = {}): AlignmentWorkspa
 
 describe("AlignmentWorkspacePage", () => {
   it("renders Project > Shot > Alignment breadcrumbs and all five real Context Tabs, Alignment active", () => {
-    render(<AlignmentWorkspacePage shotId="s1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "D1 Demo Project" })).toHaveAttribute(
-      "href",
-      "/vfx/shots",
+    render(
+      <AlignmentWorkspacePage
+        shotId="s1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
     );
+    expect(
+      screen.getByRole("link", { name: "D1 Demo Project" }),
+    ).toHaveAttribute("href", "/vfx/shots");
     for (const [label, href] of [
       ["Overview", "/vfx/shots/s1"],
       ["Intent", "/vfx/shots/s1/intent"],
       ["Versions", "/vfx/shots/s1/versions"],
       ["Activity", "/vfx/shots/s1/activity"],
     ] as const) {
-      expect(screen.getByRole("link", { name: label })).toHaveAttribute("href", href);
+      expect(screen.getByRole("link", { name: label })).toHaveAttribute(
+        "href",
+        href,
+      );
     }
     expect(screen.getByRole("link", { name: "Alignment" })).toHaveAttribute(
       "aria-current",
@@ -202,7 +222,14 @@ describe("AlignmentWorkspacePage", () => {
   });
 
   it("shows an honest unavailable state when the API could not be reached", () => {
-    render(<AlignmentWorkspacePage shotId="s1" data={null} unavailable onExitRole={vi.fn()} />);
+    render(
+      <AlignmentWorkspacePage
+        shotId="s1"
+        data={null}
+        unavailable
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText("This Shot is unavailable")).toBeVisible();
   });
 
@@ -216,9 +243,13 @@ describe("AlignmentWorkspacePage", () => {
       />,
     );
     expect(
-      screen.getByText("No Alignment Assessment has been recorded for this Shot yet."),
+      screen.getByText(
+        "No Alignment Assessment has been recorded for this Shot yet.",
+      ),
     ).toBeVisible();
-    expect(screen.queryByRole("button", { name: "Generate Assessment" })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Generate Assessment" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows a task-aware generation-ready state with a real Generate Assessment action when role outputs are available but no Assessment exists yet", () => {
@@ -237,18 +268,33 @@ describe("AlignmentWorkspacePage", () => {
       />,
     );
     expect(
-      screen.getByText("A new Cross-role Assessment can be generated for this Shot"),
+      screen.getByText(
+        "A new Cross-role Assessment can be generated for this Shot",
+      ),
     ).toBeVisible();
     expect(screen.getAllByText(/SH010_v001 \(v1\)/).length).toBeGreaterThan(0);
-    expect(screen.getByRole("button", { name: "Generate Assessment" })).toBeVisible();
     expect(
-      screen.queryByText("No Alignment Assessment has been recorded for this Shot yet."),
+      screen.getByRole("button", { name: "Generate Assessment" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(
+        "No Alignment Assessment has been recorded for this Shot yet.",
+      ),
     ).not.toBeInTheDocument();
   });
 
   it("renders real assessment content: assessed Version, Core Anchor used, and findings", () => {
-    render(<AlignmentWorkspacePage shotId="s1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByText("The Version stays close to the confirmed Core Anchor.")).toBeVisible();
+    render(
+      <AlignmentWorkspacePage
+        shotId="s1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("The Version stays close to the confirmed Core Anchor."),
+    ).toBeVisible();
     expect(screen.getAllByText("SH010_v001 (v1)").length).toBeGreaterThan(0);
     expect(screen.getByText(/Revision 1/)).toBeVisible();
     expect(screen.getByText("Restraint reads clearly.")).toBeVisible();
@@ -256,12 +302,26 @@ describe("AlignmentWorkspacePage", () => {
   });
 
   it("never fabricates a percentage or numeric alignment score", () => {
-    render(<AlignmentWorkspacePage shotId="s1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <AlignmentWorkspacePage
+        shotId="s1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.queryByText(/%/)).not.toBeInTheDocument();
   });
 
   it("shows the real human-review-required state honestly, from the real Intent Signal", () => {
-    render(<AlignmentWorkspacePage shotId="s1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <AlignmentWorkspacePage
+        shotId="s1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(
       screen.getByText(
         "Human review is required -- the VFX Supervisor should interpret these findings.",
@@ -311,7 +371,8 @@ describe("AlignmentWorkspacePage", () => {
                 shot_id: "s1",
                 current_core_anchor_revision_id: "r1",
                 proposal_output: {
-                  reason_for_consideration: "A repeated cross-role tension on pacing.",
+                  reason_for_consideration:
+                    "A repeated cross-role tension on pacing.",
                   preserved_elements: [],
                   proposed_fields: [],
                   adoption_risks: [],
@@ -327,26 +388,49 @@ describe("AlignmentWorkspacePage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByText("A repeated cross-role tension on pacing.")).toBeVisible();
+    expect(
+      screen.getByText("A repeated cross-role tension on pacing."),
+    ).toBeVisible();
     const link = screen.getByRole("link", { name: "Review proposal →" });
     expect(link).toHaveAttribute("href", "/vfx/shots/s1/intent");
-    expect(screen.queryByRole("button", { name: /confirm/i })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /confirm/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows an honest absence line when no Re-anchor Proposal exists for the current assessment", () => {
-    render(<AlignmentWorkspacePage shotId="s1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <AlignmentWorkspacePage
+        shotId="s1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(
-      screen.getByText("No Re-anchor Proposal exists for the current assessment."),
+      screen.getByText(
+        "No Re-anchor Proposal exists for the current assessment.",
+      ),
     ).toBeVisible();
   });
 
   it("shows the compact human-authority line stating Agent assessment is advisory", () => {
-    render(<AlignmentWorkspacePage shotId="s1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <AlignmentWorkspacePage
+        shotId="s1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText(/advisory only/)).toBeVisible();
   });
 
   it("lists older assessments as real Assessment history", () => {
-    const current = assessment({ id: "a2", created_at: "2026-01-05T00:00:00Z" });
+    const current = assessment({
+      id: "a2",
+      created_at: "2026-01-05T00:00:00Z",
+    });
     const older = assessment({
       id: "a1",
       created_at: "2026-01-01T00:00:00Z",

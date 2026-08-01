@@ -125,7 +125,6 @@
   }
 }
 
-
 /* FIRST DRAFT source column: compact, scan-friendly supporting context. */
 .firstDraftPanel {
   display: flex;
@@ -246,7 +245,8 @@
 }
 
 .sourceDisclosureBody {
-  padding: 0 var(--space-3) var(--space-3) calc(var(--space-3) + 2rem + var(--space-2));
+  padding: 0 var(--space-3) var(--space-3)
+    calc(var(--space-3) + 2rem + var(--space-2));
   color: var(--text-secondary);
   font-size: var(--font-size-xs);
 }

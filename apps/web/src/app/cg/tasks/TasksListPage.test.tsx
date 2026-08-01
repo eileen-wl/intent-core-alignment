@@ -45,8 +45,13 @@ function buildInbox(items: CgInboxItemRead[]): CgInboxRead {
 
 describe("TasksListPage", () => {
   it("marks Tasks current in the sidebar", () => {
-    render(<TasksListPage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "Tasks" })).toHaveAttribute("aria-current", "page");
+    render(
+      <TasksListPage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />,
+    );
+    expect(screen.getByRole("link", { name: "Tasks" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("shows an honest error state when Tasks failed to load", () => {
@@ -74,7 +79,10 @@ describe("TasksListPage", () => {
       "href",
       "/cg/tasks/t1",
     );
-    expect(screen.getByText("Comp").closest("a")).toHaveAttribute("href", "/cg/tasks/t2");
+    expect(screen.getByText("Comp").closest("a")).toHaveAttribute(
+      "href",
+      "/cg/tasks/t2",
+    );
   });
 
   it("Project filter narrows the list to that Project's Tasks only", async () => {
@@ -83,12 +91,19 @@ describe("TasksListPage", () => {
       <TasksListPage
         inbox={buildInbox([
           buildItem({ task_id: "t1", project_name: "D1 Demo Project" }),
-          buildItem({ task_id: "t2", project_name: "D2 Other Project", task_name: "Other Task" }),
+          buildItem({
+            task_id: "t2",
+            project_name: "D2 Other Project",
+            task_name: "Other Task",
+          }),
         ])}
         onExitRole={vi.fn()}
       />,
     );
-    await userEvent.selectOptions(screen.getByLabelText("Project"), "D2 Other Project");
+    await userEvent.selectOptions(
+      screen.getByLabelText("Project"),
+      "D2 Other Project",
+    );
     expect(screen.getByText("Showing 1 of 2 Tasks")).toBeVisible();
     expect(screen.getByText("Other Task")).toBeVisible();
     expect(screen.queryByText("Lighting Pass")).not.toBeInTheDocument();
@@ -96,7 +111,9 @@ describe("TasksListPage", () => {
 
   it("shows an honest no-match state when filters exclude every Task", async () => {
     const { default: userEvent } = await import("@testing-library/user-event");
-    render(<TasksListPage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />);
+    render(
+      <TasksListPage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />,
+    );
     await userEvent.click(screen.getByLabelText("Requiring attention only"));
     expect(screen.getByText("No Tasks match these filters")).toBeVisible();
   });

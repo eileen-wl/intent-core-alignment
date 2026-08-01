@@ -61,7 +61,10 @@ export function VfxWorkspacePage({
           description="The ICAS service could not be reached. Try refreshing the page."
         />
       ) : inbox.items.length === 0 ? (
-        <EmptyState title="No Shots exist yet" description="Shots will appear here once they exist." />
+        <EmptyState
+          title="No Shots exist yet"
+          description="Shots will appear here once they exist."
+        />
       ) : (
         <WorkspaceHomeContent items={inbox.items} />
       )}
@@ -73,7 +76,8 @@ function countByAttentionLevel(
   items: VfxInboxItemRead[],
   level: VfxInboxItemRead["latest_signal_attention_level"],
 ): number {
-  return items.filter((item) => item.latest_signal_attention_level === level).length;
+  return items.filter((item) => item.latest_signal_attention_level === level)
+    .length;
 }
 
 function countByCoreAnchorState(
@@ -85,7 +89,9 @@ function countByCoreAnchorState(
 
 function WorkspaceHomeContent({ items }: { items: VfxInboxItemRead[] }) {
   const totalShots = items.length;
-  const requiringAttention = items.filter((item) => item.current_focus.actionable).length;
+  const requiringAttention = items.filter(
+    (item) => item.current_focus.actionable,
+  ).length;
   const humanReviewRequired = countByAttentionLevel(items, "high");
   const noCoreAnchor = countByCoreAnchorState(items, "none");
   const confirmed = countByCoreAnchorState(items, "confirmed");
@@ -95,7 +101,10 @@ function WorkspaceHomeContent({ items }: { items: VfxInboxItemRead[] }) {
   // Shot-led list -- `items` already arrives sorted by the backend's
   // real priority ordering (`sort_rank`), and the adapter preserves
   // that order, so the first N *are* the highest-priority work.
-  const priorityActions = adaptCurrentFocusToWorkItems(items).slice(0, PRIORITY_ACTION_COUNT);
+  const priorityActions = adaptCurrentFocusToWorkItems(items).slice(
+    0,
+    PRIORITY_ACTION_COUNT,
+  );
 
   // Important Shots: a small, clearly secondary, Shot-led section --
   // never the complete catalogue (that is `/vfx/shots`'s job).
@@ -103,14 +112,22 @@ function WorkspaceHomeContent({ items }: { items: VfxInboxItemRead[] }) {
 
   return (
     <Stack gap={6}>
-      <Grid minColumnWidth="13rem" gap={4} role="region" aria-label="Production overview">
+      <Grid
+        minColumnWidth="13rem"
+        gap={4}
+        role="region"
+        aria-label="Production overview"
+      >
         <SummaryCard label="Total Shots" value={totalShots} />
         <SummaryCard
           label="Requiring attention"
           value={requiringAttention}
           description="Shots with an actionable Current focus"
         />
-        <SummaryCard label="Human review required" value={humanReviewRequired} />
+        <SummaryCard
+          label="Human review required"
+          value={humanReviewRequired}
+        />
         <SummaryCard label="No Core Anchor" value={noCoreAnchor} />
       </Grid>
 
@@ -134,11 +151,20 @@ function WorkspaceHomeContent({ items }: { items: VfxInboxItemRead[] }) {
       </div>
 
       <div role="region" aria-label="Production snapshot">
-        <SectionHeader title="Production snapshot" description="Core Anchor state across every Shot." />
+        <SectionHeader
+          title="Production snapshot"
+          description="Core Anchor state across every Shot."
+        />
         <Row gap={3}>
           <StatusBadge status="confirmed" label={`Confirmed: ${confirmed}`} />
-          <StatusBadge status="attention" label={`Draft pending review: ${draftPending}`} />
-          <StatusBadge status="neutral" label={`No Core Anchor: ${noCoreAnchor}`} />
+          <StatusBadge
+            status="attention"
+            label={`Draft pending review: ${draftPending}`}
+          />
+          <StatusBadge
+            status="neutral"
+            label={`No Core Anchor: ${noCoreAnchor}`}
+          />
         </Row>
       </div>
 

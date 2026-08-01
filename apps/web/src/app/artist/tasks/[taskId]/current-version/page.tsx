@@ -23,11 +23,21 @@ export default async function Page({
   try {
     const data = await loadCurrentVersionData(taskId, selectedVersionId);
     return (
-      <CurrentVersionPage taskId={taskId} data={data} unavailable={false} onExitRole={exitRoleView} />
+      <CurrentVersionPage
+        taskId={taskId}
+        data={data}
+        unavailable={false}
+        onExitRole={exitRoleView}
+      />
     );
   } catch {
     return (
-      <CurrentVersionPage taskId={taskId} data={null} unavailable onExitRole={exitRoleView} />
+      <CurrentVersionPage
+        taskId={taskId}
+        data={null}
+        unavailable
+        onExitRole={exitRoleView}
+      />
     );
   }
 }

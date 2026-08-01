@@ -50,9 +50,18 @@ export function CurrentVersionPage({
     >
       {unavailable || data === null ? (
         <>
-          <Breadcrumbs items={[{ label: "Tasks", href: "/artist/tasks" }, { label: "Current Version" }]} />
+          <Breadcrumbs
+            items={[
+              { label: "Tasks", href: "/artist/tasks" },
+              { label: "Current Version" },
+            ]}
+          />
           <ErrorState
-            title={unavailable ? "This Task is unavailable" : "This Task could not be found"}
+            title={
+              unavailable
+                ? "This Task is unavailable"
+                : "This Task could not be found"
+            }
             description={
               unavailable
                 ? "The ICAS service could not be reached. Try refreshing the page."
@@ -74,7 +83,11 @@ export function CurrentVersionPage({
           <ContextTabs
             activeTabId="current-version"
             tabs={[
-              { id: "overview", label: "Task Overview", href: `/artist/tasks/${taskId}` },
+              {
+                id: "overview",
+                label: "Task Overview",
+                href: `/artist/tasks/${taskId}`,
+              },
               {
                 id: "current-version",
                 label: "Current Version",
@@ -101,16 +114,24 @@ export function CurrentVersionPage({
                       <Link
                         key={version.id}
                         href={`/artist/tasks/${taskId}/current-version?version=${version.id}`}
-                        className={isActive ? `${styles.row} ${styles.rowActive}` : styles.row}
+                        className={
+                          isActive
+                            ? `${styles.row} ${styles.rowActive}`
+                            : styles.row
+                        }
                         aria-current={isActive || undefined}
                       >
                         <span className={styles.rowName}>
                           {version.name}
-                          {version.version_number ? ` (v${version.version_number})` : ""}
+                          {version.version_number
+                            ? ` (v${version.version_number})`
+                            : ""}
                         </span>
                         <span className={styles.rowMeta}>
                           <FtrackLinkageBadge source={version.source} />
-                          <span>{new Date(version.created_at).toLocaleString()}</span>
+                          <span>
+                            {new Date(version.created_at).toLocaleString()}
+                          </span>
                         </span>
                       </Link>
                     );
@@ -138,14 +159,19 @@ export function CurrentVersionPage({
                               data.selectedVersion.created_by_actor_kind
                             }`,
                           },
-                          { label: "Source", value: data.selectedVersion.source },
+                          {
+                            label: "Source",
+                            value: data.selectedVersion.source,
+                          },
                           { label: "Task", value: data.item.task_name },
                           { label: "Shot", value: data.item.shot_name },
                         ]}
                       />
 
                       <section className={styles.section}>
-                        <h4 className={styles.sectionHeading}>Active Core Anchor (read-only)</h4>
+                        <h4 className={styles.sectionHeading}>
+                          Active Core Anchor (read-only)
+                        </h4>
                         <p className={styles.contextText}>
                           {data.coreAnchorRevision?.core_summary ??
                             "No Core Anchor is confirmed for this Shot yet."}
@@ -153,7 +179,9 @@ export function CurrentVersionPage({
                       </section>
 
                       <section className={styles.section}>
-                        <h4 className={styles.sectionHeading}>Active Execution Anchor (read-only)</h4>
+                        <h4 className={styles.sectionHeading}>
+                          Active Execution Anchor (read-only)
+                        </h4>
                         <p className={styles.contextText}>
                           {data.executionAnchorRevision?.technical_boundaries ??
                             "No Execution Anchor is confirmed for this Task yet."}
@@ -161,20 +189,30 @@ export function CurrentVersionPage({
                       </section>
 
                       <section className={styles.section}>
-                        <h4 className={styles.sectionHeading}>Applicable Artist guidance</h4>
+                        <h4 className={styles.sectionHeading}>
+                          Applicable Artist guidance
+                        </h4>
                         {data.guidances.length === 0 ? (
                           <p className={styles.empty}>
-                            No Artist guidance has been generated for this Version yet.
+                            No Artist guidance has been generated for this
+                            Version yet.
                           </p>
                         ) : (
                           <p className={styles.contextText}>
-                            {data.guidances[0].guidance_output.executive_summary}
+                            {
+                              data.guidances[0].guidance_output
+                                .executive_summary
+                            }
                           </p>
                         )}
                         <GenerateArtistGuidanceButton
                           taskId={taskId}
                           versionId={data.selectedVersion.id}
-                          label={data.guidances.length > 0 ? "Regenerate guidance" : "Generate guidance"}
+                          label={
+                            data.guidances.length > 0
+                              ? "Regenerate guidance"
+                              : "Generate guidance"
+                          }
                         />
                       </section>
 
@@ -182,16 +220,20 @@ export function CurrentVersionPage({
                         <h4 className={styles.sectionHeading}>Review notes</h4>
                         {data.reviewNotes.length === 0 ? (
                           <p className={styles.empty}>
-                            No Review Notes have been recorded for this Production Version yet.
+                            No Review Notes have been recorded for this
+                            Production Version yet.
                           </p>
                         ) : (
                           <ul className={styles.noteList}>
                             {data.reviewNotes.map((note) => (
                               <li key={note.id} className={styles.note}>
-                                <p className={styles.noteContent}>{note.content}</p>
+                                <p className={styles.noteContent}>
+                                  {note.content}
+                                </p>
                                 <p className={styles.noteMeta}>
-                                  {note.created_by_human_role ?? note.created_by_actor_kind} ·{" "}
-                                  {new Date(note.created_at).toLocaleString()}
+                                  {note.created_by_human_role ??
+                                    note.created_by_actor_kind}{" "}
+                                  · {new Date(note.created_at).toLocaleString()}
                                 </p>
                               </li>
                             ))}
@@ -200,22 +242,29 @@ export function CurrentVersionPage({
                       </section>
 
                       <section className={styles.section}>
-                        <h4 className={styles.sectionHeading}>CG Supervisor reviews</h4>
+                        <h4 className={styles.sectionHeading}>
+                          CG Supervisor reviews
+                        </h4>
                         {data.cgSupervisorReviews.length === 0 ? (
                           <p className={styles.empty}>
-                            No CG Supervisor review has been generated for the active Execution
-                            Anchor yet.
+                            No CG Supervisor review has been generated for the
+                            active Execution Anchor yet.
                           </p>
                         ) : (
                           <p className={styles.contextText}>
                             {data.cgSupervisorReviews.length} CG Supervisor{" "}
-                            {data.cgSupervisorReviews.length === 1 ? "review" : "reviews"} recorded.
+                            {data.cgSupervisorReviews.length === 1
+                              ? "review"
+                              : "reviews"}{" "}
+                            recorded.
                           </p>
                         )}
                       </section>
 
                       <section className={styles.section}>
-                        <h4 className={styles.sectionHeading}>Cross-role Assessments</h4>
+                        <h4 className={styles.sectionHeading}>
+                          Cross-role Assessments
+                        </h4>
                         {data.crossRoleAssessments.length === 0 ? (
                           <p className={styles.empty}>
                             No Cross-role Assessment involves this Version yet.
@@ -223,7 +272,9 @@ export function CurrentVersionPage({
                         ) : (
                           <p className={styles.contextText}>
                             {data.crossRoleAssessments.length} Cross-role{" "}
-                            {data.crossRoleAssessments.length === 1 ? "Assessment" : "Assessments"}{" "}
+                            {data.crossRoleAssessments.length === 1
+                              ? "Assessment"
+                              : "Assessments"}{" "}
                             recorded.
                           </p>
                         )}

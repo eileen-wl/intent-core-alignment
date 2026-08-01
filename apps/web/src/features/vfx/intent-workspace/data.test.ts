@@ -13,7 +13,11 @@ function jsonResponse(status: number, body: unknown) {
   };
 }
 
-const ITEM = { shot_id: "s1", project_name: "D1 Demo Project", shot_name: "Shot 010" };
+const ITEM = {
+  shot_id: "s1",
+  project_name: "D1 Demo Project",
+  shot_name: "Shot 010",
+};
 const CONFIRMED = {
   id: "r1",
   status: "confirmed",
@@ -66,7 +70,9 @@ describe("loadIntentWorkspaceData", () => {
 
   it("propagates a genuine API failure instead of collapsing it into null", async () => {
     fetchMock.mockResolvedValue(jsonResponse(500, { detail: "boom" }));
-    await expect(loadIntentWorkspaceData("s1")).rejects.toMatchObject({ status: 500 });
+    await expect(loadIntentWorkspaceData("s1")).rejects.toMatchObject({
+      status: 500,
+    });
   });
 
   it("resolves confirmed-only state (no draft) and includes evidence data for the confirmed revision", async () => {
@@ -99,12 +105,18 @@ describe("loadIntentWorkspaceData", () => {
       .mockResolvedValueOnce(jsonResponse(200, []))
       .mockResolvedValueOnce(
         jsonResponse(200, [
-          { id: "d1", decision_type: "confirm_core_anchor", rationale: "Matches the director's note." },
+          {
+            id: "d1",
+            decision_type: "confirm_core_anchor",
+            rationale: "Matches the director's note.",
+          },
         ]),
       );
 
     const result = await loadIntentWorkspaceData("s1");
-    expect(result?.confirmedDecisionRationale).toBe("Matches the director's note.");
+    expect(result?.confirmedDecisionRationale).toBe(
+      "Matches the director's note.",
+    );
   });
 
   it("derives previousConfirmedRevision from the already-fetched revisions list (no extra API call)", async () => {
@@ -127,7 +139,9 @@ describe("loadIntentWorkspaceData", () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse(200, ITEM))
       .mockResolvedValueOnce(jsonResponse(200, [CONFIRMED, DRAFT]))
-      .mockResolvedValueOnce(jsonResponse(200, { id: "gate-1", status: "pending" }))
+      .mockResolvedValueOnce(
+        jsonResponse(200, { id: "gate-1", status: "pending" }),
+      )
       .mockResolvedValueOnce(jsonResponse(200, [])) // decompositions
       .mockResolvedValueOnce(jsonResponse(200, [])); // reconstructions
 
@@ -135,7 +149,11 @@ describe("loadIntentWorkspaceData", () => {
     expect(result?.draftRevision).toEqual(DRAFT);
     expect(result?.draftHumanGate).toEqual({ id: "gate-1", status: "pending" });
     expect(result?.evidenceData?.evidence).toEqual([
-      { source_type: "core_anchor_revision", source_id: "r1", label: "Previous confirmed revision" },
+      {
+        source_type: "core_anchor_revision",
+        source_id: "r1",
+        label: "Previous confirmed revision",
+      },
     ]);
     // Revision Draft never renders the Decision-and-provenance card, so
     // no Decisions fetch is issued while a draft is in progress -- exactly

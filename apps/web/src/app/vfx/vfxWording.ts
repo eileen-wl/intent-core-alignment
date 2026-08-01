@@ -41,7 +41,9 @@ export function versionDisplayText(item: VfxInboxItemRead): string {
  * `ProductionContextHeader` and the Shots list (Step 7C-1) so both
  * surfaces describe the same real, persisted `core_anchor_state`
  * identically. */
-export function coreAnchorStateLabel(state: VfxInboxItemRead["core_anchor_state"]): string {
+export function coreAnchorStateLabel(
+  state: VfxInboxItemRead["core_anchor_state"],
+): string {
   switch (state) {
     case "confirmed":
       return "Confirmed";

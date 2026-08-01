@@ -18,7 +18,11 @@
   margin: 0;
   padding: 2.35rem 2.5rem 1.25rem 3.65rem;
   background:
-    radial-gradient(circle at 12% 0%, rgba(116, 91, 223, 0.022), transparent 22rem),
+    radial-gradient(
+      circle at 12% 0%,
+      rgba(116, 91, 223, 0.022),
+      transparent 22rem
+    ),
     #fafbfc;
 }
 

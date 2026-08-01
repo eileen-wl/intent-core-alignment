@@ -63,30 +63,39 @@ export async function loadCurrentVersionData(
   ]);
 
   const sortedVersions = [...versions].sort(
-    (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    (a, b) =>
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
   );
   const selectedVersion =
-    (selectedVersionId ? sortedVersions.find((version) => version.id === selectedVersionId) : null) ??
+    (selectedVersionId
+      ? sortedVersions.find((version) => version.id === selectedVersionId)
+      : null) ??
     sortedVersions[0] ??
     null;
 
-  const [reviewNotes, guidancesForVersion, crossRoleAssessments] = selectedVersion
-    ? await Promise.all([
-        listReviewNotesForVersion(selectedVersion.id),
-        listArtistGuidancesForVersion(selectedVersion.id),
-        listCrossRoleAssessmentsForVersion(selectedVersion.id, taskId),
-      ])
-    : [[], [], []];
+  const [reviewNotes, guidancesForVersion, crossRoleAssessments] =
+    selectedVersion
+      ? await Promise.all([
+          listReviewNotesForVersion(selectedVersion.id),
+          listArtistGuidancesForVersion(selectedVersion.id),
+          listCrossRoleAssessmentsForVersion(selectedVersion.id, taskId),
+        ])
+      : [[], [], []];
 
   const guidances = guidancesForVersion
     .filter((guidance) => guidance.task_id === taskId)
-    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    .sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    );
 
   let coreAnchorRevision: CoreAnchorRevisionRead | null = null;
   if (coreAnchor !== null && coreAnchor.active_revision_id !== null) {
     const revisions = await listCoreAnchorRevisions(item.shot_id);
     coreAnchorRevision =
-      revisions.find((revision) => revision.id === coreAnchor.active_revision_id) ?? null;
+      revisions.find(
+        (revision) => revision.id === coreAnchor.active_revision_id,
+      ) ?? null;
   }
 
   let executionAnchorRevision: ExecutionAnchorRevisionRead | null = null;
@@ -94,9 +103,13 @@ export async function loadCurrentVersionData(
   if (executionAnchor !== null && executionAnchor.active_revision_id !== null) {
     const revisions = await listExecutionAnchorRevisions(taskId);
     executionAnchorRevision =
-      revisions.find((revision) => revision.id === executionAnchor.active_revision_id) ?? null;
+      revisions.find(
+        (revision) => revision.id === executionAnchor.active_revision_id,
+      ) ?? null;
     if (executionAnchorRevision !== null) {
-      cgSupervisorReviews = await listCgSupervisorReviews(executionAnchorRevision.id);
+      cgSupervisorReviews = await listCgSupervisorReviews(
+        executionAnchorRevision.id,
+      );
     }
   }
 

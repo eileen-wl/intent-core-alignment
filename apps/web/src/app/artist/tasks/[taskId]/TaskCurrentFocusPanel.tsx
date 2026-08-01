@@ -8,12 +8,18 @@ import styles from "./TaskCurrentFocusPanel.module.css";
  * `app/cg/tasks/[taskId]/TaskCurrentFocusPanel.tsx`. The `focus_type ==
  * "none"` state renders no button at all (never a disabled fake
  * action). */
-export function TaskCurrentFocusPanel({ focus }: { focus: ArtistInboxCurrentFocusRead }) {
+export function TaskCurrentFocusPanel({
+  focus,
+}: {
+  focus: ArtistInboxCurrentFocusRead;
+}) {
   return (
     <Panel tone="elevated" className={styles.panel}>
       <div className={styles.label}>
         <StatusBadge
-          status={focus.focus_type === "guidance_outdated" ? "attention" : "neutral"}
+          status={
+            focus.focus_type === "guidance_outdated" ? "attention" : "neutral"
+          }
           label="Current focus"
         />
       </div>

@@ -7,12 +7,20 @@ import styles from "./TaskCurrentFocusPanel.module.css";
 /** Exactly one Current focus (Step 7C-4), mirroring
  * `app/vfx/shots/CurrentFocusPanel.tsx`. The `focus_type == "none"`
  * state renders no button at all (never a disabled fake action). */
-export function TaskCurrentFocusPanel({ focus }: { focus: CgInboxCurrentFocusRead }) {
+export function TaskCurrentFocusPanel({
+  focus,
+}: {
+  focus: CgInboxCurrentFocusRead;
+}) {
   return (
     <Panel tone="elevated" className={styles.panel}>
       <div className={styles.label}>
         <StatusBadge
-          status={focus.focus_type === "execution_anchor_gate_pending" ? "attention" : "neutral"}
+          status={
+            focus.focus_type === "execution_anchor_gate_pending"
+              ? "attention"
+              : "neutral"
+          }
           label="Current focus"
         />
       </div>

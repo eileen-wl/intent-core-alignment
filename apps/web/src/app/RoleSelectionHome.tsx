@@ -17,7 +17,11 @@ import styles from "./RoleSelectionHome.module.css";
  * whose route prefix it actually belongs to, never to every button:
  * picking a *different* role than the one the deep link was for must
  * never carry that other role's intended route along with it. */
-export function RoleSelectionHome({ returnTo = null }: { returnTo?: string | null }) {
+export function RoleSelectionHome({
+  returnTo = null,
+}: {
+  returnTo?: string | null;
+}) {
   return (
     <div className={styles.page}>
       <header className={styles.intro}>
@@ -31,7 +35,8 @@ export function RoleSelectionHome({ returnTo = null }: { returnTo?: string | nul
 
       <div className={styles.roleGrid}>
         {ROLE_CARDS.map((card) => {
-          const matchesReturnTo = returnTo !== null && roleForPathname(returnTo) === card.role;
+          const matchesReturnTo =
+            returnTo !== null && roleForPathname(returnTo) === card.role;
           return (
             <article key={card.role} className={styles.roleCard}>
               <h2>{card.title}</h2>

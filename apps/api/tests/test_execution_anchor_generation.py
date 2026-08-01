@@ -107,9 +107,7 @@ async def test_from_confirmed_creates_pending_human_gate_atomically(client: Asyn
         )
     ).json()
 
-    gate_response = await client.get(
-        f"/intent/execution-anchor-revisions/{draft['id']}/human-gate"
-    )
+    gate_response = await client.get(f"/intent/execution-anchor-revisions/{draft['id']}/human-gate")
     assert gate_response.status_code == 200
     gate = gate_response.json()
     assert gate["status"] == "pending"
@@ -201,9 +199,7 @@ async def test_from_confirmed_active_revision_never_overwritten(client: AsyncCli
     await _confirm_core_anchor(client, shot_id)
     confirmed = await _confirm_execution_anchor(client, task_id, technical_boundaries="baseline")
 
-    await client.post(
-        f"/intent/tasks/{task_id}/execution-anchor/drafts/from-confirmed", headers=CG
-    )
+    await client.post(f"/intent/tasks/{task_id}/execution-anchor/drafts/from-confirmed", headers=CG)
 
     anchor = (await client.get(f"/intent/tasks/{task_id}/execution-anchor")).json()
     assert anchor["active_revision_id"] == confirmed["id"]
@@ -240,9 +236,7 @@ async def test_generate_never_auto_confirms(client: AsyncClient) -> None:
     shot_id, task_id = await _create_shot_and_task(client)
     await _confirm_core_anchor(client, shot_id, core_summary="Baseline")
 
-    draft = (
-        await client.post(f"/intent/tasks/{task_id}/execution-anchor/generate")
-    ).json()
+    draft = (await client.post(f"/intent/tasks/{task_id}/execution-anchor/generate")).json()
     assert draft["status"] == "draft"
 
     anchor = (await client.get(f"/intent/tasks/{task_id}/execution-anchor")).json()
@@ -253,13 +247,9 @@ async def test_generate_creates_pending_human_gate_atomically(client: AsyncClien
     shot_id, task_id = await _create_shot_and_task(client)
     await _confirm_core_anchor(client, shot_id, core_summary="Baseline")
 
-    draft = (
-        await client.post(f"/intent/tasks/{task_id}/execution-anchor/generate")
-    ).json()
+    draft = (await client.post(f"/intent/tasks/{task_id}/execution-anchor/generate")).json()
 
-    gate_response = await client.get(
-        f"/intent/execution-anchor-revisions/{draft['id']}/human-gate"
-    )
+    gate_response = await client.get(f"/intent/execution-anchor-revisions/{draft['id']}/human-gate")
     assert gate_response.status_code == 200
     assert gate_response.json()["status"] == "pending"
 
@@ -270,9 +260,7 @@ async def test_generate_records_a_real_agent_run(
     shot_id, task_id = await _create_shot_and_task(client)
     await _confirm_core_anchor(client, shot_id, core_summary="Baseline")
 
-    draft = (
-        await client.post(f"/intent/tasks/{task_id}/execution-anchor/generate")
-    ).json()
+    draft = (await client.post(f"/intent/tasks/{task_id}/execution-anchor/generate")).json()
 
     runs = (
         (
@@ -329,7 +317,5 @@ async def test_generate_no_write_back_record_created(
 
     await client.post(f"/intent/tasks/{task_id}/execution-anchor/generate")
 
-    count = (
-        await session.execute(select(func.count()).select_from(WritebackRecord))
-    ).scalar_one()
+    count = (await session.execute(select(func.count()).select_from(WritebackRecord))).scalar_one()
     assert count == 0

@@ -47,7 +47,9 @@ export function IntentWorkspacePage({
   justConfirmed?: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
-  const hasRevisionHistory = Boolean(data?.draftRevision || data?.confirmedRevision);
+  const hasRevisionHistory = Boolean(
+    data?.draftRevision || data?.confirmedRevision,
+  );
 
   return (
     <AppShell
@@ -59,9 +61,18 @@ export function IntentWorkspacePage({
     >
       {unavailable || data === null ? (
         <>
-          <Breadcrumbs items={[{ label: "Shots", href: "/vfx/shots" }, { label: "Intent" }]} />
+          <Breadcrumbs
+            items={[
+              { label: "Shots", href: "/vfx/shots" },
+              { label: "Intent" },
+            ]}
+          />
           <ErrorState
-            title={unavailable ? "This Shot is unavailable" : "This Shot could not be found"}
+            title={
+              unavailable
+                ? "This Shot is unavailable"
+                : "This Shot could not be found"
+            }
             description={
               unavailable
                 ? "The ICAS service could not be reached. Try refreshing the page."
@@ -82,8 +93,16 @@ export function IntentWorkspacePage({
           <ContextTabs
             activeTabId="intent"
             tabs={[
-              { id: "overview", label: "Overview", href: `/vfx/shots/${data.item.shot_id}` },
-              { id: "intent", label: "Intent", href: `/vfx/shots/${data.item.shot_id}/intent` },
+              {
+                id: "overview",
+                label: "Overview",
+                href: `/vfx/shots/${data.item.shot_id}`,
+              },
+              {
+                id: "intent",
+                label: "Intent",
+                href: `/vfx/shots/${data.item.shot_id}/intent`,
+              },
               {
                 id: "versions",
                 label: "Versions",
@@ -135,7 +154,10 @@ export function IntentWorkspacePage({
                 <StartDraftButton
                   label="Create new revision"
                   pendingLabel="Starting…"
-                  action={createCoreAnchorDraftFromConfirmedAction.bind(null, shotId)}
+                  action={createCoreAnchorDraftFromConfirmedAction.bind(
+                    null,
+                    shotId,
+                  )}
                 />
               </div>
             </>
@@ -143,11 +165,16 @@ export function IntentWorkspacePage({
             <IntentInitialEmptyState
               item={data.item}
               evidenceData={data.evidenceData}
-              startDraftAction={startBlankCoreAnchorDraftAction.bind(null, shotId)}
+              startDraftAction={startBlankCoreAnchorDraftAction.bind(
+                null,
+                shotId,
+              )}
             />
           )}
 
-          {data.evidenceData && <IntentEvidenceDisclosures data={data.evidenceData} />}
+          {data.evidenceData && (
+            <IntentEvidenceDisclosures data={data.evidenceData} />
+          )}
 
           {hasRevisionHistory && (
             <p className={styles.activityLink}>

@@ -1,4 +1,7 @@
-import type { CgCurrentFocusType, CgInboxItemRead } from "@intent-core/contracts";
+import type {
+  CgCurrentFocusType,
+  CgInboxItemRead,
+} from "@intent-core/contracts";
 
 /** CG Review Inbox work-item model (Step 7C-4) -- mirrors
  * `features/vfx/review-inbox/workItem.ts`'s *shape* (work-item-first,
@@ -57,7 +60,9 @@ function categoryForFocusType(focusType: CgCurrentFocusType): string {
     case "version_review_available":
       return "Version review";
     case "none":
-      throw new Error('focus_type "none" is never actionable and must never become a work item');
+      throw new Error(
+        'focus_type "none" is never actionable and must never become a work item',
+      );
   }
 }
 
@@ -65,7 +70,9 @@ function categoryForFocusType(focusType: CgCurrentFocusType): string {
  * `CgReviewWorkItem`. Non-actionable (`focus_type === "none"`) Tasks
  * contribute nothing -- an honest empty CG Review Inbox is possible,
  * and expected, whenever no Task has real actionable work. */
-export function adaptCgCurrentFocusToWorkItems(items: CgInboxItemRead[]): CgReviewWorkItem[] {
+export function adaptCgCurrentFocusToWorkItems(
+  items: CgInboxItemRead[],
+): CgReviewWorkItem[] {
   const workItems: CgReviewWorkItem[] = [];
 
   for (const item of items) {
@@ -83,7 +90,11 @@ export function adaptCgCurrentFocusToWorkItems(items: CgInboxItemRead[]): CgRevi
       actionLabel: focus.primary_action_label,
       project: { id: item.project_id, name: item.project_name },
       shot: { id: item.shot_id, name: item.shot_name },
-      task: { id: item.task_id, name: item.task_name, department: item.department },
+      task: {
+        id: item.task_id,
+        name: item.task_name,
+        department: item.department,
+      },
       executionAnchorState: item.execution_anchor_state,
       route: focus.target_route,
     });

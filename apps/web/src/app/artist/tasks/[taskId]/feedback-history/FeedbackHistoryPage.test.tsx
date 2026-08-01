@@ -1,4 +1,7 @@
-import type { ArtistFeedbackEventRead, ArtistInboxItemRead } from "@intent-core/contracts";
+import type {
+  ArtistFeedbackEventRead,
+  ArtistInboxItemRead,
+} from "@intent-core/contracts";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -9,7 +12,9 @@ afterEach(() => {
   cleanup();
 });
 
-function item(overrides: Partial<ArtistInboxItemRead> = {}): ArtistInboxItemRead {
+function item(
+  overrides: Partial<ArtistInboxItemRead> = {},
+): ArtistInboxItemRead {
   return {
     task_id: "t1",
     task_name: "Compositing Review",
@@ -42,7 +47,9 @@ function item(overrides: Partial<ArtistInboxItemRead> = {}): ArtistInboxItemRead
   };
 }
 
-function event(overrides: Partial<ArtistFeedbackEventRead> = {}): ArtistFeedbackEventRead {
+function event(
+  overrides: Partial<ArtistFeedbackEventRead> = {},
+): ArtistFeedbackEventRead {
   return {
     id: "e1",
     event_type: "review_note_recorded",
@@ -59,7 +66,9 @@ function event(overrides: Partial<ArtistFeedbackEventRead> = {}): ArtistFeedback
   };
 }
 
-function data(overrides: Partial<FeedbackHistoryData> = {}): FeedbackHistoryData {
+function data(
+  overrides: Partial<FeedbackHistoryData> = {},
+): FeedbackHistoryData {
   return {
     item: item(),
     history: { task_id: "t1", events: [event()] },
@@ -69,20 +78,42 @@ function data(overrides: Partial<FeedbackHistoryData> = {}): FeedbackHistoryData
 
 describe("FeedbackHistoryPage", () => {
   it("renders Project > Shot > Task > Feedback History breadcrumbs, tab active", () => {
-    render(<FeedbackHistoryPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "Feedback History" })).toHaveAttribute(
-      "aria-current",
-      "page",
+    render(
+      <FeedbackHistoryPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
     );
+    expect(
+      screen.getByRole("link", { name: "Feedback History" }),
+    ).toHaveAttribute("aria-current", "page");
   });
 
   it("does not appear as its own tab labeled Activity", () => {
-    render(<FeedbackHistoryPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
-    expect(screen.queryByRole("link", { name: "Activity" })).not.toBeInTheDocument();
+    render(
+      <FeedbackHistoryPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("link", { name: "Activity" }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows an honest unavailable state when the API could not be reached", () => {
-    render(<FeedbackHistoryPage taskId="t1" data={null} unavailable onExitRole={vi.fn()} />);
+    render(
+      <FeedbackHistoryPage
+        taskId="t1"
+        data={null}
+        unavailable
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.getByText("This Task is unavailable")).toBeVisible();
   });
 
@@ -95,7 +126,9 @@ describe("FeedbackHistoryPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByText("No feedback has been recorded for this Task yet.")).toBeVisible();
+    expect(
+      screen.getByText("No feedback has been recorded for this Task yet."),
+    ).toBeVisible();
   });
 
   it("renders real records in the exact order the backend delivers (already newest-first)", () => {
@@ -121,9 +154,13 @@ describe("FeedbackHistoryPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    const timeline = screen.getByRole("list", { name: "Task feedback history" });
+    const timeline = screen.getByRole("list", {
+      name: "Task feedback history",
+    });
     const items = within(timeline).getAllByRole("listitem");
-    expect(within(items[0]).getByText("Artist guidance generated")).toBeVisible();
+    expect(
+      within(items[0]).getByText("Artist guidance generated"),
+    ).toBeVisible();
     expect(within(items[1]).getByText("Review Note recorded")).toBeVisible();
   });
 
@@ -158,12 +195,22 @@ describe("FeedbackHistoryPage", () => {
       />,
     );
     const links = screen.getAllByRole("link", { name: "Open →" });
-    expect(links[0]).toHaveAttribute("href", "/artist/tasks/t1/current-version");
+    expect(links[0]).toHaveAttribute(
+      "href",
+      "/artist/tasks/t1/current-version",
+    );
     expect(links[1]).toHaveAttribute("href", "/artist/tasks/t1");
   });
 
   it("does not fabricate a read or resolved state anywhere on the page", () => {
-    render(<FeedbackHistoryPage taskId="t1" data={data()} unavailable={false} onExitRole={vi.fn()} />);
+    render(
+      <FeedbackHistoryPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
     expect(screen.queryByText(/\bread\b/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/\bresolved\b/i)).not.toBeInTheDocument();
   });

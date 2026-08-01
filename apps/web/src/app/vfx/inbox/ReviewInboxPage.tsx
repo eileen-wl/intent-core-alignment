@@ -1,7 +1,13 @@
 import type { VfxInboxRead } from "@intent-core/contracts";
 import Link from "next/link";
 
-import { AppShell, Breadcrumbs, EmptyState, ErrorState, PageHeader } from "@/design";
+import {
+  AppShell,
+  Breadcrumbs,
+  EmptyState,
+  ErrorState,
+  PageHeader,
+} from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import {

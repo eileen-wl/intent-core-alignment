@@ -1,7 +1,10 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import type { CoreAnchorRevisionRead, CoreAnchorRevisionUpdate } from "@intent-core/contracts";
+import type {
+  CoreAnchorRevisionRead,
+  CoreAnchorRevisionUpdate,
+} from "@intent-core/contracts";
 
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
 import {
@@ -33,7 +36,8 @@ import {
  * only route-visible ids (`shotId`, `revisionId`, `humanGateId`) and
  * user-entered text (`changes`, `rationale`). */
 
-export type IntentActionErrorKind = "forbidden" | "not_found" | "conflict" | "validation" | "network";
+export type IntentActionErrorKind =
+  "forbidden" | "not_found" | "conflict" | "validation" | "network";
 
 export interface IntentActionError {
   kind: IntentActionErrorKind;
@@ -51,30 +55,43 @@ const FORBIDDEN_ERROR: IntentActionError = {
 
 const STALE_CONFLICT_ERROR: IntentActionError = {
   kind: "conflict",
-  message: "This was already acted on elsewhere -- reload to see the current state.",
+  message:
+    "This was already acted on elsewhere -- reload to see the current state.",
 };
 
 function mapThrownError(error: unknown): IntentActionError {
   if (error instanceof VfxApiError) {
     if (error.status === 403) return FORBIDDEN_ERROR;
-    if (error.status === 404) return { kind: "not_found", message: error.detail || "Not found." };
+    if (error.status === 404)
+      return { kind: "not_found", message: error.detail || "Not found." };
     if (error.status === 409) return STALE_CONFLICT_ERROR;
     if (error.status === 0) {
       return { kind: "network", message: "The ICAS service is unavailable." };
     }
-    return { kind: "validation", message: error.detail || "Something went wrong. Please try again." };
+    return {
+      kind: "validation",
+      message: error.detail || "Something went wrong. Please try again.",
+    };
   }
-  return { kind: "network", message: "Something went wrong. Please try again." };
+  return {
+    kind: "network",
+    message: "Something went wrong. Please try again.",
+  };
 }
 
 async function requireVfxIdentity(): Promise<
-  { role: "vfx_supervisor"; actorId: string; displayName: string } | { error: IntentActionError }
+  | { role: "vfx_supervisor"; actorId: string; displayName: string }
+  | { error: IntentActionError }
 > {
   const identity = await resolveIdentity();
   if (identity === null || identity.role !== "vfx_supervisor") {
     return { error: FORBIDDEN_ERROR };
   }
-  return { role: "vfx_supervisor", actorId: identity.actorId, displayName: identity.displayName };
+  return {
+    role: "vfx_supervisor",
+    actorId: identity.actorId,
+    displayName: identity.displayName,
+  };
 }
 
 function revalidateIntentAndOverview(shotId: string, alsoInbox: boolean): void {
@@ -111,12 +128,17 @@ export async function createCoreAnchorDraftFromConfirmedAction(
  * confirmed content to copy from. Distinct from
  * `createCoreAnchorDraftFromConfirmedAction`: this is the honest path
  * for a Shot that has never had a confirmed revision at all. */
-export async function startBlankCoreAnchorDraftAction(shotId: string): Promise<IntentActionResult> {
+export async function startBlankCoreAnchorDraftAction(
+  shotId: string,
+): Promise<IntentActionResult> {
   const identity = await requireVfxIdentity();
   if ("error" in identity) return { ok: false, error: identity.error };
 
   try {
-    const revision = await createBlankCoreAnchorDraft(shotId, actorHeaders(identity));
+    const revision = await createBlankCoreAnchorDraft(
+      shotId,
+      actorHeaders(identity),
+    );
     revalidateIntentAndOverview(shotId, true);
     return { ok: true, revision };
   } catch (error) {
@@ -142,7 +164,10 @@ export async function saveCoreAnchorDraftAction(
   if (target === undefined) {
     return {
       ok: false,
-      error: { kind: "not_found", message: "That revision does not belong to this Shot." },
+      error: {
+        kind: "not_found",
+        message: "That revision does not belong to this Shot.",
+      },
     };
   }
 
@@ -167,7 +192,10 @@ async function validateGateAndRevision(
   const revisions = await listCoreAnchorRevisions(shotId);
   const target = revisions.find((revision) => revision.id === revisionId);
   if (target === undefined) {
-    return { kind: "not_found", message: "That revision does not belong to this Shot." };
+    return {
+      kind: "not_found",
+      message: "That revision does not belong to this Shot.",
+    };
   }
   if (target.status !== "draft") {
     // Someone else already confirmed/rejected this exact revision.
@@ -207,7 +235,11 @@ export async function confirmCoreAnchorRevisionAction(
   const identity = await requireVfxIdentity();
   if ("error" in identity) return { ok: false, error: identity.error };
 
-  const validationError = await validateGateAndRevision(shotId, revisionId, humanGateId);
+  const validationError = await validateGateAndRevision(
+    shotId,
+    revisionId,
+    humanGateId,
+  );
   if (validationError) return { ok: false, error: validationError };
 
   try {
@@ -235,7 +267,11 @@ export async function rejectCoreAnchorRevisionAction(
   const identity = await requireVfxIdentity();
   if ("error" in identity) return { ok: false, error: identity.error };
 
-  const validationError = await validateGateAndRevision(shotId, revisionId, humanGateId);
+  const validationError = await validateGateAndRevision(
+    shotId,
+    revisionId,
+    humanGateId,
+  );
   if (validationError) return { ok: false, error: validationError };
 
   try {

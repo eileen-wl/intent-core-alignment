@@ -9,15 +9,18 @@ import styles from "./IntentInitialEmptyState.module.css";
 const PRIMARY_PATH = [
   {
     title: "Review available Shot context",
-    description: "Check the Project, Task, Production Version, and any linked source material.",
+    description:
+      "Check the Project, Task, Production Version, and any linked source material.",
   },
   {
     title: "Create the first Core Anchor draft",
-    description: "Capture the shared creative direction, boundaries, and open questions.",
+    description:
+      "Capture the shared creative direction, boundaries, and open questions.",
   },
   {
     title: "Confirm with the VFX Supervisor",
-    description: "Human confirmation makes the revision active for downstream work.",
+    description:
+      "Human confirmation makes the revision active for downstream work.",
   },
 ];
 
@@ -63,12 +66,16 @@ export function IntentInitialEmptyState({
               No Core Anchor yet
             </h2>
             <p className={styles.description}>
-              This Shot does not yet have a confirmed shared creative intent. Create the first draft
-              to establish what downstream work should align to.
+              This Shot does not yet have a confirmed shared creative intent.
+              Create the first draft to establish what downstream work should
+              align to.
             </p>
           </div>
 
-          <ol className={styles.primaryPath} aria-label="How the first Core Anchor becomes active">
+          <ol
+            className={styles.primaryPath}
+            aria-label="How the first Core Anchor becomes active"
+          >
             {PRIMARY_PATH.map((step, index) => (
               <li key={step.title} className={styles.step}>
                 <span className={styles.stepNumber}>{index + 1}</span>
@@ -87,14 +94,19 @@ export function IntentInitialEmptyState({
             variant="primary"
           />
           <p className={styles.actionHint}>
-            Saving a draft does not make it active. A VFX Supervisor confirms it later.
+            Saving a draft does not make it active. A VFX Supervisor confirms it
+            later.
           </p>
         </div>
       </section>
 
       <div className={styles.supportGrid}>
         <section className={`${styles.supportCard} ${styles.sourceCard}`}>
-          <IntentSourceContext item={item} evidenceData={evidenceData} compact />
+          <IntentSourceContext
+            item={item}
+            evidenceData={evidenceData}
+            compact
+          />
         </section>
 
         <div className={styles.supportStack}>
@@ -106,8 +118,9 @@ export function IntentInitialEmptyState({
               <h2 className={styles.supportHeading}>Optional Agent support</h2>
             </div>
             <p className={styles.supportText}>
-              Intent Decomposition and Context Reconstruction can help structure the available
-              context. Agent output remains advisory until human confirmation.
+              Intent Decomposition and Context Reconstruction can help structure
+              the available context. Agent output remains advisory until human
+              confirmation.
             </p>
           </section>
 
@@ -118,7 +131,9 @@ export function IntentInitialEmptyState({
               </span>
               <h2 className={styles.supportHeading}>After confirmation</h2>
             </div>
-            <p className={styles.supportText}>The active Core Anchor will guide:</p>
+            <p className={styles.supportText}>
+              The active Core Anchor will guide:
+            </p>
             <ul className={styles.impactList}>
               {DOWNSTREAM_IMPACT.map((item) => (
                 <li key={item}>{item}</li>

@@ -1,4 +1,7 @@
-import type { ArtistInboxItemRead, ArtistInboxRead } from "@intent-core/contracts";
+import type {
+  ArtistInboxItemRead,
+  ArtistInboxRead,
+} from "@intent-core/contracts";
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -8,7 +11,9 @@ afterEach(() => {
   cleanup();
 });
 
-function buildItem(overrides: Partial<ArtistInboxItemRead> = {}): ArtistInboxItemRead {
+function buildItem(
+  overrides: Partial<ArtistInboxItemRead> = {},
+): ArtistInboxItemRead {
   return {
     task_id: "t1",
     task_name: "Compositing Review",
@@ -20,7 +25,8 @@ function buildItem(overrides: Partial<ArtistInboxItemRead> = {}): ArtistInboxIte
     project_name: "D1 Demo Project",
     execution_anchor_state: "confirmed",
     active_execution_anchor_revision_id: "ea1",
-    active_execution_anchor_summary: "Keep the silhouette readable against the backlight.",
+    active_execution_anchor_summary:
+      "Keep the silhouette readable against the backlight.",
     latest_version_id: null,
     latest_version_name: null,
     latest_version_number: null,
@@ -47,8 +53,13 @@ function buildInbox(items: ArtistInboxItemRead[]): ArtistInboxRead {
 
 describe("TasksListPage", () => {
   it("marks Tasks current in the sidebar", () => {
-    render(<TasksListPage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "Tasks" })).toHaveAttribute("aria-current", "page");
+    render(
+      <TasksListPage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />,
+    );
+    expect(screen.getByRole("link", { name: "Tasks" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
   it("shows an honest error state when Tasks failed to load", () => {
@@ -88,12 +99,19 @@ describe("TasksListPage", () => {
       <TasksListPage
         inbox={buildInbox([
           buildItem({ task_id: "t1", project_name: "D1 Demo Project" }),
-          buildItem({ task_id: "t2", project_name: "D2 Other Project", task_name: "Other Task" }),
+          buildItem({
+            task_id: "t2",
+            project_name: "D2 Other Project",
+            task_name: "Other Task",
+          }),
         ])}
         onExitRole={vi.fn()}
       />,
     );
-    await userEvent.selectOptions(screen.getByLabelText("Project"), "D2 Other Project");
+    await userEvent.selectOptions(
+      screen.getByLabelText("Project"),
+      "D2 Other Project",
+    );
     expect(screen.getByText("Showing 1 of 2 Tasks")).toBeVisible();
     expect(screen.getByText("Other Task")).toBeVisible();
     expect(screen.queryByText("Compositing Review")).not.toBeInTheDocument();
@@ -104,13 +122,24 @@ describe("TasksListPage", () => {
     render(
       <TasksListPage
         inbox={buildInbox([
-          buildItem({ task_id: "t1", guidance_state: "outdated", task_name: "Outdated Task" }),
-          buildItem({ task_id: "t2", guidance_state: "none", task_name: "No Guidance Task" }),
+          buildItem({
+            task_id: "t1",
+            guidance_state: "outdated",
+            task_name: "Outdated Task",
+          }),
+          buildItem({
+            task_id: "t2",
+            guidance_state: "none",
+            task_name: "No Guidance Task",
+          }),
         ])}
         onExitRole={vi.fn()}
       />,
     );
-    await userEvent.selectOptions(screen.getByLabelText("Guidance state"), "Guidance outdated");
+    await userEvent.selectOptions(
+      screen.getByLabelText("Guidance state"),
+      "Guidance outdated",
+    );
     expect(screen.getByText("Showing 1 of 2 Tasks")).toBeVisible();
     expect(screen.getByText("Outdated Task")).toBeVisible();
     expect(screen.queryByText("No Guidance Task")).not.toBeInTheDocument();
@@ -132,7 +161,10 @@ describe("TasksListPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    await userEvent.selectOptions(screen.getByLabelText("Latest Version"), "Has a Version");
+    await userEvent.selectOptions(
+      screen.getByLabelText("Latest Version"),
+      "Has a Version",
+    );
     expect(screen.getByText("Showing 1 of 2 Tasks")).toBeVisible();
     expect(screen.getByText("Has Version")).toBeVisible();
     expect(screen.queryByText("No Version")).not.toBeInTheDocument();
@@ -140,7 +172,9 @@ describe("TasksListPage", () => {
 
   it("shows an honest no-match state when filters exclude every Task", async () => {
     const { default: userEvent } = await import("@testing-library/user-event");
-    render(<TasksListPage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />);
+    render(
+      <TasksListPage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />,
+    );
     await userEvent.click(screen.getByLabelText("Requiring attention only"));
     expect(screen.getByText("No Tasks match these filters")).toBeVisible();
   });

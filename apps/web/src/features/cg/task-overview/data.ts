@@ -34,7 +34,9 @@ export interface TaskOverviewData {
 
 const RECENT_ACTIVITY_COUNT = 5;
 
-export async function loadTaskOverviewData(taskId: string): Promise<TaskOverviewData | null> {
+export async function loadTaskOverviewData(
+  taskId: string,
+): Promise<TaskOverviewData | null> {
   const item = await fetchCgInboxItem(taskId);
   if (item === null) {
     return null;
@@ -49,7 +51,9 @@ export async function loadTaskOverviewData(taskId: string): Promise<TaskOverview
   let coreAnchorSummary: string | null = null;
   if (coreAnchor !== null && coreAnchor.active_revision_id !== null) {
     const revisions = await listCoreAnchorRevisions(item.shot_id);
-    const activeRevision = revisions.find((revision) => revision.id === coreAnchor.active_revision_id);
+    const activeRevision = revisions.find(
+      (revision) => revision.id === coreAnchor.active_revision_id,
+    );
     coreAnchorSummary = activeRevision?.core_summary ?? null;
   }
 

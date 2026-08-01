@@ -5,7 +5,10 @@ import "@testing-library/jest-dom/vitest";
 // this is a test-environment gap, not a component defect. Minimal polyfill so
 // components using the real native <dialog> API (e.g. ConfirmationDialog) are
 // testable; real browsers already implement this natively.
-if (typeof HTMLElement !== "undefined" && !("showModal" in HTMLElement.prototype)) {
+if (
+  typeof HTMLElement !== "undefined" &&
+  !("showModal" in HTMLElement.prototype)
+) {
   Object.defineProperty(HTMLElement.prototype, "open", {
     get(this: HTMLElement) {
       return this.hasAttribute("open");

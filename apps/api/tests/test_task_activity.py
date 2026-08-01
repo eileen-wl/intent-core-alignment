@@ -16,9 +16,7 @@ CG = {"X-Actor-Role": "cg_supervisor", "X-Actor-Id": "cg-1"}
 
 async def _create_project_and_shot(client: AsyncClient) -> tuple[str, str]:
     project = (await client.post("/projects", json={"name": "Demo Project"})).json()
-    shot = (
-        await client.post("/shots", json={"project_id": project["id"], "name": "SH010"})
-    ).json()
+    shot = (await client.post("/shots", json={"project_id": project["id"], "name": "SH010"})).json()
     return str(project["id"]), str(shot["id"])
 
 

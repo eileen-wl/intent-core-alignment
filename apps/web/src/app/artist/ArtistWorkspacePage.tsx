@@ -1,4 +1,7 @@
-import type { ArtistInboxItemRead, ArtistInboxRead } from "@intent-core/contracts";
+import type {
+  ArtistInboxItemRead,
+  ArtistInboxRead,
+} from "@intent-core/contracts";
 import Link from "next/link";
 
 import {
@@ -57,7 +60,10 @@ export function ArtistWorkspacePage({
           description="The ICAS service could not be reached. Try refreshing the page."
         />
       ) : inbox.items.length === 0 ? (
-        <EmptyState title="No Tasks exist yet" description="Tasks will appear here once they exist." />
+        <EmptyState
+          title="No Tasks exist yet"
+          description="Tasks will appear here once they exist."
+        />
       ) : (
         <WorkspaceHomeContent items={inbox.items} />
       )}
@@ -67,21 +73,30 @@ export function ArtistWorkspacePage({
 
 function WorkspaceHomeContent({ items }: { items: ArtistInboxItemRead[] }) {
   const totalTasks = items.length;
-  const requiringAttention = items.filter((item) => item.current_focus.actionable).length;
+  const requiringAttention = items.filter(
+    (item) => item.current_focus.actionable,
+  ).length;
   const newOrUpdatedGuidance = items.filter((item) =>
-    ["guidance_outdated", "guidance_available"].includes(item.current_focus.focus_type),
+    ["guidance_outdated", "guidance_available"].includes(
+      item.current_focus.focus_type,
+    ),
   ).length;
   const feedbackRequiringResponse = items.filter(
     (item) => item.current_focus.focus_type === "review_note_needs_response",
   ).length;
-  const blockedTasks = items.filter((item) => item.open_dependency_count > 0).length;
+  const blockedTasks = items.filter(
+    (item) => item.open_dependency_count > 0,
+  ).length;
 
   // Priority actions: the shared Artist Review work-item model, not a
   // Task-led list -- `items` already arrives sorted by the backend's
   // real priority ordering (`sort_rank`), and the adapter preserves that
   // order, so the first N *are* the highest-priority work. The exact
   // same ordering the Artist Review Inbox itself uses.
-  const priorityActions = adaptArtistCurrentFocusToWorkItems(items).slice(0, PRIORITY_ACTION_COUNT);
+  const priorityActions = adaptArtistCurrentFocusToWorkItems(items).slice(
+    0,
+    PRIORITY_ACTION_COUNT,
+  );
 
   // Important Tasks: a small, clearly secondary, Task-led section --
   // never the complete catalogue (that is `/artist/tasks`'s job).
@@ -89,15 +104,26 @@ function WorkspaceHomeContent({ items }: { items: ArtistInboxItemRead[] }) {
 
   return (
     <Stack gap={6}>
-      <Grid minColumnWidth="13rem" gap={4} role="region" aria-label="Production overview">
+      <Grid
+        minColumnWidth="13rem"
+        gap={4}
+        role="region"
+        aria-label="Production overview"
+      >
         <SummaryCard label="Total Tasks" value={totalTasks} />
         <SummaryCard
           label="Requiring attention"
           value={requiringAttention}
           description="Tasks with an actionable Current focus"
         />
-        <SummaryCard label="New or updated guidance" value={newOrUpdatedGuidance} />
-        <SummaryCard label="Feedback requiring response" value={feedbackRequiringResponse} />
+        <SummaryCard
+          label="New or updated guidance"
+          value={newOrUpdatedGuidance}
+        />
+        <SummaryCard
+          label="Feedback requiring response"
+          value={feedbackRequiringResponse}
+        />
         <SummaryCard label="Blocked Tasks" value={blockedTasks} />
       </Grid>
 

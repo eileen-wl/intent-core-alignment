@@ -60,7 +60,12 @@ describe("server-resolved identity boundary", () => {
 
   it("rejects a different Demo role (e.g. CG Supervisor)", async () => {
     cookieStore.get.mockReturnValue({ value: "cg_supervisor" });
-    const result = await confirmCoreAnchorRevisionAction("shot-1", "r-draft", "gate-1", "why");
+    const result = await confirmCoreAnchorRevisionAction(
+      "shot-1",
+      "r-draft",
+      "gate-1",
+      "why",
+    );
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.kind).toBe("forbidden");
   });
@@ -79,10 +84,15 @@ describe("createCoreAnchorDraftFromConfirmedAction", () => {
 
     expect(result).toEqual({ ok: true, revision: DRAFT_REVISION });
     expect(fetchMock).toHaveBeenCalledWith(
-      expect.stringContaining("/intent/shots/shot-1/core-anchor/drafts/from-confirmed"),
+      expect.stringContaining(
+        "/intent/shots/shot-1/core-anchor/drafts/from-confirmed",
+      ),
       expect.objectContaining({
         method: "POST",
-        headers: expect.objectContaining({ "X-Actor-Role": "vfx_supervisor", "X-Actor-Id": "vfx-1" }),
+        headers: expect.objectContaining({
+          "X-Actor-Role": "vfx_supervisor",
+          "X-Actor-Id": "vfx-1",
+        }),
       }),
     );
     expect(revalidatePathMock).toHaveBeenCalledWith("/vfx/shots/shot-1/intent");
@@ -91,7 +101,9 @@ describe("createCoreAnchorDraftFromConfirmedAction", () => {
   });
 
   it("maps a 409 (draft already exists) to a conflict result", async () => {
-    fetchMock.mockResolvedValue(jsonResponse(409, { detail: "draft already exists" }));
+    fetchMock.mockResolvedValue(
+      jsonResponse(409, { detail: "draft already exists" }),
+    );
     const result = await createCoreAnchorDraftFromConfirmedAction("shot-1");
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.kind).toBe("conflict");
@@ -107,7 +119,9 @@ describe("createCoreAnchorDraftFromConfirmedAction", () => {
 
 describe("startBlankCoreAnchorDraftAction", () => {
   it("calls the plain draft-creation endpoint", async () => {
-    fetchMock.mockResolvedValue(jsonResponse(201, { id: "r-blank", status: "draft" }));
+    fetchMock.mockResolvedValue(
+      jsonResponse(201, { id: "r-blank", status: "draft" }),
+    );
     const result = await startBlankCoreAnchorDraftAction("shot-1");
     expect(result.ok).toBe(true);
     expect(fetchMock).toHaveBeenCalledWith(
@@ -120,19 +134,28 @@ describe("startBlankCoreAnchorDraftAction", () => {
 describe("saveCoreAnchorDraftAction", () => {
   it("validates the revision belongs to the Shot before saving", async () => {
     fetchMock.mockResolvedValue(jsonResponse(200, [])); // listCoreAnchorRevisions -> empty
-    const result = await saveCoreAnchorDraftAction("shot-1", "r-draft", { core_summary: "x" });
+    const result = await saveCoreAnchorDraftAction("shot-1", "r-draft", {
+      core_summary: "x",
+    });
     expect(result).toEqual({
       ok: false,
-      error: { kind: "not_found", message: "That revision does not belong to this Shot." },
+      error: {
+        kind: "not_found",
+        message: "That revision does not belong to this Shot.",
+      },
     });
   });
 
   it("saves successfully and revalidates only the Intent route", async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse(200, [DRAFT_REVISION])) // listCoreAnchorRevisions
-      .mockResolvedValueOnce(jsonResponse(200, { ...DRAFT_REVISION, core_summary: "Updated" }));
+      .mockResolvedValueOnce(
+        jsonResponse(200, { ...DRAFT_REVISION, core_summary: "Updated" }),
+      );
 
-    const result = await saveCoreAnchorDraftAction("shot-1", "r-draft", { core_summary: "Updated" });
+    const result = await saveCoreAnchorDraftAction("shot-1", "r-draft", {
+      core_summary: "Updated",
+    });
     expect(result.ok).toBe(true);
     expect(revalidatePathMock).toHaveBeenCalledWith("/vfx/shots/shot-1/intent");
     expect(revalidatePathMock).not.toHaveBeenCalledWith("/vfx/shots/shot-1");
@@ -145,15 +168,25 @@ describe("confirmCoreAnchorRevisionAction", () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse(200, [DRAFT_REVISION])) // listCoreAnchorRevisions
       .mockResolvedValueOnce(jsonResponse(200, PENDING_GATE)) // getHumanGateForRevision
-      .mockResolvedValueOnce(jsonResponse(200, { ...DRAFT_REVISION, status: "confirmed" }));
+      .mockResolvedValueOnce(
+        jsonResponse(200, { ...DRAFT_REVISION, status: "confirmed" }),
+      );
 
-    const result = await confirmCoreAnchorRevisionAction("shot-1", "r-draft", "gate-1", "rationale");
+    const result = await confirmCoreAnchorRevisionAction(
+      "shot-1",
+      "r-draft",
+      "gate-1",
+      "rationale",
+    );
     expect(result.ok).toBe(true);
     expect(fetchMock).toHaveBeenNthCalledWith(
       3,
       expect.stringContaining("/intent/core-anchor-revisions/r-draft/confirm"),
       expect.objectContaining({
-        body: JSON.stringify({ rationale: "rationale", request_write_back: false }),
+        body: JSON.stringify({
+          rationale: "rationale",
+          request_write_back: false,
+        }),
       }),
     );
     expect(revalidatePathMock).toHaveBeenCalledWith("/vfx");
@@ -174,14 +207,22 @@ describe("confirmCoreAnchorRevisionAction", () => {
   it("returns a stale conflict when the gate is no longer pending", async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse(200, [DRAFT_REVISION]))
-      .mockResolvedValueOnce(jsonResponse(200, { ...PENDING_GATE, status: "confirmed" }));
+      .mockResolvedValueOnce(
+        jsonResponse(200, { ...PENDING_GATE, status: "confirmed" }),
+      );
 
-    const result = await confirmCoreAnchorRevisionAction("shot-1", "r-draft", "gate-1", "why");
+    const result = await confirmCoreAnchorRevisionAction(
+      "shot-1",
+      "r-draft",
+      "gate-1",
+      "why",
+    );
     expect(result).toEqual({
       ok: false,
       error: {
         kind: "conflict",
-        message: "This was already acted on elsewhere -- reload to see the current state.",
+        message:
+          "This was already acted on elsewhere -- reload to see the current state.",
       },
     });
   });
@@ -189,16 +230,28 @@ describe("confirmCoreAnchorRevisionAction", () => {
   it("returns a stale conflict when the gate id does not match", async () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse(200, [DRAFT_REVISION]))
-      .mockResolvedValueOnce(jsonResponse(200, { ...PENDING_GATE, id: "different-gate" }));
+      .mockResolvedValueOnce(
+        jsonResponse(200, { ...PENDING_GATE, id: "different-gate" }),
+      );
 
-    const result = await confirmCoreAnchorRevisionAction("shot-1", "r-draft", "gate-1", "why");
+    const result = await confirmCoreAnchorRevisionAction(
+      "shot-1",
+      "r-draft",
+      "gate-1",
+      "why",
+    );
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.kind).toBe("conflict");
   });
 
   it("returns not_found when the revision does not belong to the Shot", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse(200, []));
-    const result = await confirmCoreAnchorRevisionAction("shot-1", "r-draft", "gate-1", "why");
+    const result = await confirmCoreAnchorRevisionAction(
+      "shot-1",
+      "r-draft",
+      "gate-1",
+      "why",
+    );
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.kind).toBe("not_found");
   });
@@ -207,9 +260,16 @@ describe("confirmCoreAnchorRevisionAction", () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse(200, [DRAFT_REVISION])) // listCoreAnchorRevisions
       .mockResolvedValueOnce(jsonResponse(404, { detail: "not found" })) // getHumanGateForRevision -> null
-      .mockResolvedValueOnce(jsonResponse(200, { ...DRAFT_REVISION, status: "confirmed" }));
+      .mockResolvedValueOnce(
+        jsonResponse(200, { ...DRAFT_REVISION, status: "confirmed" }),
+      );
 
-    const result = await confirmCoreAnchorRevisionAction("shot-1", "r-draft", null, "why");
+    const result = await confirmCoreAnchorRevisionAction(
+      "shot-1",
+      "r-draft",
+      null,
+      "why",
+    );
     expect(result.ok).toBe(true);
     expect(fetchMock).toHaveBeenNthCalledWith(
       3,
@@ -223,12 +283,18 @@ describe("confirmCoreAnchorRevisionAction", () => {
       jsonResponse(200, [{ ...DRAFT_REVISION, status: "confirmed" }]),
     );
 
-    const result = await confirmCoreAnchorRevisionAction("shot-1", "r-draft", "gate-1", "why");
+    const result = await confirmCoreAnchorRevisionAction(
+      "shot-1",
+      "r-draft",
+      "gate-1",
+      "why",
+    );
     expect(result).toEqual({
       ok: false,
       error: {
         kind: "conflict",
-        message: "This was already acted on elsewhere -- reload to see the current state.",
+        message:
+          "This was already acted on elsewhere -- reload to see the current state.",
       },
     });
     // Never even checks the gate or calls confirm once the revision
@@ -242,7 +308,12 @@ describe("confirmCoreAnchorRevisionAction", () => {
       .mockResolvedValueOnce(jsonResponse(200, PENDING_GATE))
       .mockResolvedValueOnce(jsonResponse(403, { detail: "forbidden" }));
 
-    const result = await confirmCoreAnchorRevisionAction("shot-1", "r-draft", "gate-1", "why");
+    const result = await confirmCoreAnchorRevisionAction(
+      "shot-1",
+      "r-draft",
+      "gate-1",
+      "why",
+    );
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.kind).toBe("forbidden");
   });
@@ -253,9 +324,16 @@ describe("rejectCoreAnchorRevisionAction", () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse(200, [DRAFT_REVISION]))
       .mockResolvedValueOnce(jsonResponse(200, PENDING_GATE))
-      .mockResolvedValueOnce(jsonResponse(200, { ...DRAFT_REVISION, status: "rejected" }));
+      .mockResolvedValueOnce(
+        jsonResponse(200, { ...DRAFT_REVISION, status: "rejected" }),
+      );
 
-    const result = await rejectCoreAnchorRevisionAction("shot-1", "r-draft", "gate-1", "why");
+    const result = await rejectCoreAnchorRevisionAction(
+      "shot-1",
+      "r-draft",
+      "gate-1",
+      "why",
+    );
     expect(result.ok).toBe(true);
     expect(revalidatePathMock).toHaveBeenCalledWith("/vfx/shots/shot-1/intent");
     expect(revalidatePathMock).toHaveBeenCalledWith("/vfx/shots/shot-1");

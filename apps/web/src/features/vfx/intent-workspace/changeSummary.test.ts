@@ -1,9 +1,14 @@
 import type { CoreAnchorRevisionRead } from "@intent-core/contracts";
 import { describe, expect, it } from "vitest";
 
-import { computeChangeSummary, summarizeEstablishedContent } from "./changeSummary";
+import {
+  computeChangeSummary,
+  summarizeEstablishedContent,
+} from "./changeSummary";
 
-function revision(overrides: Partial<CoreAnchorRevisionRead> = {}): CoreAnchorRevisionRead {
+function revision(
+  overrides: Partial<CoreAnchorRevisionRead> = {},
+): CoreAnchorRevisionRead {
   return {
     id: "r1",
     core_anchor_id: "a1",
@@ -47,8 +52,14 @@ describe("computeChangeSummary", () => {
 
   it("reports a scalar field change", () => {
     const confirmed = revision();
-    const draft = revision({ id: "r2", status: "draft", core_summary: "A colder read" });
-    expect(computeChangeSummary(confirmed, draft)).toEqual(["Core summary changed"]);
+    const draft = revision({
+      id: "r2",
+      status: "draft",
+      core_summary: "A colder read",
+    });
+    expect(computeChangeSummary(confirmed, draft)).toEqual([
+      "Core summary changed",
+    ]);
   });
 
   it("reports added collection items", () => {
@@ -57,26 +68,45 @@ describe("computeChangeSummary", () => {
       id: "r2",
       status: "draft",
       constraints: [
-        { id: "c1", order_index: 0, content: "No jump cuts", created_at: "2026-01-01T00:00:00Z" },
+        {
+          id: "c1",
+          order_index: 0,
+          content: "No jump cuts",
+          created_at: "2026-01-01T00:00:00Z",
+        },
       ],
     });
-    expect(computeChangeSummary(confirmed, draft)).toEqual(["1 constraint added"]);
+    expect(computeChangeSummary(confirmed, draft)).toEqual([
+      "1 constraint added",
+    ]);
   });
 
   it("reports removed collection items", () => {
     const confirmed = revision({
       constraints: [
-        { id: "c1", order_index: 0, content: "No jump cuts", created_at: "2026-01-01T00:00:00Z" },
+        {
+          id: "c1",
+          order_index: 0,
+          content: "No jump cuts",
+          created_at: "2026-01-01T00:00:00Z",
+        },
       ],
     });
     const draft = revision({ id: "r2", status: "draft", constraints: [] });
-    expect(computeChangeSummary(confirmed, draft)).toEqual(["1 constraint removed"]);
+    expect(computeChangeSummary(confirmed, draft)).toEqual([
+      "1 constraint removed",
+    ]);
   });
 
   it("reports edited collection content at the same count", () => {
     const confirmed = revision({
       open_questions: [
-        { id: "q1", order_index: 0, question: "Long take or cut?", created_at: "2026-01-01T00:00:00Z" },
+        {
+          id: "q1",
+          order_index: 0,
+          question: "Long take or cut?",
+          created_at: "2026-01-01T00:00:00Z",
+        },
       ],
     });
     const draft = revision({
@@ -91,7 +121,9 @@ describe("computeChangeSummary", () => {
         },
       ],
     });
-    expect(computeChangeSummary(confirmed, draft)).toEqual(["open questions edited"]);
+    expect(computeChangeSummary(confirmed, draft)).toEqual([
+      "open questions edited",
+    ]);
   });
 
   it("treats every populated draft field as new content when nothing was ever confirmed", () => {
@@ -100,7 +132,12 @@ describe("computeChangeSummary", () => {
       status: "draft",
       core_summary: "Quiet dread",
       constraints: [
-        { id: "c1", order_index: 0, content: "No jump cuts", created_at: "2026-01-01T00:00:00Z" },
+        {
+          id: "c1",
+          order_index: 0,
+          content: "No jump cuts",
+          created_at: "2026-01-01T00:00:00Z",
+        },
       ],
     });
     const summary = computeChangeSummary(null, draft);
@@ -115,8 +152,13 @@ describe("computeChangeSummary", () => {
     // genuinely empty on both sides must not read as changed just
     // because one side is `null` and the other is `""`.
     const confirmed = revision({ emotional_tone: null });
-    const draftWithNormalizedEmptyString = { ...revision({ id: "r2", status: "draft" }), emotional_tone: "" };
-    expect(computeChangeSummary(confirmed, draftWithNormalizedEmptyString)).toEqual([]);
+    const draftWithNormalizedEmptyString = {
+      ...revision({ id: "r2", status: "draft" }),
+      emotional_tone: "",
+    };
+    expect(
+      computeChangeSummary(confirmed, draftWithNormalizedEmptyString),
+    ).toEqual([]);
   });
 });
 
@@ -125,11 +167,26 @@ describe("summarizeEstablishedContent", () => {
     const revisionData = revision({
       core_summary: "A restrained dusk confrontation.",
       constraints: [
-        { id: "c1", order_index: 0, content: "No character dialogue", created_at: "2026-01-01T00:00:00Z" },
+        {
+          id: "c1",
+          order_index: 0,
+          content: "No character dialogue",
+          created_at: "2026-01-01T00:00:00Z",
+        },
       ],
       variation_zones: [
-        { id: "z1", order_index: 0, content: "Camera angle", created_at: "2026-01-01T00:00:00Z" },
-        { id: "z2", order_index: 1, content: "Negative space", created_at: "2026-01-01T00:00:00Z" },
+        {
+          id: "z1",
+          order_index: 0,
+          content: "Camera angle",
+          created_at: "2026-01-01T00:00:00Z",
+        },
+        {
+          id: "z2",
+          order_index: 1,
+          content: "Negative space",
+          created_at: "2026-01-01T00:00:00Z",
+        },
       ],
       open_questions: [],
     });

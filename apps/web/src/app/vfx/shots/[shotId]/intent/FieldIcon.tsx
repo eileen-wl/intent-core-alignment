@@ -85,5 +85,7 @@ const ICON_PATHS: Record<IconField, ReactNode> = {
       <circle cx="12" cy="16.5" r="0.6" fill="currentColor" stroke="none" />
     </>
   ),
-  references: <path d="M9 12a3.5 3.5 0 0 1 0-5l2-2a3.5 3.5 0 0 1 5 5l-1 1M15 12a3.5 3.5 0 0 1 0 5l-2 2a3.5 3.5 0 0 1-5-5l1-1" />,
+  references: (
+    <path d="M9 12a3.5 3.5 0 0 1 0-5l2-2a3.5 3.5 0 0 1 5 5l-1 1M15 12a3.5 3.5 0 0 1 0 5l-2 2a3.5 3.5 0 0 1-5-5l1-1" />
+  ),
 };
