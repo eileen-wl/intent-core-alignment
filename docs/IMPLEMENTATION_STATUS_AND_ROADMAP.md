@@ -242,10 +242,12 @@ This sequence is locked. Steps must not be skipped or silently reordered. Any sc
    commit is made; (2) the feature branch is pushed; (3) Step 6 is
    merged into main; (4) local main is synchronised and clean. Step 7
    is not planned or implemented by this document.
-7. Role-aware Dashboard
+7. Role-aware Dashboard                                            [DONE — see Section J, dated 2026-08-01]
 8. Necessary ftrack Version / Note / link extensions
 9. Evaluation, complete demonstration, and project close-out
 ```
+
+**Note added 2026-08-01 (Section J below has the full record):** Step 7 (Role-aware Dashboard, delivered as three role-aware workspaces — VFX Supervisor, CG Supervisor, Artist — plus their shared Review Inbox architecture) is complete on branch `recovery/step7c2-functional-clean`. Step 8 (ftrack Version/Note/link extensions) is next; visual refinement is deliberately sequenced after Step 8 and before Step 9, not immediately after Step 7 — see Section J for the full reasoning and evidence. The Step 6 entry above is left exactly as originally recorded (this document predates verification of Step 6's merge status into `main` proper from this branch).
 
 ---
 
@@ -337,3 +339,63 @@ Each future step below states purpose, minimum prototype scope, dependencies, ex
 - **Dependencies:** Steps 1–8.
 - **Explicit exclusions:** no new product capability introduced at this step — it is evaluation and documentation of what Steps 0–8 built.
 - **Acceptance evidence required:** an updated version of this document and `docs/VALIDATION_EVIDENCE.md` reflecting the final state, with the same evidence-type discipline (automated test / repository evidence / manual owner-supplied) applied throughout.
+
+---
+
+## J. Step 7 Completion (dated 2026-08-01)
+
+**Recorded 2026-08-01, branch `recovery/step7c2-functional-clean`, HEAD `dbf2a30` at time of recording.** This section is additive — it records Step 7's completion state as of this date without altering any Step 0–6 entry above (Sections C–I remain exactly as originally written; where this branch's actual history differs from what Section H/I describe for Step 6's merge lineage, that is noted above in Section H rather than corrected in place).
+
+### J.1 Step 7 scope and sub-step status
+
+Step 7 ("Role-aware Dashboard" in Section H/I's original naming) was delivered as three role-aware production workspaces plus their shared cross-role architecture, sequenced as 7A → 7B → 7C1 → 7C2 → 7C3 → 7C4 → 7C5:
+
+| Sub-step | Scope | Status |
+|---|---|---|
+| 7A | Roles/identity/permissions demo scaffold, information architecture and route planning (`docs/step-7/02-05_*.md`) | Done |
+| 7B | Shared design foundation, App Shell, Demo identity, shared Signal/ftrack/authority components (`docs/step-7/07-12_*.md`) | Done |
+| 7C-1 | VFX foundations: Role-selection Home, VFX Workspace Home/Review Inbox/Shots, work-item architecture (`docs/step-7/13-19_*.md`) | Done |
+| 7C-2 | VFX Intent Workspace (Core Anchor lifecycle UI) | Done |
+| 7C-3 | VFX Alignment, Versions, Activity tabs; VFX close-out | Done |
+| 7C-4 | CG Supervisor Workspace: Execution Anchor, CG Review Inbox, Tasks, Dependencies/Escalations, Version Review, Activity | Done |
+| 7C-5 | Artist Workspace: Artist Review Inbox, Tasks, Task Overview, Current Version, Feedback History, real Artist Agent guidance generation (including the `artist_iteration_guidance.v2` DeepSeek fix) | Done |
+
+**Step 7 as a whole is complete on this branch.** The global functional audit (`docs/step-7/20_STEP_7C_GLOBAL_FUNCTIONAL_AUDIT.md`, corrected 2026-08-01) found no functional blocker across any of the three workspaces, any of the nine Agent capabilities, the Review Inbox architecture, the Anchor/Decision/HumanGate chain, or role-aware deep-link security — see J.5 below for the verdict in full.
+
+### J.2 Final route sets by role
+
+**VFX Supervisor** (sidebar: Workspace Home · Review Inbox · Shots): `/vfx`, `/vfx/inbox`, `/vfx/shots`, `/vfx/shots/[id]`, `/vfx/shots/[id]/intent`, `/versions`, `/alignment`, `/activity` (5-tab `ContextTabs`: Overview · Intent · Versions · Alignment · Activity).
+
+**CG Supervisor** (sidebar: Workspace Home · Review Inbox · Tasks): `/cg`, `/cg/inbox`, `/cg/tasks`, `/cg/tasks/[id]`, `/execution`, `/version-review`, `/dependencies`, `/activity` (5-tab `ContextTabs`: Overview · Execution · Version Review · Dependencies · Activity).
+
+**Artist** (sidebar: Workspace Home · Review Inbox · Tasks): `/artist`, `/artist/inbox`, `/artist/tasks`, `/artist/tasks/[id]`, `/current-version`, `/feedback-history` (3-tab `ContextTabs`, deliberately narrower than VFX/CG per 7C-5's own scope: Task Overview · Current Version · Feedback History — no Intent/Execution/Dependencies/Decisions tab for Artist).
+
+Shared entry: `/` (Role-selection Home, three real role-entry cards), `/demo` (permanent redirect to `/`), `/dev*` (development-mode previews, out of product scope). Legacy pre-Step-7 engineering workflow (`/shots`, `/shots/[id]`, `/shots/[id]/versions/[id]`) remains fully functional and is where legacy `AlignmentAssessment` generation/Accept-Reject still lives (read-only compatibility history only inside the new `/vfx` workspace, per `docs/step-7/14_...md` §5.2).
+
+No dead-end route was found in any of the three role sidebars, tab sets, or Review Inboxes.
+
+### J.3 Core Anchor, Execution Anchor, and Artist Guidance completion
+
+**Core Anchor** (`intent/core_anchor_service.py`): full draft → pending `HumanGate` → confirm/reject → `Decision` cycle is real and complete, backed by a DB partial-unique-index enforcing at most one confirmed revision per Anchor. Draft revisions are editable in place (`update_draft_revision`) until confirmed; confirmed/rejected/superseded revisions become immutable and are retained, never overwritten. Drafting itself (`core_anchor_drafting` capability) remains deterministic-only — no DeepSeek generator was ever built for this specific capability (confirmed via `core_agent_service.py`'s own module docstring); this is the one Agent capability in the whole system with no live-provider path to validate.
+
+**Execution Anchor** (`intent/execution_anchor_service.py`): the same draft → pending gate → confirm/reject → `Decision` cycle, plus a capability Core Anchor does not have — `create_draft_revision_from_confirmed`, a "new draft from the currently-confirmed revision" endpoint, not just a blank draft. Drafting (`execution_anchor_drafting` capability, `cg_agent_service.py`) has a real `DeepSeekExecutionAnchorDraftGenerator` and **was live-validated during implementation**: `provider=deepseek`, `model=deepseek-v4-flash`, `prompt_version=cg_execution_anchor_drafting.v1`, a succeeded `AgentRun` and a real `ContextSnapshot`, all eight supported Execution Anchor fields (`technical_boundaries`, `parameter_ranges`, `delivery_conditions`, `production_ready_criteria`, `downstream_dependencies`, `publish_requirements`, `allowed_refinements`, `escalation_conditions`) persisted as a Draft, with Human CG Supervisor confirmation still required before it takes effect — nothing was auto-confirmed. This validation is reported by the project owner (the same evidence discipline as every other "Manual owner-supplied execution" / "Manual owner-authorised real-provider execution" row already in `docs/VALIDATION_EVIDENCE.md`); the durable repository record for it is added in that document's own Step 7 section (§ below in `VALIDATION_EVIDENCE.md`), closing what had been a real gap — implementation and provider validation both existed, but no committed evidence of either did until this documentation pass.
+
+**Artist Guidance** (`agents/artist_guidance_service.py`, capability `iteration_guidance`): complete, and the one capability in Step 7 with first-hand, this-session live verification rather than only a project-owner report. A real `v1` DeepSeek call failed with `finish_reason="length"` and empty content, root-caused to the configured model's internal reasoning tokens consuming the entire completion budget before any visible JSON. Fixed via a new `artist_iteration_guidance.v2` prompt/schema (every previously-unbounded field now bounded, evidence-per-item capped at exactly one) plus a `disable_reasoning=True` flag scoped to only this capability's call into the shared `model_gateway.generate_deepseek()` — every other capability's behavior is unchanged. Live-verified this session: a real `v2` generation succeeded (`AgentRun 31cfa3ad-...`, ~14s, non-deterministic real content citing the correct Core/Execution Anchor revisions); confirming a newer Execution Anchor revision correctly flipped `guidance_state` to `outdated`; Regenerate succeeded and created exactly one new row (`AgentRun a3a15b8c-...`); the two pre-fix failed attempts created zero orphan rows (row count matched exactly before/after). Full record: `VALIDATION_EVIDENCE.md`'s Step 7 section below.
+
+### J.4 Agent capability matrix summary
+
+Of the nine registered Agent capabilities (`agents/prompt_registry.py`), the completion state as of this date:
+
+- **Real-DeepSeek-validated with durable, reproducible-from-repository evidence:** `intent_decomposition`, `context_reconstruction`, `alignment_assessment` (legacy, superseded by `cross_role_assessment` for the new VFX Workspace, not deterministic-only), `creative_review`, `execution_review`, `cross_role_assessment`.
+- **Real-DeepSeek-validated, evidence added this documentation pass:** `execution_anchor_drafting` (project-owner-reported, per J.3 above), `iteration_guidance` v2 (this session's own first-hand verification, per J.3 above).
+- **Deterministic-only, no DeepSeek code path exists:** `core_anchor_drafting` — the sole remaining gap of this kind in the system.
+
+Every capability's persisted result, regardless of provider, routes through the same shared `ContextSnapshot`/`AgentRun` execution envelope (`agents/runtime.py::execute_agent`) with atomic failure semantics: a provider, validation, or domain-persistence failure always leaves `AgentRun.status="failed"` with the `ContextSnapshot` preserved and no partial domain result — confirmed for every capability that has ever had a real-provider failure recorded (`execution_review`, `iteration_guidance`, `cross_role_assessment` all have at least one documented real truncation/validation failure with zero orphan rows).
+
+### J.5 Global functional-audit verdict
+
+`docs/step-7/20_STEP_7C_GLOBAL_FUNCTIONAL_AUDIT.md` (read-only audit, corrected 2026-08-01): **no functional blocker found** across any of the three workspaces, any of the nine Agent capabilities, the Review Inbox work-item architecture, the Core/Execution Anchor → HumanGate → Decision chain, or role-aware deep-link/`returnTo` security. Remaining items are documentation debt (this section and `VALIDATION_EVIDENCE.md`'s Step 7 addition close the largest of them) and small non-blocking UX gaps (a copy-wording mismatch on the Re-anchor Proposal link; no staleness indicator for CG Supervisor Review analogous to Artist's `guidance_state`) — see that document's §8/§10 for the complete, itemized list. Final recommendation: **functionally ready for visual refinement**, independent of when that pass is actually scheduled (see J.6).
+
+### J.6 Visual refinement is deferred; Step 8 is next
+
+**Product-sequencing decision, recorded here:** visual refinement is deliberately deferred until **after Step 8** (necessary ftrack Version/Note/entity-link extensions) and **before Step 9** (final evaluation, complete demonstration, project close-out) — not immediately after Step 7C, even though Step 7C is functionally ready for it. This is a scheduling decision layered on top of a readiness finding, not a contradiction of it: Step 7C's functional completeness does not depend on Step 8 happening first, and Step 8's ftrack extensions do not depend on the visual pass having happened first. The locked order from Section H therefore continues unchanged past Step 7: **Step 8 — Necessary ftrack Version / ReviewNote / entity-link extensions** is the next step, exactly as originally scoped in Section I above (validate the targeted ftrack `AssetVersion`/Note relationships against the real test workspace; per-Shot Version/Note sync; an ICAS link or ftrack Action entry point; still no autonomous write-back). Visual refinement follows Step 8; Step 9 (evaluation and close-out) follows the visual pass.
