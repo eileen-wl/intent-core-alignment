@@ -120,15 +120,17 @@ def _evidence(
 # limits exactly -- kept here as plain constants rather than introspected
 # from the pydantic model so the deterministic generator's intent stays
 # readable; if the contract's bounds ever change, update both together.
-_SUMMARY_LIMIT: Final = 280
-_WHY_LIMIT: Final = 420
-_PRACTICAL_ACTION_LIMIT: Final = 360
-_SELF_CHECK_LIMIT: Final = 320
-_NOTE_LIMIT: Final = 260
-_EXECUTIVE_SUMMARY_LIMIT: Final = 650
-_MAX_NON_NEGOTIABLES: Final = 3
-_MAX_ALLOWED_VARIATIONS: Final = 3
-_MAX_FEEDBACK_TRANSLATIONS: Final = 3
+# Step 7C-5 fix (v2): tightened together with the contract's own v2
+# bound pass (see that module's docstring) -- same numbers.
+_SUMMARY_LIMIT: Final = 200
+_WHY_LIMIT: Final = 240
+_PRACTICAL_ACTION_LIMIT: Final = 220
+_SELF_CHECK_LIMIT: Final = 200
+_NOTE_LIMIT: Final = 220
+_EXECUTIVE_SUMMARY_LIMIT: Final = 400
+_MAX_NON_NEGOTIABLES: Final = 2
+_MAX_ALLOWED_VARIATIONS: Final = 2
+_MAX_FEEDBACK_TRANSLATIONS: Final = 2
 
 
 def _bounded(text: str, *, limit: int) -> str:
@@ -473,6 +475,16 @@ class DeepSeekArtistGuidanceGenerator:
             ),
             output_model=ArtistAgentGuidanceOutput,
             max_tokens=registration.max_output_tokens,
+            # Step 7C-5 fix: a real call was observed to hit
+            # finish_reason="length" with fully empty content --
+            # `model_gateway`'s own docstring confirms the configured
+            # model's internal reasoning phase can consume the entire
+            # completion-token budget on this capability's content-rich
+            # ContextSnapshot before any visible JSON is produced.
+            # Disabling reasoning for this capability only (every other
+            # capability keeps its default, unchanged behaviour) frees
+            # the whole budget for the required structured output.
+            disable_reasoning=True,
         )
 
 

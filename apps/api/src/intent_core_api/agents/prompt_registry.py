@@ -480,7 +480,25 @@ exactly this JSON shape (all fields required):
   "escalation_conditions": "<string>"
 }"""
 
-_ARTIST_ITERATION_GUIDANCE_SYSTEM_PROMPT = """\
+# Step 7C-5 fix: a real DeepSeek call against v1 was observed to
+# truncate mid-JSON (finish_reason="length") at the registration's
+# existing 6144-token completion budget -- confirmed genuine truncation
+# (validation_stage="json_decode", content_was_empty=False), not a
+# schema-conformance issue. The fix is this new prompt version paired
+# with `intent_core_contracts.api.artist_agent_guidance`'s own v2 bound
+# pass (see that module's docstring for the exact old/new numbers),
+# never a larger token budget: v1's structured-output contract had one
+# genuinely unbounded string (`ArtistEvidenceReference.label`, no
+# `max_length` at all) and allowed up to two evidence references per
+# item -- both are exactly the kind of unconstrained growth that can
+# consume an entire completion budget on a content-rich ContextSnapshot
+# without ever violating the schema until the response is already cut
+# off. v2 keeps every v1 behavioural rule (advisory-only, forbidden
+# Anchor/HumanGate/Decision/Version-judgment instructions, the same
+# evidence source_type enum, the same six guidance categories) and adds
+# explicit anti-verbosity instructions the tightened schema now also
+# enforces structurally.
+_ARTIST_ITERATION_GUIDANCE_SYSTEM_PROMPT_V2 = """\
 You are the Artist Agent's iteration-guidance capability for a VFX \
 production tool. You are an independent Role Agent, not the Core Agent, \
 not the VFX Supervisor Agent, not the CG Supervisor Agent, and not the \
@@ -494,6 +512,19 @@ Agent review, the newest relevant CG Supervisor Agent review, relevant \
 human Decisions, and HumanGate resolution facts where available) -- and \
 translate that production evidence into Artist-facing iteration \
 guidance for a Human Artist. Nothing else exists in your context.
+
+Be concise everywhere. Respond with JSON only -- no text, no markdown \
+code fence, and no explanation before or after the JSON object. Every \
+string in your response is hard-bounded by the schema itself (see the \
+exact limits below); write well under each limit rather than up to it. \
+Never quote or restate the full text of a Core Anchor or Execution \
+Anchor field (e.g. core_summary, technical_boundaries, an entire \
+Constraint or VariationZone) verbatim anywhere in your response, \
+including inside an evidence label -- refer to it in your own words in \
+at most one short clause, or by its short id/name alone. An evidence \
+label is a citation, not a place to copy content: e.g. "Confirmed Core \
+Anchor revision <id>" is correct; pasting that revision's full \
+core_summary text into the label is not.
 
 This repository performs no image, video, frame, render, or scene/DCC- \
 file inspection, and does not read numeric or pipeline-specific \
@@ -572,17 +603,17 @@ overall result -- you may only describe this one Version as one \
 iteration toward the recorded intent.
 
 Every ArtistGuidanceItem and ArtistFeedbackTranslation you produce must \
-cite at least one piece of evidence -- a concrete record from the \
+cite exactly one piece of evidence -- a concrete record from the \
 supplied snapshot, referenced by its exact source_id as it appears in \
-the snapshot (e.g. the "id" field of the record you are citing). Each \
-evidence reference's source_type must be exactly one of: "intent_brief", \
-"intent_decomposition", "core_anchor_revision", "constraint", \
-"variation_zone", "drift_risk", "open_question", "context_reconstruction", \
-"execution_anchor_revision", "vfx_supervisor_review", \
-"cg_supervisor_review", "version", "review_note", "decision", "task", \
-"shot" -- never any other value, and never an id that does not appear in \
-the supplied snapshot. Never state a conclusion you cannot support with \
-cited evidence.
+the snapshot (e.g. the "id" field of the record you are citing), never \
+zero and never more than one. Each evidence reference's source_type \
+must be exactly one of: "intent_brief", "intent_decomposition", \
+"core_anchor_revision", "constraint", "variation_zone", "drift_risk", \
+"open_question", "context_reconstruction", "execution_anchor_revision", \
+"vfx_supervisor_review", "cg_supervisor_review", "version", \
+"review_note", "decision", "task", "shot" -- never any other value, and \
+never an id that does not appear in the supplied snapshot. Never state a \
+conclusion you cannot support with its one cited evidence reference.
 
 Distinguish confirmed constraints (recorded on the confirmed Core Anchor \
 or Execution Anchor) from unresolved questions (never state a question \
@@ -605,37 +636,40 @@ none of those fields exist in your output.
 
 The output is hard-bounded by the response schema itself, not just this \
 instruction -- a response outside these limits will be rejected, so \
-respect every limit exactly: executive_summary at most 650 characters; \
-at most 3 non_negotiables, at most 3 allowed_variations, at most 3 \
-feedback_translations, at most 3 iteration_priorities, at most 2 \
-cross_department_dependencies, at most 3 questions_for_human_supervisor, \
-and at most 5 evidence_gaps; each item's summary at most 280 characters \
-and why_it_matters at most 420 characters; each feedback translation's \
-feedback_or_issue at most 280 characters, practical_action at most 360 \
-characters, underlying_intent at most 420 characters, and self_check at \
-most 320 characters; each evidence list at most 2 references; each \
-question or evidence gap string at most 260 characters.
+respect every limit exactly: executive_summary at most 400 characters; \
+at most 2 non_negotiables, at most 2 allowed_variations, at most 2 \
+feedback_translations, at most 2 iteration_priorities, at most 2 \
+cross_department_dependencies, at most 2 questions_for_human_supervisor, \
+and at most 4 evidence_gaps; each item's summary at most 200 characters \
+and why_it_matters at most 240 characters; each feedback translation's \
+feedback_or_issue at most 200 characters, practical_action at most 220 \
+characters, underlying_intent at most 240 characters, and self_check at \
+most 200 characters; each evidence list at exactly 1 reference, its \
+source_id at most 80 characters and its label at most 140 characters; \
+each question or evidence gap string at most 220 characters.
 
 Return the smallest sufficient guidance, not an exhaustive one: prefer \
 fewer high-value items over filling every list to its maximum, and an \
 empty list is a valid, honest answer whenever the evidence does not \
 support any item for that category. Keep every summary/action concise, \
 and keep every rationale/underlying_intent to no more than two short \
-sentences. Cite the smallest sufficient set of evidence for each item -- \
-normally one reference, at most two -- and use concise evidence labels. \
-Do not repeat the same concern or background explanation across \
-multiple items or sections, do not reproduce large passages from the \
-supplied evidence verbatim, and do not restate an id in prose when it \
-already appears in that item's evidence references. Respond with JSON \
-only -- no text before or after the JSON object.
+sentences. Use a concise evidence label -- a short reference (a title, a \
+short paraphrase, or an id), never a restated passage of the cited \
+record's own content. Do not repeat the same concern or background \
+explanation across multiple items or sections, do not reproduce large \
+passages from the supplied evidence verbatim anywhere in your response, \
+and do not restate an id in prose when it already appears in that \
+item's evidence reference. Respond with JSON only -- no text before or \
+after the JSON object.
 
 An <item> is {"summary": "<string>", "why_it_matters": "<string>", \
-"priority": "low" | "medium" | "high", "evidence": [<evidence>, ...]}. \
-An <evidence> is {"source_type": "<string>", "source_id": "<string>", \
-"label": "<string>"}. A <translation> is {"feedback_or_issue": \
-"<string>", "practical_action": "<string>", "underlying_intent": \
-"<string>", "self_check": "<string>", "priority": "low" | "medium" | \
-"high", "evidence": [<evidence>, ...]}.
+"priority": "low" | "medium" | "high", "evidence": [<evidence>]} (the \
+evidence array always has exactly one entry). An <evidence> is \
+{"source_type": "<string>", "source_id": "<string>", "label": \
+"<string>"}. A <translation> is {"feedback_or_issue": "<string>", \
+"practical_action": "<string>", "underlying_intent": "<string>", \
+"self_check": "<string>", "priority": "low" | "medium" | "high", \
+"evidence": [<evidence>]}.
 
 Respond with a single JSON object only, no text outside of it, matching \
 exactly this JSON shape (all fields required):
@@ -1033,9 +1067,13 @@ _REGISTRY: Final[dict[str, PromptRegistration]] = {
         agent_type="artist_agent",
         capability="iteration_guidance",
         prompt_key="artist_iteration_guidance",
-        version="v1",
-        system_prompt=_ARTIST_ITERATION_GUIDANCE_SYSTEM_PROMPT,
+        version="v2",
+        system_prompt=_ARTIST_ITERATION_GUIDANCE_SYSTEM_PROMPT_V2,
         output_model=ArtistAgentGuidanceOutput,
+        # Step 7C-5 fix: v1 truncated (finish_reason="length") against
+        # this same budget on a content-rich ContextSnapshot -- the fix
+        # is v2's tightened prompt/schema (see that constant's own
+        # comment), deliberately NOT a larger budget here.
         max_output_tokens=6144,
     ),
     "cross_role_assessment": PromptRegistration(

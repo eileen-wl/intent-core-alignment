@@ -28,6 +28,23 @@ docstring for the companion diagnostics work): every list and string
 field below carries an explicit ``Field`` length limit, not just a
 prompt-text instruction.
 
+Step 7C-5 fix (v2, see ``agents/prompt_registry.py``'s
+``artist_iteration_guidance.v2`` registration): a real DeepSeek call was
+observed to truncate mid-JSON (``finish_reason="length"``) at the
+existing 6144-token completion budget. The chosen fix tightens this
+contract's own bounds rather than raising the budget --
+``ArtistEvidenceReference.label`` previously had no ``max_length`` at
+all (the one genuinely unbounded string in the whole output, and the
+likeliest place a verbose model response would grow without limit,
+e.g. by quoting Anchor content into a citation label instead of a
+short reference), every per-item ``evidence`` list is capped at exactly
+one reference instead of up to two, and every string/list bound below
+was reduced to the smallest size that still fits the six required
+guidance categories (what should change, why it matters, what must
+remain fixed, what variation is allowed, risks to watch, when to
+escalate) at least one concise item each. No field was added, removed,
+or renamed -- this is strictly bound-tightening.
+
 ``ArtistAgentGuidanceRead`` is the persisted, immutable API read shape.
 ``ArtistGuidanceGenerateRequest`` carries the ``task_id`` the Human
 Artist is submitting for -- the domain model has no reliable Version ->
@@ -90,14 +107,25 @@ def _require_non_blank_items(values: list[str]) -> list[str]:
 # A short, bounded free-text item (questions_for_human_supervisor,
 # evidence_gaps) -- non-blank is still enforced separately via
 # `_require_non_blank_items` since `min_length` alone would accept a
-# whitespace-only string.
-_BoundedNote = Annotated[str, Field(min_length=1, max_length=260)]
+# whitespace-only string. Tightened 260 -> 220 chars in the v2 bound
+# pass (see module docstring).
+_BoundedNote = Annotated[str, Field(min_length=1, max_length=220)]
 
 
 class ArtistEvidenceReference(BaseModel):
     source_type: ArtistEvidenceSourceType
-    source_id: str = Field(min_length=1)
-    label: str = Field(min_length=1)
+    # v2 bound pass: previously unbounded (only `min_length=1`) -- the
+    # one genuinely unbounded string in this whole output, and the
+    # likeliest place a verbose response grows without limit. Real
+    # `source_id` values are always Task/Shot/record UUIDs (36 chars);
+    # 80 leaves headroom without permitting free text.
+    source_id: str = Field(min_length=1, max_length=80)
+    # v2 bound pass: previously unbounded. A citation label, not a
+    # place to quote Anchor or evidence content -- 140 chars fits every
+    # real label already produced by `DeterministicArtistGuidanceGenerator`
+    # (e.g. "Confirmed Core Anchor revision <uuid>") with headroom, while
+    # still forbidding a verbose restatement of Anchor text.
+    label: str = Field(min_length=1, max_length=140)
 
     @field_validator("label")
     @classmethod
@@ -106,14 +134,16 @@ class ArtistEvidenceReference(BaseModel):
 
 
 class ArtistGuidanceItem(BaseModel):
-    summary: str = Field(min_length=1, max_length=280)
-    why_it_matters: str = Field(min_length=1, max_length=420)
+    # v2 bound pass: 280 -> 200, 420 -> 240 (see module docstring).
+    summary: str = Field(min_length=1, max_length=200)
+    why_it_matters: str = Field(min_length=1, max_length=240)
     priority: ArtistGuidancePriority
     # Every item must be evidence-backed -- an empty list would mean an
     # unsupported observation, which this capability must never
-    # produce. Capped at 2: the smallest sufficient set, per the system
-    # prompt's own instruction, not an exhaustive citation list.
-    evidence: list[ArtistEvidenceReference] = Field(min_length=1, max_length=2)
+    # produce. v2 bound pass: capped at exactly 1 (was up to 2) -- the
+    # single most direct token-budget lever, since evidence entries are
+    # the most repeated structure in the output.
+    evidence: list[ArtistEvidenceReference] = Field(min_length=1, max_length=1)
 
     @field_validator("summary", "why_it_matters")
     @classmethod
@@ -127,12 +157,13 @@ class ArtistFeedbackTranslation(BaseModel):
     ``ReviewNote`` row.
     """
 
-    feedback_or_issue: str = Field(min_length=1, max_length=280)
-    practical_action: str = Field(min_length=1, max_length=360)
-    underlying_intent: str = Field(min_length=1, max_length=420)
-    self_check: str = Field(min_length=1, max_length=320)
+    # v2 bound pass: 280 -> 200, 360 -> 220, 420 -> 240, 320 -> 200.
+    feedback_or_issue: str = Field(min_length=1, max_length=200)
+    practical_action: str = Field(min_length=1, max_length=220)
+    underlying_intent: str = Field(min_length=1, max_length=240)
+    self_check: str = Field(min_length=1, max_length=200)
     priority: ArtistGuidancePriority
-    evidence: list[ArtistEvidenceReference] = Field(min_length=1, max_length=2)
+    evidence: list[ArtistEvidenceReference] = Field(min_length=1, max_length=1)
 
     @field_validator("feedback_or_issue", "practical_action", "underlying_intent", "self_check")
     @classmethod
@@ -141,30 +172,38 @@ class ArtistFeedbackTranslation(BaseModel):
 
 
 class ArtistAgentGuidanceOutput(BaseModel):
-    executive_summary: str = Field(min_length=1, max_length=650)
+    # v2 bound pass: 650 -> 400.
+    executive_summary: str = Field(min_length=1, max_length=400)
     # What the Shot/scene is trying to achieve.
     creative_intent_read: ArtistGuidanceItem
     # What the current Task is responsible for.
     task_goal: ArtistGuidanceItem
     # A read of this specific Version as one iteration toward that goal.
     current_iteration_read: ArtistGuidanceItem
-    # Constraints that are not open to variation.
-    non_negotiables: list[ArtistGuidanceItem] = Field(max_length=3)
-    # Areas explicitly open to Artist variation.
-    allowed_variations: list[ArtistGuidanceItem] = Field(max_length=3)
-    # Existing feedback/evidence translated into practical action.
-    feedback_translations: list[ArtistFeedbackTranslation] = Field(max_length=3)
+    # Constraints that are not open to variation. v2 bound pass: 3 -> 2.
+    non_negotiables: list[ArtistGuidanceItem] = Field(max_length=2)
+    # Areas explicitly open to Artist variation. v2 bound pass: 3 -> 2.
+    allowed_variations: list[ArtistGuidanceItem] = Field(max_length=2)
+    # Existing feedback/evidence translated into practical action. v2
+    # bound pass: 3 -> 2.
+    feedback_translations: list[ArtistFeedbackTranslation] = Field(max_length=2)
     # What the Human Artist should address first on the next iteration.
-    iteration_priorities: list[ArtistGuidanceItem] = Field(max_length=3)
+    # v2 bound pass: 3 -> 2.
+    iteration_priorities: list[ArtistGuidanceItem] = Field(max_length=2)
     # Dependencies requiring coordination with another department or
     # supervisor -- never an instruction to resolve them unilaterally.
     cross_department_dependencies: list[ArtistGuidanceItem] = Field(max_length=2)
-    # Questions requiring human judgment.
-    questions_for_human_supervisor: list[_BoundedNote] = Field(max_length=3)
+    # Questions requiring human judgment. v2 bound pass: 3 -> 2.
+    questions_for_human_supervisor: list[_BoundedNote] = Field(max_length=2)
     # Missing media, scene, parameter, or pipeline evidence that limits
     # the guidance. Must record the missing-media/technical-evidence
-    # limitation explicitly whenever no such evidence exists.
-    evidence_gaps: list[_BoundedNote] = Field(max_length=5)
+    # limitation explicitly whenever no such evidence exists. v2 bound
+    # pass: 5 -> 4 (kept at 4, not 3: the mandatory inspection-boundary
+    # disclosure plus up to three independent real gap conditions --
+    # missing Execution Anchor guidance, no Review Notes, no VFX
+    # Supervisor Agent review -- can genuinely co-occur, e.g. for a
+    # bare Task with no recorded context yet).
+    evidence_gaps: list[_BoundedNote] = Field(max_length=4)
 
     @field_validator("executive_summary")
     @classmethod

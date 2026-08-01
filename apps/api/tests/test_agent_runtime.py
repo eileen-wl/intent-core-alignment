@@ -385,6 +385,69 @@ def test_generate_deepseek_makes_one_non_streaming_json_mode_call(
     assert call["response_format"] == {"type": "json_object"}
     assert call["max_tokens"] == 1024
     assert "stream" not in call
+    # `disable_reasoning` defaults to False -- every existing capability's
+    # request shape must stay exactly as it was before this parameter
+    # existed (Step 7C-5 fix).
+    assert call["extra_body"] is None
+
+
+def test_generate_deepseek_disable_reasoning_sends_thinking_disabled(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Step 7C-5 fix: `disable_reasoning=True` must send DeepSeek's own
+    `{"thinking": {"type": "disabled"}}` request field -- confirmed
+    against the real provider to remove `reasoning_tokens` from the
+    response, freeing the configured budget for visible content on a
+    capability whose reasoning phase alone can otherwise consume it."""
+    import openai
+
+    monkeypatch.setattr(openai, "OpenAI", _FakeOpenAIClient)
+
+    model_gateway.generate_deepseek(
+        api_key="k",
+        model_name="deepseek-v4-flash",
+        system_prompt="json",
+        user_content="{}",
+        output_model=_FakeOutput,
+        max_tokens=1024,
+        disable_reasoning=True,
+    )
+
+    call = _FakeOpenAIClient.last_instance.chat.completions.calls[0]  # type: ignore[union-attr]
+    assert call["extra_body"] == {"thinking": {"type": "disabled"}}
+
+
+def test_generate_deepseek_records_reasoning_tokens_in_diagnostics(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Step 7C-5 fix: a truncated/empty response's diagnostics must
+    surface `reasoning_tokens` so a future truncation can be told apart
+    from ordinary content growth (this is exactly how the real Artist
+    Agent truncation was root-caused)."""
+    import openai
+
+    class _ReasoningUsage(_FakeUsage):
+        def __init__(self) -> None:
+            super().__init__(prompt_tokens=100, completion_tokens=1024, total_tokens=1124)
+            self.completion_tokens_details = type("Details", (), {"reasoning_tokens": 1024})()
+
+    class _ReasoningTruncatedClient(_FakeOpenAIClient):
+        def __init__(self, *, api_key: str, base_url: str) -> None:
+            super().__init__(api_key=api_key, base_url=base_url)
+            self.chat = _FakeChat(None, finish_reason="length", usage=_ReasoningUsage())
+
+    monkeypatch.setattr(openai, "OpenAI", _ReasoningTruncatedClient)
+
+    with pytest.raises(AgentGenerationError, match="reasoning_tokens=1024"):
+        model_gateway.generate_deepseek(
+            api_key="k",
+            model_name="deepseek-v4-flash",
+            system_prompt="json",
+            user_content="{}",
+            output_model=_FakeOutput,
+            max_tokens=1024,
+            disable_reasoning=True,
+        )
 
 
 def test_generate_deepseek_raises_agent_generation_error_on_empty_content(
@@ -961,6 +1024,7 @@ def test_schema_diagnostics_are_capped_at_ten_entries() -> None:
             configured_max_output_tokens=1024,
             prompt_tokens=None,
             completion_tokens=None,
+            reasoning_tokens=None,
             total_tokens=None,
             response_characters=0,
             content_was_empty=False,
