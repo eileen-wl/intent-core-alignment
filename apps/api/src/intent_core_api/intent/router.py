@@ -45,6 +45,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.agents import (
     artist_guidance_service,
+    cg_agent_service,
     cg_supervisor_review_service,
     context_reconstruction_service,
     core_agent_service,
@@ -381,6 +382,39 @@ async def create_execution_anchor_draft(
 ) -> ExecutionAnchorRevision:
     return await execution_anchor_service.create_draft_revision(
         session, actor, task_id, payload.model_dump()
+    )
+
+
+@router.post(
+    "/tasks/{task_id}/execution-anchor/generate",
+    response_model=ExecutionAnchorRevisionRead,
+    status_code=201,
+)
+async def generate_execution_anchor_draft(
+    task_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> ExecutionAnchorRevision:
+    return await cg_agent_service.generate_execution_anchor_draft(session, task_id)
+
+
+@router.post(
+    "/tasks/{task_id}/execution-anchor/drafts/from-confirmed",
+    response_model=ExecutionAnchorRevisionRead,
+    status_code=201,
+)
+async def create_execution_anchor_draft_from_confirmed(
+    task_id: uuid.UUID,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> ExecutionAnchorRevision:
+    """Step 7C-4 Execution Anchor workflow: starts a new draft revision
+    from the Task's current confirmed Execution Anchor -- the
+    human-authored counterpart to `POST /execution-anchor/generate`
+    (Agent-authored from the confirmed Core Anchor). No request body: the
+    starting content is always the confirmed revision's own real
+    content, never client-supplied.
+    """
+    return await execution_anchor_service.create_draft_revision_from_confirmed(
+        session, actor, task_id
     )
 
 

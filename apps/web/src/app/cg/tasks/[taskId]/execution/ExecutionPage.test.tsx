@@ -1,5 +1,5 @@
 import type { CgInboxItemRead, ExecutionAnchorRevisionRead } from "@intent-core/contracts";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -9,17 +9,23 @@ vi.mock("next/navigation", () => ({
 
 const {
   createExecutionAnchorDraftActionMock,
+  createExecutionAnchorDraftFromConfirmedActionMock,
+  generateExecutionAnchorDraftActionMock,
   saveExecutionAnchorDraftActionMock,
   confirmExecutionAnchorRevisionActionMock,
   rejectExecutionAnchorRevisionActionMock,
 } = vi.hoisted(() => ({
   createExecutionAnchorDraftActionMock: vi.fn(),
+  createExecutionAnchorDraftFromConfirmedActionMock: vi.fn(),
+  generateExecutionAnchorDraftActionMock: vi.fn(),
   saveExecutionAnchorDraftActionMock: vi.fn(),
   confirmExecutionAnchorRevisionActionMock: vi.fn(),
   rejectExecutionAnchorRevisionActionMock: vi.fn(),
 }));
 vi.mock("@/features/cg/actions", () => ({
   createExecutionAnchorDraftAction: createExecutionAnchorDraftActionMock,
+  createExecutionAnchorDraftFromConfirmedAction: createExecutionAnchorDraftFromConfirmedActionMock,
+  generateExecutionAnchorDraftAction: generateExecutionAnchorDraftActionMock,
   saveExecutionAnchorDraftAction: saveExecutionAnchorDraftActionMock,
   confirmExecutionAnchorRevisionAction: confirmExecutionAnchorRevisionActionMock,
   rejectExecutionAnchorRevisionAction: rejectExecutionAnchorRevisionActionMock,
@@ -119,7 +125,7 @@ describe("ExecutionPage", () => {
     expect(screen.getByText("This Task is unavailable")).toBeVisible();
   });
 
-  it("no Execution Anchor: offers to start a draft when the Core Anchor is confirmed", () => {
+  it("no Execution Anchor: offers Generate as primary and Start blank draft as secondary when the Core Anchor is confirmed", () => {
     render(
       <ExecutionPage
         taskId="t1"
@@ -128,7 +134,10 @@ describe("ExecutionPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByRole("button", { name: "Start Execution Anchor draft" })).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Generate Execution Anchor draft" }),
+    ).toBeVisible();
+    expect(screen.getByRole("button", { name: "Start blank draft" })).toBeVisible();
   });
 
   it("no Execution Anchor: honestly blocks draft creation when the Core Anchor is not confirmed", () => {
@@ -144,7 +153,10 @@ describe("ExecutionPage", () => {
       screen.getByText(/requires a confirmed Core Anchor/),
     ).toBeVisible();
     expect(
-      screen.queryByRole("button", { name: "Start Execution Anchor draft" }),
+      screen.queryByRole("button", { name: "Generate Execution Anchor draft" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Start blank draft" }),
     ).not.toBeInTheDocument();
   });
 
@@ -159,11 +171,69 @@ describe("ExecutionPage", () => {
     );
     expect(screen.getByText(/owns Execution Anchor confirmation/)).toBeVisible();
     expect(screen.getByText("Technical boundaries")).toBeVisible();
-    expect(screen.getByRole("button", { name: "Confirm Execution Anchor" })).toBeVisible();
+    expect(screen.getByRole("button", { name: "Confirm Execution Anchor" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Discard draft" })).toBeVisible();
   });
 
-  it("confirmed revision: renders real content read-only, Core Anchor stays read-only context only", () => {
+  it("draft with no meaningful content: blocks Confirm and explains why, but Save stays enabled", () => {
+    render(
+      <ExecutionPage
+        taskId="t1"
+        data={data({
+          draftRevision: revision({ technical_boundaries: "   " }),
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Confirm Execution Anchor" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
+    expect(
+      screen.getByText(
+        /Add at least one execution boundary, criterion, dependency, refinement or escalation condition/,
+      ),
+    ).toBeVisible();
+  });
+
+  it("a newly generated/created draft with real content replaces stale blank local state after a server refresh", async () => {
+    const { rerender } = render(
+      <ExecutionPage
+        taskId="t1"
+        data={data({ draftRevision: null, coreAnchorConfirmed: true })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Generate Execution Anchor draft" })).toBeVisible();
+
+    // Simulates the real post-action flow: a Server Action succeeds,
+    // calls router.refresh(), and this same component instance
+    // re-renders with a freshly loaded, non-blank draft -- it is never
+    // unmounted/remounted, so a naive `useState(() => ...)` initializer
+    // would keep showing the old (blank) values.
+    rerender(
+      <ExecutionPage
+        taskId="t1"
+        data={data({
+          draftRevision: revision({
+            id: "generated-1",
+            technical_boundaries: "Generated: real boundaries from the confirmed Core Anchor.",
+          }),
+          coreAnchorConfirmed: true,
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByDisplayValue("Generated: real boundaries from the confirmed Core Anchor."),
+      ).toBeVisible();
+    });
+  });
+
+  it("confirmed revision: renders real content read-only, Core Anchor stays read-only context only, and offers a new revision from it", () => {
     render(
       <ExecutionPage
         taskId="t1"
@@ -182,12 +252,12 @@ describe("ExecutionPage", () => {
     expect(screen.getByText(/Confirmed Execution Anchor/)).toBeVisible();
     expect(screen.getByText("24fps, no motion blur.")).toBeVisible();
     expect(screen.getByText("Active Core Anchor (read-only)")).toBeVisible();
-    // Honest gap: no "start from confirmed" action exists.
+    expect(screen.getByRole("button", { name: "Create new revision" })).toBeVisible();
     expect(
-      screen.getByText(/Starting a new revision from this confirmed one is not yet supported/),
-    ).toBeVisible();
+      screen.queryByRole("button", { name: "Generate Execution Anchor draft" }),
+    ).not.toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Start Execution Anchor draft" }),
-    ).toBeVisible();
+      screen.queryByRole("button", { name: "Start blank draft" }),
+    ).not.toBeInTheDocument();
   });
 });

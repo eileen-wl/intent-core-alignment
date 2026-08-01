@@ -857,6 +857,121 @@ async def reset_uninitialized_shot_core_anchor_state(session: AsyncSession) -> u
     return shot.id
 
 
+async def reset_cg_demo_task_execution_anchor_state(session: AsyncSession) -> uuid.UUID:
+    """Dev-only reset (Step 7C-4 Execution Anchor workflow fix): puts the
+    CG demo Task's (`_ensure_cg_demo_task`, "Lighting Pass") Execution
+    Anchor back at its intended coherent baseline -- one draft revision
+    holding the real, meaningful seeded `_CG_DEMO_EXECUTION_DRAFT_CONTENT`,
+    with a real pending HumanGate, never confirmed -- even after a prior
+    browser session has moved it past that state (e.g. by confirming the
+    seeded draft, then starting and confirming a second, blank one).
+
+    `_ensure_cg_demo_task` only ever resolves-or-creates -- it never
+    resets an existing Task's Execution Anchor state once any revision
+    exists for it, so the intended meaningful-draft baseline becomes
+    permanently unreachable through the normal seed endpoint alone once
+    the demo Task's Execution Anchor has been confirmed. This function is
+    the smallest fix: it ensures the Project/Shot/Task and the Shot's
+    confirmed Core Anchor exist (via the same helpers `ensure_d1_scenario`
+    uses, if this is a fresh database), then deletes only this Task's own
+    ExecutionAnchor lifecycle rows -- every ExecutionAnchorRevision
+    (and every CGSupervisorReview/ArtistAgentGuidance/CrossRoleAssessment
+    that references one, none of which the normal seed ever creates
+    against this Task, but a manual/live-check session could have),
+    every HumanGate opened for one of those revisions, every Decision
+    recorded against one of those revisions, and the ExecutionAnchor row
+    itself -- before creating one fresh draft revision with the seeded
+    content. It never touches the Task's real open TaskDependency, never
+    touches any other Task/Shot, and never touches Core Anchor data.
+
+    Idempotent and safe to call repeatedly: re-running this after it has
+    already produced the intended baseline deletes that same one draft
+    and recreates an equivalent one.
+    """
+    project = await _resolve_or_create_project(session)
+    shot = await _resolve_or_create_shot(session, project)
+    task = await _resolve_or_create_task(
+        session,
+        shot,
+        external_id=CG_DEMO_TASK_EXTERNAL_ID,
+        name=_CG_DEMO_TASK_NAME,
+        department="lighting",
+    )
+
+    # The demo Task's Execution Anchor draft requires a confirmed Core
+    # Anchor for its Shot -- a no-op on every normal run, since this
+    # rich D1 Shot's Core Anchor is already established by
+    # `ensure_d1_scenario`.
+    await _ensure_confirmed_core_anchor(session, shot)
+
+    execution_anchor = await session.scalar(
+        select(ExecutionAnchor).where(ExecutionAnchor.task_id == task.id)
+    )
+    if execution_anchor is not None:
+        revisions = (
+            await session.scalars(
+                select(ExecutionAnchorRevision).where(
+                    ExecutionAnchorRevision.execution_anchor_id == execution_anchor.id
+                )
+            )
+        ).all()
+        revision_ids = [revision.id for revision in revisions]
+
+        if revision_ids:
+            # None of these dependent rows are FK-cascaded from
+            # ExecutionAnchorRevision -- each must be deleted explicitly,
+            # and before the revisions themselves, so no FK is ever left
+            # dangling mid-transaction. The normal seed never creates any
+            # of these three against this demo Task, but a prior manual/
+            # live-check session could have, so this reset must be
+            # correct even then.
+            await session.execute(
+                delete(CGSupervisorReview).where(
+                    CGSupervisorReview.execution_anchor_revision_id.in_(revision_ids)
+                )
+            )
+            await session.execute(
+                delete(ArtistAgentGuidance).where(
+                    ArtistAgentGuidance.execution_anchor_revision_id.in_(revision_ids)
+                )
+            )
+            await session.execute(
+                delete(CrossRoleAssessment).where(
+                    CrossRoleAssessment.execution_anchor_revision_id.in_(revision_ids)
+                )
+            )
+            await session.execute(
+                delete(HumanGate).where(HumanGate.execution_anchor_revision_id.in_(revision_ids))
+            )
+            await session.execute(
+                delete(Decision).where(
+                    Decision.entity_type == "execution_anchor_revision",
+                    Decision.entity_id.in_(revision_ids),
+                )
+            )
+
+        for revision in revisions:
+            await session.delete(revision)
+
+        # ExecutionAnchor.active_revision_id may still point at a
+        # just-deleted confirmed revision; clearing it first avoids a
+        # dangling FK value on the row this same transaction is about to
+        # delete anyway.
+        execution_anchor.active_revision_id = None
+        await session.flush()
+        await session.delete(execution_anchor)
+        await session.flush()
+
+    # create_draft_revision commits internally -- this is the single
+    # atomic transaction boundary for the whole reset: either the old
+    # state's removal and the new baseline's creation both land, or
+    # neither does.
+    await execution_anchor_service.create_draft_revision(
+        session, _SEED_ACTOR_CG, task.id, dict(_CG_DEMO_EXECUTION_DRAFT_CONTENT)
+    )
+    return task.id
+
+
 async def ensure_d1_scenario(session: AsyncSession) -> D1ScenarioResult:
     """Idempotent: safe to call on an empty database (creates the full
     baseline), on a database that already has it (pure reads, no

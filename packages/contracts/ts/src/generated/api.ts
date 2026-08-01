@@ -151,6 +151,33 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/demo/reset-cg-demo-task": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Cg Demo Task Endpoint
+         * @description Dev-only (Step 7C-4 Execution Anchor workflow fix): puts the CG
+         *     demo Task ("Lighting Pass") back at its coherent, meaningful-draft
+         *     Execution Anchor baseline on demand, so that scenario stays reliably
+         *     reachable even after a prior browser session has moved it past it
+         *     (e.g. by confirming a blank draft). Never adds a product-facing page
+         *     -- this is scaffolding at the same trust boundary as
+         *     `/ensure-d1-scenario`/`/reset-uninitialized-shot` (see module
+         *     docstring).
+         */
+        post: operations["reset_cg_demo_task_endpoint_internal_demo_reset_cg_demo_task_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/ping-worker": {
         parameters: {
             query?: never;
@@ -614,6 +641,48 @@ export interface paths {
         put?: never;
         /** Create Execution Anchor Draft */
         post: operations["create_execution_anchor_draft_intent_tasks__task_id__execution_anchor_drafts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/tasks/{task_id}/execution-anchor/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate Execution Anchor Draft */
+        post: operations["generate_execution_anchor_draft_intent_tasks__task_id__execution_anchor_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/tasks/{task_id}/execution-anchor/drafts/from-confirmed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Execution Anchor Draft From Confirmed
+         * @description Step 7C-4 Execution Anchor workflow: starts a new draft revision
+         *     from the Task's current confirmed Execution Anchor -- the
+         *     human-authored counterpart to `POST /execution-anchor/generate`
+         *     (Agent-authored from the confirmed Core Anchor). No request body: the
+         *     starting content is always the confirmed revision's own real
+         *     content, never client-supplied.
+         */
+        post: operations["create_execution_anchor_draft_from_confirmed_intent_tasks__task_id__execution_anchor_drafts_from_confirmed_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2295,6 +2364,16 @@ export interface components {
              * Format: uuid
              */
             uninitialized_shot_id: string;
+            /**
+             * Cg Demo Task Id
+             * Format: uuid
+             */
+            cg_demo_task_id: string;
+            /**
+             * Cg Demo Dependency Id
+             * Format: uuid
+             */
+            cg_demo_dependency_id: string;
         };
         /** DecisionRead */
         DecisionRead: {
@@ -2903,6 +2982,16 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** ResetCgDemoTaskResultRead */
+        ResetCgDemoTaskResultRead: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /** Execution Url */
+            execution_url: string;
         };
         /** ResetUninitializedShotResultRead */
         ResetUninitializedShotResultRead: {
@@ -3971,6 +4060,26 @@ export interface operations {
             };
         };
     };
+    reset_cg_demo_task_endpoint_internal_demo_reset_cg_demo_task_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResetCgDemoTaskResultRead"];
+                };
+            };
+        };
+    };
     ping_worker_internal_ping_worker_post: {
         parameters: {
             query?: never;
@@ -4858,6 +4967,71 @@ export interface operations {
                 "application/json": components["schemas"]["ExecutionAnchorRevisionDraftCreate"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionAnchorRevisionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_execution_anchor_draft_intent_tasks__task_id__execution_anchor_generate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionAnchorRevisionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_execution_anchor_draft_from_confirmed_intent_tasks__task_id__execution_anchor_drafts_from_confirmed_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             201: {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ExecutionAnchorRevisionRead } from "@intent-core/contracts";
 
@@ -8,10 +8,16 @@ import { AuthorityBoundary, AuthorityLabel } from "@/design";
 import {
   confirmExecutionAnchorRevisionAction,
   createExecutionAnchorDraftAction,
+  createExecutionAnchorDraftFromConfirmedAction,
+  generateExecutionAnchorDraftAction,
   rejectExecutionAnchorRevisionAction,
   saveExecutionAnchorDraftAction,
 } from "@/features/cg/actions";
 import styles from "./ExecutionAnchorEditor.module.css";
+
+const EMPTY_CONFIRM_EXPLANATION =
+  "Add at least one execution boundary, criterion, dependency, refinement or " +
+  "escalation condition before confirming.";
 
 const CONTENT_FIELDS: { key: keyof FieldValues; label: string }[] = [
   { key: "technical_boundaries", label: "Technical boundaries" },
@@ -51,22 +57,28 @@ function fieldValuesFromRevision(revision: ExecutionAnchorRevisionRead | null): 
 
 /** The Execution Anchor draft/confirm/reject interaction, mirroring
  * `CoreAnchorRevisionEditor.tsx`'s real domain-rule pattern (create
- * draft -> save -> confirm/reject through the Human CG Supervisor,
- * real HumanGate/Decision recording, real conflict handling) at the
- * honestly supported level -- Execution Anchor has no "start new draft
- * from confirmed" backend capability (unlike Core Anchor), so no such
- * button is offered; starting a fresh draft after a confirmation is
- * honestly a blank draft, stated as such. */
+ * draft -> save -> confirm/reject through the Human CG Supervisor, real
+ * HumanGate/Decision recording, real conflict handling). No Execution
+ * Anchor yet offers "Generate Execution Anchor draft" (Agent-assisted,
+ * reads the confirmed Core Anchor) as the primary action and "Start
+ * blank draft" as a secondary manual option; a confirmed Execution
+ * Anchor offers "Create new revision" from that confirmed baseline. The
+ * backend rejects confirming a draft with no meaningful content in any
+ * field -- this editor disables Confirm and explains why in the same
+ * case, while Save always remains available for an incomplete working
+ * draft. */
 export function ExecutionAnchorEditor({
   taskId,
   draftRevision,
   draftHumanGateId,
   coreAnchorConfirmed,
+  hasConfirmedRevision,
 }: {
   taskId: string;
   draftRevision: ExecutionAnchorRevisionRead | null;
   draftHumanGateId: string | null;
   coreAnchorConfirmed: boolean;
+  hasConfirmedRevision: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -75,29 +87,67 @@ export function ExecutionAnchorEditor({
   const [rationale, setRationale] = useState("");
   const [values, setValues] = useState<FieldValues>(() => fieldValuesFromRevision(draftRevision));
 
+  // Re-sync `values` whenever the server hands us a genuinely different
+  // revision -- a new draft appearing (Generate/Create-new-revision/Start
+  // blank, none of which remount this component) or this same draft's
+  // own content changing after a save. Without this, the lazy useState
+  // initializer above only ever runs once, so a draft created with real
+  // copied/generated content (not blank) would render with stale blank
+  // fields until a manual page reload. Mirrors
+  // `CoreAnchorRevisionEditor.tsx`'s identical `syncedKeyRef` pattern.
+  const syncedKeyRef = useRef<string>("");
+  const revisionKey = draftRevision ? `${draftRevision.id}:${draftRevision.updated_at}` : "none";
+  useEffect(() => {
+    if (syncedKeyRef.current !== revisionKey) {
+      setValues(fieldValuesFromRevision(draftRevision));
+      syncedKeyRef.current = revisionKey;
+    }
+  }, [revisionKey, draftRevision]);
+
   if (draftRevision === null) {
+    function runStartAction(action: () => Promise<{ ok: boolean; error?: { message: string } }>) {
+      setError(null);
+      startTransition(() => {
+        action().then((result) => {
+          if (result.ok) {
+            router.refresh();
+          } else if (result.error) {
+            setError(result.error.message);
+          }
+        });
+      });
+    }
+
     return (
       <div className={styles.wrapper}>
-        {coreAnchorConfirmed ? (
+        {hasConfirmedRevision ? (
           <button
             type="button"
             className={styles.primaryButton}
             disabled={isPending}
-            onClick={() => {
-              setError(null);
-              startTransition(() => {
-                createExecutionAnchorDraftAction(taskId).then((result) => {
-                  if (result.ok) {
-                    router.refresh();
-                  } else {
-                    setError(result.error.message);
-                  }
-                });
-              });
-            }}
+            onClick={() => runStartAction(() => createExecutionAnchorDraftFromConfirmedAction(taskId))}
           >
-            {isPending ? "Starting draft…" : "Start Execution Anchor draft"}
+            {isPending ? "Starting…" : "Create new revision"}
           </button>
+        ) : coreAnchorConfirmed ? (
+          <div className={styles.startActions}>
+            <button
+              type="button"
+              className={styles.primaryButton}
+              disabled={isPending}
+              onClick={() => runStartAction(() => generateExecutionAnchorDraftAction(taskId))}
+            >
+              {isPending ? "Generating…" : "Generate Execution Anchor draft"}
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              disabled={isPending}
+              onClick={() => runStartAction(() => createExecutionAnchorDraftAction(taskId))}
+            >
+              {isPending ? "Starting draft…" : "Start blank draft"}
+            </button>
+          </div>
         ) : (
           <p className={styles.empty}>
             Starting an Execution Anchor draft requires a confirmed Core Anchor for this
@@ -112,6 +162,9 @@ export function ExecutionAnchorEditor({
       </div>
     );
   }
+
+  const hasMeaningfulContent = Object.values(values).some((value) => value.trim().length > 0);
+  const confirmDisabled = isPending || !hasMeaningfulContent;
 
   return (
     <div className={styles.wrapper}>
@@ -175,11 +228,17 @@ export function ExecutionAnchorEditor({
         />
       </label>
 
+      {!hasMeaningfulContent && (
+        <p className={styles.blockingReason} role="status">
+          {EMPTY_CONFIRM_EXPLANATION}
+        </p>
+      )}
+
       <div className={styles.decisionRow}>
         <button
           type="button"
           className={styles.primaryButton}
-          disabled={isPending}
+          disabled={confirmDisabled}
           onClick={() => {
             setError(null);
             startTransition(() => {

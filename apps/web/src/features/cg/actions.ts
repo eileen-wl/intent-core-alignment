@@ -16,9 +16,11 @@ import {
   confirmExecutionAnchorRevision,
   createDependency,
   createExecutionAnchorDraft,
+  createExecutionAnchorDraftFromConfirmed,
   createReviewNote,
   escalateTask,
   generateCgSupervisorReview,
+  generateExecutionAnchorDraft,
   getExecutionAnchorRevisionHumanGate,
   listExecutionAnchorRevisions,
   rejectExecutionAnchorRevision,
@@ -106,6 +108,36 @@ export async function createExecutionAnchorDraftAction(
 
   try {
     const revision = await createExecutionAnchorDraft(taskId, {}, actorHeaders(identity));
+    revalidateTaskRoutes(taskId, "execution");
+    return { ok: true, revision };
+  } catch (error) {
+    return { ok: false, error: mapThrownError(error) };
+  }
+}
+
+export async function generateExecutionAnchorDraftAction(
+  taskId: string,
+): Promise<ExecutionAnchorActionResult> {
+  const identity = await requireCgIdentity();
+  if ("error" in identity) return { ok: false, error: identity.error };
+
+  try {
+    const revision = await generateExecutionAnchorDraft(taskId);
+    revalidateTaskRoutes(taskId, "execution");
+    return { ok: true, revision };
+  } catch (error) {
+    return { ok: false, error: mapThrownError(error) };
+  }
+}
+
+export async function createExecutionAnchorDraftFromConfirmedAction(
+  taskId: string,
+): Promise<ExecutionAnchorActionResult> {
+  const identity = await requireCgIdentity();
+  if ("error" in identity) return { ok: false, error: identity.error };
+
+  try {
+    const revision = await createExecutionAnchorDraftFromConfirmed(taskId, actorHeaders(identity));
     revalidateTaskRoutes(taskId, "execution");
     return { ok: true, revision };
   } catch (error) {

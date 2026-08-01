@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from intent_core_api.db import get_session
 from intent_core_api.demo_seed.d1_scenario import (
     ensure_d1_scenario,
+    reset_cg_demo_task_execution_anchor_state,
     reset_uninitialized_shot_core_anchor_state,
 )
 
@@ -76,4 +77,27 @@ async def reset_uninitialized_shot_endpoint(
     shot_id = await reset_uninitialized_shot_core_anchor_state(session)
     return ResetUninitializedShotResultRead(
         shot_id=shot_id, intent_url=f"/vfx/shots/{shot_id}/intent"
+    )
+
+
+class ResetCgDemoTaskResultRead(BaseModel):
+    task_id: UUID
+    execution_url: str
+
+
+@router.post("/reset-cg-demo-task", response_model=ResetCgDemoTaskResultRead)
+async def reset_cg_demo_task_endpoint(
+    session: AsyncSession = Depends(get_session),
+) -> ResetCgDemoTaskResultRead:
+    """Dev-only (Step 7C-4 Execution Anchor workflow fix): puts the CG
+    demo Task ("Lighting Pass") back at its coherent, meaningful-draft
+    Execution Anchor baseline on demand, so that scenario stays reliably
+    reachable even after a prior browser session has moved it past it
+    (e.g. by confirming a blank draft). Never adds a product-facing page
+    -- this is scaffolding at the same trust boundary as
+    `/ensure-d1-scenario`/`/reset-uninitialized-shot` (see module
+    docstring)."""
+    task_id = await reset_cg_demo_task_execution_anchor_state(session)
+    return ResetCgDemoTaskResultRead(
+        task_id=task_id, execution_url=f"/cg/tasks/{task_id}/execution"
     )

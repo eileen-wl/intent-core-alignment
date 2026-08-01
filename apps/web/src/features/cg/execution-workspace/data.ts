@@ -13,10 +13,7 @@ import {
 
 /** Bounded server-side read model for `/cg/tasks/:taskId/execution`
  * (Step 7C-4), mirroring `features/vfx/intent-workspace/data.ts`'s
- * shape (confirmed/draft split, draft's own HumanGate) at the honestly
- * supported level: Execution Anchor has no "draft from confirmed" path
- * on the backend (unlike Core Anchor), so this loader never pretends
- * one exists. */
+ * shape (confirmed/draft split, draft's own HumanGate). */
 export interface ExecutionWorkspaceData {
   item: CgInboxItemRead;
   /** The Task's current confirmed revision, or `null` if none has ever

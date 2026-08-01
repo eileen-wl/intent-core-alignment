@@ -36,10 +36,3 @@
   font-size: var(--font-size-sm);
   white-space: pre-wrap;
 }
-
-.gapNote {
-  margin: var(--space-3) 0 0 0;
-  color: var(--text-muted);
-  font-size: var(--font-size-xs);
-  font-style: italic;
-}

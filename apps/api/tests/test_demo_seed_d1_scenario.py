@@ -8,12 +8,14 @@ import pytest
 from httpx import AsyncClient
 from intent_core_api.cross_department.models import TaskDependency
 from intent_core_api.demo_seed.d1_scenario import (
+    _CG_DEMO_EXECUTION_DRAFT_CONTENT,
     D1_MARKER,
     D1_SHOT_EXTERNAL_ID,
     UNINITIALIZED_SHOT_EXTERNAL_ID,
     UNINITIALIZED_TASK_EXTERNAL_ID,
     DeterministicD1CrossRoleAssessmentGenerator,
     ensure_d1_scenario,
+    reset_cg_demo_task_execution_anchor_state,
     reset_uninitialized_shot_core_anchor_state,
 )
 from intent_core_api.integrations.external_link_service import find_linked_entity_id
@@ -762,3 +764,149 @@ async def test_reset_endpoint_returns_the_shot_id_and_its_exact_intent_url(
     body = response.json()
     assert body["shot_id"]
     assert body["intent_url"] == f"/vfx/shots/{body['shot_id']}/intent"
+
+
+# --- Step 7C-4 Execution Anchor workflow fix: reset the CG demo Task
+# ("Lighting Pass") back to its coherent meaningful-draft baseline on
+# demand, since the seed endpoint alone only ever resolves-or-creates and
+# never resets a Task whose Execution Anchor a browser session has since
+# confirmed (including with blank content, before the empty-confirm
+# validation existed) ---------------------------------------------------
+
+
+async def test_cg_demo_reset_works_on_a_fresh_database(session: AsyncSession) -> None:
+    task_id = await reset_cg_demo_task_execution_anchor_state(session)
+
+    task = await session.get(Task, task_id)
+    assert task is not None
+
+    execution_anchor = await session.scalar(
+        select(ExecutionAnchor).where(ExecutionAnchor.task_id == task_id)
+    )
+    assert execution_anchor is not None
+    assert execution_anchor.active_revision_id is None
+
+    revision = await session.scalar(
+        select(ExecutionAnchorRevision).where(
+            ExecutionAnchorRevision.execution_anchor_id == execution_anchor.id
+        )
+    )
+    assert revision is not None
+    assert revision.status == "draft"
+    assert revision.technical_boundaries == _CG_DEMO_EXECUTION_DRAFT_CONTENT["technical_boundaries"]
+
+
+async def test_cg_demo_reset_restores_meaningful_draft_from_blank_confirmed_state(
+    session: AsyncSession,
+) -> None:
+    result = await ensure_d1_scenario(session)
+    cg_task_id = result.cg_demo_task_id
+
+    # Simulate the real incident this reset fixes: the seeded meaningful
+    # draft gets confirmed, then a second, entirely blank revision ends
+    # up confirmed and active too -- a state the empty-confirm validation
+    # added by this same change now prevents going forward, but which
+    # this reset must still be able to repair for a database that
+    # already reached it.
+    execution_anchor = await session.scalar(
+        select(ExecutionAnchor).where(ExecutionAnchor.task_id == cg_task_id)
+    )
+    assert execution_anchor is not None
+    seeded_draft = await session.scalar(
+        select(ExecutionAnchorRevision).where(
+            ExecutionAnchorRevision.execution_anchor_id == execution_anchor.id,
+            ExecutionAnchorRevision.revision_number == 1,
+        )
+    )
+    assert seeded_draft is not None
+
+    blank_revision = ExecutionAnchorRevision(
+        execution_anchor_id=execution_anchor.id,
+        core_anchor_revision_id=seeded_draft.core_anchor_revision_id,
+        revision_number=2,
+        status="confirmed",
+        created_by_actor_kind="human",
+        created_by_actor_id="cg-1",
+        created_by_human_role="cg_supervisor",
+    )
+    session.add(blank_revision)
+    await session.flush()
+    execution_anchor.active_revision_id = blank_revision.id
+    await session.commit()
+
+    task_id = await reset_cg_demo_task_execution_anchor_state(session)
+    assert task_id == cg_task_id
+
+    execution_anchor_after = await session.scalar(
+        select(ExecutionAnchor).where(ExecutionAnchor.task_id == cg_task_id)
+    )
+    assert execution_anchor_after is not None
+    assert execution_anchor_after.active_revision_id is None
+
+    revisions = (
+        await session.scalars(
+            select(ExecutionAnchorRevision).where(
+                ExecutionAnchorRevision.execution_anchor_id == execution_anchor_after.id
+            )
+        )
+    ).all()
+    assert len(revisions) == 1
+    restored = revisions[0]
+    assert restored.status == "draft"
+    assert restored.technical_boundaries == _CG_DEMO_EXECUTION_DRAFT_CONTENT["technical_boundaries"]
+    assert restored.parameter_ranges == _CG_DEMO_EXECUTION_DRAFT_CONTENT["parameter_ranges"]
+
+
+async def test_cg_demo_reset_is_idempotent(session: AsyncSession) -> None:
+    await ensure_d1_scenario(session)
+    first_id = await reset_cg_demo_task_execution_anchor_state(session)
+    second_id = await reset_cg_demo_task_execution_anchor_state(session)
+    assert first_id == second_id
+
+    execution_anchor = await session.scalar(
+        select(ExecutionAnchor).where(ExecutionAnchor.task_id == first_id)
+    )
+    assert execution_anchor is not None
+    revisions = (
+        await session.scalars(
+            select(ExecutionAnchorRevision).where(
+                ExecutionAnchorRevision.execution_anchor_id == execution_anchor.id
+            )
+        )
+    ).all()
+    assert len(revisions) == 1
+
+
+async def test_cg_demo_reset_never_touches_the_real_dependency(session: AsyncSession) -> None:
+    result = await ensure_d1_scenario(session)
+    dependency_id = result.cg_demo_dependency_id
+
+    await reset_cg_demo_task_execution_anchor_state(session)
+
+    dependency = await session.get(TaskDependency, dependency_id)
+    assert dependency is not None
+
+
+async def test_cg_demo_reset_never_touches_other_tasks_or_shots(session: AsyncSession) -> None:
+    result = await ensure_d1_scenario(session)
+
+    await reset_cg_demo_task_execution_anchor_state(session)
+
+    main_revision = await session.get(
+        ExecutionAnchorRevision, result.execution_anchor_revision_id
+    )
+    assert main_revision is not None
+    assert main_revision.status == "confirmed"
+    assert await _count(session, Shot) == 2
+    assert await _count(session, Task) == 3
+
+
+async def test_cg_demo_reset_endpoint_returns_the_task_id_and_its_exact_execution_url(
+    client: AsyncClient,
+) -> None:
+    await client.post("/internal/demo/ensure-d1-scenario")
+    response = await client.post("/internal/demo/reset-cg-demo-task")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["task_id"]
+    assert body["execution_url"] == f"/cg/tasks/{body['task_id']}/execution"

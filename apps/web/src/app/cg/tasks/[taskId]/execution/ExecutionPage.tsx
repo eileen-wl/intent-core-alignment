@@ -142,12 +142,6 @@ export function ExecutionPage({
                   </div>
                 ))}
               </dl>
-              {data.draftRevision === null && (
-                <p className={styles.gapNote}>
-                  Starting a new revision from this confirmed one is not yet supported by the
-                  domain -- only a blank draft can be started below.
-                </p>
-              )}
             </section>
           )}
 
@@ -160,6 +154,7 @@ export function ExecutionPage({
               draftRevision={data.draftRevision}
               draftHumanGateId={data.draftRevision ? (data.item.pending_human_gate_id ?? null) : null}
               coreAnchorConfirmed={data.coreAnchorConfirmed}
+              hasConfirmedRevision={data.confirmedRevision !== null}
             />
           </section>
         </>

@@ -21,6 +21,7 @@ from intent_core_api.workflow.exceptions import (
     ConflictError,
     ForbiddenActionError,
     NotFoundError,
+    ValidationError,
 )
 
 app = FastAPI(title="Intent Core Alignment API", version="0.1.0")
@@ -65,6 +66,11 @@ async def _not_found_handler(request: Request, exc: NotFoundError) -> JSONRespon
 @app.exception_handler(AgentGenerationError)
 async def _agent_generation_handler(request: Request, exc: AgentGenerationError) -> JSONResponse:
     return JSONResponse(status_code=502, content={"detail": str(exc)})
+
+
+@app.exception_handler(ValidationError)
+async def _validation_handler(request: Request, exc: ValidationError) -> JSONResponse:
+    return JSONResponse(status_code=422, content={"detail": str(exc)})
 
 
 @app.get("/health")

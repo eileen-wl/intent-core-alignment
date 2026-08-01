@@ -58,6 +58,7 @@ from intent_core_api.workflow.exceptions import (
     ConflictError,
     InternalConsistencyError,
     NotFoundError,
+    ValidationError,
 )
 
 
@@ -77,6 +78,24 @@ EXECUTION_ANCHOR_CONTENT_FIELDS = (
 )
 
 _DRAFT_CREATE_AGENT_TYPES: frozenset[AgentType] = frozenset({"cg_supervisor_agent"})
+
+# Confirming a completely empty Execution Anchor draft is a real
+# domain-validation bug, not a legitimate "nothing to say" state -- an
+# Execution Anchor that becomes CG-owned operational authority must say
+# something. No field is individually mandatory (a CG Supervisor may
+# legitimately have nothing to add for some fields), so the minimum
+# guard is simply that at least one field carries real, non-whitespace
+# content once normalised.
+EMPTY_EXECUTION_ANCHOR_CONFIRM_MESSAGE = (
+    "Add at least one execution boundary, criterion, dependency, refinement or "
+    "escalation condition before confirming."
+)
+
+
+def _has_meaningful_execution_anchor_content(revision: ExecutionAnchorRevision) -> bool:
+    return any(
+        (getattr(revision, field) or "").strip() for field in EXECUTION_ANCHOR_CONTENT_FIELDS
+    )
 
 
 async def get_or_create_execution_anchor(
@@ -202,6 +221,49 @@ async def create_draft_revision(
         raise
     await session.refresh(revision)
     return revision
+
+
+async def create_draft_revision_from_confirmed(
+    session: AsyncSession, actor: ActorContext, task_id: uuid.UUID
+) -> ExecutionAnchorRevision:
+    """Starts a new draft revision from the Task's current confirmed
+    Execution Anchor revision -- the human-authored counterpart to
+    ``agents.cg_agent_service.generate_execution_anchor_draft``
+    (Agent-authored from the confirmed Core Anchor), mirroring
+    ``core_anchor_service.create_draft_revision_from_confirmed`` exactly.
+    Copies the confirmed revision's own real content into a new editable
+    draft through the same ``create_draft_revision`` call (and therefore
+    the same pending-HumanGate creation, same authority check, same
+    no-Decision-until-Confirm/Reject guarantee) every other draft-
+    creation path already uses. Never itself confirms, rejects, or
+    performs write-back -- the new draft never becomes active until the
+    Human CG Supervisor confirms it, and the active Core Anchor is never
+    touched (this only reads it, indirectly, via ``create_draft_revision``'s
+    own existing confirmed-Core-Anchor requirement).
+    """
+    execution_anchor = await get_execution_anchor_for_task(session, task_id)
+    if execution_anchor is None or execution_anchor.active_revision_id is None:
+        raise NotFoundError(
+            "This Task has no confirmed Execution Anchor revision yet; nothing to start a "
+            "new revision from"
+        )
+
+    existing_revisions = await list_revisions_for_task(session, task_id)
+    if any(revision.status == "draft" for revision in existing_revisions):
+        raise ConflictError(
+            "An editable Execution Anchor draft already exists for this Task; confirm, "
+            "reject, or edit it before starting a new one"
+        )
+
+    confirmed = await get_execution_revision(session, execution_anchor.active_revision_id)
+    if confirmed is None:
+        raise InternalConsistencyError(
+            f"ExecutionAnchor {execution_anchor.id} active_revision_id references a missing "
+            f"ExecutionAnchorRevision {execution_anchor.active_revision_id}"
+        )
+
+    content = {field: getattr(confirmed, field) for field in EXECUTION_ANCHOR_CONTENT_FIELDS}
+    return await create_draft_revision(session, actor, task_id, content)
 
 
 async def list_revisions_for_task(
@@ -357,6 +419,16 @@ async def confirm_revision(
             "ExecutionAnchor.active_revision_id references a revision belonging to a "
             "different ExecutionAnchor"
         )
+
+    # Authoritative content-validation guard (not a state conflict or a
+    # permission rejection -- see ValidationError): checked last, only
+    # once the revision is otherwise confirmable, so a genuinely broken
+    # state (wrong status, stale Core reference, internal inconsistency)
+    # is always reported as that specific problem rather than being
+    # masked by this one. Saving an all-empty draft remains allowed --
+    # only confirming it is blocked.
+    if not _has_meaningful_execution_anchor_content(revision):
+        raise ValidationError(EMPTY_EXECUTION_ANCHOR_CONFIRM_MESSAGE)
 
     try:
         # Step 4: load the persisted gate, or -- for a legacy,

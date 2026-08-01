@@ -175,7 +175,7 @@ async def test_core_confirm_racing_execution_confirm(
         # A first Execution revision, confirmed against v1 -- gives the
         # anchor real "already confirmed" state whose staleness matters.
         exec_draft1 = await execution_anchor_service.create_draft_revision(
-            setup_session, CG_ACTOR, task.id, {}
+            setup_session, CG_ACTOR, task.id, {"technical_boundaries": "v1"}
         )
         exec_confirmed1 = await execution_anchor_service.confirm_revision(
             setup_session, CG_ACTOR, exec_draft1.id
@@ -280,7 +280,7 @@ async def test_stale_cascade_failure_rolls_back_everything(
     core_v1 = await core_anchor_service.confirm_revision(session, VFX_ACTOR, core_draft1.id)
 
     exec_draft = await execution_anchor_service.create_draft_revision(
-        session, CG_ACTOR, task.id, {}
+        session, CG_ACTOR, task.id, {"technical_boundaries": "baseline"}
     )
     await execution_anchor_service.confirm_revision(session, CG_ACTOR, exec_draft.id)
 
@@ -357,7 +357,9 @@ async def test_stale_cascade_processes_deterministically_without_duplicates(
         task = Task(shot_id=shot.id, name=f"Task {i}", department="lighting")
         session.add(task)
         await session.flush()
-        draft = await execution_anchor_service.create_draft_revision(session, CG_ACTOR, task.id, {})
+        draft = await execution_anchor_service.create_draft_revision(
+            session, CG_ACTOR, task.id, {"technical_boundaries": f"baseline {i}"}
+        )
         await execution_anchor_service.confirm_revision(session, CG_ACTOR, draft.id)
         anchor = await execution_anchor_service.get_execution_anchor_for_task(session, task.id)
         assert anchor is not None

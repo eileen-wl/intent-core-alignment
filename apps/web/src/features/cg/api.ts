@@ -170,6 +170,30 @@ export function createExecutionAnchorDraft(
   );
 }
 
+/** Agent-assisted draft: reads the Task's Shot's active confirmed Core
+ * Anchor and translates it into Execution Anchor's fields, persisted as
+ * a draft only -- advisory, never auto-confirmed. Mirrors the backend's
+ * own no-actor-dependency convention for Agent-generation endpoints
+ * (see `intent.router.generate_execution_anchor_draft`). */
+export function generateExecutionAnchorDraft(taskId: string): Promise<ExecutionAnchorRevisionRead> {
+  return cgFetch<ExecutionAnchorRevisionRead>(
+    `/intent/tasks/${taskId}/execution-anchor/generate`,
+    { method: "POST" },
+  );
+}
+
+/** Human-authored: copies the Task's current confirmed Execution Anchor
+ * revision's own content into a new editable draft. */
+export function createExecutionAnchorDraftFromConfirmed(
+  taskId: string,
+  actorHeaders: ActorHeaders,
+): Promise<ExecutionAnchorRevisionRead> {
+  return cgFetch<ExecutionAnchorRevisionRead>(
+    `/intent/tasks/${taskId}/execution-anchor/drafts/from-confirmed`,
+    { method: "POST", headers: actorHeaders },
+  );
+}
+
 export function updateExecutionAnchorDraft(
   revisionId: string,
   changes: ExecutionAnchorRevisionUpdate,
