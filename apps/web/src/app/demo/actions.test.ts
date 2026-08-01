@@ -104,6 +104,39 @@ describe("enterDemoRole", () => {
     await expect(enterDemoRole("producer")).rejects.toThrow();
     expect(redirectSpy).toHaveBeenCalledWith("/");
   });
+
+  it("redirects to a returnTo that matches the entered role's own prefix", async () => {
+    await expect(
+      enterDemoRole("cg_supervisor", "/cg/tasks/t1/execution"),
+    ).rejects.toThrow();
+    expect(redirectSpy).toHaveBeenCalledWith("/cg/tasks/t1/execution");
+  });
+
+  it("falls back to the role home when returnTo belongs to a different role", async () => {
+    await expect(
+      enterDemoRole("cg_supervisor", "/vfx/shots/s1/intent"),
+    ).rejects.toThrow();
+    expect(redirectSpy).toHaveBeenCalledWith("/cg");
+  });
+
+  it("falls back to the role home when returnTo is an absolute URL (open-redirect guard)", async () => {
+    await expect(
+      enterDemoRole("cg_supervisor", "https://evil.example/cg"),
+    ).rejects.toThrow();
+    expect(redirectSpy).toHaveBeenCalledWith("/cg");
+  });
+
+  it("falls back to the role home when returnTo is protocol-relative (open-redirect guard)", async () => {
+    await expect(
+      enterDemoRole("cg_supervisor", "//evil.example/cg"),
+    ).rejects.toThrow();
+    expect(redirectSpy).toHaveBeenCalledWith("/cg");
+  });
+
+  it("falls back to the role home when returnTo is omitted", async () => {
+    await expect(enterDemoRole("cg_supervisor")).rejects.toThrow();
+    expect(redirectSpy).toHaveBeenCalledWith("/cg");
+  });
 });
 
 describe("exitRoleView", () => {

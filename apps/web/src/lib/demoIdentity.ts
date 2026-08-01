@@ -54,3 +54,20 @@ export function roleForPathname(pathname: string): HumanRole | null {
     return "artist";
   return null;
 }
+
+/** Whether `value` is safe to use as an internal `returnTo` redirect
+ * target -- a same-origin relative path beginning with one of the
+ * role-prefixed route roots `roleForPathname` recognises. This is the
+ * only defence against an open redirect (`returnTo` always originates
+ * from an untrusted query string, whether from the URL bar or a direct
+ * Server Action call): it rejects absolute URLs (`https://...`),
+ * protocol-relative URLs (`//host/...`), and any path outside a known
+ * role prefix outright, before `roleForPathname` is even consulted. */
+export function isSafeReturnToPath(
+  value: string | null | undefined,
+): value is string {
+  if (!value) return false;
+  if (!value.startsWith("/") || value.startsWith("//")) return false;
+  if (value.includes("\\")) return false;
+  return roleForPathname(value) !== null;
+}

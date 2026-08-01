@@ -31,7 +31,7 @@ describe("RoleEntryButton", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Enter as CG Supervisor" }),
     );
-    expect(enterDemoRole).toHaveBeenCalledWith("cg_supervisor");
+    expect(enterDemoRole).toHaveBeenCalledWith("cg_supervisor", null);
   });
 
   it("calls enterDemoRole for the Artist role too", async () => {
@@ -39,7 +39,7 @@ describe("RoleEntryButton", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Enter as Artist" }),
     );
-    expect(enterDemoRole).toHaveBeenCalledWith("artist");
+    expect(enterDemoRole).toHaveBeenCalledWith("artist", null);
   });
 
   it("calls enterDemoRole for the VFX Supervisor role", async () => {
@@ -49,6 +49,20 @@ describe("RoleEntryButton", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Enter as VFX Supervisor" }),
     );
-    expect(enterDemoRole).toHaveBeenCalledWith("vfx_supervisor");
+    expect(enterDemoRole).toHaveBeenCalledWith("vfx_supervisor", null);
+  });
+
+  it("forwards a provided returnTo to the Server Action", async () => {
+    render(
+      <RoleEntryButton
+        role="cg_supervisor"
+        label="Enter as CG Supervisor"
+        returnTo="/cg/tasks/t1/execution"
+      />,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Enter as CG Supervisor" }),
+    );
+    expect(enterDemoRole).toHaveBeenCalledWith("cg_supervisor", "/cg/tasks/t1/execution");
   });
 });

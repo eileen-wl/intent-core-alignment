@@ -53,7 +53,7 @@ describe("RoleSelectionHome", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Enter as VFX Supervisor" }),
     );
-    expect(enterDemoRole).toHaveBeenCalledWith("vfx_supervisor");
+    expect(enterDemoRole).toHaveBeenCalledWith("vfx_supervisor", null);
   });
 
   it("selecting CG Supervisor establishes the role session via the Server Action", async () => {
@@ -61,6 +61,21 @@ describe("RoleSelectionHome", () => {
     await userEvent.click(
       screen.getByRole("button", { name: "Enter as CG Supervisor" }),
     );
-    expect(enterDemoRole).toHaveBeenCalledWith("cg_supervisor");
+    expect(enterDemoRole).toHaveBeenCalledWith("cg_supervisor", null);
+  });
+
+  it("forwards returnTo only to the role button it actually belongs to", async () => {
+    render(<RoleSelectionHome returnTo="/cg/tasks/t1/execution" />);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Enter as CG Supervisor" }),
+    );
+    expect(enterDemoRole).toHaveBeenCalledWith("cg_supervisor", "/cg/tasks/t1/execution");
+
+    vi.clearAllMocks();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Enter as VFX Supervisor" }),
+    );
+    expect(enterDemoRole).toHaveBeenCalledWith("vfx_supervisor", null);
   });
 });

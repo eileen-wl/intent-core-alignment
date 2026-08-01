@@ -286,7 +286,12 @@ async def test_generate_records_a_real_agent_run(
     assert len(runs) == 1
     assert runs[0].capability == "execution_anchor_drafting"
     assert runs[0].status == "succeeded"
-    assert runs[0].result_revision_id == uuid.UUID(draft["id"])
+    # AgentRun.result_revision_id is narrowly FK'd to CoreAnchorRevision
+    # only (see agents.models.AgentRun) -- this capability's provenance
+    # runs the other direction instead: the revision's own
+    # created_by_agent_run_id points back at this run.
+    assert runs[0].result_revision_id is None
+    assert draft["created_by_agent_run_id"] == str(runs[0].id)
 
 
 async def test_generate_conflict_when_draft_already_exists(client: AsyncClient) -> None:

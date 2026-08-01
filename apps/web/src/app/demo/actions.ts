@@ -8,6 +8,8 @@ import {
   DEMO_ROLE_COOKIE,
   ROLE_HOME_PATH,
   isDemoRole,
+  isSafeReturnToPath,
+  roleForPathname,
 } from "@/lib/demoIdentity";
 import { resolveD1DemoShotId } from "@/features/session/demoScenario";
 
@@ -26,8 +28,18 @@ import { resolveD1DemoShotId } from "@/features/session/demoScenario";
  * nothing else guarantees that baseline is seeded before `/vfx` or `/cg`
  * is ever reached. A failure here never blocks entry to the workspace
  * itself; every page already renders an honest state from whatever
- * Shots/Tasks do exist. */
-export async function enterDemoRole(role: HumanRole): Promise<void> {
+ * Shots/Tasks do exist.
+ *
+ * `returnTo` (Step 7C-4 completion): the deep-link route `middleware.ts`
+ * redirected away from before a role session existed for it. Re-validated
+ * here from scratch -- `isSafeReturnToPath` (rejects absolute/protocol-
+ * relative URLs and anything outside a known role prefix) *and* actually
+ * belonging to the role just entered -- since this Server Action is a
+ * real network endpoint a caller could invoke directly with any value,
+ * not just through `RoleEntryButton`'s own (already-gated) prop. Falls
+ * back to the role's fixed workspace home exactly as before whenever
+ * `returnTo` is absent or fails either check. */
+export async function enterDemoRole(role: HumanRole, returnTo?: string | null): Promise<void> {
   if (!isDemoRole(role)) {
     redirect("/");
   }
@@ -45,6 +57,10 @@ export async function enterDemoRole(role: HumanRole): Promise<void> {
     } catch {
       // Best-effort only -- see doc comment above.
     }
+  }
+
+  if (isSafeReturnToPath(returnTo) && roleForPathname(returnTo) === role) {
+    redirect(returnTo);
   }
 
   redirect(ROLE_HOME_PATH[role]);

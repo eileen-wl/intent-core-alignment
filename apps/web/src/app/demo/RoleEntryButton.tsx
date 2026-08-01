@@ -18,14 +18,26 @@ function ArrowIcon() {
  * `enterDemoRole` Server Action remains the only place that establishes
  * the trusted role session and performs the redirect into that role's
  * workspace -- this Client Component only ever forwards the plain,
- * serialisable `role` literal to it. */
-export function RoleEntryButton({ role, label }: { role: HumanRole; label: string }) {
+ * serialisable `role` literal (and, for a deep-link return, the
+ * already-validated `returnTo` path) to it. `enterDemoRole` re-validates
+ * `returnTo` itself regardless -- a Server Action is a callable network
+ * endpoint, not a value this component can be trusted to have gated
+ * correctly. */
+export function RoleEntryButton({
+  role,
+  label,
+  returnTo = null,
+}: {
+  role: HumanRole;
+  label: string;
+  returnTo?: string | null;
+}) {
   return (
     <button
       type="button"
       className={styles.button}
       onClick={() => {
-        void enterDemoRole(role);
+        void enterDemoRole(role, returnTo);
       }}
     >
       <span>{label}</span>

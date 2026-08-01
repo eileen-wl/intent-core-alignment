@@ -1,3 +1,4 @@
+import { roleForPathname } from "@/lib/demoIdentity";
 import { ROLE_CARDS } from "./demo/roleCards";
 import { RoleEntryButton } from "./demo/RoleEntryButton";
 import styles from "./RoleSelectionHome.module.css";
@@ -10,8 +11,14 @@ import styles from "./RoleSelectionHome.module.css";
  * Artist is shown, honestly marked Upcoming, until Step 7C-5 -- never a
  * clickable action. There is no Guided card, no Explore card, and no
  * Future-ftrack-launch card: those belonged to the retired Demo Entry
- * surface. */
-export function RoleSelectionHome() {
+ * surface.
+ *
+ * `returnTo` (Step 7C-4 completion, already validated safe by the
+ * caller -- see `page.tsx`) is forwarded only to the one role button
+ * whose route prefix it actually belongs to, never to every button:
+ * picking a *different* role than the one the deep link was for must
+ * never carry that other role's intended route along with it. */
+export function RoleSelectionHome({ returnTo = null }: { returnTo?: string | null }) {
   return (
     <div className={styles.page}>
       <header className={styles.intro}>
@@ -26,13 +33,18 @@ export function RoleSelectionHome() {
       <div className={styles.roleGrid}>
         {ROLE_CARDS.map((card) => {
           const available = card.role === "vfx_supervisor" || card.role === "cg_supervisor";
+          const matchesReturnTo = returnTo !== null && roleForPathname(returnTo) === card.role;
           return (
             <article key={card.role} className={styles.roleCard}>
               <h2>{card.title}</h2>
               <p className={styles.responsibility}>{card.responsibility}</p>
               <p className={styles.question}>{card.question}</p>
               {available ? (
-                <RoleEntryButton role={card.role} label={`Enter as ${card.title}`} />
+                <RoleEntryButton
+                  role={card.role}
+                  label={`Enter as ${card.title}`}
+                  returnTo={matchesReturnTo ? returnTo : null}
+                />
               ) : (
                 <span className={styles.upcoming} aria-disabled="true">
                   Upcoming

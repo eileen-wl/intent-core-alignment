@@ -34,6 +34,7 @@ from intent_core_contracts.api.cross_role_assessment import (
     CrossRoleAssessmentOutput,
     CrossRoleEvidenceSourceType,
 )
+from intent_core_contracts.api.execution_anchor import ExecutionAnchorRevisionDraftCreate
 from intent_core_contracts.api.intent import CoreAnchorRevisionDraftCreate
 from intent_core_contracts.api.intent_decomposition import IntentDecompositionOutput
 from intent_core_contracts.api.vfx_supervisor_review import VFXSupervisorReviewOutput
@@ -433,6 +434,50 @@ exactly this JSON shape (all fields required):
   "proposed_execution_guidance": [<guidance>, ...],
   "questions_for_human_cg_supervisor": ["<string>", ...],
   "evidence_gaps": ["<string>", ...]
+}"""
+
+_EXECUTION_ANCHOR_DRAFTING_SYSTEM_PROMPT = """\
+You are the CG Supervisor Agent's execution-anchor-drafting capability \
+for a VFX production tool. You read exactly one Task's identity and \
+department, its parent Shot's confirmed Core Anchor (its seven intent \
+fields), and, when available in your context, one relevant Production \
+Version's name/description and any existing recorded dependencies for \
+this Task -- and produce a draft Execution Anchor translating that \
+confirmed creative intent into this Task's operational execution terms, \
+for a Human CG Supervisor to review, edit, and confirm. Nothing else \
+exists in your context -- do not invent technical parameters, delivery \
+specifications, or content not grounded in the supplied Core Anchor, \
+Version, or dependency text.
+
+You are strictly a draft author: you never confirm, reject, or \
+supersede an Execution Anchor revision, never write back to ftrack, and \
+never produce a Human Gate resolution or a Decision -- none of that is \
+available to you at this stage. Every draft you produce still requires \
+human review before it takes effect, and the active Core Anchor itself \
+is read-only to you -- you never propose changing it or restate that a \
+different Core Anchor should be adopted.
+
+Ground every field in the supplied Core Anchor content (and the \
+Version/dependency context when present) rather than restating it \
+verbatim -- translate creative intent into concrete operational terms: \
+technical boundaries, parameter ranges, delivery conditions, \
+production-ready criteria, downstream dependencies, publish \
+requirements, allowed refinements, and escalation conditions. When the \
+supplied context does not clearly support a specific operational detail \
+for a field, say so honestly within that field's own text rather than \
+inventing a plausible-sounding technical value.
+
+Respond with a single JSON object only, no text outside of it, matching \
+exactly this JSON shape (all fields required):
+{
+  "technical_boundaries": "<string>",
+  "parameter_ranges": "<string>",
+  "delivery_conditions": "<string>",
+  "production_ready_criteria": "<string>",
+  "downstream_dependencies": "<string>",
+  "publish_requirements": "<string>",
+  "allowed_refinements": "<string>",
+  "escalation_conditions": "<string>"
 }"""
 
 _ARTIST_ITERATION_GUIDANCE_SYSTEM_PROMPT = """\
@@ -975,6 +1020,14 @@ _REGISTRY: Final[dict[str, PromptRegistration]] = {
         # for this capability only; every other registration keeps the
         # shared default via max_output_tokens=None.
         max_output_tokens=8192,
+    ),
+    "execution_anchor_drafting": PromptRegistration(
+        agent_type="cg_supervisor_agent",
+        capability="execution_anchor_drafting",
+        prompt_key="cg_execution_anchor_drafting",
+        version="v1",
+        system_prompt=_EXECUTION_ANCHOR_DRAFTING_SYSTEM_PROMPT,
+        output_model=ExecutionAnchorRevisionDraftCreate,
     ),
     "iteration_guidance": PromptRegistration(
         agent_type="artist_agent",

@@ -7,6 +7,7 @@ import {
   ROLE_HOME_PATH,
   ROLE_LABEL,
   isDemoRole,
+  isSafeReturnToPath,
   roleForPathname,
 } from "./demoIdentity";
 
@@ -73,6 +74,53 @@ describe("demoIdentity", () => {
     it("does not treat a similarly-named path as role-prefixed", () => {
       expect(roleForPathname("/vfxsomething")).toBeNull();
       expect(roleForPathname("/artistical")).toBeNull();
+    });
+  });
+
+  describe("isSafeReturnToPath", () => {
+    it("accepts a plain role-prefixed path", () => {
+      expect(isSafeReturnToPath("/cg")).toBe(true);
+      expect(isSafeReturnToPath("/cg/tasks/t1/execution")).toBe(true);
+      expect(isSafeReturnToPath("/vfx/shots/s1/intent")).toBe(true);
+      expect(isSafeReturnToPath("/artist")).toBe(true);
+    });
+
+    it("accepts a role-prefixed path with a query string", () => {
+      expect(isSafeReturnToPath("/vfx/shots/s1/intent?justConfirmed=r1")).toBe(true);
+    });
+
+    it("rejects null, undefined, and empty values", () => {
+      expect(isSafeReturnToPath(null)).toBe(false);
+      expect(isSafeReturnToPath(undefined)).toBe(false);
+      expect(isSafeReturnToPath("")).toBe(false);
+    });
+
+    it("rejects absolute URLs (open-redirect guard)", () => {
+      expect(isSafeReturnToPath("https://evil.example/cg")).toBe(false);
+      expect(isSafeReturnToPath("http://evil.example/cg")).toBe(false);
+    });
+
+    it("rejects protocol-relative URLs (open-redirect guard)", () => {
+      expect(isSafeReturnToPath("//evil.example/cg")).toBe(false);
+    });
+
+    it("rejects paths containing a backslash", () => {
+      expect(isSafeReturnToPath("/cg\\@evil.example")).toBe(false);
+    });
+
+    it("rejects a path outside any known role prefix", () => {
+      expect(isSafeReturnToPath("/shots")).toBe(false);
+      expect(isSafeReturnToPath("/dev")).toBe(false);
+      expect(isSafeReturnToPath("/")).toBe(false);
+    });
+
+    it("rejects a path that merely starts with a role name as a substring", () => {
+      expect(isSafeReturnToPath("/cgsomething")).toBe(false);
+      expect(isSafeReturnToPath("/vfx@evil.example")).toBe(false);
+    });
+
+    it("rejects a relative path with no leading slash", () => {
+      expect(isSafeReturnToPath("cg/tasks/t1")).toBe(false);
     });
   });
 });
