@@ -1728,3 +1728,25 @@ async def list_cross_role_assessments_for_version_and_task(
     for assessment in assessments:
         await _attach_related(session, assessment)
     return assessments
+
+
+async def list_cross_role_assessments_for_shot(
+    session: AsyncSession, shot_id: uuid.UUID
+) -> list[CrossRoleAssessment]:
+    """Every Cross-role Assessment ever generated for a Shot (Step 7C-3
+    Alignment Workspace), newest first -- not scoped to one Task/Version
+    pair like ``list_cross_role_assessments_for_version_and_task``, since
+    the Alignment page shows the Shot's full assessment history. Reuses
+    the exact ``shot_id`` query ``vfx_inbox.service._load_shot_related_data``
+    already relies on for "latest assessment for this Shot", generalized
+    from "latest one" to "all of them".
+    """
+    result = await session.execute(
+        select(CrossRoleAssessment)
+        .where(CrossRoleAssessment.shot_id == shot_id)
+        .order_by(CrossRoleAssessment.created_at.desc(), CrossRoleAssessment.id.desc())
+    )
+    assessments = list(result.scalars().all())
+    for assessment in assessments:
+        await _attach_related(session, assessment)
+    return assessments

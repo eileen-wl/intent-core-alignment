@@ -1,18 +1,120 @@
-:root {
+@import "../design/tokens.css";
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
   color-scheme: light dark;
 }
 
 body {
   margin: 0;
-  font-family:
-    system-ui,
-    -apple-system,
-    Segoe UI,
-    sans-serif;
+  background: var(--surface-page);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 main {
-  max-width: 720px;
+  max-width: var(--content-width-reading);
   margin: 0 auto;
-  padding: 2rem 1rem;
+  padding: var(--space-6) var(--space-4);
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--text-primary);
+  font-weight: 600;
+  line-height: var(--line-height-tight);
+  text-wrap: balance;
+}
+
+h1 {
+  font-size: var(--font-size-2xl);
+  margin: 0 0 var(--space-4);
+}
+
+h2 {
+  font-size: var(--font-size-xl);
+  margin: var(--space-6) 0 var(--space-3);
+}
+
+h3 {
+  font-size: var(--font-size-lg);
+  margin: var(--space-5) 0 var(--space-2);
+}
+
+h4,
+h5,
+h6 {
+  font-size: var(--font-size-md);
+  margin: var(--space-4) 0 var(--space-2);
+}
+
+p {
+  margin: 0 0 var(--space-4);
+}
+
+small {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+a {
+  color: var(--accent-fact-text);
+  text-decoration-color: var(--accent-fact-border);
+  text-underline-offset: 2px;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: var(--space-5) 0;
+}
+
+/* Visible keyboard focus everywhere, without relying on the browser
+ * default outline (which some UA stylesheets suppress on custom
+ * elements). Mouse/touch users never see this -- :focus-visible only
+ * matches keyboard and programmatic focus. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }

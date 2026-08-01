@@ -1,0 +1,27 @@
+.reference {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.label {
+  margin: 0;
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+}
+
+.meta {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.type {
+  color: var(--text-muted);
+}
+
+.id {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}

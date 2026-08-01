@@ -273,7 +273,7 @@ async def test_reject_requires_cg_and_leaves_revision_rejected(client: AsyncClie
 async def test_confirmed_revision_is_immutable(client: AsyncClient) -> None:
     shot_id, task_id = await _create_shot_and_task(client)
     await _confirm_core_anchor(client, shot_id)
-    draft = await _create_execution_draft(client, task_id)
+    draft = await _create_execution_draft(client, task_id, technical_boundaries="24fps")
     await client.post(
         f"/intent/execution-anchor-revisions/{draft['id']}/confirm", json={}, headers=CG
     )
@@ -372,3 +372,70 @@ async def test_get_unknown_task_execution_anchor_returns_404(client: AsyncClient
         "/intent/tasks/00000000-0000-0000-0000-000000000000/execution-anchor"
     )
     assert response.status_code == 404
+
+
+# --- empty-content confirm validation -------------------------------------
+
+
+async def test_confirming_an_all_empty_draft_is_rejected(client: AsyncClient) -> None:
+    shot_id, task_id = await _create_shot_and_task(client)
+    await _confirm_core_anchor(client, shot_id)
+    draft = await _create_execution_draft(client, task_id)
+
+    response = await client.post(
+        f"/intent/execution-anchor-revisions/{draft['id']}/confirm", json={}, headers=CG
+    )
+    assert response.status_code == 422
+    assert "before confirming" in response.json()["detail"]
+
+    unchanged = (await client.get(f"/intent/execution-anchor-revisions/{draft['id']}")).json()
+    assert unchanged["status"] == "draft"
+
+
+async def test_confirming_a_whitespace_only_draft_is_rejected(client: AsyncClient) -> None:
+    shot_id, task_id = await _create_shot_and_task(client)
+    await _confirm_core_anchor(client, shot_id)
+    draft = await _create_execution_draft(
+        client,
+        task_id,
+        technical_boundaries="   ",
+        parameter_ranges="\t\n",
+        delivery_conditions="",
+    )
+
+    response = await client.post(
+        f"/intent/execution-anchor-revisions/{draft['id']}/confirm", json={}, headers=CG
+    )
+    assert response.status_code == 422
+
+
+async def test_confirming_a_draft_with_one_meaningful_field_succeeds(client: AsyncClient) -> None:
+    shot_id, task_id = await _create_shot_and_task(client)
+    await _confirm_core_anchor(client, shot_id)
+    draft = await _create_execution_draft(
+        client, task_id, escalation_conditions="Escalate if the dusk tone reads too bright."
+    )
+
+    response = await client.post(
+        f"/intent/execution-anchor-revisions/{draft['id']}/confirm", json={}, headers=CG
+    )
+    assert response.status_code == 200
+    assert response.json()["status"] == "confirmed"
+
+
+async def test_saving_an_all_empty_draft_remains_allowed(client: AsyncClient) -> None:
+    shot_id, task_id = await _create_shot_and_task(client)
+    await _confirm_core_anchor(client, shot_id)
+
+    # Creating (saving) a completely blank working draft is allowed --
+    # the 201 itself proves it; only Confirm is blocked for empty content.
+    draft = await _create_execution_draft(client, task_id)
+    assert draft["technical_boundaries"] is None
+
+    response = await client.patch(
+        f"/intent/execution-anchor-revisions/{draft['id']}",
+        json={"technical_boundaries": "   "},
+        headers=CG,
+    )
+    assert response.status_code == 200
+    assert response.json()["technical_boundaries"] == "   "

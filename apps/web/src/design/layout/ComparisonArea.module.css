@@ -1,0 +1,13 @@
+.comparisonArea {
+  max-width: var(--content-width-comparison);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-5);
+}
+
+@media (min-width: 768px) {
+  .comparisonArea {
+    grid-template-columns: 1fr 1fr;
+  }
+}

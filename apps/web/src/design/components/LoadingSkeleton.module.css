@@ -1,0 +1,37 @@
+.block,
+.line {
+  background: var(--surface-muted);
+  border-radius: var(--radius-sm);
+}
+
+.block {
+  width: 100%;
+}
+
+.textGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.line {
+  height: 0.875rem;
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .block,
+  .line {
+    animation: shimmer 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes shimmer {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}

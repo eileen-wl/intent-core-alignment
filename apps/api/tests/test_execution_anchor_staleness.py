@@ -39,7 +39,11 @@ async def _confirm_core_draft(client: AsyncClient, shot_id: str, **content: str)
 
 async def _confirm_execution_draft(client: AsyncClient, task_id: str) -> dict:
     draft = (
-        await client.post(f"/intent/tasks/{task_id}/execution-anchor/drafts", json={}, headers=CG)
+        await client.post(
+            f"/intent/tasks/{task_id}/execution-anchor/drafts",
+            json={"technical_boundaries": "baseline"},
+            headers=CG,
+        )
     ).json()
     confirm_response = await client.post(
         f"/intent/execution-anchor-revisions/{draft['id']}/confirm", json={}, headers=CG

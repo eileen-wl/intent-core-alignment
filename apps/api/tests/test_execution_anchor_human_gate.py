@@ -130,7 +130,7 @@ async def test_cg_supervisor_confirms_pending_gate(
     client: AsyncClient, session: AsyncSession
 ) -> None:
     _, task_id = await _shot_and_task(client)
-    draft = await _create_draft(client, task_id)
+    draft = await _create_draft(client, task_id, technical_boundaries="24fps.")
 
     confirmed = (
         await client.post(
@@ -160,7 +160,7 @@ async def test_confirm_does_not_create_a_second_resolution_or_decision(
     client: AsyncClient, session: AsyncSession
 ) -> None:
     _, task_id = await _shot_and_task(client)
-    draft = await _create_draft(client, task_id)
+    draft = await _create_draft(client, task_id, technical_boundaries="24fps.")
     await client.post(
         f"/intent/execution-anchor-revisions/{draft['id']}/confirm", json={}, headers=CG
     )
@@ -292,6 +292,7 @@ async def _create_legacy_draft_without_gate(
         core_anchor_revision_id=core_revision_id,
         revision_number=99,
         status="draft",
+        technical_boundaries="Legacy execution boundaries.",
         created_by_actor_kind="human",
         created_by_actor_id="cg-1",
         created_by_human_role="cg_supervisor",
@@ -387,7 +388,7 @@ async def test_simulated_decision_failure_leaves_gate_pending_and_revision_draft
     client: AsyncClient, session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _, task_id = await _shot_and_task(client)
-    draft = await _create_draft(client, task_id)
+    draft = await _create_draft(client, task_id, technical_boundaries="24fps.")
 
     async def _failing_record_decision(*args: Any, **kwargs: Any) -> Decision:
         raise RuntimeError("simulated decision failure")
@@ -427,7 +428,7 @@ async def test_simulated_gate_resolution_failure_leaves_no_confirmed_revision_or
     client: AsyncClient, session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _, task_id = await _shot_and_task(client)
-    draft = await _create_draft(client, task_id)
+    draft = await _create_draft(client, task_id, technical_boundaries="24fps.")
 
     def _failing_resolve_gate(*args: Any, **kwargs: Any) -> None:
         raise RuntimeError("simulated gate resolution failure")
@@ -575,7 +576,7 @@ async def test_confirm_produces_no_side_effects_on_other_domain_objects(
     from intent_core_api.versions_and_feedback.models import AlignmentAssessment
 
     _, task_id = await _shot_and_task(client)
-    draft = await _create_draft(client, task_id)
+    draft = await _create_draft(client, task_id, technical_boundaries="24fps.")
 
     before_decompositions = len(
         (await session.execute(select(IntentDecomposition))).scalars().all()

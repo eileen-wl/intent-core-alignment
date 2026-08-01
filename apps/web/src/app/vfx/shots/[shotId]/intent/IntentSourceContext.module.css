@@ -1,0 +1,323 @@
+.panel {
+  min-width: 0;
+}
+
+.heading {
+  margin: 0 0 var(--space-4) 0;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary);
+}
+
+.shotContext {
+  margin: 0 0 var(--space-5) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.contextRow {
+  display: flex;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.contextRow dt {
+  min-width: 5rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.contextRow dd {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.sources {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sourceBlock {
+  margin: 0;
+}
+
+.sourceLabel {
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.sourceList {
+  margin: 0;
+  padding-left: var(--space-5);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.evidenceCount {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.compact .heading {
+  margin-bottom: var(--space-2);
+  font-size: var(--font-size-xs);
+}
+
+.compact .shotContext {
+  margin-bottom: var(--space-2);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.compact .contextRow {
+  min-width: 0;
+  display: block;
+  font-size: var(--font-size-xs);
+}
+
+.compact .contextRow dt {
+  min-width: 0;
+  margin-bottom: 0.125rem;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.compact .contextRow dd {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.compact .empty,
+.compact .evidenceCount,
+.compact .sourceList {
+  font-size: 0.7rem;
+  line-height: 1.35;
+}
+
+.compact .sources {
+  gap: var(--space-2);
+}
+
+.compact .sourceLabel {
+  margin-bottom: var(--space-1);
+  font-size: var(--font-size-xs);
+}
+
+@media (max-width: 768px) {
+  .compact .shotContext {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* FIRST DRAFT source column: compact, scan-friendly supporting context. */
+.firstDraftPanel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.firstDraftHeadingGroup {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.firstDraftHeadingGroup .heading {
+  margin-bottom: 0.125rem;
+  font-size: var(--font-size-xs);
+}
+
+.firstDraftIntro {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.sourceCards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sourceDisclosure {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-page);
+  overflow: hidden;
+}
+
+.sourceDisclosure summary {
+  list-style: none;
+  cursor: pointer;
+  padding: var(--space-3);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: start;
+  gap: var(--space-2);
+  color: var(--text-primary);
+}
+
+.sourceDisclosure summary::-webkit-details-marker {
+  display: none;
+}
+
+.sourceDisclosure summary::after {
+  content: "⌄";
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.4;
+  transition: transform 140ms ease;
+}
+
+.sourceDisclosure[open] summary::after {
+  transform: rotate(180deg);
+}
+
+.sourceIcon {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--radius-md);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-agent-surface);
+  color: var(--accent-agent-text);
+  flex: 0 0 auto;
+}
+
+.sourceIcon svg {
+  width: 1.15rem;
+  height: 1.15rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.sourceSummaryCopy {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.sourceSummaryTitle {
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 650;
+  line-height: 1.25;
+}
+
+.sourceSummaryDescription {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.35;
+}
+
+.sourceCount {
+  min-width: 1.4rem;
+  height: 1.4rem;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-pill);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.sourceDisclosureBody {
+  padding: 0 var(--space-3) var(--space-3)
+    calc(var(--space-3) + 2rem + var(--space-2));
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.sourceDisclosureBody .sourceList {
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+}
+
+.shotDetails {
+  margin-top: var(--space-1);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.shotDetails h3 {
+  margin: 0 0 var(--space-3);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.shotDetails .shotContext {
+  margin: 0;
+  gap: var(--space-2);
+}
+
+.shotDetails .contextRow {
+  display: grid;
+  grid-template-columns: 6.2rem minmax(0, 1fr);
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+}
+
+.shotDetails .contextRow dt {
+  min-width: 0;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-size: 0.68rem;
+}
+
+.shotDetails .contextRow dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 900px) {
+  .firstDraftPanel {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .sourceCards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .sourceDisclosure summary {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .sourceDisclosure summary::after {
+    display: none;
+  }
+
+  .sourceDisclosureBody {
+    padding-left: var(--space-3);
+  }
+}
+
+@media (max-width: 768px) {
+  .sourceCards {
+    grid-template-columns: 1fr;
+  }
+}

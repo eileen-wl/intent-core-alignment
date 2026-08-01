@@ -45,6 +45,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.agents import (
     artist_guidance_service,
+    cg_agent_service,
     cg_supervisor_review_service,
     context_reconstruction_service,
     core_agent_service,
@@ -226,6 +227,27 @@ async def generate_core_anchor_draft(
     return await core_agent_service.generate_core_anchor_draft(session, shot_id)
 
 
+@router.post(
+    "/shots/{shot_id}/core-anchor/drafts/from-confirmed",
+    response_model=CoreAnchorRevisionRead,
+    status_code=201,
+)
+async def create_core_anchor_draft_from_confirmed(
+    shot_id: uuid.UUID,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> CoreAnchorRevision:
+    """Step 7C-2 Intent Workspace: starts a new draft revision from the
+    Shot's current confirmed Core Anchor -- the human-authored
+    counterpart to `POST /core-anchor/generate` (Agent-authored from an
+    IntentBrief) and `POST /intent-decompositions/{id}/core-anchor-draft`
+    (Agent-authored from a decomposition). No request body: the starting
+    content is always the confirmed revision's own real content, never
+    client-supplied.
+    """
+    return await core_anchor_service.create_draft_revision_from_confirmed(session, actor, shot_id)
+
+
 @router.get("/context-snapshots/{snapshot_id}", response_model=ContextSnapshotRead)
 async def get_context_snapshot(
     snapshot_id: uuid.UUID, session: AsyncSession = Depends(get_session)
@@ -360,6 +382,39 @@ async def create_execution_anchor_draft(
 ) -> ExecutionAnchorRevision:
     return await execution_anchor_service.create_draft_revision(
         session, actor, task_id, payload.model_dump()
+    )
+
+
+@router.post(
+    "/tasks/{task_id}/execution-anchor/generate",
+    response_model=ExecutionAnchorRevisionRead,
+    status_code=201,
+)
+async def generate_execution_anchor_draft(
+    task_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> ExecutionAnchorRevision:
+    return await cg_agent_service.generate_execution_anchor_draft(session, task_id)
+
+
+@router.post(
+    "/tasks/{task_id}/execution-anchor/drafts/from-confirmed",
+    response_model=ExecutionAnchorRevisionRead,
+    status_code=201,
+)
+async def create_execution_anchor_draft_from_confirmed(
+    task_id: uuid.UUID,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> ExecutionAnchorRevision:
+    """Step 7C-4 Execution Anchor workflow: starts a new draft revision
+    from the Task's current confirmed Execution Anchor -- the
+    human-authored counterpart to `POST /execution-anchor/generate`
+    (Agent-authored from the confirmed Core Anchor). No request body: the
+    starting content is always the confirmed revision's own real
+    content, never client-supplied.
+    """
+    return await execution_anchor_service.create_draft_revision_from_confirmed(
+        session, actor, task_id
     )
 
 
@@ -627,6 +682,23 @@ async def list_cross_role_assessments(
 ) -> list[CrossRoleAssessment]:
     return await cross_role_assessment_service.list_cross_role_assessments_for_version_and_task(
         session, version_id, task_id
+    )
+
+
+@router.get(
+    "/shots/{shot_id}/cross-role-assessments",
+    response_model=list[CrossRoleAssessmentRead],
+)
+async def list_shot_cross_role_assessments(
+    shot_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+) -> list[CrossRoleAssessment]:
+    """Step 7C-3 Alignment Workspace: this Shot's full Cross-role
+    Assessment history, newest first -- not scoped to a single Task/
+    Version pair (see ``list_cross_role_assessments`` above for that
+    narrower query)."""
+    return await cross_role_assessment_service.list_cross_role_assessments_for_shot(
+        session, shot_id
     )
 
 

@@ -238,8 +238,8 @@ def test_prompt_registry_entry_is_registered() -> None:
     assert registration.agent_type == "artist_agent"
     assert registration.capability == "iteration_guidance"
     assert registration.prompt_key == "artist_iteration_guidance"
-    assert registration.version == "v1"
-    assert registration.version_label == "artist_iteration_guidance.v1"
+    assert registration.version == "v2"
+    assert registration.version_label == "artist_iteration_guidance.v2"
     assert registration.max_output_tokens == 6144
 
 
@@ -933,9 +933,10 @@ def test_deterministic_generator_converts_missing_execution_anchor_guidance_to_a
 
 
 def test_artist_guidance_item_rejects_overlong_summary() -> None:
+    # v2 bound pass: summary max_length is 200 (was 280).
     with pytest.raises(Exception):  # noqa: B017, PT011 -- pydantic ValidationError
         ArtistGuidanceItem(
-            summary="x" * 281,
+            summary="x" * 201,
             why_it_matters="short",
             priority="low",
             evidence=[_evidence_ref()],
@@ -947,7 +948,28 @@ def test_artist_guidance_item_rejects_empty_evidence() -> None:
         ArtistGuidanceItem(summary="short", why_it_matters="short", priority="low", evidence=[])
 
 
-def test_artist_feedback_translation_rejects_more_than_two_evidence_references() -> None:
+def test_artist_guidance_item_rejects_more_than_one_evidence_reference() -> None:
+    # v2 bound pass: evidence max_length is exactly 1 (was up to 2) --
+    # the single most direct token-budget lever behind the Step 7C-5
+    # truncation fix.
+    with pytest.raises(Exception):  # noqa: B017, PT011
+        ArtistGuidanceItem(
+            summary="short",
+            why_it_matters="short",
+            priority="low",
+            evidence=[_evidence_ref(), _evidence_ref()],
+        )
+
+
+def test_artist_evidence_reference_rejects_unbounded_label() -> None:
+    # v2 bound pass: `label` previously had no max_length at all -- the
+    # root cause of the Step 7C-5 truncation (a verbose response could
+    # grow this field without limit). Now capped at 140 characters.
+    with pytest.raises(Exception):  # noqa: B017, PT011
+        ArtistEvidenceReference(source_type="task", source_id="t1", label="x" * 141)
+
+
+def test_artist_feedback_translation_rejects_more_than_one_evidence_reference() -> None:
     with pytest.raises(Exception):  # noqa: B017, PT011
         ArtistFeedbackTranslation(
             feedback_or_issue="short",
@@ -955,7 +977,7 @@ def test_artist_feedback_translation_rejects_more_than_two_evidence_references()
             underlying_intent="short",
             self_check="short",
             priority="low",
-            evidence=[_evidence_ref(), _evidence_ref(), _evidence_ref()],
+            evidence=[_evidence_ref(), _evidence_ref()],
         )
 
 
@@ -968,12 +990,19 @@ def _base_item() -> ArtistGuidanceItem:
 @pytest.mark.parametrize(
     "field,limit",
     [
-        ("non_negotiables", 3),
-        ("allowed_variations", 3),
-        ("iteration_priorities", 3),
+        # v2 bound pass: non_negotiables/allowed_variations/
+        # iteration_priorities/questions_for_human_supervisor 3 -> 2;
+        # evidence_gaps 5 -> 4 (kept at 4, not 3: the mandatory
+        # inspection-boundary disclosure plus up to three independent
+        # real gap conditions can genuinely co-occur -- see
+        # ArtistAgentGuidanceOutput.evidence_gaps's own comment).
+        # cross_department_dependencies is unchanged at 2.
+        ("non_negotiables", 2),
+        ("allowed_variations", 2),
+        ("iteration_priorities", 2),
         ("cross_department_dependencies", 2),
-        ("questions_for_human_supervisor", 3),
-        ("evidence_gaps", 5),
+        ("questions_for_human_supervisor", 2),
+        ("evidence_gaps", 4),
     ],
 )
 def test_artist_agent_guidance_output_rejects_too_many_list_items(field: str, limit: int) -> None:
@@ -997,6 +1026,33 @@ def test_artist_agent_guidance_output_rejects_too_many_list_items(field: str, li
         kwargs[field] = [base_item] * (limit + 1)
     with pytest.raises(Exception):  # noqa: B017, PT011
         ArtistAgentGuidanceOutput(**kwargs)
+
+
+def test_artist_agent_guidance_output_rejects_too_many_feedback_translations() -> None:
+    # v2 bound pass: feedback_translations max_length is 2 (was 3).
+    base_item = _base_item()
+    translation = ArtistFeedbackTranslation(
+        feedback_or_issue="short",
+        practical_action="short",
+        underlying_intent="short",
+        self_check="short",
+        priority="low",
+        evidence=[_evidence_ref()],
+    )
+    with pytest.raises(Exception):  # noqa: B017, PT011
+        ArtistAgentGuidanceOutput(
+            executive_summary="short",
+            creative_intent_read=base_item,
+            task_goal=base_item,
+            current_iteration_read=base_item,
+            non_negotiables=[],
+            allowed_variations=[],
+            feedback_translations=[translation, translation, translation],
+            iteration_priorities=[],
+            cross_department_dependencies=[],
+            questions_for_human_supervisor=["A question."],
+            evidence_gaps=["ICAS has not directly inspected footage."],
+        )
 
 
 # --- content-boundary hardening ---
@@ -1472,7 +1528,7 @@ async def test_generate_records_model_name_and_prompt_version_via_deepseek(
     assert run is not None
     assert run.provider == "deepseek"
     assert run.model_name == "deepseek-v4-flash"
-    assert run.prompt_version == "artist_iteration_guidance.v1"
+    assert run.prompt_version == "artist_iteration_guidance.v2"
     assert run.status == "succeeded"
 
 
@@ -1480,6 +1536,22 @@ def test_artist_prompt_declares_bounded_output_size_limits() -> None:
     from intent_core_api.agents import prompt_registry
 
     prompt = prompt_registry.get_registration("iteration_guidance").system_prompt
-    assert "650 characters" in prompt
-    assert "at most 3 non_negotiables" in prompt
+    assert "400 characters" in prompt
+    assert "at most 2 non_negotiables" in prompt
     assert "hard-bounded by the response schema itself" in prompt
+
+
+def test_artist_prompt_v2_forbids_quoting_anchor_content_and_bounds_evidence() -> None:
+    """Step 7C-5 fix: the two new v2 instructions directly targeting the
+    root cause of the real-provider truncation -- never restate/quote
+    full Anchor field text (the likeliest source of unbounded growth),
+    and exactly one evidence reference per item (was up to two)."""
+    from intent_core_api.agents import prompt_registry
+
+    prompt = prompt_registry.get_registration("iteration_guidance").system_prompt
+    assert "restate the full text" in prompt.lower()
+    assert "cite exactly one piece of evidence" in prompt.lower()
+    assert (
+        prompt_registry.get_registration("iteration_guidance").version_label
+        == "artist_iteration_guidance.v2"
+    )

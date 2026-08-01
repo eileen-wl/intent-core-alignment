@@ -75,6 +75,109 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/tasks/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Task */
+        get: operations["get_task_tasks__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shots/{shot_id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Tasks For Shot */
+        get: operations["list_tasks_for_shot_shots__shot_id__tasks_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/demo/ensure-d1-scenario": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ensure D1 Scenario Endpoint */
+        post: operations["ensure_d1_scenario_endpoint_internal_demo_ensure_d1_scenario_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/demo/reset-uninitialized-shot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Uninitialized Shot Endpoint
+         * @description Dev-only (Step 7C-2 browser-validation fix #1): puts the seed's
+         *     uninitialized Shot back at Core Anchor lifecycle state 1 (INITIAL
+         *     EMPTY) on demand, so that state stays reliably reachable even after a
+         *     prior browser session has moved it past it (e.g. by starting a
+         *     draft). Never adds a product-facing page -- this is scaffolding at the
+         *     same trust boundary as `/ensure-d1-scenario` (see module docstring).
+         */
+        post: operations["reset_uninitialized_shot_endpoint_internal_demo_reset_uninitialized_shot_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/demo/reset-cg-demo-task": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reset Cg Demo Task Endpoint
+         * @description Dev-only (Step 7C-4 Execution Anchor workflow fix): puts the CG
+         *     demo Task ("Lighting Pass") back at its coherent, meaningful-draft
+         *     Execution Anchor baseline on demand, so that scenario stays reliably
+         *     reachable even after a prior browser session has moved it past it
+         *     (e.g. by confirming a blank draft). Never adds a product-facing page
+         *     -- this is scaffolding at the same trust boundary as
+         *     `/ensure-d1-scenario`/`/reset-uninitialized-shot` (see module
+         *     docstring).
+         */
+        post: operations["reset_cg_demo_task_endpoint_internal_demo_reset_cg_demo_task_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/ping-worker": {
         parameters: {
             query?: never;
@@ -347,6 +450,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/intent/shots/{shot_id}/core-anchor/drafts/from-confirmed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Core Anchor Draft From Confirmed
+         * @description Step 7C-2 Intent Workspace: starts a new draft revision from the
+         *     Shot's current confirmed Core Anchor -- the human-authored
+         *     counterpart to `POST /core-anchor/generate` (Agent-authored from an
+         *     IntentBrief) and `POST /intent-decompositions/{id}/core-anchor-draft`
+         *     (Agent-authored from a decomposition). No request body: the starting
+         *     content is always the confirmed revision's own real content, never
+         *     client-supplied.
+         */
+        post: operations["create_core_anchor_draft_from_confirmed_intent_shots__shot_id__core_anchor_drafts_from_confirmed_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/intent/context-snapshots/{snapshot_id}": {
         parameters: {
             query?: never;
@@ -512,6 +641,48 @@ export interface paths {
         put?: never;
         /** Create Execution Anchor Draft */
         post: operations["create_execution_anchor_draft_intent_tasks__task_id__execution_anchor_drafts_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/tasks/{task_id}/execution-anchor/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Generate Execution Anchor Draft */
+        post: operations["generate_execution_anchor_draft_intent_tasks__task_id__execution_anchor_generate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/intent/tasks/{task_id}/execution-anchor/drafts/from-confirmed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create Execution Anchor Draft From Confirmed
+         * @description Step 7C-4 Execution Anchor workflow: starts a new draft revision
+         *     from the Task's current confirmed Execution Anchor -- the
+         *     human-authored counterpart to `POST /execution-anchor/generate`
+         *     (Agent-authored from the confirmed Core Anchor). No request body: the
+         *     starting content is always the confirmed revision's own real
+         *     content, never client-supplied.
+         */
+        post: operations["create_execution_anchor_draft_from_confirmed_intent_tasks__task_id__execution_anchor_drafts_from_confirmed_post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -825,6 +996,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/intent/shots/{shot_id}/cross-role-assessments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Shot Cross Role Assessments
+         * @description Step 7C-3 Alignment Workspace: this Shot's full Cross-role
+         *     Assessment history, newest first -- not scoped to a single Task/
+         *     Version pair (see ``list_cross_role_assessments`` above for that
+         *     narrower query).
+         */
+        get: operations["list_shot_cross_role_assessments_intent_shots__shot_id__cross_role_assessments_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/intent/re-anchor-proposals/{proposal_id}": {
         parameters: {
             query?: never;
@@ -1058,6 +1252,228 @@ export interface paths {
         };
         /** List Alignment Assessment Decisions */
         get: operations["list_alignment_assessment_decisions_assessments__assessment_id__decisions_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vfx/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vfx Inbox */
+        get: operations["get_vfx_inbox_vfx_inbox_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vfx/inbox/{shot_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vfx Inbox Item */
+        get: operations["get_vfx_inbox_item_vfx_inbox__shot_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/shots/{shot_id}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Shot Activity */
+        get: operations["get_shot_activity_shots__shot_id__activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cg/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cg Inbox */
+        get: operations["get_cg_inbox_cg_inbox_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cg/inbox/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cg Inbox Item */
+        get: operations["get_cg_inbox_item_cg_inbox__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{task_id}/dependencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Task Dependencies */
+        get: operations["list_task_dependencies_tasks__task_id__dependencies_get"];
+        put?: never;
+        /** Create Task Dependency */
+        post: operations["create_task_dependency_tasks__task_id__dependencies_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{task_id}/dependencies/{dependency_id}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Acknowledge Task Dependency */
+        post: operations["acknowledge_task_dependency_tasks__task_id__dependencies__dependency_id__acknowledge_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{task_id}/dependencies/{dependency_id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Resolve Task Dependency */
+        post: operations["resolve_task_dependency_tasks__task_id__dependencies__dependency_id__resolve_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{task_id}/escalate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Escalate Task */
+        post: operations["escalate_task_tasks__task_id__escalate_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{task_id}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Task Activity */
+        get: operations["get_task_activity_tasks__task_id__activity_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/artist/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Artist Inbox */
+        get: operations["get_artist_inbox_artist_inbox_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/artist/inbox/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Artist Inbox Item */
+        get: operations["get_artist_inbox_item_artist_inbox__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{task_id}/feedback-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Task Feedback History */
+        get: operations["get_task_feedback_history_tasks__task_id__feedback_history_get"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1304,6 +1720,50 @@ export interface components {
             /** Label */
             label: string;
         };
+        /** ArtistFeedbackEventRead */
+        ArtistFeedbackEventRead: {
+            /** Id */
+            id: string;
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "version_recorded" | "review_note_recorded" | "artist_guidance_generated" | "cg_supervisor_review_generated" | "cross_role_assessment_involving_task" | "dependency_recorded" | "dependency_acknowledged" | "dependency_resolved" | "escalation_recorded" | "execution_anchor_confirmed" | "execution_anchor_draft_discarded";
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Actor Kind */
+            actor_kind: ("human" | "agent" | "system") | null;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Actor Human Role */
+            actor_human_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
+            /** Summary */
+            summary: string;
+            /** Related Entity Type */
+            related_entity_type: string;
+            /**
+             * Related Entity Id
+             * Format: uuid
+             */
+            related_entity_id: string;
+            /** Related Version Id */
+            related_version_id: string | null;
+            /** Route */
+            route: string;
+        };
+        /** ArtistFeedbackHistoryRead */
+        ArtistFeedbackHistoryRead: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /** Events */
+            events: components["schemas"]["ArtistFeedbackEventRead"][];
+        };
         /**
          * ArtistFeedbackTranslation
          * @description Translates one piece of upstream feedback/evidence into practical,
@@ -1348,6 +1808,94 @@ export interface components {
             priority: "low" | "medium" | "high";
             /** Evidence */
             evidence: components["schemas"]["ArtistEvidenceReference"][];
+        };
+        /** ArtistInboxCurrentFocusRead */
+        ArtistInboxCurrentFocusRead: {
+            /**
+             * Focus Type
+             * @enum {string}
+             */
+            focus_type: "guidance_outdated" | "review_note_needs_response" | "dependency_needs_attention" | "guidance_available" | "none";
+            /** Title */
+            title: string;
+            /** Explanation */
+            explanation: string;
+            /** Target Route */
+            target_route: string;
+            /** Primary Action Label */
+            primary_action_label: string | null;
+            /** Actionable */
+            actionable: boolean;
+        };
+        /** ArtistInboxItemRead */
+        ArtistInboxItemRead: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /** Task Name */
+            task_name: string;
+            /** Department */
+            department: string | null;
+            /**
+             * Task Source
+             * @enum {string}
+             */
+            task_source: "manual" | "ftrack";
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Shot Name */
+            shot_name: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /** Project Name */
+            project_name: string;
+            /**
+             * Execution Anchor State
+             * @enum {string}
+             */
+            execution_anchor_state: "none" | "draft_pending" | "confirmed";
+            /** Active Execution Anchor Revision Id */
+            active_execution_anchor_revision_id: string | null;
+            /** Active Execution Anchor Summary */
+            active_execution_anchor_summary: string | null;
+            /** Latest Version Id */
+            latest_version_id: string | null;
+            /** Latest Version Name */
+            latest_version_name: string | null;
+            /** Latest Version Number */
+            latest_version_number: number | null;
+            /**
+             * Guidance State
+             * @enum {string}
+             */
+            guidance_state: "none" | "outdated" | "current";
+            /** Latest Guidance Id */
+            latest_guidance_id: string | null;
+            /** Open Review Note Count */
+            open_review_note_count: number;
+            /** Open Dependency Count */
+            open_dependency_count: number;
+            current_focus: components["schemas"]["ArtistInboxCurrentFocusRead"];
+            /** Sort Rank */
+            sort_rank: number;
+        };
+        /** ArtistInboxRead */
+        ArtistInboxRead: {
+            /** Items */
+            items: components["schemas"]["ArtistInboxItemRead"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
         };
         /**
          * AssessmentDecisionRequest
@@ -1467,6 +2015,87 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** CgInboxCurrentFocusRead */
+        CgInboxCurrentFocusRead: {
+            /**
+             * Focus Type
+             * @enum {string}
+             */
+            focus_type: "execution_anchor_gate_pending" | "execution_anchor_draft_needs_review" | "dependency_needs_attention" | "version_review_available" | "none";
+            /** Title */
+            title: string;
+            /** Explanation */
+            explanation: string;
+            /** Target Route */
+            target_route: string;
+            /** Primary Action Label */
+            primary_action_label: string | null;
+            /** Actionable */
+            actionable: boolean;
+        };
+        /** CgInboxItemRead */
+        CgInboxItemRead: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /** Task Name */
+            task_name: string;
+            /** Department */
+            department: string | null;
+            /**
+             * Task Source
+             * @enum {string}
+             */
+            task_source: "manual" | "ftrack";
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Shot Name */
+            shot_name: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /** Project Name */
+            project_name: string;
+            /**
+             * Execution Anchor State
+             * @enum {string}
+             */
+            execution_anchor_state: "none" | "draft_pending" | "confirmed";
+            /** Active Execution Anchor Revision Id */
+            active_execution_anchor_revision_id: string | null;
+            /** Active Execution Anchor Summary */
+            active_execution_anchor_summary: string | null;
+            /** Pending Human Gate Id */
+            pending_human_gate_id: string | null;
+            /** Latest Version Id */
+            latest_version_id: string | null;
+            /** Latest Version Name */
+            latest_version_name: string | null;
+            /** Latest Version Number */
+            latest_version_number: number | null;
+            /** Open Dependency Count */
+            open_dependency_count: number;
+            current_focus: components["schemas"]["CgInboxCurrentFocusRead"];
+            /** Sort Rank */
+            sort_rank: number;
+        };
+        /** CgInboxRead */
+        CgInboxRead: {
+            /** Items */
+            items: components["schemas"]["CgInboxItemRead"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
         };
         /** ConstraintInput */
         ConstraintInput: {
@@ -1876,6 +2505,59 @@ export interface components {
             /** Evidence */
             evidence: components["schemas"]["CrossRoleEvidenceReference"][];
         };
+        /** D1ScenarioResultRead */
+        D1ScenarioResultRead: {
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+            /**
+             * Core Anchor Revision Id
+             * Format: uuid
+             */
+            core_anchor_revision_id: string;
+            /**
+             * Execution Anchor Revision Id
+             * Format: uuid
+             */
+            execution_anchor_revision_id: string;
+            /**
+             * Cross Role Assessment Id
+             * Format: uuid
+             */
+            cross_role_assessment_id: string;
+            /**
+             * Uninitialized Shot Id
+             * Format: uuid
+             */
+            uninitialized_shot_id: string;
+            /**
+             * Cg Demo Task Id
+             * Format: uuid
+             */
+            cg_demo_task_id: string;
+            /**
+             * Cg Demo Dependency Id
+             * Format: uuid
+             */
+            cg_demo_dependency_id: string;
+        };
         /** DecisionRead */
         DecisionRead: {
             /**
@@ -1939,6 +2621,13 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** EscalationCreate */
+        EscalationCreate: {
+            /** Description */
+            description: string;
+            /** Related Version Id */
+            related_version_id?: string | null;
         };
         /** ExecutionAnchorRead */
         ExecutionAnchorRead: {
@@ -2477,6 +3166,26 @@ export interface components {
              */
             created_at: string;
         };
+        /** ResetCgDemoTaskResultRead */
+        ResetCgDemoTaskResultRead: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /** Execution Url */
+            execution_url: string;
+        };
+        /** ResetUninitializedShotResultRead */
+        ResetUninitializedShotResultRead: {
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Intent Url */
+            intent_url: string;
+        };
         /** ReviewNoteCreate */
         ReviewNoteCreate: {
             /** Content */
@@ -2540,6 +3249,48 @@ export interface components {
             main_concerns: string;
             /** Evidence */
             evidence: components["schemas"]["CrossRoleEvidenceReference"][];
+        };
+        /** ShotActivityEventRead */
+        ShotActivityEventRead: {
+            /** Id */
+            id: string;
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "core_anchor_draft_created" | "core_anchor_draft_updated" | "core_anchor_confirmed" | "core_anchor_draft_discarded" | "human_decision_recorded" | "production_version_recorded" | "review_note_recorded" | "alignment_assessment_created" | "re_anchor_proposal_generated" | "external_link_recorded";
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Actor Kind */
+            actor_kind: ("human" | "agent" | "system") | null;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Actor Human Role */
+            actor_human_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
+            /** Summary */
+            summary: string;
+            /** Related Entity Type */
+            related_entity_type: string;
+            /**
+             * Related Entity Id
+             * Format: uuid
+             */
+            related_entity_id: string;
+            /** Route */
+            route: string;
+        };
+        /** ShotActivityRead */
+        ShotActivityRead: {
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Events */
+            events: components["schemas"]["ShotActivityEventRead"][];
         };
         /** ShotCreate */
         ShotCreate: {
@@ -2612,6 +3363,48 @@ export interface components {
              */
             last_synced_at: string;
         };
+        /** TaskActivityEventRead */
+        TaskActivityEventRead: {
+            /** Id */
+            id: string;
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "execution_anchor_draft_created" | "execution_anchor_draft_updated" | "execution_anchor_confirmed" | "execution_anchor_draft_discarded" | "human_decision_recorded" | "cg_supervisor_review_generated" | "dependency_recorded" | "dependency_acknowledged" | "dependency_resolved" | "escalation_recorded" | "cross_role_assessment_involving_task";
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Actor Kind */
+            actor_kind: ("human" | "agent" | "system") | null;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Actor Human Role */
+            actor_human_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
+            /** Summary */
+            summary: string;
+            /** Related Entity Type */
+            related_entity_type: string;
+            /**
+             * Related Entity Id
+             * Format: uuid
+             */
+            related_entity_id: string;
+            /** Route */
+            route: string;
+        };
+        /** TaskActivityRead */
+        TaskActivityRead: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /** Events */
+            events: components["schemas"]["TaskActivityEventRead"][];
+        };
         /** TaskCreate */
         TaskCreate: {
             /**
@@ -2631,6 +3424,83 @@ export interface components {
             source: "manual" | "ftrack";
             /** External Id */
             external_id?: string | null;
+        };
+        /** TaskDependencyCreate */
+        TaskDependencyCreate: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "dependency" | "conflict";
+            /** Description */
+            description: string;
+            /** Severity */
+            severity?: ("low" | "medium" | "high") | null;
+            /** Related Version Id */
+            related_version_id?: string | null;
+        };
+        /** TaskDependencyRead */
+        TaskDependencyRead: {
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /** Related Version Id */
+            related_version_id: string | null;
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "dependency" | "conflict" | "escalation";
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "open" | "acknowledged" | "resolved";
+            /** Description */
+            description: string;
+            /** Severity */
+            severity: ("low" | "medium" | "high") | null;
+            /** Escalated To Role */
+            escalated_to_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
+            /**
+             * Created By Actor Kind
+             * @enum {string}
+             */
+            created_by_actor_kind: "human" | "agent" | "system";
+            /** Created By Actor Id */
+            created_by_actor_id: string;
+            /** Created By Human Role */
+            created_by_human_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
+            /**
+             * Created At
+             * Format: date-time
+             */
+            created_at: string;
+            /** Resolved By Actor Id */
+            resolved_by_actor_id: string | null;
+            /** Resolved By Human Role */
+            resolved_by_human_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
+            /** Resolved At */
+            resolved_at: string | null;
+            /** Related Cross Role Assessment Id */
+            related_cross_role_assessment_id: string | null;
         };
         /** TaskRead */
         TaskRead: {
@@ -2853,6 +3723,150 @@ export interface components {
              */
             created_at: string;
         };
+        /**
+         * VfxInboxCurrentFocusRead
+         * @description The single derived Current focus for one Shot -- never more than
+         *     one per Shot, per the locked precedence order. See
+         *     docs/step-7/15_STEP_7C0C_...md §6 for the exact predicate each
+         *     `focus_type` corresponds to.
+         */
+        VfxInboxCurrentFocusRead: {
+            /**
+             * Focus Type
+             * @enum {string}
+             */
+            focus_type: "core_anchor_gate_pending" | "core_anchor_draft_needs_review" | "alignment_not_followed_by_anchor_action" | "re_anchor_proposal_present" | "assessment_generation_available" | "none";
+            /** Title */
+            title: string;
+            /** Explanation */
+            explanation: string;
+            /** Target Route */
+            target_route: string;
+            /** Primary Action Label */
+            primary_action_label: string | null;
+            /** Actionable */
+            actionable: boolean;
+        };
+        /** VfxInboxItemRead */
+        VfxInboxItemRead: {
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /** Project Name */
+            project_name: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Shot Name */
+            shot_name: string;
+            /**
+             * Shot Source
+             * @enum {string}
+             */
+            shot_source: "manual" | "ftrack";
+            /**
+             * Core Anchor State
+             * @enum {string}
+             */
+            core_anchor_state: "none" | "draft_pending" | "confirmed";
+            /** Active Core Anchor Revision Id */
+            active_core_anchor_revision_id: string | null;
+            /** Active Core Anchor Summary */
+            active_core_anchor_summary: string | null;
+            /** Pending Human Gate Id */
+            pending_human_gate_id: string | null;
+            /** Relevant Task Id */
+            relevant_task_id: string | null;
+            /** Relevant Task Name */
+            relevant_task_name: string | null;
+            /** Relevant Version Id */
+            relevant_version_id: string | null;
+            /** Relevant Version Name */
+            relevant_version_name: string | null;
+            /** Relevant Version Number */
+            relevant_version_number: number | null;
+            /** Pairing Established */
+            pairing_established: boolean;
+            /** Latest Assessment Id */
+            latest_assessment_id: string | null;
+            /** Latest Assessment Created At */
+            latest_assessment_created_at: string | null;
+            /** Latest Signal Id */
+            latest_signal_id: string | null;
+            /** Latest Signal Attention Level */
+            latest_signal_attention_level: ("low" | "medium" | "high") | null;
+            /** Latest Signal Summary */
+            latest_signal_summary: string | null;
+            /** Re Anchor Proposal Present */
+            re_anchor_proposal_present: boolean;
+            /** Generation Ready Task Id */
+            generation_ready_task_id?: string | null;
+            /** Generation Ready Version Id */
+            generation_ready_version_id?: string | null;
+            /** Latest Version Without Review Id */
+            latest_version_without_review_id?: string | null;
+            /** Latest Version Without Review Name */
+            latest_version_without_review_name?: string | null;
+            /** Latest Version Without Review Number */
+            latest_version_without_review_number?: number | null;
+            /** Open Cg Escalation Task Id */
+            open_cg_escalation_task_id?: string | null;
+            /** Open Cg Escalation Task Name */
+            open_cg_escalation_task_name?: string | null;
+            /** Open Cg Escalation Summary */
+            open_cg_escalation_summary?: string | null;
+            current_focus: components["schemas"]["VfxInboxCurrentFocusRead"];
+            /** Next Candidates */
+            next_candidates?: components["schemas"]["VfxInboxNextFocusRead"][];
+            /** Sort Rank */
+            sort_rank: number;
+        };
+        /**
+         * VfxInboxNextFocusRead
+         * @description One subordinate, still-real focus-type candidate for a Shot,
+         *     ranked below the Current focus by the same locked precedence (Step
+         *     7C-1 targeted correction §7-§8): derived from the same real domain
+         *     state via the same six-type predicates, minus whichever type won as
+         *     Current focus, capped at the next two. Field-identical to
+         *     `VfxInboxCurrentFocusRead` by design -- same real derivation, same
+         *     honest action target -- but a distinct type on purpose: a "Next in
+         *     this Shot" item is never rendered, or represented over the API, as
+         *     if it were the active Current focus. `focus_type` is never `"none"`
+         *     here (`"none"` is never a candidate) and never the legacy
+         *     AlignmentAssessment concept (no such type exists in
+         *     `VfxCurrentFocusType`).
+         */
+        VfxInboxNextFocusRead: {
+            /**
+             * Focus Type
+             * @enum {string}
+             */
+            focus_type: "core_anchor_gate_pending" | "core_anchor_draft_needs_review" | "alignment_not_followed_by_anchor_action" | "re_anchor_proposal_present" | "assessment_generation_available" | "none";
+            /** Title */
+            title: string;
+            /** Explanation */
+            explanation: string;
+            /** Target Route */
+            target_route: string;
+            /** Primary Action Label */
+            primary_action_label: string | null;
+            /** Actionable */
+            actionable: boolean;
+        };
+        /** VfxInboxRead */
+        VfxInboxRead: {
+            /** Items */
+            items: components["schemas"]["VfxInboxItemRead"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+        };
         /** WorkerHeartbeatRead */
         WorkerHeartbeatRead: {
             /** Name */
@@ -2892,9 +3906,9 @@ export interface components {
             entity_id: string;
             /**
              * Source
-             * @constant
+             * @enum {string}
              */
-            source: "ftrack";
+            source: "ftrack" | "demo";
             /** Target External Id */
             target_external_id: string;
             /** Content */
@@ -3123,6 +4137,128 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_task_tasks__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_tasks_for_shot_shots__shot_id__tasks_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    ensure_d1_scenario_endpoint_internal_demo_ensure_d1_scenario_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["D1ScenarioResultRead"];
+                };
+            };
+        };
+    };
+    reset_uninitialized_shot_endpoint_internal_demo_reset_uninitialized_shot_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResetUninitializedShotResultRead"];
+                };
+            };
+        };
+    };
+    reset_cg_demo_task_endpoint_internal_demo_reset_cg_demo_task_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResetCgDemoTaskResultRead"];
                 };
             };
         };
@@ -3632,6 +4768,40 @@ export interface operations {
             };
         };
     };
+    create_core_anchor_draft_from_confirmed_intent_shots__shot_id__core_anchor_drafts_from_confirmed_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CoreAnchorRevisionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_context_snapshot_intent_context_snapshots__snapshot_id__get: {
         parameters: {
             query?: never;
@@ -3980,6 +5150,71 @@ export interface operations {
                 "application/json": components["schemas"]["ExecutionAnchorRevisionDraftCreate"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionAnchorRevisionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    generate_execution_anchor_draft_intent_tasks__task_id__execution_anchor_generate_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ExecutionAnchorRevisionRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_execution_anchor_draft_from_confirmed_intent_tasks__task_id__execution_anchor_drafts_from_confirmed_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             201: {
@@ -4633,6 +5868,37 @@ export interface operations {
             };
         };
     };
+    list_shot_cross_role_assessments_intent_shots__shot_id__cross_role_assessments_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CrossRoleAssessmentRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_re_anchor_proposal_intent_re_anchor_proposals__proposal_id__get: {
         parameters: {
             query?: never;
@@ -5181,6 +6447,429 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DecisionRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vfx_inbox_vfx_inbox_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VfxInboxRead"];
+                };
+            };
+        };
+    };
+    get_vfx_inbox_item_vfx_inbox__shot_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VfxInboxItemRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shot_activity_shots__shot_id__activity_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShotActivityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cg_inbox_cg_inbox_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CgInboxRead"];
+                };
+            };
+        };
+    };
+    get_cg_inbox_item_cg_inbox__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CgInboxItemRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_task_dependencies_tasks__task_id__dependencies_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDependencyRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    create_task_dependency_tasks__task_id__dependencies_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TaskDependencyCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDependencyRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    acknowledge_task_dependency_tasks__task_id__dependencies__dependency_id__acknowledge_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                task_id: string;
+                dependency_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDependencyRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    resolve_task_dependency_tasks__task_id__dependencies__dependency_id__resolve_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                task_id: string;
+                dependency_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDependencyRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    escalate_task_tasks__task_id__escalate_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EscalationCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskDependencyRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_task_activity_tasks__task_id__activity_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaskActivityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_artist_inbox_artist_inbox_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtistInboxRead"];
+                };
+            };
+        };
+    };
+    get_artist_inbox_item_artist_inbox__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtistInboxItemRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_task_feedback_history_tasks__task_id__feedback_history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtistFeedbackHistoryRead"];
                 };
             };
             /** @description Validation Error */

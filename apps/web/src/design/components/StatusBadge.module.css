@@ -1,0 +1,82 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--border-subtle);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dotSolid {
+  background: currentColor;
+}
+
+.dotHollow {
+  background: transparent;
+  border: 1.5px solid currentColor;
+}
+
+.dotDashed {
+  background: transparent;
+  border: 1.5px dashed currentColor;
+}
+
+.neutral {
+  background: var(--surface-muted);
+  border-color: var(--border-subtle);
+  color: var(--text-secondary);
+}
+
+.active {
+  background: var(--surface-panel);
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+}
+
+.confirmed {
+  background: var(--authority-neutral-surface);
+  border-color: var(--authority-neutral-border);
+  color: var(--authority-neutral-text);
+}
+
+.attention {
+  background: var(--state-attention-surface);
+  border-color: var(--state-attention-border);
+  color: var(--state-attention);
+}
+
+.blocking {
+  background: var(--state-error-surface);
+  border-color: var(--state-error-border);
+  color: var(--state-error);
+}
+
+.historical {
+  background: var(--state-historical-surface);
+  border-color: var(--state-historical-border);
+  color: var(--state-historical);
+}
+
+.integrationReady {
+  background: var(--accent-fact-surface);
+  border-color: var(--accent-fact-border);
+  color: var(--accent-fact-text);
+}
+
+.unavailable {
+  background: var(--surface-muted);
+  border-color: var(--border-subtle);
+  border-style: dashed;
+  color: var(--text-muted);
+}

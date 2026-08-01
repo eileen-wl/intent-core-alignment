@@ -32,6 +32,7 @@ def _revision_kwargs(
         "core_anchor_revision_id": core_anchor_revision_id,
         "revision_number": revision_number,
         "status": status,
+        "technical_boundaries": "concurrency test content",
         "created_by_actor_kind": "human",
         "created_by_actor_id": "cg-1",
         "created_by_human_role": "cg_supervisor",

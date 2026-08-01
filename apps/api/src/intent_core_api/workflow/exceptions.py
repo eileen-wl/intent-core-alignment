@@ -22,6 +22,15 @@ class NotFoundError(Exception):
     """A referenced entity does not exist."""
 
 
+class ValidationError(Exception):
+    """The request's own content fails a domain content-validation rule --
+    distinct from ConflictError (a state/concurrency conflict) and
+    ForbiddenActionError (a permission rejection): this is a rejection of
+    the content itself, e.g. confirming a revision with no substantive
+    content in any field.
+    """
+
+
 class AgentGenerationError(Exception):
     """An Agent's model/provider call failed, or no working provider is
     configured. Distinct from ConflictError/ForbiddenActionError: this is

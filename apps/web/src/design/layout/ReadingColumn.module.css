@@ -1,0 +1,4 @@
+.readingColumn {
+  max-width: var(--content-width-reading);
+  margin: 0 auto;
+}

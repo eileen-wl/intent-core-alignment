@@ -119,3 +119,53 @@ export type WorkerHeartbeatUpsert = Schemas["WorkerHeartbeatUpsert"];
 
 export type HTTPValidationError = Schemas["HTTPValidationError"];
 export type ValidationError = Schemas["ValidationError"];
+
+export type VfxCurrentFocusType =
+  Schemas["VfxInboxCurrentFocusRead"]["focus_type"];
+export type VfxInboxCurrentFocusRead = Schemas["VfxInboxCurrentFocusRead"];
+export type VfxInboxNextFocusRead = Schemas["VfxInboxNextFocusRead"];
+export type VfxInboxItemRead = Schemas["VfxInboxItemRead"];
+export type VfxInboxRead = Schemas["VfxInboxRead"];
+
+export type ShotActivityEventType =
+  Schemas["ShotActivityEventRead"]["event_type"];
+export type ShotActivityEventRead = Schemas["ShotActivityEventRead"];
+export type ShotActivityRead = Schemas["ShotActivityRead"];
+
+export type CgCurrentFocusType =
+  Schemas["CgInboxCurrentFocusRead"]["focus_type"];
+export type ExecutionAnchorState =
+  Schemas["CgInboxItemRead"]["execution_anchor_state"];
+export type CgInboxCurrentFocusRead = Schemas["CgInboxCurrentFocusRead"];
+export type CgInboxItemRead = Schemas["CgInboxItemRead"];
+export type CgInboxRead = Schemas["CgInboxRead"];
+
+export type TaskDependencyKind = Schemas["TaskDependencyRead"]["kind"];
+export type TaskDependencyStatus = Schemas["TaskDependencyRead"]["status"];
+export type TaskDependencySeverity = NonNullable<
+  Schemas["TaskDependencyRead"]["severity"]
+>;
+export type TaskDependencyRead = Schemas["TaskDependencyRead"];
+export type TaskDependencyCreate = Schemas["TaskDependencyCreate"];
+export type EscalationCreate = Schemas["EscalationCreate"];
+
+export type TaskActivityEventType =
+  Schemas["TaskActivityEventRead"]["event_type"];
+export type TaskActivityEventRead = Schemas["TaskActivityEventRead"];
+export type TaskActivityRead = Schemas["TaskActivityRead"];
+
+export type ArtistCurrentFocusType =
+  Schemas["ArtistInboxCurrentFocusRead"]["focus_type"];
+export type ArtistExecutionAnchorState =
+  Schemas["ArtistInboxItemRead"]["execution_anchor_state"];
+export type ArtistGuidanceState =
+  Schemas["ArtistInboxItemRead"]["guidance_state"];
+export type ArtistInboxCurrentFocusRead =
+  Schemas["ArtistInboxCurrentFocusRead"];
+export type ArtistInboxItemRead = Schemas["ArtistInboxItemRead"];
+export type ArtistInboxRead = Schemas["ArtistInboxRead"];
+
+export type ArtistFeedbackEventType =
+  Schemas["ArtistFeedbackEventRead"]["event_type"];
+export type ArtistFeedbackEventRead = Schemas["ArtistFeedbackEventRead"];
+export type ArtistFeedbackHistoryRead = Schemas["ArtistFeedbackHistoryRead"];

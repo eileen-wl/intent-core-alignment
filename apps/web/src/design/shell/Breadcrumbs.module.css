@@ -1,0 +1,27 @@
+.nav {
+  font-size: var(--font-size-sm);
+}
+
+.list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--text-muted);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+}
+
+.item a {
+  color: var(--text-secondary);
+}
+
+.item span[aria-current="page"] {
+  color: var(--text-primary);
+  font-weight: 600;
+}

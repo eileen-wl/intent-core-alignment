@@ -170,3 +170,21 @@ async def create_task(payload: TaskCreate, session: AsyncSession = Depends(get_s
 async def list_tasks(session: AsyncSession = Depends(get_session)) -> list[Task]:
     result = await session.execute(select(Task).order_by(Task.created_at))
     return list(result.scalars().all())
+
+
+@router.get("/tasks/{task_id}", response_model=TaskRead)
+async def get_task(task_id: uuid.UUID, session: AsyncSession = Depends(get_session)) -> Task:
+    task = await session.get(Task, task_id)
+    if task is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return task
+
+
+@router.get("/shots/{shot_id}/tasks", response_model=list[TaskRead])
+async def list_tasks_for_shot(
+    shot_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> list[Task]:
+    result = await session.execute(
+        select(Task).where(Task.shot_id == shot_id).order_by(Task.created_at)
+    )
+    return list(result.scalars().all())

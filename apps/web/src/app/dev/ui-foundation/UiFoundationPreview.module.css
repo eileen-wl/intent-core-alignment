@@ -1,0 +1,9 @@
+/* Overrides the legacy global `main { max-width }` rule (globals.css)
+ * for this page only -- `Container` inside supplies its own width cap
+ * and horizontal padding, and this page is deliberately wide to
+ * demonstrate the comparison area and responsive grid. */
+.main {
+  max-width: none;
+  margin: 0;
+  padding: var(--space-6) 0;
+}

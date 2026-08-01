@@ -1,0 +1,171 @@
+/* ICAS shared design tokens (Step 7B-1).
+ *
+ * Restrained, professional palette per docs/step-7/06_STEP_7_LOCKED_SOURCE_OF_TRUTH.md
+ * §11-12: neutral base, violet Agent accent, blue/teal for production facts
+ * and ftrack, amber for attention, red for blocking errors, grey for
+ * history, green reserved only for confirmed technical success (never for
+ * human-confirmed authority, which stays neutral).
+ *
+ * Consumed by CSS Modules in apps/web/src/design/** via var(--token-name).
+ * Breakpoint values are documented here for reference but must be repeated
+ * as literal px values inside @media rules (CSS custom properties cannot
+ * be interpolated into media query conditions).
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* Surfaces */
+  --surface-page: #f6f7f9;
+  --surface-panel: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-muted: #edeff3;
+
+  /* Text */
+  --text-primary: #1a1d23;
+  --text-secondary: #464d59;
+  --text-muted: #767f8c;
+  --text-on-accent: #ffffff;
+
+  /* Borders */
+  --border-subtle: #e1e4ea;
+  --border-strong: #c3c9d3;
+
+  /* Neutral / human authority (never green -- see --state-success) */
+  --authority-neutral-text: #1a1d23;
+  --authority-neutral-surface: #edeff3;
+  --authority-neutral-border: #9aa2b1;
+
+  /* Violet Agent accent (AI interpretation / AI proposal) */
+  --accent-agent: #6a4fd6;
+  --accent-agent-text: #4c359f;
+  --accent-agent-surface: #f2eefc;
+  --accent-agent-border: #b7a3ea;
+
+  /* Blue/teal production-fact + ftrack accent */
+  --accent-fact: #146b8c;
+  --accent-fact-text: #0f5670;
+  --accent-fact-surface: #e7f3f7;
+  --accent-fact-border: #9dc7d6;
+
+  /* Amber attention / unresolved */
+  --state-attention: #92600a;
+  --state-attention-surface: #fbf1de;
+  --state-attention-border: #e0b667;
+
+  /* Red blocking / error */
+  --state-error: #a3271f;
+  --state-error-surface: #fbeceb;
+  --state-error-border: #e3a29c;
+
+  /* Grey historical / muted */
+  --state-historical: #5c636e;
+  --state-historical-surface: #eef0f3;
+  --state-historical-border: #c3c9d3;
+
+  /* Green technical success only -- never for human-confirmed authority */
+  --state-success: #1e7b45;
+  --state-success-surface: #e9f5ee;
+  --state-success-border: #9bcdad;
+
+  /* Spacing scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+
+  /* Shadow */
+  --shadow-sm: 0 1px 2px rgba(20, 22, 28, 0.06);
+  --shadow-md: 0 4px 12px rgba(20, 22, 28, 0.08);
+
+  /* Focus ring */
+  --focus-ring-color: #2f5fd6;
+  --focus-ring: 0 0 0 3px rgba(47, 95, 214, 0.35);
+
+  /* Typography */
+  --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "Consolas", monospace;
+
+  --font-size-xs: 0.75rem;
+  --font-size-sm: 0.875rem;
+  --font-size-md: 1rem;
+  --font-size-lg: 1.25rem;
+  --font-size-xl: 1.5rem;
+  --font-size-2xl: 2rem;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+
+  /* Content widths (reading width matches the legacy `main` max-width of
+   * 720px so existing /shots smoke-test pages keep their current
+   * measure). */
+  --content-width-reading: 45rem;
+  --content-width-comparison: 75rem;
+  --content-width-wide: 90rem;
+
+  /* Breakpoints (reference only -- repeat literal px in @media rules) */
+  --breakpoint-tablet: 768px;
+  --breakpoint-desktop: 1024px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface-page: #16181d;
+    --surface-panel: #1e2129;
+    --surface-elevated: #262a33;
+    --surface-muted: #262a33;
+
+    --text-primary: #eef0f3;
+    --text-secondary: #c3c9d3;
+    --text-muted: #8b93a1;
+
+    --border-subtle: #323844;
+    --border-strong: #454c5a;
+
+    --authority-neutral-text: #eef0f3;
+    --authority-neutral-surface: #262a33;
+    --authority-neutral-border: #6b7385;
+
+    --accent-agent: #a892f0;
+    --accent-agent-text: #cabdf7;
+    --accent-agent-surface: #2a2340;
+    --accent-agent-border: #5b4a99;
+
+    --accent-fact: #6fc0dd;
+    --accent-fact-text: #9fd6ea;
+    --accent-fact-surface: #12313d;
+    --accent-fact-border: #2c5c6e;
+
+    --state-attention: #e3ac52;
+    --state-attention-surface: #3a2c12;
+    --state-attention-border: #7a5a20;
+
+    --state-error: #e2857d;
+    --state-error-surface: #3a1e1c;
+    --state-error-border: #7a352e;
+
+    --state-historical: #a7afbc;
+    --state-historical-surface: #262a33;
+    --state-historical-border: #454c5a;
+
+    --state-success: #6fc191;
+    --state-success-surface: #16301f;
+    --state-success-border: #2f5c3e;
+
+    --focus-ring-color: #7fa4ec;
+    --focus-ring: 0 0 0 3px rgba(127, 164, 236, 0.4);
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+}

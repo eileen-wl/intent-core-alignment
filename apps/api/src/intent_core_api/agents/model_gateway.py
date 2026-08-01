@@ -51,6 +51,27 @@ field path (from Pydantic's own ``loc``) and short ``type`` code,
 capped at ten entries -- never Pydantic's ``input``/``input_value``
 (which can embed a snippet of the actual model-generated content) and
 never its full ``msg`` text.
+
+Reasoning-token budget sharing (Step 7C-5 real-provider fix): a real
+Artist Agent ``iteration_guidance`` call against the configured model
+was observed to hit ``finish_reason="length"`` with ``content`` fully
+*empty* -- not truncated JSON, zero characters -- while
+``completion_tokens`` still exactly equalled the configured budget. A
+minimal, unrelated smoke-test call against the same configured model
+confirmed why: this model performs internal "thinking"/reasoning by
+default, and its ``usage.completion_tokens_details.reasoning_tokens``
+(exposed via ``DeepSeekResponseDiagnostics.reasoning_tokens`` below)
+consumed the large majority of a trivial call's token budget before
+any visible answer content -- for a content-rich ContextSnapshot, the
+same reasoning phase can consume the *entire* configured budget,
+leaving none for the required JSON. This is a real, provider-side
+budget-sharing behaviour, not a prompt-verbosity or schema problem, so
+tightening the output schema alone cannot fix it. ``generate_deepseek``'s
+``disable_reasoning`` parameter (opt-in, defaulting to ``False`` so
+every other capability's behaviour is unchanged) passes DeepSeek's own
+``{"thinking": {"type": "disabled"}}`` request field, confirmed by the
+same smoke test to remove ``reasoning_tokens`` entirely -- freeing the
+whole configured budget for the visible, schema-validated response.
 """
 
 from __future__ import annotations
@@ -119,6 +140,11 @@ class DeepSeekResponseDiagnostics:
     prompt_tokens: int | None
     completion_tokens: int | None
     total_tokens: int | None
+    # Populated only when the provider reports it (some OpenAI-compatible
+    # providers/models omit `completion_tokens_details` entirely, e.g.
+    # once `disable_reasoning=True` removes it) -- see this module's own
+    # docstring for why this field exists.
+    reasoning_tokens: int | None
     response_characters: int
     content_was_empty: bool
 
@@ -128,6 +154,7 @@ class DeepSeekResponseDiagnostics:
             f"configured_max_output_tokens={self.configured_max_output_tokens} "
             f"prompt_tokens={self.prompt_tokens} "
             f"completion_tokens={self.completion_tokens} "
+            f"reasoning_tokens={self.reasoning_tokens} "
             f"total_tokens={self.total_tokens} "
             f"response_characters={self.response_characters} "
             f"content_was_empty={self.content_was_empty}"
@@ -140,6 +167,19 @@ def _usage_field(usage: object, field: str) -> int | None:
     field type -- diagnostics must never raise on their own account.
     """
     value = getattr(usage, field, None)
+    return value if isinstance(value, int) else None
+
+
+def _reasoning_tokens_field(usage: object) -> int | None:
+    """``usage.completion_tokens_details.reasoning_tokens`` -- nested
+    one level deeper than every other usage field, and, like
+    ``_usage_field``, tolerant of an absent ``usage``,
+    ``completion_tokens_details``, or unexpected field type. Absent
+    (``None``) either when the provider/model does no internal
+    reasoning, or when ``disable_reasoning=True`` removed it.
+    """
+    details = getattr(usage, "completion_tokens_details", None)
+    value = getattr(details, "reasoning_tokens", None)
     return value if isinstance(value, int) else None
 
 
@@ -238,6 +278,7 @@ def generate_deepseek[OutputT: BaseModel](
     user_content: str,
     output_model: type[OutputT],
     max_tokens: int | None = None,
+    disable_reasoning: bool = False,
 ) -> OutputT:
     """One non-streaming DeepSeek JSON-mode call, validated against
     ``output_model``. Never logs or returns the API key, the
@@ -253,6 +294,14 @@ def generate_deepseek[OutputT: BaseModel](
     underlying ``openai`` SDK/DeepSeek API argument name; the
     capability-specific override is named more descriptively
     (``max_output_tokens``) on ``PromptRegistration`` itself.
+
+    ``disable_reasoning`` (default ``False``, so every existing
+    capability's behaviour is unchanged) sends DeepSeek's own
+    ``{"thinking": {"type": "disabled"}}`` request field -- see this
+    module's own docstring for why a capability with a content-rich
+    ContextSnapshot may need this to avoid the model's internal
+    reasoning phase consuming the entire configured token budget before
+    any visible content is produced.
     """
     from openai import OpenAI
 
@@ -267,6 +316,7 @@ def generate_deepseek[OutputT: BaseModel](
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_content},
         ],
+        extra_body={"thinking": {"type": "disabled"}} if disable_reasoning else None,
     )
     choice = response.choices[0]
     content = choice.message.content
@@ -276,6 +326,7 @@ def generate_deepseek[OutputT: BaseModel](
         configured_max_output_tokens=resolved_max_tokens,
         prompt_tokens=_usage_field(usage, "prompt_tokens"),
         completion_tokens=_usage_field(usage, "completion_tokens"),
+        reasoning_tokens=_reasoning_tokens_field(usage),
         total_tokens=_usage_field(usage, "total_tokens"),
         response_characters=len(content) if content else 0,
         content_was_empty=not content,

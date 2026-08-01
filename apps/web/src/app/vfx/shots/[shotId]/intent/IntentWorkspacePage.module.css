@@ -1,0 +1,28 @@
+.authorityLine {
+  margin: var(--space-5) 0;
+}
+
+.confirmedActions {
+  max-width: var(--content-width-comparison);
+  margin: var(--space-4) auto 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+@media (max-width: 768px) {
+  .confirmedActions {
+    flex-direction: column-reverse;
+    align-items: stretch;
+  }
+}
+
+.activityLink {
+  margin-top: var(--space-7);
+  font-size: var(--font-size-sm);
+}
+
+.activityLink a {
+  color: var(--text-secondary);
+}

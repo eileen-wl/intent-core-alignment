@@ -1,0 +1,21 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.62rem 0.95rem;
+  color: #424a5b;
+  background: #f2f2f7;
+  border: 1px solid #ececf2;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.badge span {
+  width: 0.62rem;
+  height: 0.62rem;
+  background: #6744de;
+  border-radius: 50%;
+}
