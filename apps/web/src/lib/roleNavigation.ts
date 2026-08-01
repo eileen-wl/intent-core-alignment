@@ -17,9 +17,11 @@ export interface SidebarNavItem {
  * primary nav page; "Intent Signals" is embedded contextually, not a
  * standalone page; "Integrations" belongs in a later account/settings
  * area, not daily VFX navigation. All three VFX entries are fully
- * implemented. Step 7C-4 gives CG Supervisor the same three-page shape
+ * implemented. Step 7C-4 gave CG Supervisor the same three-page shape
  * (Workspace Home / Review Inbox / Tasks) -- never a VFX-only item such
- * as Shots, and no separate Intent Signals entry. */
+ * as Shots, and no separate Intent Signals entry. Step 7C-5 gives Artist
+ * the identical three-page shape -- the earlier "My Tasks"/"Intent
+ * Signals" placeholder entries are retired. */
 export const ROLE_SIDEBAR_ITEMS: Record<HumanRole, SidebarNavItem[]> = {
   vfx_supervisor: [
     {
@@ -62,12 +64,23 @@ export const ROLE_SIDEBAR_ITEMS: Record<HumanRole, SidebarNavItem[]> = {
     },
   ],
   artist: [
-    { id: "my-tasks", label: "My Tasks", href: "/artist", implemented: true },
     {
-      id: "intent-signals",
-      label: "Intent Signals",
-      href: "/artist/signals",
-      implemented: false,
+      id: "workspace-home",
+      label: "Workspace Home",
+      href: "/artist",
+      implemented: true,
+    },
+    {
+      id: "review-inbox",
+      label: "Review Inbox",
+      href: "/artist/inbox",
+      implemented: true,
+    },
+    {
+      id: "tasks",
+      label: "Tasks",
+      href: "/artist/tasks",
+      implemented: true,
     },
   ],
 };

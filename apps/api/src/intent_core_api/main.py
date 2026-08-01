@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from intent_core_api.activity.router import router as activity_router
+from intent_core_api.artist_feedback_history.router import router as artist_feedback_history_router
+from intent_core_api.artist_inbox.router import router as artist_inbox_router
 from intent_core_api.cg_inbox.router import router as cg_inbox_router
 from intent_core_api.config import get_settings
 from intent_core_api.cross_department.router import router as cross_department_router
@@ -46,6 +48,8 @@ app.include_router(activity_router)
 app.include_router(cg_inbox_router)
 app.include_router(cross_department_router)
 app.include_router(task_activity_router)
+app.include_router(artist_inbox_router)
+app.include_router(artist_feedback_history_router)
 
 
 @app.exception_handler(ForbiddenActionError)

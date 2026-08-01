@@ -6,12 +6,11 @@ import styles from "./RoleSelectionHome.module.css";
 /** Step 7C-1 locked IA: the Role-selection Home. Deliberately renders
  * no `AppShell`, no role-specific sidebar, no preselected human
  * identity, and no Exit role view -- those only ever appear once a
- * role workspace has actually been entered. VFX Supervisor and CG
- * Supervisor are both fully available roles (CG enabled in Step 7C-4);
- * Artist is shown, honestly marked Upcoming, until Step 7C-5 -- never a
- * clickable action. There is no Guided card, no Explore card, and no
- * Future-ftrack-launch card: those belonged to the retired Demo Entry
- * surface.
+ * role workspace has actually been entered. VFX Supervisor, CG
+ * Supervisor, and Artist are all fully available roles (CG enabled in
+ * Step 7C-4, Artist enabled in Step 7C-5). There is no Guided card, no
+ * Explore card, and no Future-ftrack-launch card: those belonged to the
+ * retired Demo Entry surface.
  *
  * `returnTo` (Step 7C-4 completion, already validated safe by the
  * caller -- see `page.tsx`) is forwarded only to the one role button
@@ -32,24 +31,17 @@ export function RoleSelectionHome({ returnTo = null }: { returnTo?: string | nul
 
       <div className={styles.roleGrid}>
         {ROLE_CARDS.map((card) => {
-          const available = card.role === "vfx_supervisor" || card.role === "cg_supervisor";
           const matchesReturnTo = returnTo !== null && roleForPathname(returnTo) === card.role;
           return (
             <article key={card.role} className={styles.roleCard}>
               <h2>{card.title}</h2>
               <p className={styles.responsibility}>{card.responsibility}</p>
               <p className={styles.question}>{card.question}</p>
-              {available ? (
-                <RoleEntryButton
-                  role={card.role}
-                  label={`Enter as ${card.title}`}
-                  returnTo={matchesReturnTo ? returnTo : null}
-                />
-              ) : (
-                <span className={styles.upcoming} aria-disabled="true">
-                  Upcoming
-                </span>
-              )}
+              <RoleEntryButton
+                role={card.role}
+                label={`Enter as ${card.title}`}
+                returnTo={matchesReturnTo ? returnTo : null}
+              />
             </article>
           );
         })}

@@ -77,17 +77,6 @@
   line-height: var(--line-height-normal);
 }
 
-.upcoming {
-  align-self: flex-start;
-  margin-top: auto;
-  padding: var(--space-1) var(--space-3);
-  color: var(--text-muted);
-  background: var(--surface-muted);
-  border-radius: var(--radius-pill);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-}
-
 @media (max-width: 768px) {
   .roleGrid {
     grid-template-columns: 1fr;

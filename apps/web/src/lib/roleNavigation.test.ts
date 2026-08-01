@@ -35,3 +35,20 @@ describe("ROLE_SIDEBAR_ITEMS.cg_supervisor", () => {
     }
   });
 });
+
+describe("ROLE_SIDEBAR_ITEMS.artist", () => {
+  it("is exactly Workspace Home, Review Inbox, Tasks -- Step 7C-5 locked IA, all implemented", () => {
+    expect(ROLE_SIDEBAR_ITEMS.artist).toEqual([
+      { id: "workspace-home", label: "Workspace Home", href: "/artist", implemented: true },
+      { id: "review-inbox", label: "Review Inbox", href: "/artist/inbox", implemented: true },
+      { id: "tasks", label: "Tasks", href: "/artist/tasks", implemented: true },
+    ]);
+  });
+
+  it("never includes the retired My Tasks or Intent Signals placeholder entries", () => {
+    const labels = ROLE_SIDEBAR_ITEMS.artist.map((item) => item.label);
+    for (const retired of ["My Tasks", "Intent Signals"]) {
+      expect(labels).not.toContain(retired);
+    }
+  });
+});

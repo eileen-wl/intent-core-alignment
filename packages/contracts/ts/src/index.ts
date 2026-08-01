@@ -150,3 +150,17 @@ export type TaskActivityEventType =
   Schemas["TaskActivityEventRead"]["event_type"];
 export type TaskActivityEventRead = Schemas["TaskActivityEventRead"];
 export type TaskActivityRead = Schemas["TaskActivityRead"];
+
+export type ArtistCurrentFocusType =
+  Schemas["ArtistInboxCurrentFocusRead"]["focus_type"];
+export type ArtistExecutionAnchorState =
+  Schemas["ArtistInboxItemRead"]["execution_anchor_state"];
+export type ArtistGuidanceState = Schemas["ArtistInboxItemRead"]["guidance_state"];
+export type ArtistInboxCurrentFocusRead = Schemas["ArtistInboxCurrentFocusRead"];
+export type ArtistInboxItemRead = Schemas["ArtistInboxItemRead"];
+export type ArtistInboxRead = Schemas["ArtistInboxRead"];
+
+export type ArtistFeedbackEventType =
+  Schemas["ArtistFeedbackEventRead"]["event_type"];
+export type ArtistFeedbackEventRead = Schemas["ArtistFeedbackEventRead"];
+export type ArtistFeedbackHistoryRead = Schemas["ArtistFeedbackHistoryRead"];

@@ -85,17 +85,24 @@ describe("RoleSidebar", () => {
   });
 
   it("renders unimplemented items as disabled, non-navigable placeholders", () => {
+    // No real role has an unimplemented sidebar item any more (VFX, CG,
+    // and Artist are all fully built) -- this is the component's own
+    // generic placeholder-rendering contract, exercised with a synthetic
+    // fixture rather than a real role's item list.
     render(
       <RoleSidebar
-        items={ROLE_SIDEBAR_ITEMS.artist}
+        items={[
+          { id: "workspace-home", label: "Workspace Home", href: "/artist", implemented: true },
+          { id: "future-page", label: "Future Page", href: "/artist/future", implemented: false },
+        ]}
         currentPath="/artist"
       />,
     );
     expect(
-      screen.queryByRole("link", { name: "Intent Signals" }),
+      screen.queryByRole("link", { name: "Future Page" }),
     ).not.toBeInTheDocument();
-    const signals = screen.getByText("Intent Signals");
-    expect(signals).toHaveAttribute("aria-disabled", "true");
+    const placeholder = screen.getByText("Future Page");
+    expect(placeholder).toHaveAttribute("aria-disabled", "true");
     expect(screen.getAllByText("Upcoming").length).toBeGreaterThan(0);
   });
 
@@ -125,8 +132,9 @@ describe("RoleSidebar", () => {
     render(
       <RoleSidebar items={ROLE_SIDEBAR_ITEMS.artist} currentPath="/artist" />,
     );
-    expect(screen.getByRole("link", { name: "My Tasks" })).toBeVisible();
-    expect(screen.getByText("Intent Signals")).toBeVisible();
+    expect(screen.getByRole("link", { name: "Workspace Home" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Review Inbox" })).toBeVisible();
+    expect(screen.getByRole("link", { name: "Tasks" })).toBeVisible();
   });
 
   it("exposes an accessible navigation landmark", () => {

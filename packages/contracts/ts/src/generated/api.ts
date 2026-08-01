@@ -1431,6 +1431,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/artist/inbox": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Artist Inbox */
+        get: operations["get_artist_inbox_artist_inbox_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/artist/inbox/{task_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Artist Inbox Item */
+        get: operations["get_artist_inbox_item_artist_inbox__task_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/tasks/{task_id}/feedback-history": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Task Feedback History */
+        get: operations["get_task_feedback_history_tasks__task_id__feedback_history_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -1669,6 +1720,50 @@ export interface components {
             /** Label */
             label: string;
         };
+        /** ArtistFeedbackEventRead */
+        ArtistFeedbackEventRead: {
+            /** Id */
+            id: string;
+            /**
+             * Event Type
+             * @enum {string}
+             */
+            event_type: "version_recorded" | "review_note_recorded" | "artist_guidance_generated" | "cg_supervisor_review_generated" | "cross_role_assessment_involving_task" | "dependency_recorded" | "dependency_acknowledged" | "dependency_resolved" | "escalation_recorded" | "execution_anchor_confirmed" | "execution_anchor_draft_discarded";
+            /**
+             * Occurred At
+             * Format: date-time
+             */
+            occurred_at: string;
+            /** Actor Kind */
+            actor_kind: ("human" | "agent" | "system") | null;
+            /** Actor Id */
+            actor_id: string | null;
+            /** Actor Human Role */
+            actor_human_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
+            /** Summary */
+            summary: string;
+            /** Related Entity Type */
+            related_entity_type: string;
+            /**
+             * Related Entity Id
+             * Format: uuid
+             */
+            related_entity_id: string;
+            /** Related Version Id */
+            related_version_id: string | null;
+            /** Route */
+            route: string;
+        };
+        /** ArtistFeedbackHistoryRead */
+        ArtistFeedbackHistoryRead: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /** Events */
+            events: components["schemas"]["ArtistFeedbackEventRead"][];
+        };
         /**
          * ArtistFeedbackTranslation
          * @description Translates one piece of upstream feedback/evidence into practical,
@@ -1713,6 +1808,94 @@ export interface components {
             priority: "low" | "medium" | "high";
             /** Evidence */
             evidence: components["schemas"]["ArtistEvidenceReference"][];
+        };
+        /** ArtistInboxCurrentFocusRead */
+        ArtistInboxCurrentFocusRead: {
+            /**
+             * Focus Type
+             * @enum {string}
+             */
+            focus_type: "guidance_outdated" | "review_note_needs_response" | "dependency_needs_attention" | "guidance_available" | "none";
+            /** Title */
+            title: string;
+            /** Explanation */
+            explanation: string;
+            /** Target Route */
+            target_route: string;
+            /** Primary Action Label */
+            primary_action_label: string | null;
+            /** Actionable */
+            actionable: boolean;
+        };
+        /** ArtistInboxItemRead */
+        ArtistInboxItemRead: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /** Task Name */
+            task_name: string;
+            /** Department */
+            department: string | null;
+            /**
+             * Task Source
+             * @enum {string}
+             */
+            task_source: "manual" | "ftrack";
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Shot Name */
+            shot_name: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /** Project Name */
+            project_name: string;
+            /**
+             * Execution Anchor State
+             * @enum {string}
+             */
+            execution_anchor_state: "none" | "draft_pending" | "confirmed";
+            /** Active Execution Anchor Revision Id */
+            active_execution_anchor_revision_id: string | null;
+            /** Active Execution Anchor Summary */
+            active_execution_anchor_summary: string | null;
+            /** Latest Version Id */
+            latest_version_id: string | null;
+            /** Latest Version Name */
+            latest_version_name: string | null;
+            /** Latest Version Number */
+            latest_version_number: number | null;
+            /**
+             * Guidance State
+             * @enum {string}
+             */
+            guidance_state: "none" | "outdated" | "current";
+            /** Latest Guidance Id */
+            latest_guidance_id: string | null;
+            /** Open Review Note Count */
+            open_review_note_count: number;
+            /** Open Dependency Count */
+            open_dependency_count: number;
+            current_focus: components["schemas"]["ArtistInboxCurrentFocusRead"];
+            /** Sort Rank */
+            sort_rank: number;
+        };
+        /** ArtistInboxRead */
+        ArtistInboxRead: {
+            /** Items */
+            items: components["schemas"]["ArtistInboxItemRead"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
         };
         /**
          * AssessmentDecisionRequest
@@ -6605,6 +6788,88 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TaskActivityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_artist_inbox_artist_inbox_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtistInboxRead"];
+                };
+            };
+        };
+    };
+    get_artist_inbox_item_artist_inbox__task_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtistInboxItemRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_task_feedback_history_tasks__task_id__feedback_history_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ArtistFeedbackHistoryRead"];
                 };
             };
             /** @description Validation Error */

@@ -94,9 +94,16 @@ describe("enterDemoRole", () => {
     expect(redirectSpy).toHaveBeenCalledWith("/cg");
   });
 
-  it("does not attempt to ensure any seed data for artist", async () => {
+  it("also ensures the generic development seed data before landing on the Artist Workspace (Step 7C-5)", async () => {
     await expect(enterDemoRole("artist")).rejects.toThrow();
-    expect(resolveD1DemoShotIdMock).not.toHaveBeenCalled();
+    expect(resolveD1DemoShotIdMock).toHaveBeenCalled();
+    expect(redirectSpy).toHaveBeenCalledWith("/artist");
+  });
+
+  it("still reaches /artist even when ensuring the seed data fails (best-effort, destination unchanged)", async () => {
+    resolveD1DemoShotIdMock.mockRejectedValue(new Error("unavailable"));
+    await expect(enterDemoRole("artist")).rejects.toThrow();
+    expect(redirectSpy).toHaveBeenCalledWith("/artist");
   });
 
   it("redirects to / for an invalid role", async () => {
