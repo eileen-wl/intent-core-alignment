@@ -16,6 +16,14 @@ from intent_core_connector.errors import (
 )
 from intent_core_connector.sample_entities import SampleEntityReport, read_sample_entities
 from intent_core_connector.shot_context import ShotContext, read_shot_contexts_with_new_tasks_since
+from intent_core_connector.version_note_context import (
+    AssetVersionSweepResult,
+    DirectNoteResult,
+    ReviewSessionObjectNoteResult,
+    read_asset_versions_for_shot,
+    read_direct_notes_for_asset_version,
+    read_review_session_object_notes_for_asset_version,
+)
 from intent_core_connector.writeback_client import write_note_to_shot
 
 
@@ -135,6 +143,31 @@ class FtrackConnector:
         if self._session is None:
             raise IntegrationError("connect() must succeed before write_note_to_shot()")
         return write_note_to_shot(self._session, shot_external_id=shot_external_id, content=content)
+
+    def read_asset_versions_for_shot(self, *, shot_external_id: str) -> AssetVersionSweepResult:
+        if self._session is None:
+            raise IntegrationError("connect() must succeed before read_asset_versions_for_shot()")
+        return read_asset_versions_for_shot(self._session, shot_external_id=shot_external_id)
+
+    def read_direct_notes_for_asset_version(self, *, version_external_id: str) -> DirectNoteResult:
+        if self._session is None:
+            raise IntegrationError(
+                "connect() must succeed before read_direct_notes_for_asset_version()"
+            )
+        return read_direct_notes_for_asset_version(
+            self._session, version_external_id=version_external_id
+        )
+
+    def read_review_session_object_notes_for_asset_version(
+        self, *, version_external_id: str
+    ) -> ReviewSessionObjectNoteResult:
+        if self._session is None:
+            raise IntegrationError(
+                "connect() must succeed before read_review_session_object_notes_for_asset_version()"
+            )
+        return read_review_session_object_notes_for_asset_version(
+            self._session, version_external_id=version_external_id
+        )
 
     def __enter__(self) -> FtrackConnector:
         self.connect()

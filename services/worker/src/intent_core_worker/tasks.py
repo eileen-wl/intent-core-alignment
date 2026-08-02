@@ -6,7 +6,16 @@ from typing import Any
 import httpx
 from intent_core_connector.connector import FtrackConnector
 from intent_core_connector.errors import IntegrationError
-from intent_core_connector.sync_client import sync_shot_context
+from intent_core_connector.sync_client import (
+    list_linked_shots,
+    sync_review_note,
+    sync_shot_context,
+    sync_version,
+)
+from intent_core_connector.version_note_context import (
+    DirectNoteResult,
+    ReviewSessionObjectNoteResult,
+)
 
 from intent_core_worker.config import get_settings
 
@@ -123,3 +132,136 @@ async def write_back_core_anchor_confirmation(
             json={"status": "succeeded", "external_note_id": external_note_id},
         )
         status_response.raise_for_status()
+
+
+async def reconcile_ftrack_versions_and_notes(ctx: dict[str, Any]) -> dict[str, int]:
+    """Complete targeted AssetVersion/Note sweep for every already-linked
+    ftrack Shot, every run (Step 8C-4/8C-5;
+    docs/step-8/02_STEP_8B_VERSION_NOTE_SYNC_CONTRACT.md §10, ADR-0014
+    Decision 4).
+
+    Deliberately unlike `reconcile_ftrack_shots`: no `SyncCursor` is
+    read or written here, and neither `AssetVersion.date` nor
+    `Note.date` is ever used as a discovery cutoff -- every run re-
+    derives each linked Shot's full real relationship graph from
+    scratch. Idempotency comes entirely from `ExternalEntityLink`
+    identity on the apps/api side (a repeat sync is a true no-op), not
+    from remembering what this job already did.
+
+    A Version is synced before its Notes, and only a `created`/
+    `already_exists` Version's Notes are ever attempted -- a `skipped`
+    Version (unresolved Shot lineage) or a failed sync call has no
+    local row for a Note to resolve against, so its Notes are never
+    submitted. One malformed AssetVersion/Note/ReviewSessionObject, or
+    one failed per-item API call, is recorded in the returned summary
+    and does not abort the Shot it belongs to or the run as a whole.
+    """
+    settings = get_settings()
+    summary = {
+        "linked_shots_examined": 0,
+        "asset_versions_discovered": 0,
+        "asset_versions_skipped": 0,
+        "direct_notes_discovered": 0,
+        "review_session_object_notes_discovered": 0,
+        "review_session_objects_unresolved": 0,
+        "write_back_echoes_excluded": 0,
+        "api_created": 0,
+        "api_already_exists": 0,
+        "api_skipped": 0,
+        "api_conflicts_or_failures": 0,
+    }
+
+    if not settings.internal_sync_token:
+        # Fail closed: no linked-Shot read and no ICAS write is
+        # attempted without it (both require the same token apps/api
+        # enforces server-side).
+        return summary
+
+    linked_shots = await list_linked_shots(
+        api_base_url=settings.api_base_url, internal_sync_token=settings.internal_sync_token
+    )
+
+    connector = FtrackConnector()
+    try:
+        connector.connect()
+    except IntegrationError:
+        return summary
+
+    try:
+        for shot in linked_shots:
+            summary["linked_shots_examined"] += 1
+            try:
+                sweep = connector.read_asset_versions_for_shot(
+                    shot_external_id=shot["shot_external_id"]
+                )
+            except IntegrationError:
+                # One Shot's query failing must not abort the run.
+                continue
+
+            summary["asset_versions_discovered"] += len(sweep.versions)
+            summary["asset_versions_skipped"] += len(sweep.warnings)
+
+            for version_context in sweep.versions:
+                try:
+                    version_result = await sync_version(
+                        version_context,
+                        api_base_url=settings.api_base_url,
+                        internal_sync_token=settings.internal_sync_token,
+                    )
+                except (httpx.HTTPStatusError, IntegrationError):
+                    summary["api_conflicts_or_failures"] += 1
+                    continue
+
+                if version_result.outcome == "created":
+                    summary["api_created"] += 1
+                elif version_result.outcome == "already_exists":
+                    summary["api_already_exists"] += 1
+                else:
+                    summary["api_skipped"] += 1
+                    # No local Version row exists for a skipped sync --
+                    # its Notes have nothing to resolve against.
+                    continue
+
+                try:
+                    direct = connector.read_direct_notes_for_asset_version(
+                        version_external_id=version_context.external_id
+                    )
+                except IntegrationError:
+                    direct = DirectNoteResult()
+                try:
+                    rso = connector.read_review_session_object_notes_for_asset_version(
+                        version_external_id=version_context.external_id
+                    )
+                except IntegrationError:
+                    rso = ReviewSessionObjectNoteResult()
+
+                summary["direct_notes_discovered"] += len(direct.notes)
+                summary["review_session_object_notes_discovered"] += len(rso.notes)
+                summary["review_session_objects_unresolved"] += (
+                    rso.review_session_objects_unresolved
+                )
+                summary["write_back_echoes_excluded"] += (
+                    direct.write_back_echoes_excluded + rso.write_back_echoes_excluded
+                )
+
+                for note_context in (*direct.notes, *rso.notes):
+                    try:
+                        note_result = await sync_review_note(
+                            note_context,
+                            api_base_url=settings.api_base_url,
+                            internal_sync_token=settings.internal_sync_token,
+                        )
+                    except (httpx.HTTPStatusError, IntegrationError):
+                        summary["api_conflicts_or_failures"] += 1
+                        continue
+
+                    if note_result.outcome == "created":
+                        summary["api_created"] += 1
+                    elif note_result.outcome == "already_exists":
+                        summary["api_already_exists"] += 1
+                    else:
+                        summary["api_skipped"] += 1
+    finally:
+        connector.close()
+
+    return summary

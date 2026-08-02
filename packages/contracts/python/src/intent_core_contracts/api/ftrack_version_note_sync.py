@@ -4,13 +4,20 @@ ADR-0014).
 
 These are *not* the public manual-create contracts
 (``VersionCreate``/``ReviewNoteCreate`` in ``api/versions_and_feedback.py``,
-left untouched by this slice) -- they exist only for the trusted,
-separately-authenticated internal sync endpoint the Step 8B contract
-locked in. No router in this repository accepts these shapes yet
-(that is Step 8C-3, not this slice); see
-``intent_core_api.openapi_extra`` for why they nonetheless already
-appear in the generated OpenAPI/TypeScript contracts ahead of that
-endpoint's existence.
+left untouched) -- they exist only for the trusted, separately-
+authenticated internal sync endpoints
+(``intent_core_api.ftrack_version_note_sync.router``, Step 8C-3:
+``POST /internal/sync/versions``, ``POST /internal/sync/review-notes``).
+
+Also ``LinkedShotRead`` (Step 8C-4/8C-5): the minimal read shape behind
+``GET /internal/sync/linked-shots``, added because no existing
+production_context response already exposes a Shot's real ftrack
+external id (``ShotRead`` deliberately does not -- ADR-0010's
+``ExternalEntityLink`` indirection). Carries only what the
+Version/ReviewNote reconciliation worker needs to target its per-Shot
+sweep -- never any unrelated ``ExternalEntityLink`` row (Project/Task
+links, or any non-``"ftrack"`` source, are never returned by that
+endpoint).
 
 Deliberately excluded from every payload below, per the locked contract:
 
@@ -127,3 +134,17 @@ class VersionNoteSyncItemResult(BaseModel):
     # enumerated against a real sync run, and inventing a closed set now
     # would be a guess.
     reason: str | None = None
+
+
+class LinkedShotRead(BaseModel):
+    """One already-linked ftrack Shot, as ``GET /internal/sync/linked-
+    shots`` returns it -- exactly the two fields the reconciliation
+    worker needs to run its per-Shot ``AssetVersion`` sweep. Not a
+    general ``ExternalEntityLink`` read shape (see
+    ``api.integrations.ExternalEntityLinkRead`` for that): no internal
+    link-row id, no timestamps, and structurally cannot represent a
+    Project/Task link or a non-``"ftrack"`` source.
+    """
+
+    shot_id: UUID
+    shot_external_id: str

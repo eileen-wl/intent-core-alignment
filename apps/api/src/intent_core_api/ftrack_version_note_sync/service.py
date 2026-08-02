@@ -1,5 +1,5 @@
 """Sync logic for the trusted internal ftrack Version/ReviewNote sync
-endpoints (Step 8C-3; docs/step-8/02_STEP_8B_VERSION_NOTE_SYNC_CONTRACT.md
+endpoints (Step 8C-3/8C-4/8C-5; docs/step-8/02_STEP_8B_VERSION_NOTE_SYNC_CONTRACT.md
 §3-§5/§13, ADR-0014).
 
 Idempotency is keyed entirely by ``ExternalEntityLink`` -- a repeat
@@ -17,6 +17,7 @@ from __future__ import annotations
 import uuid
 
 from intent_core_contracts.api.ftrack_version_note_sync import (
+    LinkedShotRead,
     ReviewNoteSyncCreate,
     VersionNoteSyncItemResult,
     VersionSyncCreate,
@@ -26,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.integrations.external_link_service import (
     find_linked_entity_id,
+    list_linked_entities,
     record_external_link,
 )
 from intent_core_api.versions_and_feedback.models import ReviewNote, Version
@@ -33,6 +35,19 @@ from intent_core_api.workflow.exceptions import ConflictError
 
 _ACTOR_KIND = "system"
 _ACTOR_ID = "ftrack-sync"
+
+
+async def list_linked_shots(session: AsyncSession) -> list[LinkedShotRead]:
+    """Step 8C-4/8C-5: the reconciliation worker's entry point for
+    discovering which Shots it should run a targeted ``AssetVersion``
+    sweep against -- every already-linked ftrack Shot, and nothing else
+    (no Project/Task link, no other source, no unrelated
+    ``ExternalEntityLink`` field)."""
+    pairs = await list_linked_entities(session, entity_type="shot", source="ftrack")
+    return [
+        LinkedShotRead(shot_id=entity_id, shot_external_id=external_id)
+        for entity_id, external_id in pairs
+    ]
 
 
 async def sync_version(

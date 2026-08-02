@@ -170,6 +170,57 @@ async def test_token_is_not_echoed_in_a_response_or_error(
     assert "nope" not in bad.text
 
 
+# --- Linked-Shot enumeration (Step 8C-4/8C-5) ------------------------------
+
+
+async def test_linked_shots_requires_internal_token(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    response = await client.get("/internal/sync/linked-shots")
+    assert response.status_code == 401
+
+
+async def test_linked_shots_returns_only_shot_id_and_external_id(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    shot = await _linked_shot(session)
+    response = await client.get("/internal/sync/linked-shots", headers=INTERNAL_HEADERS)
+    assert response.status_code == 200
+    body = response.json()
+    assert body == [{"shot_id": str(shot.id), "shot_external_id": "ftrack-shot-1"}]
+
+
+async def test_linked_shots_excludes_unrelated_links(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    shot = await _linked_shot(session)
+    # A Task link and a non-"ftrack" source link must never appear.
+    await _linked_task(session, shot)
+    other_shot = Shot(project_id=shot.project_id, name="other")
+    session.add(other_shot)
+    await session.flush()
+    await record_external_link(
+        session,
+        entity_type="shot",
+        entity_id=other_shot.id,
+        source="demo",
+        external_id="demo-shot-1",
+    )
+    await session.commit()
+
+    response = await client.get("/internal/sync/linked-shots", headers=INTERNAL_HEADERS)
+    body = response.json()
+    assert body == [{"shot_id": str(shot.id), "shot_external_id": "ftrack-shot-1"}]
+
+
+async def test_linked_shots_empty_when_none_linked(
+    client: AsyncClient, session: AsyncSession
+) -> None:
+    response = await client.get("/internal/sync/linked-shots", headers=INTERNAL_HEADERS)
+    assert response.status_code == 200
+    assert response.json() == []
+
+
 # --- Version sync -------------------------------------------------------
 
 

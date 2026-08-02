@@ -27,6 +27,14 @@ class Settings(BaseSettings):
     # calls apps/api over HTTP, same pattern as services/worker.
     api_base_url: str = "http://localhost:8000"
 
+    # Step 8C-4/8C-5: shared secret required by apps/api's trusted
+    # internal ftrack Version/ReviewNote sync endpoints
+    # (X-Internal-Sync-Token header, apps/api's own
+    # intent_core_api.config.Settings.internal_sync_token). Blank by
+    # default -- sync_client.py fails closed (raises before sending any
+    # request) rather than calling those endpoints unauthenticated.
+    internal_sync_token: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

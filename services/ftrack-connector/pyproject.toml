@@ -8,6 +8,7 @@ dependencies = [
   "ftrack-python-api>=3.1",
   "requests>=2.31",
   "httpx>=0.27",
+  "intent-core-contracts",
 ]
 
 [build-system]
@@ -16,6 +17,9 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/intent_core_connector"]
+
+[tool.uv.sources]
+intent-core-contracts = { workspace = true }
 
 [dependency-groups]
 dev = [

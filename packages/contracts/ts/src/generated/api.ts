@@ -1482,6 +1482,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/sync/linked-shots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Linked Shots */
+        get: operations["linked_shots_internal_sync_linked_shots_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/sync/versions": {
         parameters: {
             query?: never;
@@ -3066,6 +3083,25 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /**
+         * LinkedShotRead
+         * @description One already-linked ftrack Shot, as ``GET /internal/sync/linked-
+         *     shots`` returns it -- exactly the two fields the reconciliation
+         *     worker needs to run its per-Shot ``AssetVersion`` sweep. Not a
+         *     general ``ExternalEntityLink`` read shape (see
+         *     ``api.integrations.ExternalEntityLinkRead`` for that): no internal
+         *     link-row id, no timestamps, and structurally cannot represent a
+         *     Project/Task link or a non-``"ftrack"`` source.
+         */
+        LinkedShotRead: {
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Shot External Id */
+            shot_external_id: string;
         };
         /** OpenQuestionInput */
         OpenQuestionInput: {
@@ -6997,6 +7033,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ArtistFeedbackHistoryRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    linked_shots_internal_sync_linked_shots_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Internal-Sync-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkedShotRead"][];
                 };
             };
             /** @description Validation Error */
