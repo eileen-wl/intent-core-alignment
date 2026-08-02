@@ -6,6 +6,7 @@ import type {
   CgInboxRead,
   CoreAnchorRead,
   CoreAnchorRevisionRead,
+  DecisionRead,
   EscalationCreate,
   ExecutionAnchorRead,
   ExecutionAnchorRevisionDraftCreate,
@@ -162,6 +163,31 @@ export function getExecutionAnchorRevisionHumanGate(
 ): Promise<HumanGateRead | null> {
   return cgFetchOrNull<HumanGateRead>(
     `/intent/execution-anchor-revisions/${revisionId}/human-gate`,
+  );
+}
+
+/** Step 9B-1: the real, persisted confirm/reject Decision(s) for one
+ * Execution Anchor revision -- the Execution Anchor analogue of the
+ * Core Anchor's own (VFX-side) `listDecisionsForRevision`. Read-only,
+ * scoped to exactly this revision id via the backend's existing
+ * `entity_type`/`entity_id` filter (never a broader Decision search);
+ * an honest empty array when the revision has no recorded rationale --
+ * this is a real provenance limitation for the caller to state, never
+ * silently treated as "not loaded yet".
+ *
+ * Step 9B-1 correction: this backend endpoint is now role-gated
+ * (`docs/ROLE_PERMISSIONS.md` §2's "Read Secondary Execution Anchor"
+ * row -- CG Supervisor and VFX Supervisor only), so this call requires
+ * the same trusted, server-resolved Actor headers every mutation below
+ * already requires -- never client-supplied, resolved by the caller via
+ * `features/session/identity.ts`'s `resolveIdentity()`/`actorHeaders()`. */
+export function listExecutionAnchorRevisionDecisions(
+  revisionId: string,
+  actorHeaders: ActorHeaders,
+): Promise<DecisionRead[]> {
+  return cgFetch<DecisionRead[]>(
+    `/intent/execution-anchor-revisions/${revisionId}/decisions`,
+    { headers: actorHeaders },
   );
 }
 

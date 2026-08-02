@@ -444,11 +444,14 @@ Consistent with `docs/FTRACK_INTEGRATION.md` §15/§17's claim boundary: this va
 
 | Sub-step | Scope | Status |
 |---|---|---|
-| **Step 9A** | Baseline, end-to-end, and real-data audit (this pass) — routes, page/data/source matrix, Working Direction feasibility, evidence layering, Department Execution Overview feasibility, real ftrack media feasibility, Step 8 display-limitation verification, ordered Step 9B implementation packages | Completed this pass — see `docs/step-9/02_STEP_9A_CURRENT_STATE_AND_IMPLEMENTATION_MAP.md` |
-| **Step 9B** | Presentation and comprehension enhancement (Role-aware Working Direction; Evidence/Agent/Human layering; Department Execution Overview; media/thumbnail/ftrack context) | Not started |
+| **Step 9A** | Baseline, end-to-end, and real-data audit — routes, page/data/source matrix, Working Direction feasibility, evidence layering, Department Execution Overview feasibility, real ftrack media feasibility, Step 8 display-limitation verification, ordered Step 9B implementation packages | Complete — see `docs/step-9/02_STEP_9A_CURRENT_STATE_AND_IMPLEMENTATION_MAP.md` |
+| **Step 9B-1** | Role-aware Working Direction (VFX Current Creative Direction, CG Current Execution Direction, Artist Current Working Direction) | **Complete** (implementation, automated validation, and owner visual validation) — see `docs/step-9/03_STEP_9B1_ROLE_AWARE_WORKING_DIRECTION.md` §17 |
+| **Step 9B-2** | Production Evidence / Agent Interpretation / Human Decision layering (VFX Intent, VFX Alignment, CG Execution, CG Version Review, Artist Current Version, Artist Feedback History) | Not started |
+| **Step 9B-3** | Department Execution Overview | Not started |
+| **Step 9B-4** | Media / thumbnail / ftrack context | Not started |
 | **Step 9C** | Design-skill visual unification pass (the previously-referenced "visual refinement") | Not started |
 | **Step 9D** | Student usability testing | Not started |
 | **Step 9E** | Synthetic role evaluation | Not started |
 | **Step 9F** | Final Demo, recording, Evidence Deck, and portfolio closeout | Not started |
 
-**Step 8 is complete** (Section K). **Step 9A is completed by this pass.** **Step 9B through Step 9F have not started.**
+**Step 8 is complete** (Section K). **Step 9A is complete.** **Step 9B-1 is complete**, implementation, automated validation, and owner visual validation all done (`docs/step-9/03_STEP_9B1_ROLE_AWARE_WORKING_DIRECTION.md` §17). Step 9B-1 delivered: deterministic, role-aware, read-only Working Direction summaries for VFX/CG/Artist Overview pages; explicit Production Fact / Agent Interpretation / Human-Confirmed authority and source distinction on every summary line; a new, explicitly role-gated CG Execution Anchor Decision read endpoint; honest fallbacks at both the parent-object level (no confirmed Anchor) and the individual optional-field level (a confirmed Anchor with one empty field); and a compact, non-duplicative Overview presentation (collapsed "Detailed context" disclosures, deterministic excerpting of long source text). Owner validation covered both a complete-data Task/Shot and a real ftrack partial-data state. **Step 9B (as a whole) is not complete** — only 9B-1 of its four sub-steps is done. **Step 9B-2 through Step 9F have not started.**

@@ -5,11 +5,14 @@ import {
   AppShell,
   Breadcrumbs,
   ContextTabs,
+  DetailedContext,
   Divider,
   ErrorState,
+  WorkingDirectionSection,
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
+import type { WorkingDirectionSection as WorkingDirectionSectionModel } from "@/lib/workingDirection";
 import { signalStateLabel } from "../../vfxWording";
 import { CurrentFocusPanel } from "../CurrentFocusPanel";
 import { NextFocusPanel } from "../NextFocusPanel";
@@ -33,9 +36,14 @@ const ALIGNMENT_FOCUS_TYPES = new Set([
  * never produces an empty heading or list. */
 export function ShotOverviewPage({
   item,
+  workingDirection,
   onExitRole,
 }: {
   item: VfxInboxItemRead | null;
+  /** Step 9B-1: the derived, read-only Current Creative Direction
+   * summary -- optional so every pre-existing caller/test that only
+   * ever supplied `item` keeps compiling and rendering unchanged. */
+  workingDirection?: WorkingDirectionSectionModel;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
@@ -101,51 +109,57 @@ export function ShotOverviewPage({
 
           <NextFocusPanel items={item.next_candidates ?? []} />
 
+          {workingDirection && (
+            <WorkingDirectionSection section={workingDirection} />
+          )}
+
           <Divider />
 
-          <dl>
-            <dt>Confirmed Core Anchor</dt>
-            <dd>
-              {item.active_core_anchor_summary ??
-                "No confirmed Core Anchor yet."}
-            </dd>
+          <DetailedContext>
+            <dl>
+              <dt>Confirmed Core Anchor</dt>
+              <dd>
+                {item.active_core_anchor_summary ??
+                  "No confirmed Core Anchor yet."}
+              </dd>
 
-            <dt>Latest Version</dt>
-            <dd>
-              {item.relevant_version_name ? (
-                <Link href={`/vfx/shots/${item.shot_id}/versions`}>
-                  {item.relevant_version_number
-                    ? `${item.relevant_version_name} (v${item.relevant_version_number})`
-                    : item.relevant_version_name}
-                </Link>
-              ) : (
-                "No Version recorded yet."
+              <dt>Latest Version</dt>
+              <dd>
+                {item.relevant_version_name ? (
+                  <Link href={`/vfx/shots/${item.shot_id}/versions`}>
+                    {item.relevant_version_number
+                      ? `${item.relevant_version_name} (v${item.relevant_version_number})`
+                      : item.relevant_version_name}
+                  </Link>
+                ) : (
+                  "No Version recorded yet."
+                )}
+              </dd>
+
+              {!ALIGNMENT_FOCUS_TYPES.has(item.current_focus.focus_type) && (
+                <>
+                  <dt>Latest assessment</dt>
+                  <dd>
+                    {item.latest_signal_id ? (
+                      <Link href={`/vfx/shots/${item.shot_id}/alignment`}>
+                        {signalStateLabel(item.latest_signal_attention_level)}{" "}
+                        -- {item.latest_signal_summary}
+                      </Link>
+                    ) : (
+                      "No current Intent Signal. A successful Cross-role Assessment is required."
+                    )}
+                  </dd>
+                </>
               )}
-            </dd>
 
-            {!ALIGNMENT_FOCUS_TYPES.has(item.current_focus.focus_type) && (
-              <>
-                <dt>Latest assessment</dt>
-                <dd>
-                  {item.latest_signal_id ? (
-                    <Link href={`/vfx/shots/${item.shot_id}/alignment`}>
-                      {signalStateLabel(item.latest_signal_attention_level)} --{" "}
-                      {item.latest_signal_summary}
-                    </Link>
-                  ) : (
-                    "No current Intent Signal. A successful Cross-role Assessment is required."
-                  )}
-                </dd>
-              </>
-            )}
-
-            <dt>Activity</dt>
-            <dd>
-              <Link href={`/vfx/shots/${item.shot_id}/activity`}>
-                View full activity →
-              </Link>
-            </dd>
-          </dl>
+              <dt>Activity</dt>
+              <dd>
+                <Link href={`/vfx/shots/${item.shot_id}/activity`}>
+                  View full activity →
+                </Link>
+              </dd>
+            </dl>
+          </DetailedContext>
         </>
       )}
     </AppShell>

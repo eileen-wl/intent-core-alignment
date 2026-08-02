@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { loadTaskOverviewData } from "@/features/cg/task-overview/data";
+import { actorHeaders, resolveIdentity } from "@/features/session/identity";
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
 import { exitRoleView } from "../../../demo/actions";
 import { TaskOverviewPage } from "./TaskOverviewPage";
@@ -18,7 +19,15 @@ export default async function Page({
   }
 
   try {
-    const data = await loadTaskOverviewData(taskId);
+    // Step 9B-1 correction: the Execution Anchor Decision read is now
+    // role-gated server-side (docs/ROLE_PERMISSIONS.md §2) -- the real,
+    // trusted session identity (already confirmed cg_supervisor above)
+    // is resolved and forwarded, never a client-supplied value.
+    const identity = await resolveIdentity();
+    if (identity === null) {
+      redirect("/demo");
+    }
+    const data = await loadTaskOverviewData(taskId, actorHeaders(identity));
     return (
       <TaskOverviewPage
         taskId={taskId}

@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import type { VfxInboxItemRead } from "@intent-core/contracts";
 
-import { fetchVfxInboxItem } from "@/features/vfx/api";
+import { loadShotOverviewData } from "@/features/vfx/shot-overview/data";
+import { selectCurrentCreativeDirection } from "@/features/vfx/shot-overview/selectCurrentCreativeDirection";
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
 import { exitRoleView } from "../../../demo/actions";
 import { ShotOverviewPage } from "./ShotOverviewPage";
@@ -26,12 +26,18 @@ export default async function Page({
 
   const { shotId } = await params;
 
-  let item: VfxInboxItemRead | null;
+  let data: Awaited<ReturnType<typeof loadShotOverviewData>>;
   try {
-    item = await fetchVfxInboxItem(shotId);
+    data = await loadShotOverviewData(shotId);
   } catch {
-    item = null;
+    data = null;
   }
 
-  return <ShotOverviewPage item={item} onExitRole={exitRoleView} />;
+  return (
+    <ShotOverviewPage
+      item={data?.item ?? null}
+      workingDirection={data ? selectCurrentCreativeDirection(data) : undefined}
+      onExitRole={exitRoleView}
+    />
+  );
 }

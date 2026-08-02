@@ -43,7 +43,7 @@ describe("AuthorityLabel", () => {
     expect(screen.getByText("Confirmed by VFX Supervisor")).toBeVisible();
   });
 
-  it("distinguishes AI interpretation and AI proposal beyond their shared marker", () => {
+  it("distinguishes AI interpretation and AI proposal by their label text", () => {
     const { container: interpretation } = render(
       <AuthorityLabel variant="ai-interpretation" />,
     );
@@ -52,6 +52,15 @@ describe("AuthorityLabel", () => {
     );
 
     expect(interpretation.textContent).not.toEqual(proposal.textContent);
+  });
+
+  it("renders exactly one concise badge, never a duplicated abbreviation alongside the full label", () => {
+    render(<AuthorityLabel variant="human-confirmed" />);
+    // Owner-validation correction: the old layout rendered an
+    // abbreviated marker ("CONFIRMED") next to the full label
+    // ("Human-confirmed"), reading as duplicated wording.
+    expect(screen.queryByText("CONFIRMED")).not.toBeInTheDocument();
+    expect(screen.getByText("Human-confirmed")).toBeVisible();
   });
 
   it("never renders creative-scoring, pass/fail, or Agent-authority wording", () => {
