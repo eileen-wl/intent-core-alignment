@@ -16,13 +16,19 @@ import {
   listReviewNotesForVersion,
   listVersionsForShot,
 } from "@/features/cg/api";
+import { getEffectiveTimestamp } from "@/lib/effectiveTimestamp";
+import { filterVersionsForTask } from "@/lib/taskScopedVersions";
 
-/** `/cg/tasks/:taskId/version-review` (Step 7C-4). A Task's associated
- * Production Versions are its Shot's Versions -- no persisted
- * Task<->Version link exists in the domain (see
- * `execution_anchor_service`'s own context-snapshot assembly, which
- * relies on the same relationship); this is the honest existing-domain
- * reuse, not a fabricated Task<->Version link. */
+/** `/cg/tasks/:taskId/version-review` (Step 7C-4, Task-scoped since
+ * Step 8C-6/8C-7). Starts from the Task's Shot's full Version list,
+ * then keeps only Versions that belong to this Task: a real
+ * `task_id` match (a ftrack-synced Version), or a null `task_id` (the
+ * existing manual/legacy compatibility fallback --
+ * `versions_and_feedback.models.Version`'s own module docstring: "a
+ * Shot may have several Tasks and several Versions with no join
+ * between them" for manual rows, unchanged). A Version linked to a
+ * *different* real Task under the same Shot is excluded -- see
+ * `@/lib/taskScopedVersions`. */
 export interface VersionReviewEntry {
   version: VersionRead;
   reviewNotes: ReviewNoteRead[];
@@ -44,16 +50,26 @@ export async function loadVersionReviewWorkspaceData(
     return null;
   }
 
-  const [versions, coreAnchor, executionRevisions] = await Promise.all([
+  const [shotVersions, coreAnchor, executionRevisions] = await Promise.all([
     listVersionsForShot(item.shot_id),
     getCoreAnchor(item.shot_id),
     listExecutionAnchorRevisions(taskId),
   ]);
 
+  // Task-scoped filtering happens before sorting/selection (Step
+  // 8C-6/8C-7) -- a Version linked to a different Task under the same
+  // Shot must never reach this Task Workspace at all, not merely be
+  // hidden after being chosen as "the" selected Version.
+  const taskVersions = filterVersionsForTask(shotVersions, taskId).sort(
+    (a, b) => getEffectiveTimestamp(a) - getEffectiveTimestamp(b),
+  );
+
   const versionEntries: VersionReviewEntry[] = await Promise.all(
-    versions.map(async (version) => ({
+    taskVersions.map(async (version) => ({
       version,
-      reviewNotes: await listReviewNotesForVersion(version.id),
+      reviewNotes: [...(await listReviewNotesForVersion(version.id))].sort(
+        (a, b) => getEffectiveTimestamp(a) - getEffectiveTimestamp(b),
+      ),
     })),
   );
 

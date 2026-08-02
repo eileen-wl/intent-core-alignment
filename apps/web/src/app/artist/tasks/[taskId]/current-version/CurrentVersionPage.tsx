@@ -11,6 +11,7 @@ import {
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
+import { getAuthorDisplayText } from "@/lib/authorProvenance";
 import type { CurrentVersionData } from "@/features/artist/current-version/data";
 import { TaskContextHeader } from "../TaskContextHeader";
 import { GenerateArtistGuidanceButton } from "../GenerateArtistGuidanceButton";
@@ -154,10 +155,9 @@ export function CurrentVersionPage({
                         items={[
                           {
                             label: "Created",
-                            value: `${new Date(data.selectedVersion.created_at).toLocaleString()} · ${
-                              data.selectedVersion.created_by_human_role ??
-                              data.selectedVersion.created_by_actor_kind
-                            }`,
+                            value: `${new Date(data.selectedVersion.created_at).toLocaleString()} · ${getAuthorDisplayText(
+                              data.selectedVersion,
+                            )}`,
                           },
                           {
                             label: "Source",
@@ -231,9 +231,8 @@ export function CurrentVersionPage({
                                   {note.content}
                                 </p>
                                 <p className={styles.noteMeta}>
-                                  {note.created_by_human_role ??
-                                    note.created_by_actor_kind}{" "}
-                                  · {new Date(note.created_at).toLocaleString()}
+                                  {getAuthorDisplayText(note)} ·{" "}
+                                  {new Date(note.created_at).toLocaleString()}
                                 </p>
                               </li>
                             ))}

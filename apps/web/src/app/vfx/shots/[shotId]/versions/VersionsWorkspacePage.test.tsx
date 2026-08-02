@@ -266,6 +266,81 @@ describe("VersionsWorkspacePage", () => {
     ).toHaveAttribute("href", "/vfx/shots/s1/alignment");
   });
 
+  it("shows the ftrack external author as source provenance, not an ICAS Human role (Step 8C-6/8C-7)", () => {
+    render(
+      <VersionsWorkspacePage
+        shotId="s1"
+        data={data({
+          versions: [
+            {
+              version: version({
+                source: "ftrack",
+                created_by_actor_kind: "system",
+                created_by_human_role: null,
+                external_author_id: "ext-42",
+                external_author_name: "Jamie Lin",
+              }),
+              reviewNotes: [
+                note({
+                  source: "ftrack",
+                  created_by_actor_kind: "system",
+                  created_by_human_role: null,
+                  external_author_id: "ext-42",
+                  external_author_name: "Jamie Lin",
+                }),
+              ],
+            },
+          ],
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByText(/Source author: Jamie Lin/).length).toBe(2);
+    expect(screen.queryByText("vfx_supervisor")).not.toBeInTheDocument();
+    expect(screen.queryByText(/cg_supervisor/)).not.toBeInTheDocument();
+  });
+
+  it("falls back to the actor kind, never a fabricated name, when an ftrack row has no external_author_name", () => {
+    render(
+      <VersionsWorkspacePage
+        shotId="s1"
+        data={data({
+          versions: [
+            {
+              version: version({
+                source: "ftrack",
+                created_by_actor_kind: "system",
+                created_by_human_role: null,
+                external_author_id: "ext-42",
+                external_author_name: null,
+              }),
+              reviewNotes: [],
+            },
+          ],
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("system")).toBeVisible();
+    expect(screen.queryByText(/Source author:/)).not.toBeInTheDocument();
+    expect(screen.queryByText("ext-42")).not.toBeInTheDocument();
+  });
+
+  it("keeps the manual Human-role author display unchanged when no ftrack provenance exists", () => {
+    render(
+      <VersionsWorkspacePage
+        shotId="s1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByText(/vfx_supervisor/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Source author:/)).not.toBeInTheDocument();
+  });
+
   it("honestly states no Alignment Assessment exists yet, and does not link, when none does", () => {
     render(
       <VersionsWorkspacePage

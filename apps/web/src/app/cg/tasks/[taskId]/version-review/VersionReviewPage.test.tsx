@@ -237,6 +237,62 @@ describe("VersionReviewPage", () => {
     ).toBeVisible();
   });
 
+  it("shows the ftrack external author as source provenance on Review Notes, not an ICAS Human role (Step 8C-6/8C-7)", () => {
+    render(
+      <VersionReviewPage
+        taskId="t1"
+        data={data({
+          versions: [
+            {
+              version: version(),
+              reviewNotes: [
+                note({
+                  source: "ftrack",
+                  created_by_actor_kind: "system",
+                  created_by_human_role: null,
+                  external_author_id: "ext-42",
+                  external_author_name: "Jamie Lin",
+                }),
+              ],
+            },
+          ],
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/Source author: Jamie Lin/)).toBeVisible();
+    expect(screen.queryByText(/vfx_supervisor/)).not.toBeInTheDocument();
+  });
+
+  it("falls back to the actor kind, never a fabricated name, when an ftrack Review Note has no external_author_name", () => {
+    render(
+      <VersionReviewPage
+        taskId="t1"
+        data={data({
+          versions: [
+            {
+              version: version(),
+              reviewNotes: [
+                note({
+                  source: "ftrack",
+                  created_by_actor_kind: "system",
+                  created_by_human_role: null,
+                  external_author_id: "ext-42",
+                  external_author_name: null,
+                }),
+              ],
+            },
+          ],
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/^system ·/)).toBeVisible();
+    expect(screen.queryByText(/Source author:/)).not.toBeInTheDocument();
+  });
+
   it("real CG Supervisor review count renders honestly once one exists", () => {
     const review: CGSupervisorReviewRead = {
       id: "cgr1",

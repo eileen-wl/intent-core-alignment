@@ -13,6 +13,7 @@ import {
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
+import { getAuthorDisplayText } from "@/lib/authorProvenance";
 import type { VersionReviewWorkspaceData } from "@/features/cg/version-review-workspace/data";
 import { TaskContextHeader } from "../TaskContextHeader";
 import { VersionReviewActions } from "./VersionReviewActions";
@@ -221,9 +222,8 @@ export function VersionReviewPage({
                                   {note.content}
                                 </p>
                                 <p className={styles.noteMeta}>
-                                  {note.created_by_human_role ??
-                                    note.created_by_actor_kind}{" "}
-                                  · {new Date(note.created_at).toLocaleString()}
+                                  {getAuthorDisplayText(note)} ·{" "}
+                                  {new Date(note.created_at).toLocaleString()}
                                 </p>
                               </li>
                             ))}
