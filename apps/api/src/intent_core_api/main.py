@@ -3,6 +3,11 @@ from __future__ import annotations
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from intent_core_contracts.api.ftrack_version_note_sync import (
+    ReviewNoteSyncCreate,
+    VersionNoteSyncItemResult,
+    VersionSyncCreate,
+)
 
 from intent_core_api.activity.router import router as activity_router
 from intent_core_api.artist_feedback_history.router import router as artist_feedback_history_router
@@ -13,6 +18,7 @@ from intent_core_api.cross_department.router import router as cross_department_r
 from intent_core_api.demo_seed.router import router as demo_seed_router
 from intent_core_api.integrations.router import router as integrations_router
 from intent_core_api.intent.router import router as intent_router
+from intent_core_api.openapi_extra import register_schema_only_models
 from intent_core_api.ops.router import router as ops_router
 from intent_core_api.production_context.router import router as production_context_router
 from intent_core_api.task_activity.router import router as task_activity_router
@@ -50,6 +56,14 @@ app.include_router(cross_department_router)
 app.include_router(task_activity_router)
 app.include_router(artist_inbox_router)
 app.include_router(artist_feedback_history_router)
+
+# Step 8C-2: the trusted internal ftrack Version/ReviewNote sync
+# contracts have no endpoint yet (a later slice) -- registered here,
+# schema-only, so packages/contracts/ts's generated TypeScript already
+# has them ready for that endpoint. Adds no route, path, or operation.
+register_schema_only_models(
+    app, [VersionSyncCreate, ReviewNoteSyncCreate, VersionNoteSyncItemResult]
+)
 
 
 @app.exception_handler(ForbiddenActionError)

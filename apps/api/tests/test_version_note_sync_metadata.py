@@ -174,9 +174,11 @@ async def test_review_note_still_requires_a_version(session: AsyncSession) -> No
 
 
 async def test_existing_manual_version_creation_via_api_unchanged(client: AsyncClient) -> None:
-    """The public create path is untouched by this slice -- the response
-    shape must be byte-identical to before (no new fields leaked into
-    VersionCreate/VersionRead, matching the task's explicit boundary)."""
+    """The public *create* path (request shape, service behavior) is
+    untouched by this slice -- as of Step 8C-2, the *response* shape
+    legitimately gains the new nullable read-only fields (that is Step
+    8C-2's own explicit deliverable: extending VersionRead), all null
+    here since this row was created manually, with no ftrack provenance."""
     project = (await client.post("/projects", json={"name": "Napo (Animation demo)"})).json()
     shot = (
         await client.post("/shots", json={"project_id": project["id"], "name": "bc0040"})
@@ -206,8 +208,16 @@ async def test_existing_manual_version_creation_via_api_unchanged(client: AsyncC
         "created_by_actor_id",
         "created_by_human_role",
         "created_at",
+        "task_id",
+        "source_created_at",
+        "external_author_id",
+        "external_author_name",
     }
     assert version["source"] == "manual"
+    assert version["task_id"] is None
+    assert version["source_created_at"] is None
+    assert version["external_author_id"] is None
+    assert version["external_author_name"] is None
 
 
 async def test_deleting_task_clears_version_task_id_without_deleting_version() -> None:

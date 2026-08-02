@@ -3224,6 +3224,12 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Source Created At */
+            source_created_at?: string | null;
+            /** External Author Id */
+            external_author_id?: string | null;
+            /** External Author Name */
+            external_author_name?: string | null;
         };
         /** RoleCoverage */
         RoleCoverage: {
@@ -3722,6 +3728,14 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Task Id */
+            task_id?: string | null;
+            /** Source Created At */
+            source_created_at?: string | null;
+            /** External Author Id */
+            external_author_id?: string | null;
+            /** External Author Name */
+            external_author_name?: string | null;
         };
         /**
          * VfxInboxCurrentFocusRead
@@ -3941,6 +3955,109 @@ export interface components {
             external_note_id?: string | null;
             /** Error */
             error?: string | null;
+        };
+        /**
+         * VersionSyncCreate
+         * @description One AssetVersion, as the trusted internal sync endpoint (a later
+         *     slice, not this one) will receive it. ``shot_external_id``/
+         *     ``task_external_id`` are resolved to a local Shot/Task via
+         *     ``ExternalEntityLink`` server-side -- never trusted as, and never
+         *     matched by, a local id or a Task/Shot name.
+         */
+        VersionSyncCreate: {
+            /** External Id */
+            external_id: string;
+            /** Shot External Id */
+            shot_external_id: string;
+            /**
+             * Task External Id
+             * @default null
+             */
+            task_external_id: string | null;
+            /** Name */
+            name: string;
+            /**
+             * Version Number
+             * @default null
+             */
+            version_number: number | null;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Source Created At
+             * Format: date-time
+             */
+            source_created_at: string;
+            /**
+             * External Author Id
+             * @default null
+             */
+            external_author_id: string | null;
+            /**
+             * External Author Name
+             * @default null
+             */
+            external_author_name: string | null;
+        };
+        /**
+         * ReviewNoteSyncCreate
+         * @description One Note, as the trusted internal sync endpoint (a later slice,
+         *     not this one) will receive it. ``version_external_id`` is resolved
+         *     to a local Version via ``ExternalEntityLink`` server-side -- never
+         *     trusted as, and never matched by, a local id.
+         */
+        ReviewNoteSyncCreate: {
+            /** External Id */
+            external_id: string;
+            /** Version External Id */
+            version_external_id: string;
+            /** Content */
+            content: string;
+            /**
+             * Source Created At
+             * Format: date-time
+             */
+            source_created_at: string;
+            /**
+             * External Author Id
+             * @default null
+             */
+            external_author_id: string | null;
+            /**
+             * External Author Name
+             * @default null
+             */
+            external_author_name: string | null;
+        };
+        /**
+         * VersionNoteSyncItemResult
+         * @description One sync item's outcome, shared by both the future Version and
+         *     ReviewNote sync endpoints (a later slice, not this one) -- enough
+         *     for the worker to log and report a reconciliation run's results
+         *     without exposing any ExternalEntityLink internal id, credential, or
+         *     token.
+         */
+        VersionNoteSyncItemResult: {
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "created" | "already_exists" | "skipped";
+            /**
+             * Entity Id
+             * @default null
+             */
+            entity_id: string | null;
+            /** External Id */
+            external_id: string;
+            /**
+             * Reason
+             * @default null
+             */
+            reason: string | null;
         };
     };
     responses: never;
