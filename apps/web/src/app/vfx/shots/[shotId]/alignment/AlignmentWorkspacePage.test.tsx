@@ -5,7 +5,7 @@ import type {
   VersionRead,
   VfxInboxItemRead,
 } from "@intent-core/contracts";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -299,6 +299,52 @@ describe("AlignmentWorkspacePage", () => {
     expect(screen.getByText(/Revision 1/)).toBeVisible();
     expect(screen.getByText("Restraint reads clearly.")).toBeVisible();
     expect(screen.getByText("Aligned findings (1)")).toBeVisible();
+  });
+
+  it("groups the assessed Version/Core Anchor under Production Evidence, findings under Agent Interpretation, and shows an honest Human Decision state (Step 9B-2)", () => {
+    render(
+      <AlignmentWorkspacePage
+        shotId="s1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const evidenceHeading = screen.getByText("Production Evidence");
+    const agentHeading = screen.getByText("Agent Interpretation");
+    const humanDecisionHeading = screen.getByText(
+      "Human Decision and Provenance",
+    );
+    expect(evidenceHeading).toBeVisible();
+    expect(agentHeading).toBeVisible();
+    expect(humanDecisionHeading).toBeVisible();
+
+    const evidenceSection = evidenceHeading.closest(
+      "[data-evidence-layer]",
+    ) as HTMLElement;
+    expect(
+      within(evidenceSection).getAllByText("SH010_v001 (v1)").length,
+    ).toBeGreaterThan(0);
+    expect(within(evidenceSection).getByText(/Revision 1/)).toBeVisible();
+
+    const agentSection = agentHeading.closest(
+      "[data-evidence-layer]",
+    ) as HTMLElement;
+    expect(
+      within(agentSection).getByText("Aligned findings (1)"),
+    ).toBeVisible();
+
+    // No Decision object is attached to a CrossRoleAssessment -- the
+    // Human Decision layer states this honestly rather than
+    // manufacturing one from the Agent's findings.
+    const humanDecisionSection = humanDecisionHeading.closest(
+      "[data-evidence-layer]",
+    ) as HTMLElement;
+    expect(
+      within(humanDecisionSection).getByText(
+        /No Human Decision has been recorded directly against this assessment/,
+      ),
+    ).toBeVisible();
   });
 
   it("never fabricates a percentage or numeric alignment score", () => {

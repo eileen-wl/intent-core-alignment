@@ -4,7 +4,7 @@ import type { CoreAnchorRevisionRead } from "@intent-core/contracts";
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 
-import { HumanDecisionNotice } from "@/design";
+import { EvidenceLayerSection, HumanDecisionNotice } from "@/design";
 import {
   computeChangeSummary,
   summarizeEstablishedContent,
@@ -156,7 +156,11 @@ export function ConfirmedAnchorSummary({
       )}
 
       <div className={styles.grid}>
-        <div className={styles.mainCard}>
+        <EvidenceLayerSection
+          kind="production-evidence"
+          className={styles.mainCard}
+          headingLevel={3}
+        >
           <div className={styles.headerRow}>
             <div>
               <span className={styles.confirmedPill}>Confirmed</span>
@@ -266,7 +270,7 @@ export function ConfirmedAnchorSummary({
               </span>
             </p>
           )}
-        </div>
+        </EvidenceLayerSection>
 
         <div className={styles.supportingColumn}>
           {justConfirmed &&
@@ -301,7 +305,11 @@ export function ConfirmedAnchorSummary({
             )}
 
           {revision.confirmed_by_human_role && revision.confirmed_at && (
-            <div className={styles.supportingCard}>
+            <EvidenceLayerSection
+              kind="human-decision"
+              className={styles.supportingCard}
+              headingLevel={3}
+            >
               <h3 className={styles.supportingHeading}>Decision recorded</h3>
               <HumanDecisionNotice
                 objectLabel={`Core Anchor revision ${revision.revision_number}`}
@@ -323,7 +331,7 @@ export function ConfirmedAnchorSummary({
                 </p>
               )}
               <p className={styles.supportingText}>{nextStepStatement}</p>
-            </div>
+            </EvidenceLayerSection>
           )}
         </div>
       </div>

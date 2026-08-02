@@ -4,7 +4,13 @@ import type {
   ReviewNoteRead,
   VersionRead,
 } from "@intent-core/contracts";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -219,6 +225,43 @@ describe("VersionReviewPage", () => {
       screen.getByText("Active Execution Anchor (read-only)"),
     ).toBeVisible();
     expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
+  });
+
+  it("groups Version/Anchor context under Production Evidence, CG Supervisor reviews under Agent Interpretation, and shows an honest Human Decision state without manufacturing one (Step 9B-2)", () => {
+    render(
+      <VersionReviewPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const evidenceHeading = screen.getByText("Production Evidence");
+    const agentHeading = screen.getByText("Agent Interpretation");
+    const humanDecisionHeading = screen.getByText(
+      "Human Decision and Provenance",
+    );
+    expect(evidenceHeading).toBeVisible();
+    expect(agentHeading).toBeVisible();
+    expect(humanDecisionHeading).toBeVisible();
+
+    const evidenceSection = evidenceHeading.closest(
+      "[data-evidence-layer]",
+    ) as HTMLElement;
+    expect(
+      within(evidenceSection).getByText("Active Core Anchor (read-only)"),
+    ).toBeVisible();
+
+    // Neither the Escalate button nor a pending review may be presented
+    // as if it were a persisted Human Decision.
+    const humanDecisionSection = humanDecisionHeading.closest(
+      "[data-evidence-layer]",
+    ) as HTMLElement;
+    expect(
+      within(humanDecisionSection).getByText(
+        /No Human Decision has been recorded for this Production Version review/,
+      ),
+    ).toBeVisible();
   });
 
   it("honestly shows no CG Supervisor review has been generated yet", () => {

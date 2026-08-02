@@ -3,16 +3,33 @@ import type { ArtistFeedbackEventType } from "@intent-core/contracts";
 
 import {
   AppShell,
+  AuthorityLabel,
+  type AuthorityLabelVariant,
   Breadcrumbs,
   ContextTabs,
   EmptyState,
   ErrorState,
+  type EvidenceLayerKind,
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
+import { feedbackEventLayer } from "@/lib/feedbackEventLayer";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import type { FeedbackHistoryData } from "@/features/artist/feedback-history/data";
 import { TaskContextHeader } from "../TaskContextHeader";
 import styles from "./FeedbackHistoryPage.module.css";
+
+/** Step 9B-2: reuses the exact Step 9B-1 `AuthorityLabel` vocabulary --
+ * never a second labelling system -- to make each timeline event's
+ * Production Evidence / Agent Interpretation / Human Decision layer
+ * visible without restructuring the chronological list itself. */
+const LAYER_AUTHORITY_VARIANT: Record<
+  EvidenceLayerKind,
+  AuthorityLabelVariant
+> = {
+  "production-evidence": "production-fact",
+  "agent-interpretation": "ai-interpretation",
+  "human-decision": "human-confirmed",
+};
 
 const EVENT_TYPE_LABEL: Record<ArtistFeedbackEventType, string> = {
   version_recorded: "Production Version recorded",
@@ -122,6 +139,13 @@ export function FeedbackHistoryPage({
                       {new Date(event.occurred_at).toLocaleString()}
                     </span>
                   </div>
+                  <AuthorityLabel
+                    variant={
+                      LAYER_AUTHORITY_VARIANT[
+                        feedbackEventLayer(event.event_type)
+                      ]
+                    }
+                  />
                   <p className={styles.eventSummary}>{event.summary}</p>
                   <div className={styles.eventFooter}>
                     {(event.actor_human_role || event.actor_kind) && (

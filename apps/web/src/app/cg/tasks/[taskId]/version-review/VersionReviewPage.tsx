@@ -8,6 +8,7 @@ import {
   ContextTabs,
   EmptyState,
   ErrorState,
+  EvidenceLayerSection,
   FtrackLinkageBadge,
   MetadataRow,
 } from "@/design";
@@ -173,83 +174,101 @@ export function VersionReviewPage({
                           ? ` (v${selected.version.version_number})`
                           : ""}
                       </h3>
-                      <MetadataRow
-                        items={[
-                          {
-                            label: "Created",
-                            value: new Date(
-                              selected.version.created_at,
-                            ).toLocaleString(),
-                          },
-                          { label: "Source", value: selected.version.source },
-                          { label: "Task", value: data.item.task_name },
-                          { label: "Shot", value: data.item.shot_name },
-                        ]}
-                      />
+                      <EvidenceLayerSection kind="production-evidence">
+                        <MetadataRow
+                          items={[
+                            {
+                              label: "Created",
+                              value: new Date(
+                                selected.version.created_at,
+                              ).toLocaleString(),
+                            },
+                            {
+                              label: "Source",
+                              value: selected.version.source,
+                            },
+                            { label: "Task", value: data.item.task_name },
+                            { label: "Shot", value: data.item.shot_name },
+                          ]}
+                        />
 
-                      <section className={styles.section}>
-                        <h4 className={styles.sectionHeading}>
-                          Active Core Anchor (read-only)
-                        </h4>
-                        <p className={styles.contextText}>
-                          {data.coreAnchorSummary ??
-                            "No Core Anchor is confirmed for this Shot yet."}
-                        </p>
-                      </section>
-
-                      <section className={styles.section}>
-                        <h4 className={styles.sectionHeading}>
-                          Active Execution Anchor (read-only)
-                        </h4>
-                        <p className={styles.contextText}>
-                          {data.activeExecutionRevision?.technical_boundaries ??
-                            "No Execution Anchor is confirmed for this Task yet."}
-                        </p>
-                      </section>
-
-                      <section className={styles.section}>
-                        <h4 className={styles.sectionHeading}>Review notes</h4>
-                        {selected.reviewNotes.length === 0 ? (
-                          <p className={styles.empty}>
-                            No Review Notes have been recorded for this
-                            Production Version yet.
-                          </p>
-                        ) : (
-                          <ul className={styles.noteList}>
-                            {selected.reviewNotes.map((note) => (
-                              <li key={note.id} className={styles.note}>
-                                <p className={styles.noteContent}>
-                                  {note.content}
-                                </p>
-                                <p className={styles.noteMeta}>
-                                  {getAuthorDisplayText(note)} ·{" "}
-                                  {new Date(note.created_at).toLocaleString()}
-                                </p>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </section>
-
-                      <section className={styles.section}>
-                        <h4 className={styles.sectionHeading}>
-                          CG Supervisor reviews
-                        </h4>
-                        {data.cgSupervisorReviews.length === 0 ? (
-                          <p className={styles.empty}>
-                            No CG Supervisor review has been generated for the
-                            active Execution Anchor yet.
-                          </p>
-                        ) : (
+                        <section className={styles.section}>
+                          <h4 className={styles.sectionHeading}>
+                            Active Core Anchor (read-only)
+                          </h4>
                           <p className={styles.contextText}>
-                            {data.cgSupervisorReviews.length} CG Supervisor{" "}
-                            {data.cgSupervisorReviews.length === 1
-                              ? "review"
-                              : "reviews"}{" "}
-                            recorded.
+                            {data.coreAnchorSummary ??
+                              "No Core Anchor is confirmed for this Shot yet."}
                           </p>
-                        )}
-                      </section>
+                        </section>
+
+                        <section className={styles.section}>
+                          <h4 className={styles.sectionHeading}>
+                            Active Execution Anchor (read-only)
+                          </h4>
+                          <p className={styles.contextText}>
+                            {data.activeExecutionRevision
+                              ?.technical_boundaries ??
+                              "No Execution Anchor is confirmed for this Task yet."}
+                          </p>
+                        </section>
+
+                        <section className={styles.section}>
+                          <h4 className={styles.sectionHeading}>
+                            Review notes
+                          </h4>
+                          {selected.reviewNotes.length === 0 ? (
+                            <p className={styles.empty}>
+                              No Review Notes have been recorded for this
+                              Production Version yet.
+                            </p>
+                          ) : (
+                            <ul className={styles.noteList}>
+                              {selected.reviewNotes.map((note) => (
+                                <li key={note.id} className={styles.note}>
+                                  <p className={styles.noteContent}>
+                                    {note.content}
+                                  </p>
+                                  <p className={styles.noteMeta}>
+                                    {getAuthorDisplayText(note)} ·{" "}
+                                    {new Date(note.created_at).toLocaleString()}
+                                  </p>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </section>
+                      </EvidenceLayerSection>
+
+                      <EvidenceLayerSection kind="agent-interpretation">
+                        <section className={styles.section}>
+                          <h4 className={styles.sectionHeading}>
+                            CG Supervisor reviews
+                          </h4>
+                          {data.cgSupervisorReviews.length === 0 ? (
+                            <p className={styles.empty}>
+                              No CG Supervisor review has been generated for the
+                              active Execution Anchor yet.
+                            </p>
+                          ) : (
+                            <p className={styles.contextText}>
+                              {data.cgSupervisorReviews.length} CG Supervisor{" "}
+                              {data.cgSupervisorReviews.length === 1
+                                ? "review"
+                                : "reviews"}{" "}
+                              recorded.
+                            </p>
+                          )}
+                        </section>
+                      </EvidenceLayerSection>
+
+                      <EvidenceLayerSection kind="human-decision">
+                        <p className={styles.empty}>
+                          No Human Decision has been recorded for this
+                          Production Version review. Escalating to VFX records a
+                          Dependency, not a Decision.
+                        </p>
+                      </EvidenceLayerSection>
 
                       <VersionReviewActions
                         taskId={taskId}

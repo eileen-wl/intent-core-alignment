@@ -202,6 +202,70 @@ describe("FeedbackHistoryPage", () => {
     expect(links[1]).toHaveAttribute("href", "/artist/tasks/t1");
   });
 
+  it("classifies each timeline event by its real event/object type, not by the visible actor label, while preserving chronology (Step 9B-2)", () => {
+    const events = [
+      event({
+        id: "e3",
+        event_type: "execution_anchor_confirmed",
+        summary: "Revision 2 confirmed as the active Execution Anchor.",
+        occurred_at: "2026-01-03T00:00:00Z",
+        actor_kind: "human",
+        actor_human_role: "cg_supervisor",
+      }),
+      event({
+        id: "e2",
+        event_type: "artist_guidance_generated",
+        summary: "New Artist guidance generated for SH010_v001",
+        occurred_at: "2026-01-02T00:00:00Z",
+        actor_kind: "agent",
+        actor_human_role: null,
+      }),
+      // A structural production event that happens to be human-authored
+      // -- must still classify as Production Evidence, never Human
+      // Decision, since recording a Dependency is not itself a Decision.
+      event({
+        id: "e1",
+        event_type: "dependency_recorded",
+        summary: "Waiting on Layout to lock camera.",
+        occurred_at: "2026-01-01T00:00:00Z",
+        actor_kind: "human",
+        actor_human_role: "cg_supervisor",
+      }),
+    ];
+    render(
+      <FeedbackHistoryPage
+        taskId="t1"
+        data={data({ history: { task_id: "t1", events } })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const timeline = screen.getByRole("list", {
+      name: "Task feedback history",
+    });
+    const items = within(timeline).getAllByRole("listitem");
+    // Newest-first chronology is preserved regardless of layer.
+    expect(
+      within(items[0]).getByText(
+        "Revision 2 confirmed as the active Execution Anchor.",
+      ),
+    ).toBeVisible();
+    expect(within(items[0]).getByText("Human-confirmed")).toBeVisible();
+
+    expect(
+      within(items[1]).getByText("Artist guidance generated"),
+    ).toBeVisible();
+    expect(within(items[1]).getByText("AI interpretation")).toBeVisible();
+
+    expect(
+      within(items[2]).getByText("Waiting on Layout to lock camera."),
+    ).toBeVisible();
+    expect(within(items[2]).getByText("Production fact")).toBeVisible();
+    expect(
+      within(items[2]).queryByText("AI interpretation"),
+    ).not.toBeInTheDocument();
+  });
+
   it("does not fabricate a read or resolved state anywhere on the page", () => {
     render(
       <FeedbackHistoryPage
