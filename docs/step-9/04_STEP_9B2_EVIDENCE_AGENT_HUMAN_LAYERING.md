@@ -1,10 +1,11 @@
 # Step 9B-2 — Production Evidence / Agent Interpretation / Human Decision Layering
 
-**Status:** Implementation and automated validation complete. Owner visual validation pending (a first attempt found five presentation-semantic defects, corrected; a second attempt found residual raw HumanRole enum leakage, also corrected — see §18/§19; the owner has not yet re-validated).
+**Status:** Step 9B-2 complete — Production Evidence, Agent Interpretation, and Human Decision and Provenance layering implemented, automatically validated, and owner visually validated. Three correction rounds preceded the passing validation (presentation-semantic defects, then two rounds of residual raw-role-enum leakage) — see §18/§19 for the corrections and §20 for the final owner visual validation and full correction history.
 **Branch:** `feat/step9b2-evidence-agent-human-layering`
 **Starting HEAD:** `9997477`
 **Owner-validation correction applied (same branch, same task):** the first owner visual validation attempt found: a CrossRoleAssessment summary card visually reading as Production Evidence on VFX Alignment; CG Execution's Human Decision section omitting the Decision's actual outcome; CG Version Review's review/Agent/escalation action controls visually nested inside Human Decision and Provenance; Artist Current Version's authority references implying more provenance access than the role actually has; and raw human-role enum values rendered in several places. All five are corrected — see §18.
-**Second owner-validation correction applied (same branch, same task):** re-validation confirmed the §18 classification/outcome/placement/authority-boundary corrections, but found that raw HumanRole enum values (`vfx_supervisor`, `cg_supervisor`, `artist`) remained visible in the VFX Alignment "Affects" list, CG Version Review and Artist Current Version's internal ReviewNote/Version provenance, and Artist Feedback History's server-generated Execution Anchor confirmation/rejection event text — contradicting the earlier claim that zero raw enums remained. Corrected — see §19. Validation is still pending, not re-claimed as complete.
+**Second owner-validation correction applied (same branch, same task):** re-validation confirmed the §18 classification/outcome/placement/authority-boundary corrections, but found that raw HumanRole enum values (`vfx_supervisor`, `cg_supervisor`, `artist`) remained visible in the VFX Alignment "Affects" list, CG Version Review and Artist Current Version's internal ReviewNote/Version provenance, and Artist Feedback History's server-generated Execution Anchor confirmation/rejection event text — contradicting the earlier claim that zero raw enums remained. Corrected — see §19.
+**Final owner visual validation (same branch, documentation-closeout task):** the owner performed the full §15 checklist across all six priority pages and confirmed correct behaviour throughout, with no further defects found. Step 9B-2 is complete — see §20.
 **Companion documents:** `docs/step-9/01_STEP_9_PRESENTATION_AND_COMPREHENSION_BASELINE.md` (locked baseline), `docs/step-9/02_STEP_9A_CURRENT_STATE_AND_IMPLEMENTATION_MAP.md` §7 (the Evidence/Agent/Human layering map this implementation follows), `docs/step-9/03_STEP_9B1_ROLE_AWARE_WORKING_DIRECTION.md` (the authority vocabulary and shared component pattern this step reuses), `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` §L.
 
 ---
@@ -232,7 +233,7 @@ No disclosure/collapse was added anywhere in this step (unlike Step 9B-1's `Deta
 
 ## 15. Owner visual-validation targets
 
-Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http://localhost:3000`, entry via `http://localhost:3000/demo`. **The owner has not yet performed this validation; it is not claimed as complete.** A first attempt found five presentation-semantic defects (§18); a second attempt found residual raw-role-enum leakage (§19). Both are corrected. The checklists below describe the corrected behaviour.
+Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http://localhost:3000`, entry via `http://localhost:3000/demo`. A first attempt found five presentation-semantic defects (§18); a second attempt found residual raw-role-enum leakage (§19). Both are corrected. **The owner has since performed this validation against the corrected behaviour described below and it passed — see §20 for the final result.**
 
 | Page | Exact URL | Checklist |
 |---|---|---|
@@ -243,7 +244,7 @@ Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http
 | Artist Current Version | `http://localhost:3000/artist/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684/current-version` | Artist Guidance reads as clearly advisory; Version/ReviewNote author provenance reads as a human-readable role, never a raw enum; the Human Decision section shows only "Confirmed authority references" — which authority (VFX Supervisor / CG Supervisor) confirmed each Anchor, and an explicit statement that detailed Decision provenance is not exposed in the Artist role view — never actor/rationale/timestamp detail and never a confirm/reject/edit control; an unconfirmed Anchor is never described as confirmed; nothing here duplicates the Task Overview's Working Direction section; Generate/Regenerate guidance remains reachable |
 | Artist Feedback History | `http://localhost:3000/artist/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684/feedback-history` | Chronological order is unchanged; each event's small layer badge is understandable without breaking the timeline's read flow; a human-authored production event (e.g. a Dependency) still reads as Production Evidence, not Human Decision; a human actor's role renders as a human-readable label ("CG Supervisor"), never the raw enum; an Execution Anchor confirm/reject event's description reads "CG Supervisor confirmed Execution Anchor Revision N -- ..." (or the equivalent VFX Supervisor/rejected wording), never the server's raw "Human cg_supervisor ..." text; Open → links remain correct |
 
-Each of the six URLs above returned `200` and rendered its expected layer content — including both correction rounds — against freshly restarted `apps/api`/`apps/web` processes in this task (§19.5). A targeted check for raw role enums rendered as literal element text (`>cg_supervisor<`, `>vfx_supervisor<`, `>artist<`, and mixed-case variants) returned zero matches on all seven checked pages (the six priority pages plus VFX Versions, a beneficiary of the same shared fix). **This does not constitute owner visual validation.**
+Each of the six URLs above returned `200` and rendered its expected layer content — including both correction rounds — against freshly restarted `apps/api`/`apps/web` processes in this task (§19.5). A targeted check for raw role enums rendered as literal element text (`>cg_supervisor<`, `>vfx_supervisor<`, `>artist<`, and mixed-case variants) returned zero matches on all seven checked pages (the six priority pages plus VFX Versions, a beneficiary of the same shared fix). At the time this table was written, this automated check did **not** yet constitute owner visual validation. **The owner has since completed the actual visual validation described here — see §20.**
 
 ---
 
@@ -260,7 +261,7 @@ Each of the six URLs above returned `200` and rendered its expected layer conten
 
 ## 17. Readiness for Step 9B-3
 
-**Ready**, pending owner visual validation of this step (§15), which now depends on both the §18 and §19 corrections being re-checked. Step 9B-3's own scope (a VFX-facing Department Execution Overview aggregate) is unaffected by and independent of this step's work — it needs its own new aggregate read endpoint (per `02_STEP_9A_...md` §8, explicitly out of this step's boundary, §16) and does not depend on the `EvidenceLayerSection` component, though it may reuse it if Department Execution Overview rows are later judged to need Evidence/Agent/Human grouping of their own.
+**Ready.** Owner visual validation of this step (§15) is now complete (§20). Step 9B-3's own scope (a VFX-facing Department Execution Overview aggregate) is unaffected by and independent of this step's work — it needs its own new aggregate read endpoint (per `02_STEP_9A_...md` §8, explicitly out of this step's boundary, §16) and does not depend on the `EvidenceLayerSection` component, though it may reuse it if Department Execution Overview rows are later judged to need Evidence/Agent/Human grouping of their own.
 
 **Files changed, original 9B-2 pass (exhaustive):** `apps/web/src/design/components/EvidenceLayerSection.tsx` + `.module.css` (new); `apps/web/src/design/components/index.ts`; `apps/web/src/lib/decisionProvenance.ts` (new) + `.test.ts` (new); `apps/web/src/lib/feedbackEventLayer.ts` (new) + `.test.ts` (new); `apps/web/src/app/vfx/shots/[shotId]/intent/{IntentWorkspacePage,ConfirmedAnchorSummary}.tsx` + `IntentWorkspacePage.test.tsx`; `apps/web/src/app/vfx/shots/[shotId]/alignment/AlignmentWorkspacePage.tsx` + `.test.tsx`; `apps/web/src/features/cg/execution-workspace/data.ts`; `apps/web/src/app/cg/tasks/[taskId]/execution/page.tsx`; `apps/web/src/app/cg/tasks/[taskId]/execution/ExecutionPage.tsx` + `.test.tsx`; `apps/web/src/app/cg/tasks/[taskId]/version-review/VersionReviewPage.tsx` + `.test.tsx`; `apps/web/src/app/artist/tasks/[taskId]/current-version/CurrentVersionPage.tsx` + `.test.tsx`; `apps/web/src/app/artist/tasks/[taskId]/feedback-history/FeedbackHistoryPage.tsx` + `.test.tsx`.
 
@@ -373,3 +374,92 @@ New/updated tests are listed per file in §13, including two new shared-helper t
 **This does not constitute owner visual validation.** The owner must still perform the checklist in §15.
 
 **Files changed, this correction (additional, on top of §18's list):** `apps/web/src/lib/authorProvenance.ts` (+ humanRoleLabel for internal author display) + `.test.ts` (new); `apps/web/src/lib/feedbackEventSummary.ts` (new) + `.test.ts` (new); `apps/web/src/app/vfx/shots/[shotId]/alignment/AlignmentWorkspacePage.tsx` (+ Affects list formatting) + `.test.tsx`; `apps/web/src/app/artist/tasks/[taskId]/feedback-history/FeedbackHistoryPage.tsx` (+ `feedbackEventSummary` usage) + `.test.tsx`; `apps/web/src/app/artist/tasks/[taskId]/current-version/CurrentVersionPage.test.tsx` (updated assertion only, no source change needed — the shared helper fix covered it); `apps/web/src/app/vfx/shots/[shotId]/versions/VersionsWorkspacePage.test.tsx` (updated assertions only, same reason). No backend, contract, route, sidebar, tab, migration, role-permission, or persistence file was touched.
+
+---
+
+## 20. Final owner visual validation — passed, and full correction history
+
+**This section is a documentation-closeout-only update.** No application source, test, style, contract, generated file, route, permission, database row, or ftrack entity was changed to produce this section — it records an owner visual validation result that has already occurred, against the exact corrected behaviour already described in §5–§10 and §18–§19.
+
+### 20.1 Correction history (three rounds, summarised)
+
+**First owner pass** found five presentation-semantic defects, all corrected in §18:
+
+- a CrossRoleAssessment summary card visually reading as Production Evidence on VFX Alignment;
+- CG Execution's Human Decision section omitting the Decision's actual outcome;
+- CG Version Review's review/Agent/escalation action controls visually nested inside Human Decision and Provenance;
+- Artist Current Version's authority references implying more provenance access than the role actually has;
+- raw human-role enum values rendered in several places.
+
+**Second owner pass** confirmed the §18 classification, Decision-outcome, and action-placement corrections held, but found remaining raw `HumanRole` enum leakage that §18's own fix had not fully covered, corrected in §19:
+
+- VFX Alignment's Finding "Affects" list (`affected_roles.join(", ")`, never mapped through a label function);
+- CG Version Review and Artist Current Version's internal Version/ReviewNote author provenance (the shared `getAuthorDisplayText` helper's non-ftrack branch);
+- Artist Feedback History's server-generated Execution Anchor confirm/reject event descriptions (the raw enum embedded directly in the backend's `summary` string, corrected via a frontend-only structured-field recomposition, `feedbackEventSummary`, with no backend or contract change).
+
+**Third/final owner pass** re-checked all six priority pages against the corrected behaviour from both rounds and confirmed:
+
+- all visible role labels were readable (no raw `HumanRole` enum text found anywhere);
+- external ftrack author handling remained unchanged — ftrack source-author names were not affected by, and are not subject to, the role-label correction;
+- all three classification layers (Production Evidence / Agent Interpretation / Human Decision and Provenance) remained correctly applied on every page;
+- no prior authority boundary or timeline chronology behaviour regressed.
+
+### 20.2 Final owner visual validation results, by page
+
+**VFX Intent** (`http://localhost:3000/vfx/shots/8a72858d-8d06-47ab-a28d-5ee077f561c8/intent`):
+
+- the current confirmed Core Anchor content appeared as Production Evidence;
+- the confirmation Decision appeared separately, with actor, role, rationale, and timestamp;
+- Agent content remained advisory and separate;
+- no full Anchor duplication occurred;
+- a zero evidence-reference state used honest wording ("No evidence references were recorded for this Decision.");
+- visible role names were human-readable.
+
+**VFX Alignment** (`http://localhost:3000/vfx/shots/8a72858d-8d06-47ab-a28d-5ee077f561c8/alignment`):
+
+- the assessed Version and Core Anchor context were Production Evidence;
+- the CrossRoleAssessment summary, findings, risks, and re-anchor proposal were Agent Interpretation;
+- "Human review required" remained a pending action, not a fabricated Human Decision;
+- no Human Decision was fabricated — the honest no-Decision statement rendered instead;
+- affected-role labels displayed "VFX Supervisor, CG Supervisor, Artist".
+
+**CG Execution** (`http://localhost:3000/cg/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684/execution`):
+
+- confirmed Execution Anchor content appeared as Production Evidence;
+- the real Decision outcome stated that Execution Anchor revision 2 was confirmed;
+- the actor role displayed "CG Supervisor";
+- rationale, decided-at time, and supersession were all visible;
+- the existing-Anchor action heading displayed "Revise Execution Anchor";
+- no Agent Interpretation section was fabricated where no real Agent-output object existed for this page (§7/§14's documented, deliberate omission).
+
+**CG Version Review** (`http://localhost:3000/cg/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684/version-review`):
+
+- Version, ReviewNote, and Anchor references appeared as Production Evidence;
+- CG Supervisor review appeared as Agent Interpretation;
+- no Human Decision was fabricated;
+- Review actions (Add Review Note, Generate CG Supervisor review, Escalate to VFX) sat outside the Human Decision layer, in their own "Review actions" section, and remained available;
+- ReviewNote author displayed "VFX Supervisor" rather than the internal enum.
+
+**Artist Current Version** (`http://localhost:3000/artist/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684/current-version`):
+
+- Version and ReviewNote remained Production Evidence;
+- Artist Guidance, CG Supervisor review, and Cross-role Assessment remained Agent Interpretation;
+- Human Decision displayed authority references only ("Confirmed under [Role] authority.");
+- detailed Decision provenance (actor id, rationale, timestamp) remained unavailable to Artist, as intended, with the boundary stated explicitly;
+- no confirm/reject/edit control was exposed;
+- internal author provenance used readable role labels.
+
+**Artist Feedback History** (`http://localhost:3000/artist/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684/feedback-history`):
+
+- chronology (newest-first) remained intact;
+- Version and ReviewNote events were Production facts;
+- Guidance, Assessment, and CG Supervisor review events were AI interpretations;
+- real Execution Anchor confirmation events were Human-confirmed;
+- confirmation event text and the per-event actor footer used "CG Supervisor" rather than the raw `cg_supervisor` enum value;
+- Open → links remained available.
+
+### 20.3 Final verdict
+
+**Step 9B-2 complete — Production Evidence, Agent Interpretation, and Human Decision and Provenance layering implemented, automatically validated, and owner visually validated.**
+
+Step 9B (as a whole, its four sub-steps) is **not** complete — only 9B-1 and 9B-2 are done. Step 9B-3 (Department Execution Overview), Step 9B-4 (media/thumbnail/ftrack context), and Step 9C (visual-system unification) have not started, per this task's own explicit scope boundary. The next approved activity is **Step 9B-3 — Department Execution Overview.**
