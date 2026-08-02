@@ -432,4 +432,23 @@ Consistent with `docs/FTRACK_INTEGRATION.md` §15/§17's claim boundary: this va
 
 ### K.4 Next approved activity
 
-**Visual refinement, after Step 8 and before Step 9** — exactly the sequencing decision already recorded in J.6, now active. **Step 9 has not started.**
+**Visual refinement, after Step 8 and before Step 9** — exactly the sequencing decision already recorded in J.6, now active. **[Note added for Step 9A: this "visual refinement" activity is now formally incorporated into the expanded Step 9 sequence below (L.1) as Step 9C, not a separate pre-Step-9 phase. This is a scope-label refinement of J.6's own already-recorded sequencing decision, not a new decision and not permission to alter the established IA.]**
+
+---
+
+## L. Step 9 Sequence (dated 2026-08-02)
+
+**Recorded 2026-08-02, branch `feat/step9a-presentation-baseline-audit`.** The previously planned single "visual refinement after Step 8 and before Step 9" activity (J.6, K.4) is now formally expanded into an ordered Step 9 sequence, per `docs/step-9/01_STEP_9_PRESENTATION_AND_COMPREHENSION_BASELINE.md` (locked baseline) and `docs/step-9/02_STEP_9A_CURRENT_STATE_AND_IMPLEMENTATION_MAP.md` (this pass's audit). This is a scope-label refinement only — it does not authorise altering the established IA, role boundaries, or page responsibilities locked in Step 7/Step 8.
+
+### L.1 Sequence and status
+
+| Sub-step | Scope | Status |
+|---|---|---|
+| **Step 9A** | Baseline, end-to-end, and real-data audit (this pass) — routes, page/data/source matrix, Working Direction feasibility, evidence layering, Department Execution Overview feasibility, real ftrack media feasibility, Step 8 display-limitation verification, ordered Step 9B implementation packages | Completed this pass — see `docs/step-9/02_STEP_9A_CURRENT_STATE_AND_IMPLEMENTATION_MAP.md` |
+| **Step 9B** | Presentation and comprehension enhancement (Role-aware Working Direction; Evidence/Agent/Human layering; Department Execution Overview; media/thumbnail/ftrack context) | Not started |
+| **Step 9C** | Design-skill visual unification pass (the previously-referenced "visual refinement") | Not started |
+| **Step 9D** | Student usability testing | Not started |
+| **Step 9E** | Synthetic role evaluation | Not started |
+| **Step 9F** | Final Demo, recording, Evidence Deck, and portfolio closeout | Not started |
+
+**Step 8 is complete** (Section K). **Step 9A is completed by this pass.** **Step 9B through Step 9F have not started.**
