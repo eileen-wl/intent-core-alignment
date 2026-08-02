@@ -393,3 +393,94 @@ describe("ShotOverviewPage as the real destination of a Shots row/Open action", 
     ).not.toBeInTheDocument();
   });
 });
+
+describe("ShotOverviewPage -- Step 9B-3 Department Execution Overview", () => {
+  it("renders nothing extra when departmentExecutionOverview is not supplied (pre-existing callers keep working unchanged)", () => {
+    render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
+    expect(
+      screen.queryByText("Department Execution Overview"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders nothing extra when departmentExecutionOverview is null (the role-gated backend call failed)", () => {
+    render(
+      <ShotOverviewPage
+        item={buildItem()}
+        departmentExecutionOverview={null}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByText("Department Execution Overview"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders the Department Execution Overview section, after Current Creative Direction and before the detailed-context divider", () => {
+    render(
+      <ShotOverviewPage
+        item={buildItem()}
+        workingDirection={{
+          title: "Current Creative Direction",
+          items: [
+            {
+              id: "creative-objective",
+              label: "Current creative objective",
+              value: "A restrained dusk confrontation.",
+              sourceType: "core_anchor_revision",
+            },
+          ],
+        }}
+        departmentExecutionOverview={{
+          shot_id: "s1",
+          tasks: [
+            {
+              task_id: "t1",
+              task_name: "Lighting Pass",
+              department: "lighting",
+              task_source: "manual",
+              execution_anchor_state: "confirmed",
+              execution_anchor_revision_number: 1,
+              execution_anchor_summary: "24fps, no motion blur.",
+              latest_version_id: "v1",
+              latest_version_name: "SH010_v001",
+              latest_version_number: 1,
+              latest_version_source: "manual",
+              latest_version_scope: "task",
+              current_focus_type: "none",
+              current_focus_title:
+                "Nothing requires your attention on this Task right now",
+              current_focus_actionable: false,
+              open_dependency_count: 0,
+              top_open_dependency_description: null,
+              top_open_dependency_severity: null,
+              alignment_concern_summary: null,
+              alignment_concern_attention_level: null,
+              open_escalation: false,
+              open_escalation_summary: null,
+              last_updated_at: "2026-08-01T00:00:00Z",
+              last_updated_source: "task_created",
+            },
+          ],
+          generated_at: "2026-08-01T00:00:00Z",
+        }}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Department Execution Overview" }),
+    ).toBeVisible();
+    expect(screen.getByText("Lighting Pass")).toBeVisible();
+
+    const headings = screen
+      .getAllByRole("heading")
+      .map((heading) => heading.textContent);
+    const creativeDirectionIndex = headings.indexOf(
+      "Current Creative Direction",
+    );
+    const departmentOverviewIndex = headings.indexOf(
+      "Department Execution Overview",
+    );
+    expect(creativeDirectionIndex).toBeGreaterThanOrEqual(0);
+    expect(departmentOverviewIndex).toBeGreaterThan(creativeDirectionIndex);
+  });
+});

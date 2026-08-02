@@ -1,4 +1,7 @@
-import type { VfxInboxItemRead } from "@intent-core/contracts";
+import type {
+  DepartmentExecutionOverviewRead,
+  VfxInboxItemRead,
+} from "@intent-core/contracts";
 import Link from "next/link";
 
 import {
@@ -17,6 +20,7 @@ import { signalStateLabel } from "../../vfxWording";
 import { CurrentFocusPanel } from "../CurrentFocusPanel";
 import { NextFocusPanel } from "../NextFocusPanel";
 import { ProductionContextHeader } from "../ProductionContextHeader";
+import { DepartmentExecutionOverviewSection } from "./DepartmentExecutionOverviewSection";
 
 const ALIGNMENT_FOCUS_TYPES = new Set([
   "alignment_not_followed_by_anchor_action",
@@ -26,7 +30,8 @@ const ALIGNMENT_FOCUS_TYPES = new Set([
 /** `/vfx/shots/:shotId` -- the real Shot Overview (Step 7C-1;
  * docs/step-7/16_STEP_7C0D_...md §6). Locked order: production-context
  * header -> contextual tabs -> exactly one Current focus ->
- * zero-to-two Next-in-this-Shot items -> minimal supporting context.
+ * zero-to-two Next-in-this-Shot items -> Current Creative Direction ->
+ * Department Execution Overview (Step 9B-3) -> minimal supporting context.
  *
  * Next-in-this-Shot (Step 7C-1 targeted correction §7-§8) renders the
  * real, backend-derived `item.next_candidates` -- the remaining
@@ -37,6 +42,7 @@ const ALIGNMENT_FOCUS_TYPES = new Set([
 export function ShotOverviewPage({
   item,
   workingDirection,
+  departmentExecutionOverview,
   onExitRole,
 }: {
   item: VfxInboxItemRead | null;
@@ -44,6 +50,10 @@ export function ShotOverviewPage({
    * summary -- optional so every pre-existing caller/test that only
    * ever supplied `item` keeps compiling and rendering unchanged. */
   workingDirection?: WorkingDirectionSectionModel;
+  /** Step 9B-3: the Shot's real Tasks and their execution state --
+   * optional (and rendering nothing when `null`/omitted) so every
+   * pre-existing caller/test keeps compiling and rendering unchanged. */
+  departmentExecutionOverview?: DepartmentExecutionOverviewRead | null;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
@@ -112,6 +122,11 @@ export function ShotOverviewPage({
           {workingDirection && (
             <WorkingDirectionSection section={workingDirection} />
           )}
+
+          <DepartmentExecutionOverviewSection
+            shotId={item.shot_id}
+            overview={departmentExecutionOverview ?? null}
+          />
 
           <Divider />
 

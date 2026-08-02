@@ -1,0 +1,448 @@
+# Step 9B-3 — Department Execution Overview
+
+**Status:** **Complete.** Implementation, automated validation, a post-first-review owner-validation correction pass (§16), and final owner visual validation (§13) are all done. See §17 for the final verdict.
+**Branch:** `feat/step9b3-department-execution-overview`
+**Starting HEAD:** `a05904c`
+**Companion documents:** `docs/step-9/01_STEP_9_PRESENTATION_AND_COMPREHENSION_BASELINE.md` (locked baseline), `docs/step-9/02_STEP_9A_CURRENT_STATE_AND_IMPLEMENTATION_MAP.md` §8 (the feasibility audit this implementation follows almost field-for-field), `docs/step-9/03_STEP_9B1_ROLE_AWARE_WORKING_DIRECTION.md` (the Working Direction pattern this section sits directly below), `docs/step-9/04_STEP_9B2_EVIDENCE_AGENT_HUMAN_LAYERING.md` (the Production Evidence / Agent Interpretation / Human Decision vocabulary this section preserves), `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` §L.
+
+---
+
+## 1. Scope and completion status
+
+**Step 9B-3 delivers a read-only Department Execution Overview on the existing VFX Shot Overview page** (`/vfx/shots/:shotId`) — a compact, one-row-per-Task summary of each real Task's Execution Anchor state, latest Version, current focus, open dependencies, alignment concern, and escalation status. It is the one Step 9B package `02_STEP_9A_...md` §8 identified as needing a new backend aggregate (every other Step 9B-1/9B-2 package was pure frontend composition) — that new aggregate is exactly what this step adds, nothing more.
+
+**No new authoritative domain object, migration, Agent workflow, route, sidebar item, or Shot tab was added.** The one new backend surface is a single read-only, VFX-Supervisor-only aggregate endpoint composing already-persisted Task/ExecutionAnchor/ExecutionAnchorRevision/Version/TaskDependency/IntentSignal rows — the same shape and justification `02_STEP_9A_...md` §8 already worked out in detail before this implementation began.
+
+Not started, per this task's explicit scope: Step 9B-4 (media/thumbnail/ftrack context), Step 9C (visual-system unification).
+
+---
+
+## 2. Locked IA and authority boundaries
+
+- **No route added.** The section lives inside the existing `/vfx/shots/:shotId` page — no `/vfx/shots/:shotId/execution` or similar was created.
+- **No sidebar item added.** `apps/web/src/lib/roleNavigation.ts`'s VFX entry (`Workspace Home` · `Review Inbox` · `Shots`) is unchanged.
+- **No Shot tab added.** `ContextTabs`' five-tab set (Overview · Intent · Versions · Alignment · Activity) is unchanged.
+- **No CG Workspace embedding.** Every "View details" link is a real `next/link` to an existing, VFX-permitted route (`/vfx/shots/:shotId/versions`) — never an iframe, never a rendered CG page component, never a direct `/cg/tasks/:taskId` link (which the role-guard middleware would redirect away from anyway).
+- **No VFX edit/confirm authority over a CG-owned Execution Anchor.** The new endpoint is read-only end to end: no mutation function was added to `department_execution_overview/service.py`, no Server Action was added for this section, and the frontend section (`DepartmentExecutionOverviewSection`/`TaskExecutionRow`) renders zero buttons and exactly one interactive element per row (`View details →`, a plain navigation link).
+- **No role switcher.** The page still renders exactly one role's `AppShell`, unchanged.
+
+---
+
+## 3. Aggregate read model
+
+New Pydantic contract, `packages/contracts/python/src/intent_core_contracts/api/department_execution_overview.py`:
+
+```python
+DepartmentExecutionAnchorState = Literal[
+    "none", "draft", "awaiting_confirmation", "confirmed", "rejected",
+]
+DepartmentExecutionLastUpdatedSource = Literal[
+    "task_created", "execution_anchor_revision", "version",
+    "dependency", "escalation", "alignment_assessment",
+]
+# Correction (§16): whether the latest Version is genuinely linked to
+# this Task or only reached through the nullable-task_id Shot-level
+# fallback -- the two must never render identically.
+DepartmentExecutionVersionScope = Literal["task", "shot_unscoped"]
+
+class DepartmentExecutionTaskRead(BaseModel):
+    task_id: UUID
+    task_name: str
+    department: str | None
+    task_source: RecordSource
+
+    execution_anchor_state: DepartmentExecutionAnchorState
+    execution_anchor_revision_number: int | None
+    execution_anchor_summary: str | None
+
+    latest_version_id: UUID | None
+    latest_version_name: str | None
+    latest_version_number: int | None
+    latest_version_source: RecordSource | None
+    latest_version_scope: DepartmentExecutionVersionScope | None  # §16
+
+    current_focus_type: CgCurrentFocusType  # §16 -- real discriminator
+    current_focus_title: str  # raw CG copy; not for unqualified VFX display (§16)
+    current_focus_actionable: bool
+
+    open_dependency_count: int
+    top_open_dependency_description: str | None
+    top_open_dependency_severity: TaskDependencySeverity | None
+
+    alignment_concern_summary: str | None
+    alignment_concern_attention_level: AttentionLevel | None
+
+    open_escalation: bool
+    open_escalation_summary: str | None
+
+    last_updated_at: datetime
+    last_updated_source: DepartmentExecutionLastUpdatedSource
+
+class DepartmentExecutionOverviewRead(BaseModel):
+    shot_id: UUID
+    tasks: list[DepartmentExecutionTaskRead]
+    generated_at: datetime
+```
+
+Every field maps to a real, already-persisted object — none is fabricated, and every enum-valued field is presentation-safe (never a raw UUID; the TypeScript rendering layer maps every enum to human-readable copy, §8). This is the same "one row per real object, several already-real fields projected together" shape as `VfxInboxItemRead`/`CgInboxItemRead` (`02_STEP_9A_...md` §8's own recommendation, followed exactly).
+
+---
+
+## 4. Endpoint and authorization
+
+**`GET /vfx/shots/{shot_id}/department-execution-overview`** — new package `apps/api/src/intent_core_api/department_execution_overview/` (`service.py` + `router.py`, mirroring the `cg_inbox`/`vfx_inbox` package shape), mounted in `main.py` alongside `vfx_inbox_router` (same `/vfx` prefix family).
+
+```python
+@router.get("/shots/{shot_id}/department-execution-overview", response_model=DepartmentExecutionOverviewRead)
+async def get_department_execution_overview(
+    shot_id: uuid.UUID,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
+) -> DepartmentExecutionOverviewRead:
+    overview = await service.get_department_execution_overview(session, actor, shot_id)
+    if overview is None:
+        raise NotFoundError("Shot not found")
+    return overview
+```
+
+**Authorization is enforced in the service, not the router** (matching `cross_department/service.py`'s existing pattern, and CLAUDE.md's "permissions must be enforced in backend logic, not only in prompts or UI"): `require_human_role(actor, frozenset({"vfx_supervisor"}))` runs *before* the Shot lookup, so a CG Supervisor or Artist actor gets a `403` without ever learning whether the requested Shot exists. This is a deliberate hardening beyond the existing `vfx_inbox`/`cg_inbox` GET routes (which are unauthenticated reads) — the task explicitly required this endpoint to be VFX-Supervisor-gated using the real `ActorContext` mechanism, not left open like its siblings.
+
+**Exact allowed-role policy:**
+
+| Caller | Result |
+|---|---|
+| `X-Actor-Role: vfx_supervisor` + valid `X-Actor-Id` | `200`, the real aggregate |
+| `X-Actor-Role: cg_supervisor` | `403` (`ForbiddenActionError`) |
+| `X-Actor-Role: artist` | `403` |
+| No `X-Actor-Role`/`X-Actor-Id` header | `401` (`get_current_actor`'s existing header-validation path) |
+| `X-Actor-Role: not_a_real_role` | `401` |
+| Valid VFX identity, missing Shot | `404` (`NotFoundError`, the same exception class `vfx_inbox/router.py` already uses for a missing Shot) |
+| Valid VFX identity, Shot exists, zero Tasks | `200`, `{"tasks": []}` |
+
+No database mutation, no ftrack request, and no new migration are involved anywhere in this call path — confirmed by the endpoint's own read-only test coverage (§11) and by direct inspection: `department_execution_overview/service.py` contains no `session.add`/`session.delete`/`session.commit` call of its own (the module never writes).
+
+---
+
+## 5. Deterministic source-selection rules
+
+### Execution Anchor state
+
+```
+no ExecutionAnchor row for the Task              -> "none"
+active_revision_id set, that revision confirmed  -> "confirmed"
+a pending HumanGate exists for any revision       -> "awaiting_confirmation"
+an un-gated draft revision exists (legacy case)   -> "draft"
+the latest revision's own status is "rejected"    -> "rejected"
+anything else (including a stray superseded-only
+  latest revision with no active pointer)          -> "none"
+```
+
+This deliberately reuses the exact same query shape `cg_inbox/service.py`'s `_load_task_related_data` already established for Execution Anchor/gate/draft loading (same three intermediate values: `active_revision`, `pending_gate_id`, `draft_revision_without_gate`) — the *state label* is richer here (5 values vs. `CgInboxItemRead.execution_anchor_state`'s 3), because the task explicitly required distinguishing draft/awaiting-confirmation/rejected, which CG's own coarser 3-value state collapses. `confirmed` is only ever set from a revision whose own persisted `status == "confirmed"` (never inferred from `active_revision_id` alone); a superseded revision is never selected as "current" under any branch, since `active_revision_id` always points at the *current* confirmed revision by domain invariant, and superseded revisions never appear as `latest_revision` in ordinary operation (revision numbers only increase, and superseding only happens via confirming a strictly newer revision). Verified by test: confirming a second revision after an already-confirmed first one reports the *new* revision's number, never the old one (`test_superseded_revision_is_never_shown_as_current`).
+
+### Latest Version
+
+Task-scoped first (`Version.task_id == task_id`), falling back to a Shot-level manual Version (`Version.task_id IS NULL`) per the existing Step 8C-6/8C-7 nullable-`task_id` compatibility rule — **never** a Version explicitly linked to a *different* Task. Ordered by `source_created_at ?? created_at` (the same effective-timestamp rule `apps/web/src/lib/effectiveTimestamp.ts` already establishes on the frontend, reimplemented once, backend-side, in `_effective_timestamp`, since no backend equivalent existed and the public `/versions` create endpoint never accepts `task_id`/`source_created_at` for a test to exercise this any other way).
+
+This is a genuinely new, backend-side, per-Task filter — not a reuse of the frontend's `filterVersionsForTask` (that helper's own docstring locks it to CG/Artist pages and explicitly forbids VFX Shot-wide pages from using it). The distinction: `filterVersionsForTask` scopes an entire *page's* Version list to one Task (forbidden for VFX); this aggregate scopes *one row's* "latest Version" field to its own Task, while the VFX Versions page itself remains completely unchanged and Shot-wide.
+
+**Correction (§16):** the selected Version's real scope is now exposed as `latest_version_scope` (`"task"` when `Version.task_id == task_id`; `"shot_unscoped"` for the nullable-`task_id` fallback), derived only from the Version's own `task_id` column — never from its name — and displayed distinctly ("Task-linked Version" vs. "Shot-level Version fallback — not linked to this Task in ICAS") so a Shot-level fallback is never presented as if it were explicitly linked to the current Task.
+
+### Dependencies
+
+`open_dependency_count` counts `kind IN ("dependency", "conflict")` rows with `status != "resolved"` (matches `cg_inbox`'s own `open_dependency_count` predicate exactly). The single highlighted "top" dependency additionally requires `status == "open"` (excludes "acknowledged", matching `cg_inbox`'s `dependency_needs_attention` input to Current focus) and is chosen deterministically by `(severity_rank, created_at)` — `high` < `medium` < `low` < unset, oldest first within the same severity. A resolved Dependency is never counted or shown as open (verified by test: resolving a Dependency drops `open_dependency_count` to `0` and clears `top_open_dependency_description`).
+
+### Alignment concern
+
+The Task's own latest `IntentSignal` (queried directly by `IntentSignal.task_id`, newest first) — the identical real object VFX Alignment already reads, just Task-scoped instead of Shot-scoped. Always advisory: `alignment_concern_summary`/`alignment_concern_attention_level` are `None` when no Assessment/Signal has ever been generated for the Task, never rendered or worded as "confirmed aligned."
+
+### Current focus
+
+Reused directly: `cg_inbox.current_focus.TaskFocusInputs`/`derive_current_focus` (the exact function CG's own Review Inbox uses) is called with this endpoint's own freshly-loaded `pending_execution_gate_id`/`draft_revision_without_gate_exists`/`dependency_needs_attention`/`version_review_available` inputs — **no second focus-ranking algorithm was written.**
+
+**Correction (§16):** the real `focus_type` discriminator is now exposed as `current_focus_type` alongside the raw CG copy (`current_focus_title`), because rendering `current_focus_title` unqualified on a VFX page reused CG's own second-person wording ("...awaiting **your** confirmation") in a context where "your" does not mean the VFX Supervisor. `current_focus_type` is still the same five real states from the same unmodified derivation — only its *display* is role-explicit and role-neutral on the VFX-facing surface (§16).
+
+### Escalation
+
+A real, open `TaskDependency(kind="escalation", status="open", escalated_to_role="vfx_supervisor")` for the Task — the same real object/predicate `vfx_inbox/service.py`'s own `open_cg_escalation_*` fields already use (that code's exact query snippet is the template this reuses, scoped per-Task instead of "first across the whole Shot"). **Never** inferred from a high `IntentSignal.attention_level` or a Cross-role Assessment recommendation alone — verified by test (`test_real_escalation_is_reported_and_never_inferred`): before any real escalation Dependency exists, `open_escalation` is `false` even though the Task may separately carry a real, high-attention alignment concern.
+
+### Last updated
+
+The maximum of every real, *included* source object's own timestamp for that row — `task.created_at` (always present, the floor), the displayed Execution Anchor revision's `updated_at`, the selected Version's effective timestamp, the highlighted open Dependency's `created_at`, the open escalation's `created_at`, and the latest `IntentSignal`'s `created_at` — never the request time. `last_updated_source` names exactly which one won; ties are broken by a fixed candidate-list order (deterministic, not arbitrary).
+
+---
+
+## 6. Execution Anchor state mapping (frontend copy)
+
+`apps/web/src/lib/departmentExecutionOverview.ts` maps every real `DepartmentExecutionAnchorState` value to honest, human-readable copy — never the raw enum:
+
+| State | Label |
+|---|---|
+| `none` | "No Execution Anchor yet" |
+| `draft` | "Draft awaiting CG completion" |
+| `awaiting_confirmation` | "Awaiting CG confirmation" |
+| `confirmed` | "Confirmed (Revision N)" -- only this state ever shows a revision number |
+| `rejected` | "Rejected" |
+
+Each state also maps to a `StatusBadge` tone (`confirmed` → `confirmed`; `draft`/`awaiting_confirmation` → `attention`; `rejected` → `blocking`; `none` → `neutral`) — reusing the existing, already-shared `StatusBadge` component and its existing tone vocabulary, not a new badge system.
+
+---
+
+## 7. Version, Dependency, Assessment and escalation mapping
+
+Per `TaskExecutionRow.tsx`:
+
+- **Latest Version**: `"{name} (v{number}) · ftrack-synced"` when `latest_version_source === "ftrack"`, plain `"{name} (v{number})"` otherwise, or the honest `"No Production Version recorded."` fallback. **Correction (§16):** appends `"— Task-linked Version"` or `"— Shot-level Version fallback — not linked to this Task in ICAS"` per `latest_version_scope`, so the two are never visually identical.
+- **Current focus**: **Correction (§16):** rendered via `cgTaskFocusLabel(current_focus_type)`, never the raw `current_focus_title` — e.g. `"CG task focus: Execution Anchor draft awaiting CG confirmation."`, or `"No current CG action is required for this Task."` for `none`. Explicitly scoped to CG ("CG task focus:") and never phrased as if it were addressed to VFX, and the "no current CG action" case is never worded as "nothing needs attention" (avoiding any implication that VFX itself needs no attention).
+- **Dependencies**: `"{n} open dependency/dependencies — highest priority: {description} ({severity} severity)"`, or `"No open dependencies."`.
+- **Alignment concern**: rendered behind the existing `AuthorityLabel variant="ai-interpretation"` badge (the same "AI interpretation" vocabulary Step 9B-2 already established) plus the real summary/attention-level text, or the honest `"No current alignment concern recorded."` fallback — **never** worded as if absence meant confirmed alignment.
+- **Escalation**: a `StatusBadge status="blocking"` labelled "Escalated to VFX" plus the real summary when `open_escalation` is `true`, or the honest `"No open escalation to VFX."` fallback.
+- **Last updated**: folded into the Version meta line as `"Last updated {date} ({source label})"`, where `source label` is `lastUpdatedSourceLabel(...)`'s human-readable phrase for `last_updated_source` (e.g. "Execution Anchor updated", "Dependency recorded") — never the raw internal discriminator string.
+
+---
+
+## 8. VFX Shot Overview implementation
+
+New components, colocated with the existing Shot Overview page files (matching the existing `CurrentFocusPanel.tsx`/`NextFocusPanel.tsx`/`ProductionContextHeader.tsx` convention):
+
+- **`DepartmentExecutionOverviewSection.tsx`** — the section wrapper. Renders `null` (nothing) when `overview` is `null` (the role-gated call failed for any reason — network, auth, unexpected error), so a transient failure of this one section never breaks the rest of the Shot Overview page. Renders the honest `"No Tasks are recorded for this Shot."` empty state when `overview.tasks` is empty. Otherwise renders one `<ul>` of `TaskExecutionRow`s.
+- **`TaskExecutionRow.tsx`** — one `<li>` per real Task: a header line (Task name, department, Execution Anchor state badge), a Version + last-updated meta line, a Current-focus badge line, and three honest meta lines (dependencies, alignment concern, escalation). Exactly one interactive element per row: a `View details →` link.
+
+**Placement** (`ShotOverviewPage.tsx`): inserted between the existing `WorkingDirectionSection` (Current Creative Direction, Step 9B-1) and the existing `Divider`/`DetailedContext` block — the locked page order is now production-context header → contextual tabs → Current focus → Next-in-this-Shot → Current Creative Direction → **Department Execution Overview** → detailed lower context. This is the placement `02_STEP_9A_...md` §2.4/§8 itself recommended, and the one non-disruptive slot: it sits after the two existing "what does VFX need to know/do right now" panels and before the already-collapsed `DetailedContext` disclosure, never interrupting either.
+
+Both `workingDirection` and `departmentExecutionOverview` remain optional props on `ShotOverviewPage`, defaulting to rendering nothing extra — every pre-existing caller/test that only ever supplied `item` keeps compiling and rendering unchanged (confirmed: zero existing `ShotOverviewPage.test.tsx` assertions needed to change).
+
+---
+
+## 9. Navigation behaviour
+
+**VFX may, from this module:** inspect every real field on every row; navigate via the one `View Shot Versions →` link per row.
+
+**VFX may not, from this module:** edit or confirm/reject an Execution Anchor; generate or regenerate CG Agent output; add a CG ReviewNote; resolve a CG Dependency; impersonate CG or Artist. None of these controls exist anywhere in `DepartmentExecutionOverviewSection.tsx`/`TaskExecutionRow.tsx` — confirmed by test (`TaskExecutionRow.test.tsx`'s "never renders a CG confirm/reject/generate/resolve control" case: zero `<button>` elements, zero occurrences of "Confirm"/"Reject"/"Resolve"/"Generate" as whole words, and exactly one `<a>` per row).
+
+**Chosen safe navigation destination:** every row's link goes to `` /vfx/shots/{shotId}/versions `` — the existing, VFX-permitted, Shot-wide Versions page. No per-Task VFX route exists anywhere in the locked route map (`02_STEP_9A_...md` §4), so a per-Task destination is structurally impossible without adding a new route (explicitly out of this task's scope: "Do not add ... a new Shot tab"). A direct `/cg/tasks/{taskId}` link was considered and rejected: `middleware.ts`'s role guard would redirect a VFX session away from any `/cg/*` path before the page ever rendered, producing a broken/confusing link, exactly the failure mode the task explicitly named and forbade. Versions was chosen over Alignment because it is the more directly Task-relevant existing content (each Task's own recorded Production Version and Review Notes), while Alignment remains reachable from the page's own existing "Latest assessment" link when a real Cross-role Assessment exists.
+
+**Correction (§16):** the visible link label was originally `"View details →"`, which implied a dedicated Task-detail destination that does not exist. It now reads `"View Shot Versions →"`, honestly naming the real, Shot-wide destination every row actually links to. The destination itself is unchanged.
+
+---
+
+## 10. Empty and partial-data states
+
+All twelve states the task named are covered, verified either by an automated test or by a live check against real persisted data (§13):
+
+| State | Covered by |
+|---|---|
+| Shot with no Tasks | `test_valid_shot_with_no_tasks_returns_empty_list` (backend) + `DepartmentExecutionOverviewSection.test.tsx`'s empty-state test |
+| Task with no Execution Anchor | `test_no_execution_anchor_state` (backend); live: real "Tracking" Task, `bc0040` Shot |
+| Draft-only Execution Anchor | `test_legacy_draft_without_gate_reports_draft_state` (backend, the one state not reachable via the live API since every real draft opens a HumanGate atomically) |
+| Confirmed Anchor with missing optional fields | Existing `ExecutionAnchorRevisionRead` nullable content fields are read and rendered through unchanged (no new required-field assumption was added) |
+| No Version | `test_no_execution_anchor_state`'s Task also has no Version; `TaskExecutionRow.test.tsx`'s "no Production Version recorded" test |
+| Only nullable-`task_id` legacy/manual Version | `test_nullable_task_id_version_is_shared_across_tasks` (backend); live: the D1 Shot's two Tasks both share one manual Version |
+| No Dependency | `TaskExecutionRow.test.tsx`'s "no open dependencies" test |
+| No Assessment | `test_alignment_concern_absent_by_default_never_implies_confirmed_alignment` (backend) + frontend equivalent |
+| Assessment present but no escalation | `test_real_escalation_is_reported_and_never_inferred` (backend) — a real high-attention alignment concern with `open_escalation: false` |
+| Open escalation with no Version | Not separately isolated as its own test (an escalation and a Version are independent fields, never coupled in the derivation) — the live D1 "Lighting Pass" Task shows an open Dependency (not escalation) alongside a real shared Version, confirming independence |
+| ftrack-linked Task with no ICAS Anchor | Live: real "Tracking"/"Animation"/"Rendering" Tasks (`source="ftrack"`) across the `bc00xx`/`S10xx` Shots, each `execution_anchor_state: "none"` |
+| Manually created Task with no ftrack link | Live: the D1 Shot's own two Tasks (`source="manual"`) |
+
+Honest copy used throughout (§6/§7): "No Execution Anchor yet", "Draft awaiting CG completion", "Awaiting CG confirmation", "No Production Version recorded.", "No open dependencies.", "No current alignment concern recorded.", "No open escalation to VFX." — none of these is ever shown for a state that is not genuinely true; absence of an Assessment is never described as confirmed alignment.
+
+---
+
+## 11. Tests and automated validation
+
+**New backend test file:** `apps/api/tests/test_department_execution_overview.py` (26 tests, +4 in the §16 correction pass) — covers: VFX Supervisor read access; CG Supervisor/Artist/missing-identity/invalid-role rejection; Shot-scoping (only the requested Shot's Tasks are returned); missing-Shot `404`; empty-Shot `200`; read-only/no-mutation (identical results across two reads, Task count unchanged); every Execution Anchor state (`none`/`awaiting_confirmation`/`confirmed`/`rejected`/the legacy `draft` case) including the superseded-revision-never-shown-as-current case; open-vs-resolved Dependency handling; real-escalation-vs-Agent-recommendation distinction; the honest absent-alignment-concern default; no-raw-UUID-in-text-fields; `source_created_at` ordering; a Version linked to a different Task excluded; the nullable-`task_id` compatibility rule.
+
+**New/updated frontend test files:**
+
+- `apps/web/src/lib/departmentExecutionOverview.test.ts` (11 tests, +5 in the §16 correction pass) — every state/source label, badge-tone distinctness, CG-owned focus labelling, Task-linked vs. Shot-level Version-scope labelling.
+- `apps/web/src/app/vfx/shots/[shotId]/TaskExecutionRow.test.tsx` (17 tests, +6 in the §16 correction pass) — every field's real-content and honest-fallback rendering, the ftrack-synced marker, Version-scope labelling, the honest navigation label/link, the "no CG control anywhere" assertion, CG-owned focus provenance, no-CG-action/high-advisory-concern coexistence, and escalation-depends-only-on-persisted-data.
+- `apps/web/src/app/vfx/shots/[shotId]/DepartmentExecutionOverviewSection.test.tsx` (4 tests) — null-overview renders nothing, empty-Tasks honest state, one row per real Task, section heading.
+- `apps/web/src/app/vfx/shots/[shotId]/ShotOverviewPage.test.tsx` (+3 tests) — no section when the prop is omitted/`null` (pre-existing callers unaffected); the section renders after Current Creative Direction; Step 9B-1's own Working Direction tests are otherwise byte-for-byte unchanged.
+- `apps/web/src/features/vfx/shot-overview/data.test.ts` (+2 tests, existing 6 tests updated for the loader's new second parameter and additional parallel fetch) — a successful Department Execution Overview attaches correctly; a failed one (`403`) does not fail the whole Shot Overview load.
+
+**Full regression, all green:**
+
+- Backend: `pytest` 930/930 (including the 26 department-execution-overview tests, +4 from the §16 correction), `mypy src` clean (88 source files), `ruff check .` clean, `ruff format --check .` clean, `uv lock --check` clean (no lockfile drift).
+- Contracts (Python): `ruff check`/`format --check`/`mypy` all clean on the updated contract file.
+- Contracts (TS): regenerated via `export_openapi` → `openapi-typescript`, `tsc --noEmit` clean; the §16 correction pass's `packages/contracts/ts/src/generated/api.ts` diff is a pure 7-line addition (`latest_version_scope`/`current_focus_type` only) — no other endpoint's generated type changed.
+- Frontend: Vitest 1001/1001 (126 files), `tsc --noEmit` clean, ESLint clean, Prettier clean, production `next build` succeeded (30 routes).
+- No existing test was weakened, skipped, or deleted to make this pass.
+
+**§16 correction pass verification specifically:** `pytest tests/test_department_execution_overview.py` 26/26; full `pytest` 930/930; `mypy`/`ruff check`/`ruff format --check` clean; `uv lock --check` clean; contracts Python lint/format/mypy clean; contracts TS `tsc --noEmit` clean; full Vitest suite 1001/1001; `tsc --noEmit` clean; ESLint clean; Prettier clean; production `next build` succeeded.
+
+**Route-count discrepancy, investigated and resolved (closeout pass):** earlier narrative summaries in this document and in this branch's commit responses variously reported "30 routes" and "29 routes" for the production build. `git diff --name-status a05904c..79280bd` was run and shows **zero** `page.tsx`/`layout.tsx`/`route.ts` files added, deleted, or renamed anywhere under `apps/web/src/app/` across this entire branch — the only such file touched is one modification, `apps/web/src/app/vfx/shots/[shotId]/page.tsx` (identity resolution + one new prop passed through). `git ls-files` under `apps/web/src/app/**/page.tsx`, `apps/web/src/app/**/layout.tsx`, and `apps/web/src/app/**/route.ts` (plus the root `page.tsx`) currently lists exactly 30 route-defining files. A fresh `next build` route table lists exactly 31 rows: those same 30 page-file-backed routes plus Next.js's own automatic `/_not-found` route — a stable, reproducible count with no route file changed. **Conclusion: this was a build-reporting/manual-count discrepancy in prior narrative summaries (both "30" and "29" undercounted or overcounted the same unchanged 31-row table by eye), not a lost or newly-added route.** No route was deleted, renamed, or made undiscoverable; no route file was changed to force a count match.
+
+---
+
+## 12. Known limitations
+
+- **`draft` (an un-gated draft revision) is not reachable through the live product today.** Every real draft-creation call path opens a `HumanGate` in the same transaction (`execution_anchor_service.create_draft_revision`), so this state only occurs for a historical revision that predates the HumanGate migration — a real, already-documented legacy-compatibility case (`intent.models.HumanGate`'s own module docstring), exercised in this step's tests at the model layer directly, not via the live API.
+- **The "View Shot Versions" destination is the same Versions page for every row**, regardless of what specifically needs attention on that Task (a dependency vs. an escalation vs. simply wanting to see the Version). This is a deliberate, honest consequence of no per-Task VFX route existing — adding one is out of this step's scope (§9). A future step could add a Task-scoped anchor/query-parameter on the Versions page if this is judged worth doing.
+- **No `AgentRun`/model/prompt provenance drill-down** is added for the alignment-concern line — it shows the real summary/attention-level text only, consistent with `04_STEP_9B2_...md` §14's same limitation on the other five priority pages (a deliberate scope boundary, not an oversight).
+- **No live example of a genuinely zero-Task Shot exists in the current persisted demo/seed data** — every real Shot sampled from the running dev database has at least one real Task. The empty-list state is nonetheless fully covered by an automated backend test (`test_valid_shot_with_no_tasks_returns_empty_list`) and the frontend's own honest-empty-state test — not silently unverified, and no fake Shot was created to force a live example.
+
+---
+
+## 13. Owner visual-validation targets
+
+Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http://localhost:3000`, entry via `http://localhost:3000/demo`. **The first owner validation pass found the two defects corrected in §16. A final owner visual re-validation of the corrected behaviour has now PASSED on both URLs below.**
+
+**Primary URL** (real, persisted D1 demo data — two real Tasks in varied states):
+
+`http://localhost:3000/vfx/shots/8a72858d-8d06-47ab-a28d-5ee077f561c8`
+
+Expected (updated for the §16 correction, live-verified against the running dev API on 2026-08-02): a "Department Execution Overview" section appears after "Current Creative Direction" and before the detailed-context divider, with exactly two rows:
+
+- **Compositing Review** (department "comp") — "Confirmed (Revision 2)"; latest Version "D1_STEP3_VFX_REVIEW_001 (v1) — Shot-level Version fallback — not linked to this Task in ICAS" (this Version's `task_id` is `null`; it is *not* explicitly linked to Compositing Review, even though it is currently the only Version on the Shot); Current focus "No current CG action is required for this Task."; "No open dependencies."; a real alignment concern under an "AI interpretation" badge ("...human review is warranted.", high attention); "No open escalation to VFX." — the high-attention advisory concern and the "no current CG action"/"no open escalation" lines must read as independent facts, never contradictory.
+- **Lighting Pass** (department "lighting") — "Awaiting CG confirmation"; the same Version, also labelled "Shot-level Version fallback — not linked to this Task in ICAS" (correctly appearing on both rows, correctly *not* claimed as Task-linked on either); Current focus "CG task focus: Execution Anchor draft awaiting CG confirmation." (role-explicit, no unqualified "your"); "1 open dependency — highest priority: ...contrast grade being locked... (medium severity)"; "No current alignment concern recorded."; "No open escalation to VFX."
+
+**Partial-data URL** (real, ftrack-linked Shot with a Task that has no ICAS Execution Anchor at all):
+
+`http://localhost:3000/vfx/shots/d79f904f-89ce-429f-8e82-eea9f5bca638`
+
+Expected (updated for the §16 correction): one row, "Tracking" (department "Tracking", `task_source` ftrack) — "No Execution Anchor yet"; a real ftrack-synced Version ("bc0040_comp_v003 (v3) · ftrack-synced — Shot-level Version fallback — not linked to this Task in ICAS" — this Version's `task_id` is `null`; its name alone must never be read as implying a link to Tracking); Current focus "No current CG action is required for this Task."; "No open dependencies."; "No current alignment concern recorded."; "No open escalation to VFX."
+
+**The owner verified, and the following all PASSED:**
+
+- all Tasks for the Shot are represented (both URLs: the exact Task count matches `GET /shots/{shot_id}/tasks`);
+- Task/Department names are understandable, plain text, never a raw id;
+- Execution Anchor states are accurate (compare against each Task's real state via `/cg/tasks/{taskId}/execution` in a separate CG session if desired);
+- latest Versions are Task-correct (the shared manual Version legitimately appears on both D1 rows; no Version from a different Shot or a different, unrelated Task ever appears);
+- missing data is honest (every empty state reads as a plain, non-alarming sentence, never a blank space or a fabricated default);
+- Agent concern is visibly advisory (the "AI interpretation" badge, not a checkmark or "confirmed" wording);
+- open escalation is not confused with Agent recommendation (neither URL above currently has a real escalation — this specifically means confirming the section never implies one from the high-attention alignment concern on "Compositing Review");
+- **(§16)** Current focus is visibly identified as CG-owned context ("CG task focus: ..." / "No current CG action is required for this Task.") and never reads as an unqualified sentence addressed to the VFX Supervisor;
+- **(§16)** "Compositing Review"'s "No current CG action is required for this Task." and its separate high-attention advisory alignment concern do not read as contradictory — they are two independent, honestly-labelled facts on the same row;
+- **(§16)** the latest Version on every row is clearly labelled either "Task-linked Version" or "Shot-level Version fallback — not linked to this Task in ICAS" — on both live URLs above, the shown Version is in fact the Shot-level fallback, and must not appear to be explicitly linked to the Task;
+- VFX has no CG edit/confirmation controls anywhere in this section (no buttons, only the one "View Shot Versions →" link per row);
+- navigation goes to existing permitted pages (clicking "View Shot Versions →" lands on the real Versions page for that Shot, never a broken or role-blocked link, and its label honestly describes that Shot-wide destination rather than implying a Task-specific one);
+- the section improves cross-department understanding (a VFX Supervisor can tell, without leaving this page, that Lighting Pass needs CG confirmation and is blocked on Compositing's contrast grade);
+- the Overview remains readable and not overloaded (two rows fit comfortably; each row is a handful of short lines, not a dense grid).
+
+### Final owner visual validation results (recorded)
+
+**Primary multi-Task Shot** (`http://localhost:3000/vfx/shots/8a72858d-8d06-47ab-a28d-5ee077f561c8`):
+
+- both "Compositing Review" and "Lighting Pass" appeared exactly once each;
+- Task and Department names were understandable;
+- "Compositing Review" showed a Confirmed Execution Anchor, revision 2;
+- "Lighting Pass" showed "Awaiting CG confirmation";
+- no draft or confirmed state was confused;
+- CG task focus was explicitly identified as CG-owned context on both rows;
+- no unqualified CG second-person "your attention" copy remained anywhere on the page;
+- "Compositing Review"'s high-attention advisory alignment concern coexisted with "No current CG action is required for this Task." and "No open escalation to VFX." without reading as contradictory;
+- the concern remained visibly marked "AI interpretation" (advisory, never a confirmed fact);
+- "Lighting Pass" showed its real open Dependency (the contrast-grade blocker, medium severity);
+- formal escalation remained derived only from persisted escalation state ("No open escalation to VFX." on both rows, correctly independent of the advisory concern and of Current focus);
+- no CG edit, confirm, reject, Agent-generation, or Dependency-resolution control was exposed anywhere in the section.
+
+Version scope:
+
+- both rows honestly identified the selected Version as "Shot-level Version fallback — not linked to this Task in ICAS";
+- no nullable-`task_id` Version was presented as explicitly belonging to a Task;
+- Task-linked-first selection and the nullable-`task_id` compatibility rule remained intact (unchanged selection logic; only the display label was added);
+- no Version was assigned by name matching (scope came only from the real `task_id` column).
+
+Navigation:
+
+- every row displayed "View Shot Versions" as its action label;
+- every link used the existing, VFX-permitted, Shot-wide Versions route (`/vfx/shots/{shotId}/versions`);
+- no broken `/cg/...` route and no implied Task-detail destination was introduced.
+
+**Real ftrack partial-data Shot** (`http://localhost:3000/vfx/shots/d79f904f-89ce-429f-8e82-eea9f5bca638`):
+
+- the "Tracking" Task appeared;
+- no Execution Anchor was fabricated ("No Execution Anchor yet" shown honestly);
+- `bc0040_comp_v003` was explicitly identified as a Shot-level Version fallback, not linked to Tracking in ICAS;
+- no current CG action, Dependency, concern, or escalation was fabricated (all honest "no ..." fallbacks);
+- the missing Assessment was not described as confirmed alignment ("No current alignment concern recorded.", never "aligned");
+- ftrack linkage (`task_source: "ftrack"`, the real ftrack-synced Version) and the absence of an ICAS Execution Anchor remained visibly distinct facts, never conflated;
+- no raw UUID or raw `HumanRole` enum value appeared anywhere on the page.
+
+**Final verdict: Step 9B-3 complete — the read-only Department Execution Overview was implemented, automatically validated, and owner visually validated.**
+
+---
+
+## 14. Explicit non-goals
+
+- Step 9B-4 (media/thumbnail/ftrack context) and Step 9C (visual-system unification) were not started.
+- No new authoritative domain object, table, or migration was added.
+- No new Agent workflow, prompt, or runtime behaviour was added or changed.
+- No ftrack entity or local Step 8 acceptance data row was read differently, modified, or seeded — every URL in §13 uses already-persisted data from a prior task's seed/sync run.
+- No new route, sidebar item, Shot tab, or role permission was added or broadened (the one new authorization check *narrows* access relative to the sibling `vfx_inbox`/`cg_inbox` GET routes, it does not widen anything).
+- No CG Workspace was embedded; no department-name-string Task matching was used anywhere (every join is by real `Task.id`).
+- No VFX edit or confirmation authority over a CG-owned Execution Anchor was introduced.
+- No dense dashboard of tiny cards, no second four-column Working Direction grid, no Step 9C visual redesign.
+
+---
+
+## 15. Readiness for Step 9B-4
+
+**Ready.** Owner visual validation of this step has now passed (§13, §17). Step 9B-4's own scope (media/thumbnail/ftrack context on VFX Versions and/or Shot Overview and/or Artist Current Version, per `02_STEP_9A_...md` §9's own recommendation) is unaffected by and independent of this step's work — it needs its own new, small, read-only, per-request ftrack-resolving endpoint (explicitly out of this step's boundary) and does not depend on `DepartmentExecutionOverviewSection`/`TaskExecutionRow`, though a future pass could choose to surface a thumbnail on each Task row's Latest Version line if Step 9B-4 is scoped to include it.
+
+**Files changed, this step (exhaustive):**
+
+Backend: `packages/contracts/python/src/intent_core_contracts/api/department_execution_overview.py` (new); `apps/api/src/intent_core_api/department_execution_overview/__init__.py` (new); `apps/api/src/intent_core_api/department_execution_overview/service.py` (new); `apps/api/src/intent_core_api/department_execution_overview/router.py` (new); `apps/api/src/intent_core_api/main.py` (+1 import, +1 `include_router`); `apps/api/tests/test_department_execution_overview.py` (new).
+
+Contracts (generated/hand-maintained): `apps/api/openapi.json` (regenerated, gitignored); `packages/contracts/ts/src/generated/api.ts` (regenerated); `packages/contracts/ts/src/index.ts` (+4 exported type aliases).
+
+Frontend: `apps/web/src/features/vfx/api.ts` (+`fetchDepartmentExecutionOverview`); `apps/web/src/features/vfx/shot-overview/data.ts` (+`departmentExecutionOverview` field, `loadShotOverviewData` gains an `actorHeaders` parameter); `apps/web/src/features/vfx/shot-overview/data.test.ts` (updated + 2 new tests); `apps/web/src/features/vfx/shot-overview/selectCurrentCreativeDirection.test.ts` (fixture updated for the new required field); `apps/web/src/app/vfx/shots/[shotId]/page.tsx` (resolves identity, forwards actor headers, passes the new prop); `apps/web/src/app/vfx/shots/[shotId]/ShotOverviewPage.tsx` (+prop, +section, locked-order comment updated); `apps/web/src/app/vfx/shots/[shotId]/ShotOverviewPage.test.tsx` (+3 tests); `apps/web/src/app/vfx/shots/[shotId]/DepartmentExecutionOverviewSection.tsx` (new) + `.module.css` (new) + `.test.tsx` (new); `apps/web/src/app/vfx/shots/[shotId]/TaskExecutionRow.tsx` (new) + `.module.css` (new) + `.test.tsx` (new); `apps/web/src/lib/departmentExecutionOverview.ts` (new) + `.test.ts` (new).
+
+No route, sidebar, tab, migration, Agent, ftrack, or Step 8 acceptance file was touched.
+
+---
+
+## 16. Owner-validation correction (post-first-review)
+
+**The first owner validation confirmed:** Task completeness (all real Tasks represented); Execution Anchor state display (accurate, honest labels); the structural separation of dependency/concern/escalation into distinct lines; honest partial-data behaviour; and the read-only authority boundary (no CG edit/confirm control anywhere).
+
+**It also found two real defects, both provenance/scope problems rather than missing data:**
+
+1. **CG `current_focus` copy was displayed as unqualified, second-person VFX-facing text.** `TaskExecutionRow.tsx` rendered `current_focus_title` — CG's own Review Inbox copy, written in CG's second person ("Execution Anchor draft awaiting **your** confirmation", "Nothing requires **your** attention...") — directly on the VFX Shot Overview. Read literally on a VFX page, "your" reads as addressed to the VFX Supervisor, and the "nothing requires attention" wording could be misread as "VFX needs no attention," even on a row simultaneously showing a real, separately-sourced high-attention advisory alignment concern (e.g. "Compositing Review" in §13). This made the page appear internally contradictory.
+2. **The nullable-`task_id` Shot-level Version fallback was not visibly distinguished from a Task-linked Version.** Both live example rows (`8a72858d-...` and `d79f904f-...`) show a Version whose real `task_id` is `null` (D1's shared manual Version; `bc0040_comp_v003`) — correctly *selected* per the existing Step 8C-6/8C-7 fallback rule, but rendered identically to a genuinely Task-linked Version, which understates that these Versions are not, in ICAS's own data, actually tied to that specific Task.
+
+**Correction made (smallest truthful implementation, no new focus-ranking algorithm, no new mutation):**
+
+- Added `current_focus_type` (`CgCurrentFocusType`, the real, already-existing focus discriminator) to `DepartmentExecutionTaskRead`, alongside the pre-existing `current_focus_title`/`current_focus_actionable` (kept, unused for VFX-facing display, still available for any CG-facing reuse). The frontend now renders `cgTaskFocusLabel(current_focus_type)` — role-explicit ("CG task focus: ...") copy defined in `apps/web/src/lib/departmentExecutionOverview.ts`, never the raw `current_focus_title` — on the VFX page (§5, §7).
+- Added `latest_version_scope` (`"task"` | `"shot_unscoped"` | `null`) to `DepartmentExecutionTaskRead`, computed in `department_execution_overview/service.py`'s `_version_scope` purely from the already-selected Version's own `task_id` column (never its name). The frontend now appends `latestVersionScopeLabel(...)` — "Task-linked Version" or "Shot-level Version fallback — not linked to this Task in ICAS" — to the Version line (§5, §7).
+- Changed the per-row action label from `"View details →"` (implied a dedicated Task-detail destination) to `"View Shot Versions →"` (honestly names the real, Shot-wide destination every row has always linked to; the destination itself, `/vfx/shots/{shotId}/versions`, is unchanged) (§9).
+- No change to: the underlying Current-focus derivation (`cg_inbox.current_focus.derive_current_focus`, still called exactly once, still not re-implemented); the Execution Anchor/Dependency/Assessment/escalation selection rules; the endpoint's authorization; the page's locked IA (§2); or any other already-passing behaviour (§4 of the correction task explicitly required preserving all of it, and the full regression suite — §11 — confirms nothing else changed).
+
+**A temporary local runtime interruption occurred during re-validation.** The already-running local `apps/api` process (started before the §16 code changes were made) continued serving its previously-loaded code and did not pick up the new `current_focus_type`/`latest_version_scope` fields — confirmed directly: a request to the primary owner-validation URL's endpoint returned a response without either field, then, after the process was stopped and a fresh `uv run uvicorn intent_core_api.main:app` instance was started against the same unchanged database, the identical request returned both fields correctly. The local `apps/api` and `apps/web` services were restarted, and both owner-validation pages subsequently returned successfully with the corrected content on every following check (§13).
+
+**Tests added for the correction:** backend — `test_current_focus_type_is_none_when_nothing_needs_cg_action`, `test_current_focus_type_reflects_the_real_gate_pending_state`, `test_current_focus_type_is_independent_of_escalation_and_advisory_concern`, `test_version_scope_does_not_depend_on_version_name`, plus `latest_version_scope` assertions added to the existing Task-scoped/nullable-`task_id` model-layer tests (26 tests total in `test_department_execution_overview.py`, up from 22). Frontend — `cgTaskFocusLabel`/`latestVersionScopeLabel` unit tests in `departmentExecutionOverview.test.ts`; `TaskExecutionRow.test.tsx` gained tests for CG-owned focus labelling, no-unqualified-"your"-copy, no-CG-action-coexisting-with-high-advisory-concern, advisory-concern-never-becomes-escalation, escalation-depends-only-on-persisted-data, Task-linked-vs-Shot-level Version labelling, no-raw-UUID-in-Version-text, and the corrected navigation label/destination.
+
+**Update (closeout pass):** owner re-validation of the corrected behaviour has since been performed and has PASSED — see §13's "Final owner visual validation results" and §17. Step 9B-3 is now marked complete in `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md`. Step 9B-4 and Step 9C remain not started.
+
+**Files changed, this correction pass:**
+
+Backend: `packages/contracts/python/src/intent_core_contracts/api/department_execution_overview.py` (+`DepartmentExecutionVersionScope`, +`latest_version_scope`, +`current_focus_type` fields); `apps/api/src/intent_core_api/department_execution_overview/service.py` (+`_version_scope`, +field population); `apps/api/tests/test_department_execution_overview.py` (+4 tests, +assertions on 2 existing tests).
+
+Contracts: `apps/api/openapi.json` (regenerated, gitignored); `packages/contracts/ts/src/generated/api.ts` (regenerated, +7 lines); `packages/contracts/ts/src/index.ts` (+`DepartmentExecutionVersionScope` export).
+
+Frontend: `apps/web/src/lib/departmentExecutionOverview.ts` (+`cgTaskFocusLabel`, +`latestVersionScopeLabel`); `apps/web/src/lib/departmentExecutionOverview.test.ts` (+tests); `apps/web/src/app/vfx/shots/[shotId]/TaskExecutionRow.tsx` (role-neutral focus display, Version-scope display, corrected nav label); `apps/web/src/app/vfx/shots/[shotId]/TaskExecutionRow.test.tsx` (updated fixture, +tests); `apps/web/src/app/vfx/shots/[shotId]/DepartmentExecutionOverviewSection.test.tsx` (fixture updated for the two new required fields); `apps/web/src/app/vfx/shots/[shotId]/ShotOverviewPage.test.tsx` (fixture updated for the two new required fields).
+
+Documentation: this file (§1/§3/§5/§7/§9/§13, this §16); `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` (correction recorded, Step 9B-3 still not marked complete at the time of this correction pass — completed in the subsequent closeout pass, §17).
+
+No route, sidebar, tab, migration, Agent prompt/runtime, ftrack entity, or Step 8 acceptance data row was touched in this correction pass either.
+
+---
+
+## 17. Documentation closeout — final verdict
+
+This closeout pass records the final owner visual validation outcome (§13) and closes Step 9B-3. **No application source, tests, styles, contracts, generated files, database rows, or ftrack data were changed in this pass — documentation only.**
+
+**Owner-validation correction history, summarized:**
+
+1. **First owner pass** confirmed: Task completeness; Execution Anchor state selection; Dependency, advisory-concern, and formal-escalation separation; partial-data behaviour; and the read-only authority boundary. It found: CG `current_focus` copy displayed as unqualified, second-person, VFX-facing "your attention" text; the nullable-`task_id` Shot-level Version fallback not visibly distinguished from a Task-linked Version; and a "View details" label implying a Task-specific destination despite linking to the Shot-wide Versions page.
+2. **Corrections made** (§16): `current_focus_type` added and rendered as role-explicit CG task-focus copy; `latest_version_scope` added (`"task"` / `"shot_unscoped"` / `null`); Shot-level fallback Versions now explicitly state they are not linked to the Task; the navigation label changed to "View Shot Versions".
+3. **A temporary local runtime interruption occurred during re-validation** (§16): the already-running local `apps/api` process had not picked up the §16 code changes and was serving stale responses missing the two new fields; the local `apps/api`/`apps/web` services were restarted, after which both owner-validation pages returned successfully with the corrected content.
+4. **Final owner visual validation** (§13) has now **PASSED** on both the primary multi-Task Shot and the real ftrack partial-data Shot, with every item on the corrected checklist confirmed.
+
+**Route-count discrepancy:** investigated and resolved (§11) — proven, via `git diff --name-status a05904c..79280bd` and a current file listing, to be a manual-count discrepancy in prior narrative summaries, not a lost or changed route. No route file was modified to force agreement.
+
+**Final verdict:**
+
+**Step 9B-3 complete — the read-only Department Execution Overview was implemented, automatically validated and owner visually validated.**
+
+Step 9B-4 (media/thumbnail/ftrack context) and Step 9C (visual-system unification) have not been started. Step 9B-4 is the next approved activity.
