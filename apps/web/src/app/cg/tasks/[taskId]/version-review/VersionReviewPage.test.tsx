@@ -9,6 +9,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
   within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -22,9 +23,14 @@ vi.mock("@/features/cg/actions", () => ({
   createReviewNoteAction: vi.fn(),
   escalateTaskAction: vi.fn(),
   generateCgSupervisorReviewAction: vi.fn(),
+  resolveVersionMediaAction: vi.fn().mockResolvedValue({
+    ok: false,
+    message: "No media resolved in this test.",
+  }),
 }));
 
 import type { VersionReviewWorkspaceData } from "@/features/cg/version-review-workspace/data";
+import { resolveVersionMediaAction } from "@/features/cg/actions";
 import { VersionReviewPage } from "./VersionReviewPage";
 
 afterEach(() => {
@@ -449,5 +455,156 @@ describe("VersionReviewPage", () => {
       />,
     );
     expect(screen.getByText("1 CG Supervisor review recorded.")).toBeVisible();
+  });
+
+  describe("Step 9B-4 real media context", () => {
+    it("resolves real media for the selected Version via the Task-scoped Server Action, inside Production Evidence", async () => {
+      vi.mocked(resolveVersionMediaAction).mockResolvedValueOnce({
+        ok: true,
+        media: {
+          version_id: "v1",
+          source: "ftrack",
+          ftrack_linked: true,
+          media_state: "playable",
+          thumbnail_url: "https://ftrack.example/thumb",
+          playable_url: "https://ftrack.example/video",
+          playable_media_type: "video/mp4",
+          playable_component_name: "ftrackreview-mp4",
+          external_web_url: null,
+          resolved_at: "2026-08-01T00:00:00Z",
+          url_expires_at: null,
+          unavailable_reason: null,
+        },
+      });
+
+      render(
+        <VersionReviewPage
+          taskId="t1"
+          data={data()}
+          unavailable={false}
+          onExitRole={vi.fn()}
+        />,
+      );
+
+      expect(resolveVersionMediaAction).toHaveBeenCalledWith("t1", "v1");
+      await waitFor(() => {
+        expect(document.querySelector("video")).toBeTruthy();
+      });
+
+      const evidenceHeading = screen.getByText("Production Evidence");
+      const evidenceSection = evidenceHeading.closest(
+        "[data-evidence-layer]",
+      ) as HTMLElement;
+      expect(
+        within(evidenceSection).getByRole("button", { name: "Refresh media" }),
+      ).toBeVisible();
+    });
+
+    it("does not classify media as Agent Interpretation or Human Decision", async () => {
+      vi.mocked(resolveVersionMediaAction).mockResolvedValueOnce({
+        ok: true,
+        media: {
+          version_id: "v1",
+          source: "ftrack",
+          ftrack_linked: true,
+          media_state: "thumbnail_only",
+          thumbnail_url: "https://ftrack.example/thumb",
+          playable_url: null,
+          playable_media_type: null,
+          playable_component_name: null,
+          external_web_url: null,
+          resolved_at: "2026-08-01T00:00:00Z",
+          url_expires_at: null,
+          unavailable_reason: null,
+        },
+      });
+
+      render(
+        <VersionReviewPage
+          taskId="t1"
+          data={data()}
+          unavailable={false}
+          onExitRole={vi.fn()}
+        />,
+      );
+
+      await waitFor(() => expect(document.querySelector("img")).toBeTruthy());
+
+      const agentHeading = screen.getByText("Agent Interpretation");
+      const agentSection = agentHeading.closest(
+        "[data-evidence-layer]",
+      ) as HTMLElement;
+      const humanDecisionHeading = screen.getByText(
+        "Human Decision and Provenance",
+      );
+      const humanDecisionSection = humanDecisionHeading.closest(
+        "[data-evidence-layer]",
+      ) as HTMLElement;
+      expect(within(agentSection).queryByRole("img")).not.toBeInTheDocument();
+      expect(
+        within(humanDecisionSection).queryByRole("img"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("does not remove Review Notes or Anchor context when media resolution fails", async () => {
+      vi.mocked(resolveVersionMediaAction).mockResolvedValueOnce({
+        ok: false,
+        message: "The ICAS service is unavailable.",
+      });
+
+      render(
+        <VersionReviewPage
+          taskId="t1"
+          data={data()}
+          unavailable={false}
+          onExitRole={vi.fn()}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("alert")).toHaveTextContent(
+          "The ICAS service is unavailable.",
+        );
+      });
+      expect(screen.getByText("Contrast reads slightly hot.")).toBeVisible();
+      expect(screen.getByText("Active Core Anchor (read-only)")).toBeVisible();
+    });
+
+    it("never renders a media upload, annotation, or ftrack write-back control", async () => {
+      vi.mocked(resolveVersionMediaAction).mockResolvedValueOnce({
+        ok: true,
+        media: {
+          version_id: "v1",
+          source: "ftrack",
+          ftrack_linked: true,
+          media_state: "playable",
+          thumbnail_url: "https://ftrack.example/thumb",
+          playable_url: "https://ftrack.example/video",
+          playable_media_type: "video/mp4",
+          playable_component_name: "ftrackreview-mp4",
+          external_web_url: null,
+          resolved_at: "2026-08-01T00:00:00Z",
+          url_expires_at: null,
+          unavailable_reason: null,
+        },
+      });
+
+      render(
+        <VersionReviewPage
+          taskId="t1"
+          data={data()}
+          unavailable={false}
+          onExitRole={vi.fn()}
+        />,
+      );
+
+      await waitFor(() => expect(document.querySelector("video")).toBeTruthy());
+      expect(
+        screen.queryByRole("button", { name: /Upload/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Annotate/i }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

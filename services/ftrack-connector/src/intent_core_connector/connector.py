@@ -14,6 +14,10 @@ from intent_core_connector.errors import (
     IntegrationConnectionError,
     IntegrationError,
 )
+from intent_core_connector.media_context import (
+    AssetVersionMediaContext,
+    read_media_context_for_asset_version,
+)
 from intent_core_connector.sample_entities import SampleEntityReport, read_sample_entities
 from intent_core_connector.shot_context import ShotContext, read_shot_contexts_with_new_tasks_since
 from intent_core_connector.version_note_context import (
@@ -166,6 +170,17 @@ class FtrackConnector:
                 "connect() must succeed before read_review_session_object_notes_for_asset_version()"
             )
         return read_review_session_object_notes_for_asset_version(
+            self._session, version_external_id=version_external_id
+        )
+
+    def read_media_context_for_asset_version(
+        self, *, version_external_id: str
+    ) -> AssetVersionMediaContext:
+        if self._session is None:
+            raise IntegrationError(
+                "connect() must succeed before read_media_context_for_asset_version()"
+            )
+        return read_media_context_for_asset_version(
             self._session, version_external_id=version_external_id
         )
 

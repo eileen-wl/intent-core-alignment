@@ -97,6 +97,7 @@ function data(overrides: Partial<CurrentVersionData> = {}): CurrentVersionData {
     executionAnchorRevision: null,
     cgSupervisorReviews: [],
     crossRoleAssessments: [],
+    media: null,
     ...overrides,
   };
 }
@@ -648,5 +649,82 @@ describe("CurrentVersionPage", () => {
     expect(
       screen.queryByRole("button", { name: /complete/i }),
     ).not.toBeInTheDocument();
+  });
+
+  describe("Step 9B-4 real media context", () => {
+    it("renders the server-resolved media as Production Evidence for the selected Version", () => {
+      render(
+        <CurrentVersionPage
+          taskId="t1"
+          data={data({
+            media: {
+              version_id: "v1",
+              source: "ftrack",
+              ftrack_linked: true,
+              media_state: "playable",
+              thumbnail_url: "https://ftrack.example/thumb",
+              playable_url: "https://ftrack.example/video",
+              playable_media_type: "video/mp4",
+              playable_component_name: "ftrackreview-mp4",
+              external_web_url: null,
+              resolved_at: "2026-08-01T00:00:00Z",
+              url_expires_at: null,
+              unavailable_reason: null,
+            },
+          })}
+          unavailable={false}
+          onExitRole={vi.fn()}
+        />,
+      );
+      const videoEl = document.querySelector("video") as HTMLVideoElement;
+      expect(videoEl).toBeTruthy();
+      expect(videoEl).not.toHaveAttribute("autoplay");
+      expect(videoEl).toHaveAttribute("controls");
+    });
+
+    it("shows an honest unavailable state, not a fake frame, when no media is resolved", () => {
+      render(
+        <CurrentVersionPage
+          taskId="t1"
+          data={data({ media: null })}
+          unavailable={false}
+          onExitRole={vi.fn()}
+        />,
+      );
+      expect(document.querySelector("video")).toBeNull();
+      expect(screen.getByText("No media context is available.")).toBeVisible();
+    });
+
+    it("does not give Artist any upload, approval, or ftrack write control from the media panel", () => {
+      render(
+        <CurrentVersionPage
+          taskId="t1"
+          data={data({
+            media: {
+              version_id: "v1",
+              source: "ftrack",
+              ftrack_linked: true,
+              media_state: "thumbnail_only",
+              thumbnail_url: "https://ftrack.example/thumb",
+              playable_url: null,
+              playable_media_type: null,
+              playable_component_name: null,
+              external_web_url: null,
+              resolved_at: "2026-08-01T00:00:00Z",
+              url_expires_at: null,
+              unavailable_reason: null,
+            },
+          })}
+          unavailable={false}
+          onExitRole={vi.fn()}
+        />,
+      );
+      expect(
+        screen.queryByRole("button", { name: /Upload/i }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Approve/i }),
+      ).not.toBeInTheDocument();
+    });
   });
 });

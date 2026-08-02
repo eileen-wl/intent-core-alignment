@@ -20,6 +20,9 @@ from intent_core_api.intent.router import router as intent_router
 from intent_core_api.ops.router import router as ops_router
 from intent_core_api.production_context.router import router as production_context_router
 from intent_core_api.task_activity.router import router as task_activity_router
+from intent_core_api.version_media.router import artist_router as version_media_artist_router
+from intent_core_api.version_media.router import cg_router as version_media_cg_router
+from intent_core_api.version_media.router import vfx_router as version_media_vfx_router
 from intent_core_api.versions_and_feedback.router import router as versions_and_feedback_router
 from intent_core_api.vfx_inbox.router import router as vfx_inbox_router
 from intent_core_api.workflow.exceptions import (
@@ -56,6 +59,9 @@ app.include_router(task_activity_router)
 app.include_router(artist_inbox_router)
 app.include_router(artist_feedback_history_router)
 app.include_router(ftrack_sync_router)
+app.include_router(version_media_vfx_router)
+app.include_router(version_media_cg_router)
+app.include_router(version_media_artist_router)
 
 
 @app.exception_handler(ForbiddenActionError)

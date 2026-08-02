@@ -21,6 +21,14 @@ dependencies = [
   # "json_object"}), which has been stable since the SDK's 2023 rewrite.
   "openai>=1.0",
   "intent-core-contracts",
+  # Step 9B-4: the smallest, existing, sanctioned path to a real ftrack
+  # read (docs/step-9/02_STEP_9A_...md §9/§11's own recommendation) --
+  # apps/api never talks to ftrack directly except through this
+  # Connector, matching services/worker's identical existing dependency
+  # on the same package (CLAUDE.md: "All external production data must
+  # pass through the Connector"). This one read-only capability is
+  # resolved transiently, per request, and never persisted.
+  "intent-core-connector",
 ]
 
 [build-system]
@@ -32,6 +40,7 @@ packages = ["src/intent_core_api"]
 
 [tool.uv.sources]
 intent-core-contracts = { workspace = true }
+intent-core-connector = { workspace = true }
 
 [dependency-groups]
 dev = [

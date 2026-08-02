@@ -11,11 +11,13 @@ import {
   ErrorState,
   FtrackLinkageBadge,
   MetadataRow,
+  VersionMediaResolver,
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import { getAuthorDisplayText } from "@/lib/authorProvenance";
 import type { VersionsWorkspaceData } from "@/features/vfx/versions-workspace/data";
+import { resolveVersionMediaAction } from "@/features/vfx/versions-workspace/actions";
 import { ProductionContextHeader } from "../../ProductionContextHeader";
 import styles from "./VersionsWorkspacePage.module.css";
 
@@ -174,6 +176,13 @@ export function VersionsWorkspacePage({
                           ? ` (v${selected.version.version_number})`
                           : ""}
                       </h3>
+                      <VersionMediaResolver
+                        key={selected.version.id}
+                        versionId={selected.version.id}
+                        resolve={(versionId) =>
+                          resolveVersionMediaAction(shotId, versionId)
+                        }
+                      />
                       <MetadataRow
                         items={[
                           {

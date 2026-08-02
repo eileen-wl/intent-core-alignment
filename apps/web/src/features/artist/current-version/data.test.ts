@@ -21,6 +21,23 @@ const ITEM = {
   task_name: "Lighting Pass",
 };
 
+const ACTOR_HEADERS = { "X-Actor-Role": "artist", "X-Actor-Id": "artist-1" };
+
+const MEDIA_UNAVAILABLE = {
+  version_id: "unused",
+  source: "manual",
+  ftrack_linked: false,
+  media_state: "unavailable",
+  thumbnail_url: null,
+  playable_url: null,
+  playable_media_type: null,
+  playable_component_name: null,
+  external_web_url: null,
+  resolved_at: "2026-08-01T00:00:00Z",
+  url_expires_at: null,
+  unavailable_reason: "This Version has no linked ftrack record.",
+};
+
 function makeVersion(overrides: Record<string, unknown> = {}) {
   return {
     id: "v1",
@@ -50,13 +67,15 @@ afterEach(() => {
 describe("loadCurrentVersionData", () => {
   it("returns null on a real 404 (Task not found)", async () => {
     fetchMock.mockResolvedValue(jsonResponse(404, { detail: "not found" }));
-    const result = await loadCurrentVersionData("missing-task");
+    const result = await loadCurrentVersionData("missing-task", ACTOR_HEADERS);
     expect(result).toBeNull();
   });
 
   it("propagates a genuine API failure instead of collapsing it into null", async () => {
     fetchMock.mockResolvedValue(jsonResponse(500, { detail: "boom" }));
-    await expect(loadCurrentVersionData("t1")).rejects.toMatchObject({
+    await expect(
+      loadCurrentVersionData("t1", ACTOR_HEADERS),
+    ).rejects.toMatchObject({
       status: 500,
     });
   });
@@ -86,9 +105,10 @@ describe("loadCurrentVersionData", () => {
       .mockResolvedValueOnce(jsonResponse(200, null)) // getExecutionAnchor
       .mockResolvedValueOnce(jsonResponse(200, [])) // listReviewNotesForVersion(selected)
       .mockResolvedValueOnce(jsonResponse(200, [])) // listArtistGuidancesForVersion(selected)
-      .mockResolvedValueOnce(jsonResponse(200, [])); // listCrossRoleAssessmentsForVersion(selected)
+      .mockResolvedValueOnce(jsonResponse(200, [])) // listCrossRoleAssessmentsForVersion(selected)
+      .mockResolvedValueOnce(jsonResponse(200, MEDIA_UNAVAILABLE)); // fetchVersionMedia(selected)
 
-    const result = await loadCurrentVersionData("t1");
+    const result = await loadCurrentVersionData("t1", ACTOR_HEADERS);
     const ids = result?.versions.map((version) => version.id);
     expect(ids).toEqual(["v-legacy", "v-this"]);
     expect(ids).not.toContain("v-other");
@@ -96,6 +116,7 @@ describe("loadCurrentVersionData", () => {
     // excluded other-Task Version, even though it is chronologically
     // newest overall.
     expect(result?.selectedVersion?.id).toBe("v-legacy");
+    expect(result?.media?.media_state).toBe("unavailable");
   });
 
   it("never selects an out-of-scope Version even via a hand-crafted ?version= id (Step 8C-6/8C-7)", async () => {
@@ -118,9 +139,10 @@ describe("loadCurrentVersionData", () => {
       .mockResolvedValueOnce(jsonResponse(200, null))
       .mockResolvedValueOnce(jsonResponse(200, []))
       .mockResolvedValueOnce(jsonResponse(200, []))
-      .mockResolvedValueOnce(jsonResponse(200, []));
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, MEDIA_UNAVAILABLE));
 
-    const result = await loadCurrentVersionData("t1", "v-other");
+    const result = await loadCurrentVersionData("t1", ACTOR_HEADERS, "v-other");
     expect(result?.selectedVersion?.id).toBe("v-this");
   });
 
@@ -166,9 +188,10 @@ describe("loadCurrentVersionData", () => {
       .mockResolvedValueOnce(jsonResponse(200, null))
       .mockResolvedValueOnce(jsonResponse(200, [noteLate, noteEarly])) // notes for selected (v-late, newest)
       .mockResolvedValueOnce(jsonResponse(200, []))
-      .mockResolvedValueOnce(jsonResponse(200, []));
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, MEDIA_UNAVAILABLE));
 
-    const result = await loadCurrentVersionData("t1");
+    const result = await loadCurrentVersionData("t1", ACTOR_HEADERS);
     expect(result?.versions.map((version) => version.id)).toEqual([
       "v-late",
       "v-early",
@@ -188,9 +211,30 @@ describe("loadCurrentVersionData", () => {
       .mockResolvedValueOnce(jsonResponse(200, null))
       .mockResolvedValueOnce(jsonResponse(200, null));
 
-    const result = await loadCurrentVersionData("t1");
+    const result = await loadCurrentVersionData("t1", ACTOR_HEADERS);
     expect(result?.versions).toEqual([]);
     expect(result?.selectedVersion).toBeNull();
     expect(result?.reviewNotes).toEqual([]);
+    // No selected Version -- media is never fetched (only one call: the
+    // Inbox item; Versions fetch is the second; Core/Execution Anchor
+    // reads are the third/fourth -- no fifth call for media).
+    expect(result?.media).toBeNull();
+  });
+
+  it("does not fail the whole page load when the media call itself fails", async () => {
+    const version = makeVersion({ id: "v1", task_id: "t1" });
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(200, ITEM))
+      .mockResolvedValueOnce(jsonResponse(200, [version]))
+      .mockResolvedValueOnce(jsonResponse(200, null))
+      .mockResolvedValueOnce(jsonResponse(200, null))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(500, { detail: "ftrack down" }));
+
+    const result = await loadCurrentVersionData("t1", ACTOR_HEADERS);
+    expect(result?.selectedVersion?.id).toBe("v1");
+    expect(result?.media).toBeNull();
   });
 });

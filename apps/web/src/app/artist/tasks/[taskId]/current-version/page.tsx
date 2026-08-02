@@ -1,8 +1,7 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { loadCurrentVersionData } from "@/features/artist/current-version/data";
-import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
+import { actorHeaders, resolveIdentity } from "@/features/session/identity";
 import { exitRoleView } from "../../../../demo/actions";
 import { CurrentVersionPage } from "./CurrentVersionPage";
 
@@ -15,13 +14,17 @@ export default async function Page({
 }) {
   const { taskId } = await params;
   const { version: selectedVersionId } = await searchParams;
-  const store = await cookies();
-  if (store.get(DEMO_ROLE_COOKIE)?.value !== "artist") {
+  const identity = await resolveIdentity();
+  if (identity === null || identity.role !== "artist") {
     redirect("/demo");
   }
 
   try {
-    const data = await loadCurrentVersionData(taskId, selectedVersionId);
+    const data = await loadCurrentVersionData(
+      taskId,
+      actorHeaders(identity),
+      selectedVersionId,
+    );
     return (
       <CurrentVersionPage
         taskId={taskId}
