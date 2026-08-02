@@ -173,15 +173,19 @@ async def reconcile_ftrack_versions_and_notes(ctx: dict[str, Any]) -> dict[str, 
     validation), is recorded in the returned summary and does not abort
     the Shot it belongs to or the run as a whole.
 
-    A *systemic* failure -- fetching the linked-Shot list itself, or a
-    401/403/5xx from a per-item sync call (`_is_systemic_sync_error`) --
-    is not caught here: it propagates uncaught, exactly like
-    `reconcile_ftrack_shots`' own cursor-read failure, so the arq job
-    fails loudly instead of returning a misleading "successful" partial
-    aggregate. Safe to rerun once the real cause (bad token, apps/api
-    down) is fixed: every already-synced row is untouched, and sync
-    identity is keyed by `ExternalEntityLink`, not by anything this job
-    remembers between runs.
+    A *systemic* failure -- a missing/blank `INTERNAL_SYNC_TOKEN`
+    (checked first, before any connector construction or request),
+    fetching the linked-Shot list itself, or a 401/403/5xx from a
+    per-item sync call (`_is_systemic_sync_error`) -- is not caught
+    here: it propagates uncaught, exactly like `reconcile_ftrack_shots`'
+    own cursor-read failure, so the arq job fails loudly instead of
+    returning a misleading "successful" (zero-valued or partial)
+    aggregate. A run with a valid token and zero already-linked Shots is
+    a distinct, legitimate case and still returns a real (all-zero)
+    aggregate, not an exception. Safe to rerun once the real cause (bad
+    token, apps/api down) is fixed: every already-synced row is
+    untouched, and sync identity is keyed by `ExternalEntityLink`, not
+    by anything this job remembers between runs.
     """
     settings = get_settings()
     summary = {
@@ -198,11 +202,14 @@ async def reconcile_ftrack_versions_and_notes(ctx: dict[str, Any]) -> dict[str, 
         "api_conflicts_or_failures": 0,
     }
 
-    if not settings.internal_sync_token:
-        # Fail closed: no linked-Shot read and no ICAS write is
-        # attempted without it (both require the same token apps/api
-        # enforces server-side).
-        return summary
+    if not settings.internal_sync_token.strip():
+        # A missing/blank token is a systemic worker configuration
+        # failure, not a legitimate empty reconciliation result --
+        # raise before constructing the connector or making any
+        # ftrack/API request, so arq marks the job failed rather than
+        # reporting a misleading "successful" zero-valued aggregate.
+        # Never include the (absent) token value in the message.
+        raise IntegrationError("INTERNAL_SYNC_TOKEN is not configured")
 
     linked_shots = await list_linked_shots(
         api_base_url=settings.api_base_url, internal_sync_token=settings.internal_sync_token

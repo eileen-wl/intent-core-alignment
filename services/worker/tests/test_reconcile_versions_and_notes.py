@@ -154,20 +154,47 @@ async def test_job_is_registered(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "write_back_core_anchor_confirmation" in names
 
 
-async def test_fails_closed_without_configured_token(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("INTERNAL_SYNC_TOKEN", "")
+@pytest.mark.parametrize("token_value", ["", "   ", "\t\n", " \t "])
+async def test_missing_or_blank_token_raises_and_fails_the_job(
+    monkeypatch: pytest.MonkeyPatch, token_value: str
+) -> None:
+    monkeypatch.setenv("INTERNAL_SYNC_TOKEN", token_value)
     tasks.get_settings.cache_clear()
 
-    def _fail_if_called(*args: Any, **kwargs: Any) -> None:
-        raise AssertionError("must not attempt any call when the token is unconfigured")
-
-    monkeypatch.setattr(tasks, "FtrackConnector", _fail_if_called)
-    monkeypatch.setattr(tasks, "list_linked_shots", _fail_if_called)
+    # Nothing may be called at all -- not the connector (so no ftrack
+    # query of any kind can happen), not the linked-shots request, and
+    # not either per-item sync request.
+    monkeypatch.setattr(tasks, "FtrackConnector", _forbid_call)
+    monkeypatch.setattr(tasks, "list_linked_shots", _forbid_call)
+    monkeypatch.setattr(tasks, "sync_version", _forbid_call)
+    monkeypatch.setattr(tasks, "sync_review_note", _forbid_call)
 
     try:
-        summary = await tasks.reconcile_ftrack_versions_and_notes({})
+        with pytest.raises(IntegrationError) as exc_info:
+            await tasks.reconcile_ftrack_versions_and_notes({})
     finally:
         tasks.get_settings.cache_clear()
+
+    assert str(exc_info.value) == "INTERNAL_SYNC_TOKEN is not configured"
+
+
+async def test_valid_token_with_zero_linked_shots_returns_zero_aggregate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Distinct from the missing-token case above: a real token with
+    nothing to sweep is a legitimate successful run, not a failure."""
+    connector = _FakeReconciliationConnector()
+    call_log: list[str] = []
+    _install(
+        monkeypatch,
+        connector=connector,
+        linked_shots=[],
+        version_outcomes={},
+        note_outcomes={},
+        call_log=call_log,
+    )
+
+    summary = await tasks.reconcile_ftrack_versions_and_notes({})
 
     assert summary == {
         "linked_shots_examined": 0,
@@ -182,6 +209,8 @@ async def test_fails_closed_without_configured_token(monkeypatch: pytest.MonkeyP
         "api_skipped": 0,
         "api_conflicts_or_failures": 0,
     }
+    assert connector.connected is True
+    assert connector.closed is True
 
 
 async def test_only_linked_shots_are_swept(monkeypatch: pytest.MonkeyPatch) -> None:
