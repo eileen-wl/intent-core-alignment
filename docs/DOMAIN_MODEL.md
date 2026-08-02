@@ -64,6 +64,24 @@ Department and hierarchy names must be configurable because ftrack workspaces ma
 
 Original Review Notes must never be replaced by an AI summary.
 
+### 4.1 Implemented ftrack sync fields (Step 8)
+
+`Version` and `ReviewNote` are the two objects in this section with a real, implemented ftrack sync path (`ADR-0014`, `docs/step-8/02_STEP_8B_VERSION_NOTE_SYNC_CONTRACT.md`). Both gained the following additive, nullable fields — no existing manually-created row's value ever changes:
+
+| Field | On | Meaning |
+|---|---|---|
+| `task_id` | `Version` only | Nullable FK to `Task`. Set only when the synced ftrack `AssetVersion`'s own real Task is itself already linked; left `null` for every manually-created `Version` (preserving the existing "a Shot may have several Tasks and several Versions with no join between them" manual convention) and for a synced Version whose real Task was not itself linked. Never inferred from a Task name. |
+| `source_created_at` | `Version`, `ReviewNote` | The source system's own creation time (`AssetVersion.date`/`Note.date` for ftrack). Nullable — only populated for synced rows. |
+| `external_author_id` | `Version`, `ReviewNote` | The source system's stable author/creator id (`AssetVersion.user.id`/`Note.author.id` for ftrack) — never a username, email, or display name. Nullable; `null` only when the source row has no author relation at all. |
+| `external_author_name` | `Version`, `ReviewNote` | A separate, independently-nullable display-only fallback (e.g. a username, or a composed first/last name) for showing source provenance in the UI. Never used for identity or permissions. |
+
+Two existing fields keep their pre-Step-8 meaning unchanged, and are never redefined for a synced row:
+
+- **`created_at`** remains ICAS-ingestion time — when this row was written into ICAS — for every `Version`/`ReviewNote`, manual or synced. It is not source-system time; a historical backfill sync can insert years of real history in one ingestion run, so `created_at` alone is never a safe chronological ordering key for synced rows. Use `source_created_at ?? created_at` for chronological ordering wherever a synced row may appear.
+- **Actor provenance fields** (`created_by_actor_kind`, `created_by_actor_id`, `created_by_human_role`) also keep their existing meaning: for every ftrack-synced `Version`/`ReviewNote`, these are always exactly `"system"` / `"ftrack-sync"` / `null` — never derived from the ftrack author, and never given a `human_role`. An external author (`external_author_id`/`external_author_name`) is source-system provenance only — it never becomes, and is never displayed as, an ICAS Human VFX Supervisor, Human CG Supervisor, or Human Artist, and is never read by any permission check, `require_human_role` call, or Decision/HumanGate/Anchor-confirmation path.
+
+`Version.task_id` is nullable specifically to preserve every existing and future manually-created `Version` as an unaffected Shot-level record — a manual `Version` never has ftrack identity, so this addition is purely additive from that row's perspective.
+
 ## 5. Intent objects
 
 | Object | Purpose | Important relationships |
@@ -178,8 +196,8 @@ The following are deliberately not final:
 - exact ftrack hierarchy representation;
 - external Task and Department mapping;
 - external Status mapping;
-- Version-to-Task relationships in the chosen workspace;
-- Note parent types;
 - Component and media-location fields;
 - technical metadata available from ftrack;
 - authentication and user identity mapping.
+
+**Resolved by Step 8, no longer open:** Version-to-Task relationships (`Version.task_id`, nullable FK, real-workspace-validated — §4.1 above) and Note parent types (`asset_version` direct, and `review_session_object`-mediated one-hop; both real-workspace-validated, ADR-0014).

@@ -209,6 +209,73 @@ describe("CurrentVersionPage", () => {
     ).toBeVisible();
   });
 
+  it("shows the ftrack external author as source provenance on the selected Version and its Review Notes, not an ICAS Human role (Step 8C-6/8C-7)", () => {
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data({
+          selectedVersion: version({
+            source: "ftrack",
+            created_by_actor_kind: "system",
+            created_by_human_role: null,
+            external_author_id: "ext-42",
+            external_author_name: "Jamie Lin",
+          }),
+          reviewNotes: [
+            note({
+              source: "ftrack",
+              created_by_actor_kind: "system",
+              created_by_human_role: null,
+              external_author_id: "ext-42",
+              external_author_name: "Jamie Lin",
+            }),
+          ],
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getAllByText(/Source author: Jamie Lin/).length).toBe(2);
+    expect(screen.queryByText(/· artist$/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/cg_supervisor/)).not.toBeInTheDocument();
+  });
+
+  it("falls back to the actor kind, never a fabricated name, when an ftrack row has no external_author_name", () => {
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data({
+          selectedVersion: version({
+            source: "ftrack",
+            created_by_actor_kind: "system",
+            created_by_human_role: null,
+            external_author_id: "ext-42",
+            external_author_name: null,
+          }),
+          reviewNotes: [],
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/· system$/)).toBeVisible();
+    expect(screen.queryByText(/Source author:/)).not.toBeInTheDocument();
+    expect(screen.queryByText("ext-42")).not.toBeInTheDocument();
+  });
+
+  it("keeps the manual Human-role author display unchanged when no ftrack provenance exists", () => {
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText(/· artist$/)).toBeVisible();
+    expect(screen.queryByText(/Source author:/)).not.toBeInTheDocument();
+  });
+
   it("shows Core Anchor and Execution Anchor context as read-only", () => {
     render(
       <CurrentVersionPage

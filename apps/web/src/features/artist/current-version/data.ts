@@ -21,15 +21,22 @@ import {
   listReviewNotesForVersion,
   listVersionsForShot,
 } from "@/features/artist/api";
+import { getEffectiveTimestamp } from "@/lib/effectiveTimestamp";
+import { filterVersionsForTask } from "@/lib/taskScopedVersions";
 
-/** `/artist/tasks/:taskId/current-version` (Step 7C-5) -- real
- * Production Versions for the Task's Shot (the repository's established
- * convention: a Task's associated Versions are its Shot's Versions, no
- * persisted Task<->Version link exists), the selected Version's Review
- * Notes, applicable Artist guidance, active Anchor context, and related
- * cross-role evidence where it genuinely exists. Never confuses a
- * Production Version with an Anchor Revision -- these are always kept
- * as clearly distinct objects. */
+/** `/artist/tasks/:taskId/current-version` (Step 7C-5, Task-scoped
+ * since Step 8C-6/8C-7) -- real Production Versions for this Task:
+ * starts from the Task's Shot's full Version list, then keeps only
+ * Versions that belong to this Task (a real `task_id` match, or a null
+ * `task_id` -- the existing manual/legacy compatibility fallback,
+ * unchanged); a Version linked to a *different* real Task under the
+ * same Shot is excluded (see `@/lib/taskScopedVersions`). Filtering
+ * happens before sorting/selection, so `selectedVersion` can never be
+ * an out-of-scope Version even via a hand-crafted `?version=` id. Also
+ * the selected Version's Review Notes, applicable Artist guidance,
+ * active Anchor context, and related cross-role evidence where it
+ * genuinely exists. Never confuses a Production Version with an Anchor
+ * Revision -- these are always kept as clearly distinct objects. */
 export interface CurrentVersionData {
   item: ArtistInboxItemRead;
   /** Every real recorded Version for this Task's Shot, newest first. */
@@ -56,15 +63,20 @@ export async function loadCurrentVersionData(
     return null;
   }
 
-  const [versions, coreAnchor, executionAnchor] = await Promise.all([
+  const [shotVersions, coreAnchor, executionAnchor] = await Promise.all([
     listVersionsForShot(item.shot_id),
     getCoreAnchor(item.shot_id),
     getExecutionAnchor(taskId),
   ]);
 
-  const sortedVersions = [...versions].sort(
-    (a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+  // Task-scoped filtering happens before sorting/selection (Step
+  // 8C-6/8C-7) -- a Version linked to a different Task under the same
+  // Shot must never reach this Task Workspace at all, not merely be
+  // hidden after being chosen as "the" selected Version. Effective
+  // timestamp (`source_created_at ?? created_at`) keeps a real ftrack
+  // historical Version sorted by its real ftrack creation time.
+  const sortedVersions = filterVersionsForTask(shotVersions, taskId).sort(
+    (a, b) => getEffectiveTimestamp(b) - getEffectiveTimestamp(a),
   );
   const selectedVersion =
     (selectedVersionId
@@ -73,7 +85,7 @@ export async function loadCurrentVersionData(
     sortedVersions[0] ??
     null;
 
-  const [reviewNotes, guidancesForVersion, crossRoleAssessments] =
+  const [reviewNotesRaw, guidancesForVersion, crossRoleAssessments] =
     selectedVersion
       ? await Promise.all([
           listReviewNotesForVersion(selectedVersion.id),
@@ -81,6 +93,9 @@ export async function loadCurrentVersionData(
           listCrossRoleAssessmentsForVersion(selectedVersion.id, taskId),
         ])
       : [[], [], []];
+  const reviewNotes = [...reviewNotesRaw].sort(
+    (a, b) => getEffectiveTimestamp(a) - getEffectiveTimestamp(b),
+  );
 
   const guidances = guidancesForVersion
     .filter((guidance) => guidance.task_id === taskId)

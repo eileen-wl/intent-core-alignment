@@ -1,13 +1,24 @@
 """Version, ReviewNote (Step 4a); AlignmentAssessment (Step 4b).
 
 See docs/DOMAIN_MODEL.md §4. Only the smallest slice: a Version belongs
-directly to a Shot (no Task linkage yet), and a ReviewNote belongs to a
-Version. VersionArtifact/ReviewActionItem/SubmissionRationale/
-VersionRelation are out of scope for this slice.
+directly to a Shot, and a ReviewNote belongs to a Version.
+VersionArtifact/ReviewActionItem/SubmissionRationale/VersionRelation are
+out of scope for this slice.
 
 Future ftrack external ids go through integrations.models.ExternalEntityLink,
 never a direct external_id column here -- same reasoning ADR-0010 already
 applied to Project/Shot/Task, applied a second time.
+
+Step 8C-1 (docs/step-8/02_STEP_8B_VERSION_NOTE_SYNC_CONTRACT.md §13,
+ADR-0014) adds `Version.task_id` (nullable -- a Shot may still have
+several Tasks and several manually-created Versions with no join between
+them; this only ever gets populated for a ftrack-sourced Version, by
+sync logic that is a later slice, not this one) plus
+`source_created_at`/`external_author_id`/`external_author_name` on both
+`Version` and `ReviewNote`. No `relationship()` object is added alongside
+`task_id`: this module has never used SQLAlchemy `relationship()`
+objects, not even for the existing `shot_id`, so a bare FK column is the
+consistent choice here too.
 
 ``AlignmentAssessment`` (Step 4b) is produced by the Core Agent's
 ``alignment_assessment`` capability (``agents.alignment_assessment_service``,
@@ -41,13 +52,30 @@ class Version(Base):
     """
 
     __tablename__ = "versions"
+    __table_args__ = (Index("ix_versions_task_id", "task_id"),)
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     shot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("shots.id"))
+    # Nullable: null for every manually-created Version (unchanged
+    # existing behavior); populated only by future ftrack sync logic,
+    # resolved via ExternalEntityLink, never by Task-name matching.
+    # ondelete="SET NULL", not CASCADE -- a Version is production
+    # history and must outlive its originating Task (Step 8C-1).
+    task_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True
+    )
     name: Mapped[str] = mapped_column(String(200))
     version_number: Mapped[int | None] = mapped_column(nullable=True)
     description: Mapped[str] = mapped_column(Text)
     source: Mapped[str] = mapped_column(String(20), default="manual")
+    # Real external ftrack creation time, distinct from `created_at`
+    # (ICAS ingestion time, unchanged meaning). Null for manual rows.
+    source_created_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    # Real external ftrack stable author id -- never username/email/
+    # display name (ADR-0014 Decision 2). Grants no ICAS human role.
+    external_author_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # Display-only author provenance fallback.
+    external_author_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_by_actor_kind: Mapped[str] = mapped_column(String(10))
     created_by_actor_id: Mapped[str] = mapped_column(String(200))
     created_by_human_role: Mapped[str | None] = mapped_column(String(20), nullable=True)
@@ -276,6 +304,14 @@ class ReviewNote(Base):
     version_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("versions.id"))
     content: Mapped[str] = mapped_column(Text)
     source: Mapped[str] = mapped_column(String(20), default="manual")
+    # Real external ftrack creation time, distinct from `created_at`
+    # (ICAS ingestion time, unchanged meaning). Null for manual rows.
+    source_created_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    # Real external ftrack stable author id -- never username/email/
+    # display name (ADR-0014 Decision 2). Grants no ICAS human role.
+    external_author_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    # Display-only author provenance fallback.
+    external_author_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     created_by_actor_kind: Mapped[str] = mapped_column(String(10))
     created_by_actor_id: Mapped[str] = mapped_column(String(200))
     created_by_human_role: Mapped[str | None] = mapped_column(String(20), nullable=True)

@@ -19,6 +19,13 @@ class Settings(BaseSettings):
     api_base_url: str = "http://localhost:8000"
     redis_url: str = "redis://localhost:6379/0"
 
+    # Step 8C-4/8C-5: shared secret required by apps/api's trusted
+    # internal ftrack Version/ReviewNote sync endpoints
+    # (X-Internal-Sync-Token header). Blank by default --
+    # reconcile_ftrack_versions_and_notes fails closed (performs no ICAS
+    # write) rather than calling those endpoints unauthenticated.
+    internal_sync_token: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:

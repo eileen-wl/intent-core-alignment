@@ -1482,6 +1482,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/sync/linked-shots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Linked Shots */
+        get: operations["linked_shots_internal_sync_linked_shots_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/sync/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync Version */
+        post: operations["sync_version_internal_sync_versions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/sync/review-notes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sync Review Note */
+        post: operations["sync_review_note_internal_sync_review_notes_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -3033,6 +3084,25 @@ export interface components {
              */
             created_at: string;
         };
+        /**
+         * LinkedShotRead
+         * @description One already-linked ftrack Shot, as ``GET /internal/sync/linked-
+         *     shots`` returns it -- exactly the two fields the reconciliation
+         *     worker needs to run its per-Shot ``AssetVersion`` sweep. Not a
+         *     general ``ExternalEntityLink`` read shape (see
+         *     ``api.integrations.ExternalEntityLinkRead`` for that): no internal
+         *     link-row id, no timestamps, and structurally cannot represent a
+         *     Project/Task link or a non-``"ftrack"`` source.
+         */
+        LinkedShotRead: {
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Shot External Id */
+            shot_external_id: string;
+        };
         /** OpenQuestionInput */
         OpenQuestionInput: {
             /** Question */
@@ -3224,6 +3294,36 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Source Created At */
+            source_created_at?: string | null;
+            /** External Author Id */
+            external_author_id?: string | null;
+            /** External Author Name */
+            external_author_name?: string | null;
+        };
+        /**
+         * ReviewNoteSyncCreate
+         * @description One Note, as the trusted internal sync endpoint (a later slice,
+         *     not this one) will receive it. ``version_external_id`` is resolved
+         *     to a local Version via ``ExternalEntityLink`` server-side -- never
+         *     trusted as, and never matched by, a local id.
+         */
+        ReviewNoteSyncCreate: {
+            /** External Id */
+            external_id: string;
+            /** Version External Id */
+            version_external_id: string;
+            /** Content */
+            content: string;
+            /**
+             * Source Created At
+             * Format: date-time
+             */
+            source_created_at: string;
+            /** External Author Id */
+            external_author_id?: string | null;
+            /** External Author Name */
+            external_author_name?: string | null;
         };
         /** RoleCoverage */
         RoleCoverage: {
@@ -3685,6 +3785,27 @@ export interface components {
             /** Description */
             description: string;
         };
+        /**
+         * VersionNoteSyncItemResult
+         * @description One sync item's outcome, shared by both the future Version and
+         *     ReviewNote sync endpoints (a later slice, not this one) -- enough
+         *     for the worker to log and report a reconciliation run's results
+         *     without exposing any ExternalEntityLink internal id, credential, or
+         *     token.
+         */
+        VersionNoteSyncItemResult: {
+            /**
+             * Outcome
+             * @enum {string}
+             */
+            outcome: "created" | "already_exists" | "skipped";
+            /** Entity Id */
+            entity_id?: string | null;
+            /** External Id */
+            external_id: string;
+            /** Reason */
+            reason?: string | null;
+        };
         /** VersionRead */
         VersionRead: {
             /**
@@ -3722,6 +3843,48 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+            /** Task Id */
+            task_id?: string | null;
+            /** Source Created At */
+            source_created_at?: string | null;
+            /** External Author Id */
+            external_author_id?: string | null;
+            /** External Author Name */
+            external_author_name?: string | null;
+        };
+        /**
+         * VersionSyncCreate
+         * @description One AssetVersion, as the trusted internal sync endpoint (a later
+         *     slice, not this one) will receive it. ``shot_external_id``/
+         *     ``task_external_id`` are resolved to a local Shot/Task via
+         *     ``ExternalEntityLink`` server-side -- never trusted as, and never
+         *     matched by, a local id or a Task/Shot name.
+         */
+        VersionSyncCreate: {
+            /** External Id */
+            external_id: string;
+            /** Shot External Id */
+            shot_external_id: string;
+            /** Task External Id */
+            task_external_id?: string | null;
+            /** Name */
+            name: string;
+            /** Version Number */
+            version_number?: number | null;
+            /**
+             * Description
+             * @default
+             */
+            description: string;
+            /**
+             * Source Created At
+             * Format: date-time
+             */
+            source_created_at: string;
+            /** External Author Id */
+            external_author_id?: string | null;
+            /** External Author Name */
+            external_author_name?: string | null;
         };
         /**
          * VfxInboxCurrentFocusRead
@@ -6870,6 +7033,107 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ArtistFeedbackHistoryRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    linked_shots_internal_sync_linked_shots_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Internal-Sync-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LinkedShotRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_version_internal_sync_versions_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Internal-Sync-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VersionSyncCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionNoteSyncItemResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    sync_review_note_internal_sync_review_notes_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Internal-Sync-Token"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewNoteSyncCreate"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionNoteSyncItemResult"];
                 };
             };
             /** @description Validation Error */

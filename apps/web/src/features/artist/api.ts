@@ -154,10 +154,11 @@ export function listExecutionAnchorRevisions(
 }
 
 // --- Production Versions / Review Notes -------------------------------------
-// A Task's associated Versions are its Shot's Versions -- no persisted
-// Task<->Version link exists in the domain (same convention already
-// established by execution_anchor_service's own context-snapshot
-// assembly and reused by the CG workspace).
+// A Task's associated Versions are its Shot's Versions, fetched here at
+// the Shot level; callers apply the Task-scoped compatibility filter
+// (`@/lib/taskScopedVersions`) themselves, since a real `task_id` link
+// now exists on synced Versions (Step 8C-6/8C-7) alongside the
+// null-task_id manual/legacy rows this relationship always covered.
 
 export function listVersionsForShot(shotId: string): Promise<VersionRead[]> {
   return artistFetch<VersionRead[]>(`/shots/${shotId}/versions`);

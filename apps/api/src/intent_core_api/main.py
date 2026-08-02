@@ -11,6 +11,7 @@ from intent_core_api.cg_inbox.router import router as cg_inbox_router
 from intent_core_api.config import get_settings
 from intent_core_api.cross_department.router import router as cross_department_router
 from intent_core_api.demo_seed.router import router as demo_seed_router
+from intent_core_api.ftrack_version_note_sync.router import router as ftrack_sync_router
 from intent_core_api.integrations.router import router as integrations_router
 from intent_core_api.intent.router import router as intent_router
 from intent_core_api.ops.router import router as ops_router
@@ -50,6 +51,7 @@ app.include_router(cross_department_router)
 app.include_router(task_activity_router)
 app.include_router(artist_inbox_router)
 app.include_router(artist_feedback_history_router)
+app.include_router(ftrack_sync_router)
 
 
 @app.exception_handler(ForbiddenActionError)

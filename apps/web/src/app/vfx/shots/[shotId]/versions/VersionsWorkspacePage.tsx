@@ -14,6 +14,7 @@ import {
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
+import { getAuthorDisplayText } from "@/lib/authorProvenance";
 import type { VersionsWorkspaceData } from "@/features/vfx/versions-workspace/data";
 import { ProductionContextHeader } from "../../ProductionContextHeader";
 import styles from "./VersionsWorkspacePage.module.css";
@@ -184,9 +185,7 @@ export function VersionsWorkspacePage({
                           { label: "Source", value: selected.version.source },
                           {
                             label: "Recorded by",
-                            value:
-                              selected.version.created_by_human_role ??
-                              selected.version.created_by_actor_kind,
+                            value: getAuthorDisplayText(selected.version),
                           },
                         ]}
                       />
@@ -211,9 +210,8 @@ export function VersionsWorkspacePage({
                                   {note.content}
                                 </p>
                                 <p className={styles.noteMeta}>
-                                  {note.created_by_human_role ??
-                                    note.created_by_actor_kind}{" "}
-                                  · {new Date(note.created_at).toLocaleString()}
+                                  {getAuthorDisplayText(note)} ·{" "}
+                                  {new Date(note.created_at).toLocaleString()}
                                 </p>
                               </li>
                             ))}

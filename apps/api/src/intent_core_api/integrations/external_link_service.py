@@ -57,3 +57,21 @@ async def record_external_link(
             external_id=external_id,
         )
     )
+
+
+async def list_linked_entities(
+    session: AsyncSession, *, entity_type: str, source: str
+) -> list[tuple[uuid.UUID, str]]:
+    """Every ``(entity_id, external_id)`` pair currently linked for one
+    ``entity_type``/``source`` pair -- e.g. every ftrack-linked Shot, for
+    Step 8C-4/8C-5's reconciliation worker to enumerate its per-Shot
+    sweep. Scoped exactly like ``find_linked_entity_id``; never returns a
+    row for a different ``entity_type`` or ``source``.
+    """
+    result = await session.execute(
+        select(ExternalEntityLink.entity_id, ExternalEntityLink.external_id).where(
+            ExternalEntityLink.entity_type == entity_type,
+            ExternalEntityLink.source == source,
+        )
+    )
+    return [(row.entity_id, row.external_id) for row in result.all()]

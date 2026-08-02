@@ -633,6 +633,7 @@ source = { editable = "services/ftrack-connector" }
 dependencies = [
     { name = "ftrack-python-api" },
     { name = "httpx" },
+    { name = "intent-core-contracts" },
     { name = "pydantic-settings" },
     { name = "requests" },
 ]
@@ -650,6 +651,7 @@ dev = [
 requires-dist = [
     { name = "ftrack-python-api", specifier = ">=3.1" },
     { name = "httpx", specifier = ">=0.27" },
+    { name = "intent-core-contracts", editable = "packages/contracts/python" },
     { name = "pydantic-settings", specifier = ">=2.5" },
     { name = "requests", specifier = ">=2.31" },
 ]

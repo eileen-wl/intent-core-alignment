@@ -37,9 +37,9 @@ Agents never receive API credentials or raw ftrack sessions.
 | Task | `Task` | Task Type may map to Department |
 | User | `User` | Linked to internal identity |
 | Assignment | `RoleAssignment` | Exact relationship requires validation |
-| AssetVersion | `Version` | Primary published-version mapping |
-| Component | `VersionArtifact` | Media/file access depends on Location |
-| Note | `ReviewNote` | Parent may be Version, Task, or review object |
+| AssetVersion | `Version` | Primary published-version mapping. **Implemented and real-validated for read-sync as of Step 8** — see §17; the general provisional status above still applies to every other row in this table |
+| Component | `VersionArtifact` | Media/file access depends on Location. Not implemented — out of Step 8's scope (§17) |
+| Note | `ReviewNote` | **Implemented and real-validated as of Step 8** (§17): a real Note's parent is either directly an `AssetVersion`, or one hop through a `ReviewSessionObject` that itself references exactly one `AssetVersion` — not "Task": the only Task-parented Notes found in real data were ICAS's own prior write-back echoes, never organic feedback, and this sync path never reads them |
 | Status | External status + internal mapping | Mapping configurable per workspace |
 | Custom Attribute | Metadata or mapped domain field | Must be explicitly configured |
 | Thumbnail / preview Component | Preview Artifact | Accessibility requires validation |
@@ -111,6 +111,8 @@ A scheduled process re-queries records changed since the last successful sync to
 - mapping inconsistencies.
 
 Real-time events alone are not considered sufficient.
+
+**Version/ReviewNote reconciliation is a distinct, already-implemented exception to the general strategy above** — see §17. It does not use a timestamp-since-last-sync cursor at all (no real ftrack modification-timestamp field exists for either entity), and instead performs a complete, unbounded per-already-linked-Shot re-sweep on every run, relying entirely on `ExternalEntityLink` identity for idempotency. This is locked (ADR-0014 Decision 4) specifically for Version/Note; it does not change the general provisional reconciliation design above for other entity types.
 
 ## 7. Internal event normalisation
 
@@ -270,7 +272,7 @@ It does not validate:
 
 - Which ftrack hierarchy entities are available?
 - How are Sequence and Shot represented?
-- Which Note parents are used in the workspace?
+- Which Note parents are used in the workspace? **Resolved for Version/Note as of Step 8 — see §17.** (Every other question in this list remains open for the entities it concerns.)
 - Can the API identity read and write required fields?
 - Which AssetVersion Components are accessible?
 - Which event payloads are received?
@@ -279,3 +281,20 @@ It does not validate:
 - How can system-originated write-back be marked?
 - Which Custom Attributes are useful?
 - Which Status changes are safe to write?
+
+## 17. Implemented and real-validated: Version/ReviewNote sync (Step 8)
+
+Everything below is implemented, in the committed codebase, and validated against the real controlled ftrack trial workspace named in §15's claim boundary (`bristol-l.ftrackapp.com`) — not merely designed. Full evidence: `docs/step-8/01_STEP_8A_FTRACK_VERSION_NOTE_RELATIONSHIP_VALIDATION.md`, `docs/step-8/02_STEP_8B_VERSION_NOTE_SYNC_CONTRACT.md`, `docs/decisions/ADR-0014-ftrack-version-note-sync-contract.md`, `docs/step-8/03_STEP_8C_REAL_FTRACK_ACCEPTANCE.md`, `docs/step-8/04_STEP_8_COMPLETION_BASELINE.md`, `docs/VALIDATION_EVIDENCE.md`'s "Step 8" section.
+
+- **Targeted per-linked-Shot `AssetVersion` reconciliation** — `services/ftrack-connector/src/intent_core_connector/version_note_context.py`'s `read_asset_versions_for_shot`, scoped to one already-linked Shot per query, never a workspace-wide fetch.
+- **Direct `asset_version`-parented Note path** — `read_direct_notes_for_asset_version`.
+- **`ReviewSessionObject`-mediated Note path** — `read_review_session_object_notes_for_asset_version`, discovered only in the forward direction (from a real, already-known-live `AssetVersion`), never the reverse (an orphaned Note's `parent_id`) direction Step 8B found mostly unresolvable.
+- **snake_case `parent_type` filtering** — both read functions above filter on the real, filter-comparable snake_case values (`asset_version`, `review_session_object`), not the PascalCase form a naive implementation would copy from a displayed row.
+- **ICAS write-back-marker exclusion** — both read functions exclude any Note whose content starts with the `"[Intent Core Alignment System]"` marker (ADR-0012) before it is ever proposed for sync, preventing a write-back echo loop.
+- **Internal token-protected sync endpoints** — `POST /internal/sync/versions`, `POST /internal/sync/review-notes` (`apps/api/src/intent_core_api/ftrack_version_note_sync/`), gated by a shared `X-Internal-Sync-Token` header distinct from, and stronger than, the existing Project/Shot/Task public endpoints' authentication (a named, unremediated gap — §15/ADR-0014 do not claim this is fixed).
+- **`ExternalEntityLink` idempotency** — every synced `Version`/`ReviewNote` gets exactly one link (`entity_type="version"`/`"review_note"`, `source="ftrack"`); a repeat sync of an already-linked `external_id` is a true no-op, not an update (unlike Project/Shot/Task), matching `Version`/`ReviewNote`'s existing immutable/append-only product rule.
+- **Complete per-linked-Shot re-sweep, no Version/ReviewNote `SyncCursor`** — every reconciliation run re-examines every already-linked Shot's full real AssetVersion/Note graph from scratch; no cursor row of any kind is created, read, or written for this sync (ADR-0014 Decision 4).
+- **No autonomous ftrack write-back** — this sync is read-only against ftrack in both directions: it only ever calls `session.query`/`session.get`. The only ftrack write-back capability anywhere in the system remains the existing, separate, human-requested Core Anchor confirmation write-back (§12); Step 8 adds no new write-back of any kind.
+- **Real first-run and second-run acceptance results** — a real reconciliation run against the controlled workspace linked 9 real Shots, discovered 32 real `AssetVersion`s and 50 real Notes (40 direct + 10 `ReviewSessionObject`-mediated), and created 82 real `Version`/`ReviewNote` rows with zero conflicts; an immediately repeated run reported the same discovery counts but 0 created / 82 already-exists, with database counts unchanged and no duplicate rows — full detail in `docs/step-8/03_STEP_8C_REAL_FTRACK_ACCEPTANCE.md`.
+
+**Unchanged, still provisional/not started** (this section does not claim otherwise): Event Hub / Webhook incremental sync (§6), Actions and Custom Widgets (§11), Component/media handling (§9), any write-back beyond Core Anchor confirmation (§12), and every other row of §3's entity-mapping table not named above. The claim boundary in §15 (controlled trial workspace, not DNEG production configuration/permissions/scale) applies to everything in this section exactly as it does to the rest of this document.

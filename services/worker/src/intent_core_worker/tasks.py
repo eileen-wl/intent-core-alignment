@@ -6,7 +6,16 @@ from typing import Any
 import httpx
 from intent_core_connector.connector import FtrackConnector
 from intent_core_connector.errors import IntegrationError
-from intent_core_connector.sync_client import sync_shot_context
+from intent_core_connector.sync_client import (
+    list_linked_shots,
+    sync_review_note,
+    sync_shot_context,
+    sync_version,
+)
+from intent_core_connector.version_note_context import (
+    DirectNoteResult,
+    ReviewSessionObjectNoteResult,
+)
 
 from intent_core_worker.config import get_settings
 
@@ -17,6 +26,22 @@ SYNC_CURSOR_KEY = "ftrack_shot_reconciliation"
 # Bounded first-run window when no cursor exists yet -- not "sync everything
 # ever" (ADR-0011).
 _DEFAULT_LOOKBACK = timedelta(hours=24)
+
+# reconcile_ftrack_versions_and_notes reliability correction: 401/403 (the
+# internal sync token is being rejected) and any 5xx (apps/api itself is
+# unavailable, including a 503 from require_internal_sync_token's own
+# fail-closed check on an unconfigured server-side token) mean every
+# subsequent Version/Note request in this run would fail for the same
+# systemic reason -- continuing would just waste time producing a
+# misleading pile of "conflicts/failures" instead of surfacing the real
+# problem. 409 (an idempotency race) and 422 (one payload's own content)
+# are the only sync-endpoint failures still treated as item-local.
+_SYSTEMIC_SYNC_HTTP_STATUS_CODES = frozenset({401, 403})
+
+
+def _is_systemic_sync_error(exc: httpx.HTTPStatusError) -> bool:
+    status = exc.response.status_code
+    return status in _SYSTEMIC_SYNC_HTTP_STATUS_CODES or status >= 500
 
 
 async def ping(ctx: dict[str, Any], heartbeat_name: str) -> None:
@@ -123,3 +148,158 @@ async def write_back_core_anchor_confirmation(
             json={"status": "succeeded", "external_note_id": external_note_id},
         )
         status_response.raise_for_status()
+
+
+async def reconcile_ftrack_versions_and_notes(ctx: dict[str, Any]) -> dict[str, int]:
+    """Complete targeted AssetVersion/Note sweep for every already-linked
+    ftrack Shot, every run (Step 8C-4/8C-5;
+    docs/step-8/02_STEP_8B_VERSION_NOTE_SYNC_CONTRACT.md §10, ADR-0014
+    Decision 4).
+
+    Deliberately unlike `reconcile_ftrack_shots`: no `SyncCursor` is
+    read or written here, and neither `AssetVersion.date` nor
+    `Note.date` is ever used as a discovery cutoff -- every run re-
+    derives each linked Shot's full real relationship graph from
+    scratch. Idempotency comes entirely from `ExternalEntityLink`
+    identity on the apps/api side (a repeat sync is a true no-op), not
+    from remembering what this job already did.
+
+    A Version is synced before its Notes, and only a `created`/
+    `already_exists` Version's Notes are ever attempted -- a `skipped`
+    Version (unresolved Shot lineage) or a failed sync call has no
+    local row for a Note to resolve against, so its Notes are never
+    submitted. One malformed AssetVersion/Note/ReviewSessionObject read,
+    or one item-local sync-endpoint failure (409 conflict, 422
+    validation), is recorded in the returned summary and does not abort
+    the Shot it belongs to or the run as a whole.
+
+    A *systemic* failure -- a missing/blank `INTERNAL_SYNC_TOKEN`
+    (checked first, before any connector construction or request),
+    fetching the linked-Shot list itself, or a 401/403/5xx from a
+    per-item sync call (`_is_systemic_sync_error`) -- is not caught
+    here: it propagates uncaught, exactly like `reconcile_ftrack_shots`'
+    own cursor-read failure, so the arq job fails loudly instead of
+    returning a misleading "successful" (zero-valued or partial)
+    aggregate. A run with a valid token and zero already-linked Shots is
+    a distinct, legitimate case and still returns a real (all-zero)
+    aggregate, not an exception. Safe to rerun once the real cause (bad
+    token, apps/api down) is fixed: every already-synced row is
+    untouched, and sync identity is keyed by `ExternalEntityLink`, not
+    by anything this job remembers between runs.
+    """
+    settings = get_settings()
+    summary = {
+        "linked_shots_examined": 0,
+        "asset_versions_discovered": 0,
+        "asset_versions_skipped": 0,
+        "direct_notes_discovered": 0,
+        "review_session_object_notes_discovered": 0,
+        "review_session_objects_unresolved": 0,
+        "write_back_echoes_excluded": 0,
+        "api_created": 0,
+        "api_already_exists": 0,
+        "api_skipped": 0,
+        "api_conflicts_or_failures": 0,
+    }
+
+    if not settings.internal_sync_token.strip():
+        # A missing/blank token is a systemic worker configuration
+        # failure, not a legitimate empty reconciliation result --
+        # raise before constructing the connector or making any
+        # ftrack/API request, so arq marks the job failed rather than
+        # reporting a misleading "successful" zero-valued aggregate.
+        # Never include the (absent) token value in the message.
+        raise IntegrationError("INTERNAL_SYNC_TOKEN is not configured")
+
+    linked_shots = await list_linked_shots(
+        api_base_url=settings.api_base_url, internal_sync_token=settings.internal_sync_token
+    )
+
+    connector = FtrackConnector()
+    try:
+        connector.connect()
+    except IntegrationError:
+        return summary
+
+    try:
+        for shot in linked_shots:
+            summary["linked_shots_examined"] += 1
+            try:
+                sweep = connector.read_asset_versions_for_shot(
+                    shot_external_id=shot["shot_external_id"]
+                )
+            except IntegrationError:
+                # One Shot's query failing must not abort the run.
+                continue
+
+            summary["asset_versions_discovered"] += len(sweep.versions)
+            summary["asset_versions_skipped"] += len(sweep.warnings)
+
+            for version_context in sweep.versions:
+                try:
+                    version_result = await sync_version(
+                        version_context,
+                        api_base_url=settings.api_base_url,
+                        internal_sync_token=settings.internal_sync_token,
+                    )
+                except httpx.HTTPStatusError as exc:
+                    if _is_systemic_sync_error(exc):
+                        raise
+                    summary["api_conflicts_or_failures"] += 1
+                    continue
+
+                if version_result.outcome == "created":
+                    summary["api_created"] += 1
+                elif version_result.outcome == "already_exists":
+                    summary["api_already_exists"] += 1
+                else:
+                    summary["api_skipped"] += 1
+                    # No local Version row exists for a skipped sync --
+                    # its Notes have nothing to resolve against.
+                    continue
+
+                try:
+                    direct = connector.read_direct_notes_for_asset_version(
+                        version_external_id=version_context.external_id
+                    )
+                except IntegrationError:
+                    direct = DirectNoteResult()
+                try:
+                    rso = connector.read_review_session_object_notes_for_asset_version(
+                        version_external_id=version_context.external_id
+                    )
+                except IntegrationError:
+                    rso = ReviewSessionObjectNoteResult()
+
+                summary["direct_notes_discovered"] += len(direct.notes)
+                summary["review_session_object_notes_discovered"] += len(rso.notes)
+                summary["review_session_objects_unresolved"] += (
+                    rso.review_session_objects_unresolved
+                )
+                summary["write_back_echoes_excluded"] += (
+                    direct.write_back_echoes_excluded + rso.write_back_echoes_excluded
+                )
+
+                for note_context in (*direct.notes, *rso.notes):
+                    try:
+                        note_result = await sync_review_note(
+                            note_context,
+                            api_base_url=settings.api_base_url,
+                            internal_sync_token=settings.internal_sync_token,
+                        )
+                    except httpx.HTTPStatusError as exc:
+                        if _is_systemic_sync_error(exc):
+                            raise
+                        summary["api_conflicts_or_failures"] += 1
+                        continue
+
+                    if note_result.outcome == "created":
+                        summary["api_created"] += 1
+                    elif note_result.outcome == "already_exists":
+                        summary["api_already_exists"] += 1
+                    else:
+                        summary["api_skipped"] += 1
+    finally:
+        connector.close()
+
+    return summary

@@ -11,6 +11,7 @@ import {
   listReviewNotesForVersion,
   listVersionsForShot,
 } from "@/features/vfx/api";
+import { getEffectiveTimestamp } from "@/lib/effectiveTimestamp";
 
 /** `/vfx/shots/:shotId/versions` (Step 7C-3) -- the Shot's production-
  * version and review-note workspace. Deliberately not Core Anchor
@@ -67,16 +68,23 @@ export async function loadVersionsWorkspaceData(
   ]);
 
   // Backend returns oldest-first (its own real `created_at` ordering);
-  // this page's required layout is newest-first.
+  // this page's required layout is newest-first. Effective timestamp
+  // (`source_created_at ?? created_at`, Step 8C-6/8C-7) so a real
+  // ftrack historical backfill sorts by its real ftrack creation time,
+  // not by whichever moment ICAS happened to ingest it.
   const newestFirst = [...versions].sort(
-    (a, b) =>
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+    (a, b) => getEffectiveTimestamp(b) - getEffectiveTimestamp(a),
   );
 
   const versionsWithNotes = await Promise.all(
     newestFirst.map(async (version) => ({
       version,
-      reviewNotes: await listReviewNotesForVersion(version.id),
+      // Oldest first, matching the backend's own real ordering --
+      // unchanged direction, now using the same effective-timestamp
+      // basis as everywhere else.
+      reviewNotes: [...(await listReviewNotesForVersion(version.id))].sort(
+        (a, b) => getEffectiveTimestamp(a) - getEffectiveTimestamp(b),
+      ),
     })),
   );
 
