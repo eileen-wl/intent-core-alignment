@@ -1,5 +1,6 @@
 import type {
   CgInboxItemRead,
+  DecisionRead,
   ExecutionAnchorRevisionRead,
   HumanGateRead,
 } from "@intent-core/contracts";
@@ -8,6 +9,7 @@ import {
   fetchCgInboxItem,
   getCoreAnchor,
   getExecutionAnchorRevisionHumanGate,
+  listExecutionAnchorRevisionDecisions,
   listExecutionAnchorRevisions,
 } from "@/features/cg/api";
 
@@ -29,10 +31,17 @@ export interface ExecutionWorkspaceData {
    * prerequisite `execution_anchor_service.create_draft_revision`
    * enforces. Drives whether a new draft can honestly be started. */
   coreAnchorConfirmed: boolean;
+  /** Step 9B-2: the real `confirm_execution_anchor` Decision for
+   * `confirmedRevision`, reusing the Step 9B-1 read endpoint -- `null`
+   * when there is no confirmed revision, or (legacy-compatibility) one
+   * exists but genuinely has no recorded confirm Decision. Never the
+   * reject Decision. */
+  confirmDecision: DecisionRead | null;
 }
 
 export async function loadExecutionWorkspaceData(
   taskId: string,
+  actorHeaders: Record<string, string>,
 ): Promise<ExecutionWorkspaceData | null> {
   const item = await fetchCgInboxItem(taskId);
   if (item === null) {
@@ -52,6 +61,17 @@ export async function loadExecutionWorkspaceData(
     ? await getExecutionAnchorRevisionHumanGate(draftRevision.id)
     : null;
 
+  const confirmDecision = confirmedRevision
+    ? ((
+        await listExecutionAnchorRevisionDecisions(
+          confirmedRevision.id,
+          actorHeaders,
+        )
+      ).find(
+        (decision) => decision.decision_type === "confirm_execution_anchor",
+      ) ?? null)
+    : null;
+
   return {
     item,
     confirmedRevision,
@@ -59,5 +79,6 @@ export async function loadExecutionWorkspaceData(
     draftHumanGate,
     coreAnchorConfirmed:
       coreAnchor !== null && coreAnchor.active_revision_id !== null,
+    confirmDecision,
   };
 }

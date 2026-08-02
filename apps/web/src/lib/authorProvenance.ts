@@ -1,3 +1,5 @@
+import { humanRoleLabel } from "./humanRoleLabel";
+
 /** Step 8C-6/8C-7: author/creator display text for a Version or
  * ReviewNote, distinguishing ftrack source provenance from an ICAS
  * Human role attribution (docs/step-8/02_STEP_8B_VERSION_NOTE_SYNC
@@ -17,10 +19,14 @@
  * name is available.
  *
  * For a manual/local record (`source !== "ftrack"`, or no
- * `external_author_name`), the return value is byte-identical to the
- * existing `created_by_human_role ?? created_by_actor_kind` expression
- * this replaces -- a drop-in replacement, not a new UI section.
- */
+ * `external_author_name`), the return value is the same
+ * `created_by_human_role ?? created_by_actor_kind` expression this
+ * replaces, except a real `created_by_human_role` now formats through
+ * `humanRoleLabel` (Step 9B-2 owner-validation correction) -- a
+ * genuine, structured `HumanRole` field, never arbitrary text, so this
+ * conversion is safe. `created_by_actor_kind` (e.g. `"agent"`,
+ * `"system"`) is never passed through `humanRoleLabel` -- it was never
+ * a `HumanRole` value and stays exactly as before. */
 export function getAuthorDisplayText(entity: {
   source: string;
   created_by_human_role?: string | null;
@@ -30,5 +36,7 @@ export function getAuthorDisplayText(entity: {
   if (entity.source === "ftrack" && entity.external_author_name) {
     return `Source author: ${entity.external_author_name}`;
   }
-  return entity.created_by_human_role ?? entity.created_by_actor_kind;
+  return entity.created_by_human_role
+    ? humanRoleLabel(entity.created_by_human_role)
+    : entity.created_by_actor_kind;
 }

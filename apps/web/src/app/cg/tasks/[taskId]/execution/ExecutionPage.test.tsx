@@ -1,8 +1,15 @@
 import type {
   CgInboxItemRead,
+  DecisionRead,
   ExecutionAnchorRevisionRead,
 } from "@intent-core/contracts";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -107,6 +114,24 @@ function revision(
   };
 }
 
+function decision(overrides: Partial<DecisionRead> = {}): DecisionRead {
+  return {
+    id: "d1",
+    decision_type: "confirm_execution_anchor",
+    owning_human_role: "cg_supervisor",
+    actor_kind: "human",
+    actor_id: "cg-1",
+    actor_human_role: "cg_supervisor",
+    rationale: "Matches the confirmed Core Anchor exactly.",
+    entity_type: "execution_anchor_revision",
+    entity_id: "r1",
+    write_back_requested: false,
+    supersedes_decision_id: null,
+    created_at: "2026-01-02T00:00:00Z",
+    ...overrides,
+  };
+}
+
 function data(
   overrides: Partial<ExecutionWorkspaceData> = {},
 ): ExecutionWorkspaceData {
@@ -116,6 +141,7 @@ function data(
     draftRevision: null,
     draftHumanGate: null,
     coreAnchorConfirmed: true,
+    confirmDecision: null,
     ...overrides,
   };
 }
@@ -294,6 +320,187 @@ describe("ExecutionPage", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Start blank draft" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("groups confirmed content under Production Evidence and the real confirm Decision's actor/rationale under Human Decision and Provenance (Step 9B-2)", () => {
+    render(
+      <ExecutionPage
+        taskId="t1"
+        data={data({
+          confirmedRevision: revision({
+            status: "confirmed",
+            confirmed_by_human_role: "cg_supervisor",
+            confirmed_at: "2026-01-02T00:00:00Z",
+          }),
+          coreAnchorConfirmed: true,
+          confirmDecision: decision(),
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const evidenceHeading = screen.getByText("Production Evidence");
+    const humanDecisionHeading = screen.getByText(
+      "Human Decision and Provenance",
+    );
+    expect(evidenceHeading).toBeVisible();
+    expect(humanDecisionHeading).toBeVisible();
+
+    const evidenceSection = evidenceHeading.closest(
+      "[data-evidence-layer]",
+    ) as HTMLElement;
+    expect(
+      within(evidenceSection).getByText("24fps, no motion blur."),
+    ).toBeVisible();
+
+    const humanDecisionSection = humanDecisionHeading.closest(
+      "[data-evidence-layer]",
+    ) as HTMLElement;
+    expect(
+      within(humanDecisionSection).getByText(
+        "Confirmed Execution Anchor revision 1",
+      ),
+    ).toBeVisible();
+    expect(
+      within(humanDecisionSection).getByText(
+        "Matches the confirmed Core Anchor exactly.",
+      ),
+    ).toBeVisible();
+    expect(
+      within(humanDecisionSection).getByText("CG Supervisor"),
+    ).toBeVisible();
+    expect(
+      within(humanDecisionSection).queryByText("cg_supervisor"),
+    ).not.toBeInTheDocument();
+    // The real Decision's rationale must not also appear duplicated
+    // inside the Production Evidence content.
+    expect(
+      within(evidenceSection).queryByText(
+        "Matches the confirmed Core Anchor exactly.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("falls back to the revision's own confirmed-by/confirmed-at fields under Human Decision and Provenance when no Decision was found (legacy compatibility)", () => {
+    render(
+      <ExecutionPage
+        taskId="t1"
+        data={data({
+          confirmedRevision: revision({
+            status: "confirmed",
+            confirmed_by_human_role: "cg_supervisor",
+            confirmed_at: "2026-01-02T00:00:00Z",
+          }),
+          coreAnchorConfirmed: true,
+          confirmDecision: null,
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const humanDecisionSection = screen
+      .getByText("Human Decision and Provenance")
+      .closest("[data-evidence-layer]") as HTMLElement;
+    expect(
+      within(humanDecisionSection).getByText("CG Supervisor"),
+    ).toBeVisible();
+    expect(
+      within(humanDecisionSection).queryByText("cg_supervisor"),
+    ).not.toBeInTheDocument();
+    // No real Decision record was found -- the outcome statement must
+    // not be fabricated from the Anchor's own confirmed-by/at fields.
+    expect(
+      within(humanDecisionSection).queryByText(
+        /Confirmed Execution Anchor revision/,
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a human-readable supersession note when the confirmed revision supersedes an earlier one", () => {
+    render(
+      <ExecutionPage
+        taskId="t1"
+        data={data({
+          confirmedRevision: revision({
+            status: "confirmed",
+            revision_number: 2,
+            confirmed_by_human_role: "cg_supervisor",
+            confirmed_at: "2026-01-02T00:00:00Z",
+            supersedes_revision_id: "r-old",
+          }),
+          coreAnchorConfirmed: true,
+          confirmDecision: decision(),
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const humanDecisionSection = screen
+      .getByText("Human Decision and Provenance")
+      .closest("[data-evidence-layer]") as HTMLElement;
+    expect(
+      within(humanDecisionSection).getByText(
+        "Confirmed Execution Anchor revision 2",
+      ),
+    ).toBeVisible();
+    expect(
+      within(humanDecisionSection).getByText(
+        "Supersedes a previous Execution Anchor revision.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("uses the state-dependent action heading: Start Execution Anchor when none exists, Revise Execution Anchor once one is confirmed", () => {
+    const { rerender } = render(
+      <ExecutionPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Start Execution Anchor")).toBeVisible();
+    expect(
+      screen.queryByText("Revise Execution Anchor"),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <ExecutionPage
+        taskId="t1"
+        data={data({
+          confirmedRevision: revision({ status: "confirmed" }),
+          coreAnchorConfirmed: true,
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Revise Execution Anchor")).toBeVisible();
+    expect(
+      screen.queryByText("Start Execution Anchor"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("still shows Draft Execution Anchor, unchanged, when a draft is in progress regardless of confirmed state", () => {
+    render(
+      <ExecutionPage
+        taskId="t1"
+        data={data({
+          confirmedRevision: revision({ status: "confirmed" }),
+          draftRevision: revision({ id: "r2", status: "draft" }),
+          coreAnchorConfirmed: true,
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Draft Execution Anchor")).toBeVisible();
+    expect(
+      screen.queryByText("Start Execution Anchor"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Revise Execution Anchor"),
     ).not.toBeInTheDocument();
   });
 });

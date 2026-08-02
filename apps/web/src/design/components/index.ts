@@ -11,3 +11,7 @@ export { LoadingSkeleton } from "./LoadingSkeleton";
 export { ConfirmationDialog } from "./ConfirmationDialog";
 export { WorkingDirectionSection } from "./WorkingDirectionSection";
 export { DetailedContext } from "./DetailedContext";
+export {
+  EvidenceLayerSection,
+  type EvidenceLayerKind,
+} from "./EvidenceLayerSection";

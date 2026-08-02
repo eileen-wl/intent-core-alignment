@@ -5,9 +5,15 @@ import {
   Breadcrumbs,
   ContextTabs,
   ErrorState,
+  EvidenceLayerSection,
   MetadataRow,
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
+import {
+  decisionOutcomeStatement,
+  decisionProvenanceItems,
+} from "@/lib/decisionProvenance";
+import { humanRoleLabel } from "@/lib/humanRoleLabel";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import type { ExecutionWorkspaceData } from "@/features/cg/execution-workspace/data";
 import { TaskContextHeader } from "../TaskContextHeader";
@@ -149,59 +155,92 @@ export function ExecutionPage({
             ]}
           />
 
-          <section className={styles.section}>
-            <h3 className={styles.sectionHeading}>
-              Active Core Anchor (read-only)
-            </h3>
-            <p className={styles.contextText}>
-              {data.coreAnchorConfirmed
-                ? "A confirmed Core Anchor exists for this Task's Shot."
-                : "No Core Anchor is confirmed for this Shot yet."}
-            </p>
-          </section>
-
-          {data.confirmedRevision && (
+          <EvidenceLayerSection kind="production-evidence">
             <section className={styles.section}>
               <h3 className={styles.sectionHeading}>
-                Confirmed Execution Anchor (Revision{" "}
-                {data.confirmedRevision.revision_number})
+                Active Core Anchor (read-only)
               </h3>
-              <MetadataRow
-                items={[
-                  {
-                    label: "Confirmed by",
-                    value:
-                      data.confirmedRevision.confirmed_by_human_role ??
-                      "Unknown",
-                  },
-                  {
-                    label: "Confirmed at",
-                    value: data.confirmedRevision.confirmed_at
-                      ? new Date(
-                          data.confirmedRevision.confirmed_at,
-                        ).toLocaleString()
-                      : "Unknown",
-                  },
-                ]}
-              />
-              <dl className={styles.readOnlyFields}>
-                {contentFieldRows(data.confirmedRevision).map(
-                  ({ key, label, value }) => (
-                    <div key={key}>
-                      <dt>{label}</dt>
-                      <dd>{value}</dd>
-                    </div>
-                  ),
-                )}
-              </dl>
+              <p className={styles.contextText}>
+                {data.coreAnchorConfirmed
+                  ? "A confirmed Core Anchor exists for this Task's Shot."
+                  : "No Core Anchor is confirmed for this Shot yet."}
+              </p>
             </section>
+
+            {data.confirmedRevision && (
+              <section className={styles.section}>
+                <h3 className={styles.sectionHeading}>
+                  Confirmed Execution Anchor (Revision{" "}
+                  {data.confirmedRevision.revision_number})
+                </h3>
+                <dl className={styles.readOnlyFields}>
+                  {contentFieldRows(data.confirmedRevision).map(
+                    ({ key, label, value }) => (
+                      <div key={key}>
+                        <dt>{label}</dt>
+                        <dd>{value}</dd>
+                      </div>
+                    ),
+                  )}
+                </dl>
+              </section>
+            )}
+          </EvidenceLayerSection>
+
+          {data.confirmedRevision && (
+            <EvidenceLayerSection kind="human-decision">
+              {data.confirmDecision ? (
+                <>
+                  <p className={styles.contextText}>
+                    {decisionOutcomeStatement(
+                      data.confirmDecision,
+                      data.confirmedRevision.revision_number,
+                    )}
+                  </p>
+                  <MetadataRow
+                    items={decisionProvenanceItems(data.confirmDecision)}
+                  />
+                </>
+              ) : (
+                // Owner-validation correction: no real Decision record
+                // was found for this confirmed revision -- state the
+                // revision's own recorded confirmation fields honestly
+                // rather than inferring a Decision outcome that was
+                // never actually loaded.
+                <MetadataRow
+                  items={[
+                    {
+                      label: "Confirmed by",
+                      value: humanRoleLabel(
+                        data.confirmedRevision.confirmed_by_human_role,
+                      ),
+                    },
+                    {
+                      label: "Confirmed at",
+                      value: data.confirmedRevision.confirmed_at
+                        ? new Date(
+                            data.confirmedRevision.confirmed_at,
+                          ).toLocaleString()
+                        : "Unknown",
+                    },
+                  ]}
+                />
+              )}
+              {data.confirmedRevision.supersedes_revision_id && (
+                <p className={styles.contextText}>
+                  Supersedes a previous Execution Anchor revision.
+                </p>
+              )}
+            </EvidenceLayerSection>
           )}
 
           <section className={styles.section}>
             <h3 className={styles.sectionHeading}>
               {data.draftRevision
                 ? "Draft Execution Anchor"
-                : "Start Execution Anchor"}
+                : data.confirmedRevision
+                  ? "Revise Execution Anchor"
+                  : "Start Execution Anchor"}
             </h3>
             <ExecutionAnchorEditor
               taskId={taskId}

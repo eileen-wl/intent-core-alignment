@@ -5,7 +5,7 @@ import type {
   VersionRead,
   VfxInboxItemRead,
 } from "@intent-core/contracts";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -299,6 +299,134 @@ describe("AlignmentWorkspacePage", () => {
     expect(screen.getByText(/Revision 1/)).toBeVisible();
     expect(screen.getByText("Restraint reads clearly.")).toBeVisible();
     expect(screen.getByText("Aligned findings (1)")).toBeVisible();
+  });
+
+  it("groups the assessed Version/Core Anchor under Production Evidence, findings under Agent Interpretation, and shows an honest Human Decision state (Step 9B-2)", () => {
+    render(
+      <AlignmentWorkspacePage
+        shotId="s1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const evidenceHeading = screen.getByText("Production Evidence");
+    const agentHeading = screen.getByText("Agent Interpretation");
+    const humanDecisionHeading = screen.getByText(
+      "Human Decision and Provenance",
+    );
+    expect(evidenceHeading).toBeVisible();
+    expect(agentHeading).toBeVisible();
+    expect(humanDecisionHeading).toBeVisible();
+
+    const evidenceSection = evidenceHeading.closest(
+      "[data-evidence-layer]",
+    ) as HTMLElement;
+    expect(
+      within(evidenceSection).getAllByText("SH010_v001 (v1)").length,
+    ).toBeGreaterThan(0);
+    expect(within(evidenceSection).getByText(/Revision 1/)).toBeVisible();
+
+    const agentSection = agentHeading.closest(
+      "[data-evidence-layer]",
+    ) as HTMLElement;
+    expect(
+      within(agentSection).getByText("Aligned findings (1)"),
+    ).toBeVisible();
+
+    // Owner-validation correction: the CrossRoleAssessment executive
+    // summary card must never render inside Production Evidence -- it
+    // is Agent Interpretation, even though it references a real
+    // Version/Core Anchor.
+    expect(
+      within(evidenceSection).queryByText(
+        "The Version stays close to the confirmed Core Anchor.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      within(agentSection).getByText(
+        "The Version stays close to the confirmed Core Anchor.",
+      ),
+    ).toBeVisible();
+    expect(within(agentSection).getByText("AI interpretation")).toBeVisible();
+
+    // No Decision object is attached to a CrossRoleAssessment -- the
+    // Human Decision layer states this honestly rather than
+    // manufacturing one from the Agent's findings.
+    const humanDecisionSection = humanDecisionHeading.closest(
+      "[data-evidence-layer]",
+    ) as HTMLElement;
+    expect(
+      within(humanDecisionSection).getByText(
+        /No Human Decision has been recorded directly against this assessment/,
+      ),
+    ).toBeVisible();
+  });
+
+  it("keeps human-review-required as a pending action inside Agent Interpretation's Recommended next action, never inside Human Decision and Provenance (Step 9B-2 correction)", () => {
+    render(
+      <AlignmentWorkspacePage
+        shotId="s1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const agentSection = screen
+      .getByText("Agent Interpretation")
+      .closest("[data-evidence-layer]") as HTMLElement;
+    const humanDecisionSection = screen
+      .getByText("Human Decision and Provenance")
+      .closest("[data-evidence-layer]") as HTMLElement;
+
+    expect(
+      within(agentSection).getByText("Human review required"),
+    ).toBeVisible();
+    expect(
+      within(humanDecisionSection).queryByText("Human review required"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("formats a Finding's Affects list as human-readable role labels, never raw HumanRole enums (Step 9B-2 correction)", () => {
+    render(
+      <AlignmentWorkspacePage
+        shotId="s1"
+        data={data({
+          assessments: [
+            assessment({
+              assessment_output: {
+                executive_summary: "Restraint reads clearly across roles.",
+                shared_intent_read: finding(),
+                role_perspectives: [],
+                agreements: [
+                  finding({
+                    summary: "Restraint reads clearly.",
+                    affected_roles: [
+                      "vfx_supervisor",
+                      "cg_supervisor",
+                      "artist",
+                    ],
+                  }),
+                ],
+                cross_role_tensions: [],
+                local_optimum_risks: [],
+                unresolved_dependencies: [],
+                human_coordination_priorities: [],
+                re_anchor_proposal: null,
+                evidence_gaps: [],
+              },
+            }),
+          ],
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("Affects: VFX Supervisor, CG Supervisor, Artist"),
+    ).toBeVisible();
+    expect(screen.queryByText(/vfx_supervisor/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/cg_supervisor/)).not.toBeInTheDocument();
   });
 
   it("never fabricates a percentage or numeric alignment score", () => {

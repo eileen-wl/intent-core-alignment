@@ -6,6 +6,7 @@ import {
   ContextTabs,
   EmptyState,
   ErrorState,
+  EvidenceLayerSection,
   FtrackLinkageBadge,
   MetadataRow,
 } from "@/design";
@@ -151,133 +152,188 @@ export function CurrentVersionPage({
                           ? ` (v${data.selectedVersion.version_number})`
                           : ""}
                       </h3>
-                      <MetadataRow
-                        items={[
-                          {
-                            label: "Created",
-                            value: `${new Date(data.selectedVersion.created_at).toLocaleString()} · ${getAuthorDisplayText(
-                              data.selectedVersion,
-                            )}`,
-                          },
-                          {
-                            label: "Source",
-                            value: data.selectedVersion.source,
-                          },
-                          { label: "Task", value: data.item.task_name },
-                          { label: "Shot", value: data.item.shot_name },
-                        ]}
-                      />
-
-                      <section className={styles.section}>
-                        <h4 className={styles.sectionHeading}>
-                          Active Core Anchor (read-only)
-                        </h4>
-                        <p className={styles.contextText}>
-                          {data.coreAnchorRevision?.core_summary ??
-                            "No Core Anchor is confirmed for this Shot yet."}
-                        </p>
-                      </section>
-
-                      <section className={styles.section}>
-                        <h4 className={styles.sectionHeading}>
-                          Active Execution Anchor (read-only)
-                        </h4>
-                        <p className={styles.contextText}>
-                          {data.executionAnchorRevision?.technical_boundaries ??
-                            "No Execution Anchor is confirmed for this Task yet."}
-                        </p>
-                      </section>
-
-                      <section className={styles.section}>
-                        <h4 className={styles.sectionHeading}>
-                          Applicable Artist guidance
-                        </h4>
-                        {data.guidances.length === 0 ? (
-                          <p className={styles.empty}>
-                            No Artist guidance has been generated for this
-                            Version yet.
-                          </p>
-                        ) : (
-                          <p className={styles.contextText}>
+                      <EvidenceLayerSection kind="production-evidence">
+                        <MetadataRow
+                          items={[
                             {
-                              data.guidances[0].guidance_output
-                                .executive_summary
-                            }
-                          </p>
-                        )}
-                        <GenerateArtistGuidanceButton
-                          taskId={taskId}
-                          versionId={data.selectedVersion.id}
-                          label={
-                            data.guidances.length > 0
-                              ? "Regenerate guidance"
-                              : "Generate guidance"
-                          }
+                              label: "Created",
+                              value: `${new Date(data.selectedVersion.created_at).toLocaleString()} · ${getAuthorDisplayText(
+                                data.selectedVersion,
+                              )}`,
+                            },
+                            {
+                              label: "Source",
+                              value: data.selectedVersion.source,
+                            },
+                            { label: "Task", value: data.item.task_name },
+                            { label: "Shot", value: data.item.shot_name },
+                          ]}
                         />
-                      </section>
 
-                      <section className={styles.section}>
-                        <h4 className={styles.sectionHeading}>Review notes</h4>
-                        {data.reviewNotes.length === 0 ? (
-                          <p className={styles.empty}>
-                            No Review Notes have been recorded for this
-                            Production Version yet.
-                          </p>
-                        ) : (
-                          <ul className={styles.noteList}>
-                            {data.reviewNotes.map((note) => (
-                              <li key={note.id} className={styles.note}>
-                                <p className={styles.noteContent}>
-                                  {note.content}
-                                </p>
-                                <p className={styles.noteMeta}>
-                                  {getAuthorDisplayText(note)} ·{" "}
-                                  {new Date(note.created_at).toLocaleString()}
-                                </p>
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </section>
-
-                      <section className={styles.section}>
-                        <h4 className={styles.sectionHeading}>
-                          CG Supervisor reviews
-                        </h4>
-                        {data.cgSupervisorReviews.length === 0 ? (
-                          <p className={styles.empty}>
-                            No CG Supervisor review has been generated for the
-                            active Execution Anchor yet.
-                          </p>
-                        ) : (
+                        <section className={styles.section}>
+                          <h4 className={styles.sectionHeading}>
+                            Active Core Anchor (read-only)
+                          </h4>
                           <p className={styles.contextText}>
-                            {data.cgSupervisorReviews.length} CG Supervisor{" "}
-                            {data.cgSupervisorReviews.length === 1
-                              ? "review"
-                              : "reviews"}{" "}
-                            recorded.
+                            {data.coreAnchorRevision?.core_summary ??
+                              "No Core Anchor is confirmed for this Shot yet."}
                           </p>
-                        )}
-                      </section>
+                        </section>
 
-                      <section className={styles.section}>
-                        <h4 className={styles.sectionHeading}>
-                          Cross-role Assessments
-                        </h4>
-                        {data.crossRoleAssessments.length === 0 ? (
-                          <p className={styles.empty}>
-                            No Cross-role Assessment involves this Version yet.
-                          </p>
-                        ) : (
+                        <section className={styles.section}>
+                          <h4 className={styles.sectionHeading}>
+                            Active Execution Anchor (read-only)
+                          </h4>
                           <p className={styles.contextText}>
-                            {data.crossRoleAssessments.length} Cross-role{" "}
-                            {data.crossRoleAssessments.length === 1
-                              ? "Assessment"
-                              : "Assessments"}{" "}
-                            recorded.
+                            {data.executionAnchorRevision
+                              ?.technical_boundaries ??
+                              "No Execution Anchor is confirmed for this Task yet."}
                           </p>
-                        )}
-                      </section>
+                        </section>
+
+                        <section className={styles.section}>
+                          <h4 className={styles.sectionHeading}>
+                            Review notes
+                          </h4>
+                          {data.reviewNotes.length === 0 ? (
+                            <p className={styles.empty}>
+                              No Review Notes have been recorded for this
+                              Production Version yet.
+                            </p>
+                          ) : (
+                            <ul className={styles.noteList}>
+                              {data.reviewNotes.map((note) => (
+                                <li key={note.id} className={styles.note}>
+                                  <p className={styles.noteContent}>
+                                    {note.content}
+                                  </p>
+                                  <p className={styles.noteMeta}>
+                                    {getAuthorDisplayText(note)} ·{" "}
+                                    {new Date(note.created_at).toLocaleString()}
+                                  </p>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </section>
+                      </EvidenceLayerSection>
+
+                      <EvidenceLayerSection kind="agent-interpretation">
+                        <section className={styles.section}>
+                          <h4 className={styles.sectionHeading}>
+                            Applicable Artist guidance
+                          </h4>
+                          {data.guidances.length === 0 ? (
+                            <p className={styles.empty}>
+                              No Artist guidance has been generated for this
+                              Version yet.
+                            </p>
+                          ) : (
+                            <p className={styles.contextText}>
+                              {
+                                data.guidances[0].guidance_output
+                                  .executive_summary
+                              }
+                            </p>
+                          )}
+                          <GenerateArtistGuidanceButton
+                            taskId={taskId}
+                            versionId={data.selectedVersion.id}
+                            label={
+                              data.guidances.length > 0
+                                ? "Regenerate guidance"
+                                : "Generate guidance"
+                            }
+                          />
+                        </section>
+
+                        <section className={styles.section}>
+                          <h4 className={styles.sectionHeading}>
+                            CG Supervisor reviews
+                          </h4>
+                          {data.cgSupervisorReviews.length === 0 ? (
+                            <p className={styles.empty}>
+                              No CG Supervisor review has been generated for the
+                              active Execution Anchor yet.
+                            </p>
+                          ) : (
+                            <p className={styles.contextText}>
+                              {data.cgSupervisorReviews.length} CG Supervisor{" "}
+                              {data.cgSupervisorReviews.length === 1
+                                ? "review"
+                                : "reviews"}{" "}
+                              recorded.
+                            </p>
+                          )}
+                        </section>
+
+                        <section className={styles.section}>
+                          <h4 className={styles.sectionHeading}>
+                            Cross-role Assessments
+                          </h4>
+                          {data.crossRoleAssessments.length === 0 ? (
+                            <p className={styles.empty}>
+                              No Cross-role Assessment involves this Version
+                              yet.
+                            </p>
+                          ) : (
+                            <p className={styles.contextText}>
+                              {data.crossRoleAssessments.length} Cross-role{" "}
+                              {data.crossRoleAssessments.length === 1
+                                ? "Assessment"
+                                : "Assessments"}{" "}
+                              recorded.
+                            </p>
+                          )}
+                        </section>
+                      </EvidenceLayerSection>
+
+                      <EvidenceLayerSection kind="human-decision">
+                        <p className={styles.contextText}>
+                          Confirmed authority references
+                        </p>
+
+                        <section className={styles.section}>
+                          <h4 className={styles.sectionHeading}>Core Anchor</h4>
+                          {data.coreAnchorRevision ? (
+                            <>
+                              <p className={styles.contextText}>
+                                Confirmed under VFX Supervisor authority.
+                              </p>
+                              <p className={styles.empty}>
+                                Detailed Decision provenance is not exposed in
+                                the Artist role view.
+                              </p>
+                            </>
+                          ) : (
+                            <p className={styles.contextText}>
+                              No Core Anchor is confirmed for this Shot yet.
+                            </p>
+                          )}
+                        </section>
+
+                        <section className={styles.section}>
+                          <h4 className={styles.sectionHeading}>
+                            Execution Anchor
+                          </h4>
+                          {data.executionAnchorRevision ? (
+                            <>
+                              <p className={styles.contextText}>
+                                Confirmed under CG Supervisor authority.
+                              </p>
+                              <p className={styles.empty}>
+                                Detailed Decision provenance is not exposed in
+                                the Artist role view.
+                              </p>
+                            </>
+                          ) : (
+                            <p className={styles.contextText}>
+                              No Execution Anchor is confirmed for this Task
+                              yet.
+                            </p>
+                          )}
+                        </section>
+                      </EvidenceLayerSection>
                     </>
                   )}
                 </div>

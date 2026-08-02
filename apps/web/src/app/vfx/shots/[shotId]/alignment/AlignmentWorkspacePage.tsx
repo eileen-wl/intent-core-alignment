@@ -15,9 +15,11 @@ import {
   ContextTabs,
   EmptyState,
   ErrorState,
+  EvidenceLayerSection,
   MetadataRow,
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
+import { humanRoleLabel } from "@/lib/humanRoleLabel";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import type { AlignmentWorkspaceData } from "@/features/vfx/alignment-workspace/data";
 import { ProductionContextHeader } from "../../ProductionContextHeader";
@@ -67,7 +69,7 @@ function FindingGroup({
             </div>
             <p className={styles.findingWhy}>{finding.why_it_matters}</p>
             <p className={styles.findingRoles}>
-              Affects: {finding.affected_roles.join(", ")}
+              Affects: {finding.affected_roles.map(humanRoleLabel).join(", ")}
             </p>
           </li>
         ))}
@@ -200,16 +202,7 @@ export function AlignmentWorkspacePage({
             )
           ) : (
             <>
-              <section className={styles.summaryCard}>
-                <div className={styles.summaryHeader}>
-                  <AuthorityLabel variant="ai-interpretation" />
-                  {current.intent_signal.attention_level !== "low" && (
-                    <AuthorityLabel variant="human-review-required" />
-                  )}
-                </div>
-                <p className={styles.executiveSummary}>
-                  {current.assessment_output.executive_summary}
-                </p>
+              <EvidenceLayerSection kind="production-evidence">
                 <MetadataRow
                   items={[
                     {
@@ -224,116 +217,145 @@ export function AlignmentWorkspacePage({
                         data.revisionsById.get(current.core_anchor_revision_id),
                       ),
                     },
-                    {
-                      label: "Assessed at",
-                      value: new Date(current.created_at).toLocaleString(),
-                    },
-                    {
-                      label: "Assessor",
-                      value: "Core Agent · cross-role assessment",
-                    },
                   ]}
                 />
-              </section>
+              </EvidenceLayerSection>
 
-              <section className={styles.findingsSection}>
-                <h2 className={styles.sectionTitle}>Findings</h2>
-                <FindingGroup
-                  title="Aligned findings"
-                  findings={current.assessment_output.agreements}
-                />
-                <FindingGroup
-                  title="Cross-role tensions"
-                  findings={current.assessment_output.cross_role_tensions}
-                />
-                <FindingGroup
-                  title="Local-optimum risks"
-                  findings={current.assessment_output.local_optimum_risks}
-                />
-                <FindingGroup
-                  title="Open questions"
-                  findings={current.assessment_output.unresolved_dependencies}
-                />
-                <FindingGroup
-                  title="Advisory recommendations"
-                  findings={
-                    current.assessment_output.human_coordination_priorities
-                  }
-                />
-
-                {(() => {
-                  const revision = data.revisionsById.get(
-                    current.core_anchor_revision_id,
-                  );
-                  const driftRisks = revision?.drift_risks ?? [];
-                  if (driftRisks.length === 0) return null;
-                  return (
-                    <section className={styles.findingGroup}>
-                      <h3 className={styles.findingGroupTitle}>
-                        Drift risks on the active Core Anchor (
-                        {driftRisks.length})
-                      </h3>
-                      <ul className={styles.plainList}>
-                        {driftRisks.map((risk) => (
-                          <li key={risk.id}>{risk.description}</li>
-                        ))}
-                      </ul>
-                    </section>
-                  );
-                })()}
-              </section>
-
-              <section className={styles.nextActionSection}>
-                <h2 className={styles.sectionTitle}>Recommended next action</h2>
-                <p className={styles.nextActionText}>
-                  {current.intent_signal.signal_output.summary}
-                </p>
-                <p className={styles.nextActionMeta} role="status">
-                  {current.intent_signal.attention_level === "low"
-                    ? "No human review is required based on this assessment."
-                    : "Human review is required -- the VFX Supervisor should interpret these findings."}
-                </p>
-
-                {current.re_anchor_proposal ? (
-                  <div className={styles.proposalCard}>
-                    <AuthorityLabel variant="ai-proposal" />
-                    <p className={styles.proposalReason}>
-                      {
-                        current.re_anchor_proposal.proposal_output
-                          .reason_for_consideration
-                      }
-                    </p>
-                    <Link
-                      href={`/vfx/shots/${shotId}/intent`}
-                      className={styles.reviewProposalLink}
-                    >
-                      Review proposal →
-                    </Link>
+              <EvidenceLayerSection kind="agent-interpretation">
+                <section className={styles.summaryCard}>
+                  <div className={styles.summaryHeader}>
+                    <AuthorityLabel variant="ai-interpretation" />
                   </div>
-                ) : (
-                  <p className={styles.empty}>
-                    No Re-anchor Proposal exists for the current assessment.
+                  <p className={styles.executiveSummary}>
+                    {current.assessment_output.executive_summary}
                   </p>
-                )}
-              </section>
-
-              {history.length > 0 && (
-                <section className={styles.historySection}>
-                  <h2 className={styles.sectionTitle}>Assessment history</h2>
-                  <ul className={styles.historyList}>
-                    {history.map((assessment) => (
-                      <li key={assessment.id} className={styles.historyItem}>
-                        <span className={styles.historyTime}>
-                          {new Date(assessment.created_at).toLocaleString()}
-                        </span>
-                        <span className={styles.historySummary}>
-                          {assessment.assessment_output.executive_summary}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
+                  <MetadataRow
+                    items={[
+                      {
+                        label: "Assessed at",
+                        value: new Date(current.created_at).toLocaleString(),
+                      },
+                      {
+                        label: "Assessor",
+                        value: "Core Agent · cross-role assessment",
+                      },
+                    ]}
+                  />
                 </section>
-              )}
+
+                <section className={styles.findingsSection}>
+                  <h2 className={styles.sectionTitle}>Findings</h2>
+                  <FindingGroup
+                    title="Aligned findings"
+                    findings={current.assessment_output.agreements}
+                  />
+                  <FindingGroup
+                    title="Cross-role tensions"
+                    findings={current.assessment_output.cross_role_tensions}
+                  />
+                  <FindingGroup
+                    title="Local-optimum risks"
+                    findings={current.assessment_output.local_optimum_risks}
+                  />
+                  <FindingGroup
+                    title="Open questions"
+                    findings={current.assessment_output.unresolved_dependencies}
+                  />
+                  <FindingGroup
+                    title="Advisory recommendations"
+                    findings={
+                      current.assessment_output.human_coordination_priorities
+                    }
+                  />
+
+                  {(() => {
+                    const revision = data.revisionsById.get(
+                      current.core_anchor_revision_id,
+                    );
+                    const driftRisks = revision?.drift_risks ?? [];
+                    if (driftRisks.length === 0) return null;
+                    return (
+                      <section className={styles.findingGroup}>
+                        <h3 className={styles.findingGroupTitle}>
+                          Drift risks on the active Core Anchor (
+                          {driftRisks.length})
+                        </h3>
+                        <ul className={styles.plainList}>
+                          {driftRisks.map((risk) => (
+                            <li key={risk.id}>{risk.description}</li>
+                          ))}
+                        </ul>
+                      </section>
+                    );
+                  })()}
+                </section>
+
+                <section className={styles.nextActionSection}>
+                  <h2 className={styles.sectionTitle}>
+                    Recommended next action
+                  </h2>
+                  {current.intent_signal.attention_level !== "low" && (
+                    <AuthorityLabel variant="human-review-required" />
+                  )}
+                  <p className={styles.nextActionText}>
+                    {current.intent_signal.signal_output.summary}
+                  </p>
+                  <p className={styles.nextActionMeta} role="status">
+                    {current.intent_signal.attention_level === "low"
+                      ? "No human review is required based on this assessment."
+                      : "Human review is required -- the VFX Supervisor should interpret these findings."}
+                  </p>
+
+                  {current.re_anchor_proposal ? (
+                    <div className={styles.proposalCard}>
+                      <AuthorityLabel variant="ai-proposal" />
+                      <p className={styles.proposalReason}>
+                        {
+                          current.re_anchor_proposal.proposal_output
+                            .reason_for_consideration
+                        }
+                      </p>
+                      <Link
+                        href={`/vfx/shots/${shotId}/intent`}
+                        className={styles.reviewProposalLink}
+                      >
+                        Review proposal →
+                      </Link>
+                    </div>
+                  ) : (
+                    <p className={styles.empty}>
+                      No Re-anchor Proposal exists for the current assessment.
+                    </p>
+                  )}
+                </section>
+
+                {history.length > 0 && (
+                  <section className={styles.historySection}>
+                    <h2 className={styles.sectionTitle}>Assessment history</h2>
+                    <ul className={styles.historyList}>
+                      {history.map((assessment) => (
+                        <li key={assessment.id} className={styles.historyItem}>
+                          <span className={styles.historyTime}>
+                            {new Date(assessment.created_at).toLocaleString()}
+                          </span>
+                          <span className={styles.historySummary}>
+                            {assessment.assessment_output.executive_summary}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+              </EvidenceLayerSection>
+
+              <EvidenceLayerSection kind="human-decision">
+                <p className={styles.empty}>
+                  No Human Decision has been recorded directly against this
+                  assessment. A Re-anchor Proposal, if accepted, is confirmed or
+                  rejected as a new Core Anchor revision on the{" "}
+                  <Link href={`/vfx/shots/${shotId}/intent`}>Intent page</Link>.
+                </p>
+              </EvidenceLayerSection>
             </>
           )}
         </>

@@ -4,7 +4,7 @@ import type {
   ReviewNoteRead,
   VersionRead,
 } from "@intent-core/contracts";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -263,7 +263,7 @@ describe("CurrentVersionPage", () => {
     expect(screen.queryByText("ext-42")).not.toBeInTheDocument();
   });
 
-  it("keeps the manual Human-role author display unchanged when no ftrack provenance exists", () => {
+  it("shows the manual Human-role author as a human-readable label when no ftrack provenance exists (Step 9B-2 correction)", () => {
     render(
       <CurrentVersionPage
         taskId="t1"
@@ -272,7 +272,8 @@ describe("CurrentVersionPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByText(/· artist$/)).toBeVisible();
+    expect(screen.getByText(/· Artist$/)).toBeVisible();
+    expect(screen.queryByText(/· artist$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Source author:/)).not.toBeInTheDocument();
   });
 
@@ -322,6 +323,188 @@ describe("CurrentVersionPage", () => {
       screen.getByText("Active Execution Anchor (read-only)"),
     ).toBeVisible();
     expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
+  });
+
+  it("groups Version/Anchor references under Production Evidence, Artist guidance under Agent Interpretation, and confirmed-Anchor authority references under Human Decision without duplicating the full Working Direction (Step 9B-2)", () => {
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const evidenceHeading = screen.getByText("Production Evidence");
+    const agentHeading = screen.getByText("Agent Interpretation");
+    const humanDecisionHeading = screen.getByText(
+      "Human Decision and Provenance",
+    );
+    expect(evidenceHeading).toBeVisible();
+    expect(agentHeading).toBeVisible();
+    expect(humanDecisionHeading).toBeVisible();
+
+    const agentSection = agentHeading.closest(
+      "[data-evidence-layer]",
+    ) as HTMLElement;
+    expect(
+      within(agentSection).getByText("Applicable Artist guidance"),
+    ).toBeVisible();
+
+    const humanDecisionSection = humanDecisionHeading.closest(
+      "[data-evidence-layer]",
+    ) as HTMLElement;
+    expect(
+      within(humanDecisionSection).getByText("Confirmed authority references"),
+    ).toBeVisible();
+    expect(
+      within(humanDecisionSection).getByText(
+        "No Core Anchor is confirmed for this Shot yet.",
+      ),
+    ).toBeVisible();
+    expect(
+      within(humanDecisionSection).getByText(
+        "No Execution Anchor is confirmed for this Task yet.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("shows only a confirmed-authority reference for the Artist role, never Decision actor/rationale/timestamp detail, and no confirm/reject/edit control (Step 9B-2 correction)", () => {
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data({
+          coreAnchorRevision: {
+            id: "ca1",
+            core_anchor_id: "cap",
+            revision_number: 1,
+            status: "confirmed",
+            shot_objective: null,
+            emotional_tone: null,
+            visual_focus: null,
+            rhythm_intensity: null,
+            character_relationship: null,
+            narrative_priority: null,
+            core_summary: "A restrained dusk confrontation.",
+            created_by_actor_kind: "human",
+            created_by_actor_id: "vfx-1",
+            created_by_human_role: "vfx_supervisor",
+            created_by_agent_type: null,
+            created_by_agent_run_id: null,
+            context_snapshot_id: null,
+            confirmed_by_human_role: "vfx_supervisor",
+            confirmed_by_actor_id: "vfx-1",
+            confirmed_at: "2026-01-01T00:00:00Z",
+            supersedes_revision_id: null,
+            source_intent_decomposition_id: null,
+            created_at: "2026-01-01T00:00:00Z",
+            updated_at: "2026-01-01T00:00:00Z",
+            constraints: [],
+            variation_zones: [],
+            drift_risks: [],
+            references: [],
+            open_questions: [],
+          },
+          executionAnchorRevision: {
+            id: "ea1",
+            execution_anchor_id: "ea",
+            core_anchor_revision_id: "ca1",
+            revision_number: 1,
+            status: "confirmed",
+            technical_boundaries: "24fps, no motion blur.",
+            parameter_ranges: null,
+            delivery_conditions: null,
+            production_ready_criteria: null,
+            downstream_dependencies: null,
+            publish_requirements: null,
+            allowed_refinements: null,
+            escalation_conditions: null,
+            created_by_actor_kind: "human",
+            created_by_actor_id: "cg-1",
+            created_by_human_role: "cg_supervisor",
+            created_by_agent_type: null,
+            created_by_agent_run_id: null,
+            confirmed_by_human_role: "cg_supervisor",
+            confirmed_by_actor_id: "cg-1",
+            confirmed_at: "2026-01-02T00:00:00Z",
+            supersedes_revision_id: null,
+            created_at: "2026-01-02T00:00:00Z",
+            updated_at: "2026-01-02T00:00:00Z",
+          },
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const humanDecisionSection = screen
+      .getByText("Human Decision and Provenance")
+      .closest("[data-evidence-layer]") as HTMLElement;
+
+    expect(
+      within(humanDecisionSection).getByText(
+        "Confirmed under VFX Supervisor authority.",
+      ),
+    ).toBeVisible();
+    expect(
+      within(humanDecisionSection).getByText(
+        "Confirmed under CG Supervisor authority.",
+      ),
+    ).toBeVisible();
+    expect(
+      within(humanDecisionSection).getAllByText(
+        "Detailed Decision provenance is not exposed in the Artist role view.",
+      ).length,
+    ).toBe(2);
+
+    // No Decision actor/rationale/decided-at detail is exposed to Artist
+    // -- unlike CG Execution's Human Decision section, none of these
+    // real Decision-provenance labels ever render here.
+    expect(
+      within(humanDecisionSection).queryByText("Actor role"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(humanDecisionSection).queryByText("Rationale"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(humanDecisionSection).queryByText("Decided at"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(humanDecisionSection).queryByText("2026-01-01T00:00:00Z"),
+    ).not.toBeInTheDocument();
+
+    // No Anchor confirm/reject/edit control anywhere on the page.
+    expect(
+      screen.queryByRole("button", { name: /confirm/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /reject/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("never describes an unconfirmed Anchor as confirmed under Human Decision and Provenance", () => {
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data({ coreAnchorRevision: null, executionAnchorRevision: null })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const humanDecisionSection = screen
+      .getByText("Human Decision and Provenance")
+      .closest("[data-evidence-layer]") as HTMLElement;
+    expect(
+      within(humanDecisionSection).queryByText(/Confirmed under/),
+    ).not.toBeInTheDocument();
+    expect(
+      within(humanDecisionSection).getByText(
+        "No Core Anchor is confirmed for this Shot yet.",
+      ),
+    ).toBeVisible();
+    expect(
+      within(humanDecisionSection).getByText(
+        "No Execution Anchor is confirmed for this Task yet.",
+      ),
+    ).toBeVisible();
   });
 
   it("honestly shows no CG Supervisor review has been generated yet", () => {

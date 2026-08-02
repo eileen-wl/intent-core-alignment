@@ -8,6 +8,7 @@ import {
   Breadcrumbs,
   ContextTabs,
   ErrorState,
+  EvidenceLayerSection,
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
@@ -173,7 +174,9 @@ export function IntentWorkspacePage({
           )}
 
           {data.evidenceData && (
-            <IntentEvidenceDisclosures data={data.evidenceData} />
+            <EvidenceLayerSection kind="agent-interpretation">
+              <IntentEvidenceDisclosures data={data.evidenceData} />
+            </EvidenceLayerSection>
           )}
 
           {hasRevisionHistory && (

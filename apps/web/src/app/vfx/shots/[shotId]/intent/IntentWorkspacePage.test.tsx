@@ -162,6 +162,64 @@ describe("IntentWorkspacePage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("groups confirmed content under Production Evidence, the Decision under Human Decision and Provenance, and Evidence/Provenance disclosures under Agent Interpretation (Step 9B-2)", () => {
+    const data: IntentWorkspaceData = {
+      item: item(),
+      confirmedRevision: revision(),
+      draftRevision: null,
+      draftHumanGate: null,
+      evidenceData: {
+        evidence: [],
+        run: null,
+        snapshot: null,
+        decompositions: [],
+        reconstructions: [],
+      },
+      previousConfirmedRevision: null,
+      confirmedDecisionRationale: "Matches the director's note on restraint.",
+    };
+    render(
+      <IntentWorkspacePage
+        shotId="s1"
+        data={data}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const evidenceHeading = screen.getByText("Production Evidence");
+    const humanDecisionHeading = screen.getByText(
+      "Human Decision and Provenance",
+    );
+    const agentHeading = screen.getByText("Agent Interpretation");
+    expect(evidenceHeading).toBeVisible();
+    expect(humanDecisionHeading).toBeVisible();
+    expect(agentHeading).toBeVisible();
+
+    // The confirmed Anchor content lives under Production Evidence...
+    const evidenceSection = evidenceHeading.closest(
+      "[data-evidence-layer]",
+    ) as HTMLElement;
+    expect(
+      within(evidenceSection).getByText("A restrained dusk confrontation."),
+    ).toBeVisible();
+
+    // ...while the confirming Decision's rationale lives under Human
+    // Decision and Provenance, not duplicated inside Production Evidence.
+    const humanDecisionSection = humanDecisionHeading.closest(
+      "[data-evidence-layer]",
+    ) as HTMLElement;
+    expect(
+      within(humanDecisionSection).getByText(
+        "Matches the director's note on restraint.",
+      ),
+    ).toBeVisible();
+    expect(
+      within(evidenceSection).queryByText(
+        "Matches the director's note on restraint.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
   it("JUST-CONFIRMED SUCCESS: renders Return to Shot Overview (primary, targets the Shot Overview route) alongside Create new revision (secondary), never as the only action", () => {
     const data: IntentWorkspaceData = {
       item: item(),
