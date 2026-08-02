@@ -26,7 +26,10 @@ function task(
     latest_version_name: null,
     latest_version_number: null,
     latest_version_source: null,
-    current_focus_title: "Nothing requires CG attention right now",
+    latest_version_scope: null,
+    current_focus_type: "none",
+    current_focus_title:
+      "Nothing requires your attention on this Task right now",
     current_focus_actionable: false,
     open_dependency_count: 0,
     top_open_dependency_description: null,

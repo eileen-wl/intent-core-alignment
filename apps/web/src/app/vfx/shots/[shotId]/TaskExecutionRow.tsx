@@ -3,9 +3,11 @@ import type { DepartmentExecutionTaskRead } from "@intent-core/contracts";
 
 import { AuthorityLabel, StatusBadge } from "@/design";
 import {
+  cgTaskFocusLabel,
   executionAnchorStateBadgeStatus,
   executionAnchorStateLabel,
   lastUpdatedSourceLabel,
+  latestVersionScopeLabel,
 } from "@/lib/departmentExecutionOverview";
 import styles from "./TaskExecutionRow.module.css";
 
@@ -16,9 +18,12 @@ function latestVersionText(task: DepartmentExecutionTaskRead): string {
   const numbered = task.latest_version_number
     ? `${task.latest_version_name} (v${task.latest_version_number})`
     : task.latest_version_name;
-  return task.latest_version_source === "ftrack"
-    ? `${numbered} · ftrack-synced`
-    : numbered;
+  const sourced =
+    task.latest_version_source === "ftrack"
+      ? `${numbered} · ftrack-synced`
+      : numbered;
+  const scopeLabel = latestVersionScopeLabel(task.latest_version_scope);
+  return scopeLabel ? `${sourced} — ${scopeLabel}` : sourced;
 }
 
 function dependencyText(task: DepartmentExecutionTaskRead): string {
@@ -39,11 +44,13 @@ function dependencyText(task: DepartmentExecutionTaskRead): string {
 
 /** `/vfx/shots/:shotId` -- one real Task row within the Department
  * Execution Overview (Step 9B-3). Read-only, navigate-only: no CG
- * confirm/reject/generate/resolve control is ever rendered here. The
- * one action links to the existing Shot-wide Versions page (the closest
- * existing permitted VFX context for a Task's own production evidence --
- * no per-Task VFX route exists, and a direct `/cg/tasks/:taskId` link
- * would be blocked by the role guard). */
+ * confirm/reject/generate/resolve control is ever rendered here. The one
+ * action's label is honest about its real, Shot-wide destination
+ * ("View Shot Versions") -- it links to the existing Shot-wide Versions
+ * page (the closest existing permitted VFX context for a Task's own
+ * production evidence; no per-Task VFX route exists, and a direct
+ * `/cg/tasks/:taskId` link would be blocked by the role guard), never
+ * implying a dedicated Task-detail destination. */
 export function TaskExecutionRow({
   shotId,
   task,
@@ -79,7 +86,7 @@ export function TaskExecutionRow({
         <p className={styles.meta}>
           <StatusBadge
             status={task.current_focus_actionable ? "attention" : "neutral"}
-            label={task.current_focus_title}
+            label={cgTaskFocusLabel(task.current_focus_type)}
           />
         </p>
 
@@ -116,7 +123,7 @@ export function TaskExecutionRow({
           href={`/vfx/shots/${shotId}/versions`}
           className={styles.viewDetails}
         >
-          View details →
+          View Shot Versions →
         </Link>
       </div>
     </li>

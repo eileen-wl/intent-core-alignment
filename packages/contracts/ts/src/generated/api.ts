@@ -2733,6 +2733,13 @@ export interface components {
             latest_version_number: number | null;
             /** Latest Version Source */
             latest_version_source: ("manual" | "ftrack") | null;
+            /** Latest Version Scope */
+            latest_version_scope: ("task" | "shot_unscoped") | null;
+            /**
+             * Current Focus Type
+             * @enum {string}
+             */
+            current_focus_type: "execution_anchor_gate_pending" | "execution_anchor_draft_needs_review" | "dependency_needs_attention" | "version_review_available" | "none";
             /** Current Focus Title */
             current_focus_title: string;
             /** Current Focus Actionable */

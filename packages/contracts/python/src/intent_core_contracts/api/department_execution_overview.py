@@ -19,6 +19,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict
 
+from intent_core_contracts.api.cg_inbox import CgCurrentFocusType
 from intent_core_contracts.api.dependencies import TaskDependencySeverity
 from intent_core_contracts.api.production_context import RecordSource
 from intent_core_contracts.api.vfx_inbox import AttentionLevel
@@ -39,6 +40,13 @@ DepartmentExecutionLastUpdatedSource = Literal[
     "escalation",
     "alignment_assessment",
 ]
+
+# Whether the Task's latest Version is genuinely linked to this Task
+# (`Version.task_id == task_id`) or is only a Shot-level manual Version
+# reached through the Step 8C-6/8C-7 nullable-`task_id` fallback -- the
+# two must never be displayed identically (docs/step-9 owner-validation
+# correction). `None` only when there is no latest Version at all.
+DepartmentExecutionVersionScope = Literal["task", "shot_unscoped"]
 
 
 class DepartmentExecutionTaskRead(BaseModel):
@@ -65,15 +73,26 @@ class DepartmentExecutionTaskRead(BaseModel):
     # Version (`Version.task_id IS NULL`) per the existing Step 8C-6/8C-7
     # nullable-task_id compatibility rule -- never a Version explicitly
     # linked to a *different* Task. Ordered by `source_created_at ??
-    # created_at`.
+    # created_at`. `latest_version_scope` distinguishes the two cases --
+    # `"task"` only when `Version.task_id == task_id`, `"shot_unscoped"`
+    # for the nullable-task_id fallback -- so a Shot-level Version is
+    # never presented as if it were explicitly linked to this Task.
     latest_version_id: UUID | None
     latest_version_name: str | None
     latest_version_number: int | None
     latest_version_source: RecordSource | None
+    latest_version_scope: DepartmentExecutionVersionScope | None
 
     # The Task's existing, real, already-tested Current focus (the same
     # derivation CG's own Review Inbox uses, `cg_inbox.current_focus`) --
-    # never re-derived by a second ranking algorithm.
+    # never re-derived by a second ranking algorithm. `current_focus_type`
+    # is the real discriminator so the frontend can render role-explicit,
+    # role-neutral copy instead of CG's own second-person "your" wording
+    # verbatim on a VFX page (docs/step-9 owner-validation correction).
+    # `current_focus_title`/`current_focus_actionable` remain the raw CG
+    # copy for any CG-facing reuse; a VFX-facing surface must not render
+    # `current_focus_title` unqualified.
+    current_focus_type: CgCurrentFocusType
     current_focus_title: str
     current_focus_actionable: bool
 

@@ -131,6 +131,9 @@ export type DepartmentExecutionAnchorState =
   Schemas["DepartmentExecutionTaskRead"]["execution_anchor_state"];
 export type DepartmentExecutionLastUpdatedSource =
   Schemas["DepartmentExecutionTaskRead"]["last_updated_source"];
+export type DepartmentExecutionVersionScope = NonNullable<
+  Schemas["DepartmentExecutionTaskRead"]["latest_version_scope"]
+>;
 export type DepartmentExecutionTaskRead =
   Schemas["DepartmentExecutionTaskRead"];
 export type DepartmentExecutionOverviewRead =

@@ -23,7 +23,10 @@ function task(
     latest_version_name: null,
     latest_version_number: null,
     latest_version_source: null,
-    current_focus_title: "Nothing requires CG attention right now",
+    latest_version_scope: null,
+    current_focus_type: "none",
+    current_focus_title:
+      "Nothing requires your attention on this Task right now",
     current_focus_actionable: false,
     open_dependency_count: 0,
     top_open_dependency_description: null,
@@ -82,10 +85,61 @@ describe("TaskExecutionRow", () => {
           latest_version_name: "SH010_v002",
           latest_version_number: 2,
           latest_version_source: "ftrack",
+          latest_version_scope: "task",
         })}
       />,
     );
     expect(screen.getByText(/SH010_v002 \(v2\) · ftrack-synced/)).toBeVisible();
+  });
+
+  it("labels a Task-linked Version distinctly from a Shot-level fallback Version", () => {
+    const { rerender } = render(
+      <TaskExecutionRow
+        shotId="s1"
+        task={task({
+          latest_version_name: "bc0040_comp_v003",
+          latest_version_number: 3,
+          latest_version_scope: "task",
+        })}
+      />,
+    );
+    expect(screen.getByText(/Task-linked Version/)).toBeVisible();
+    expect(
+      screen.queryByText(/Shot-level Version fallback/),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <TaskExecutionRow
+        shotId="s1"
+        task={task({
+          latest_version_name: "D1_STEP3_VFX_REVIEW_001",
+          latest_version_number: 1,
+          latest_version_scope: "shot_unscoped",
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(
+        /Shot-level Version fallback — not linked to this Task in ICAS/,
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/^Task-linked Version$/)).not.toBeInTheDocument();
+  });
+
+  it("never renders a raw UUID for the latest Version", () => {
+    const versionId = "8a72858d-8d06-47ab-a28d-5ee077f561c8";
+    render(
+      <TaskExecutionRow
+        shotId="s1"
+        task={task({
+          latest_version_id: versionId,
+          latest_version_name: "SH010_v002",
+          latest_version_number: 2,
+          latest_version_scope: "task",
+        })}
+      />,
+    );
+    expect(screen.queryByText(new RegExp(versionId))).not.toBeInTheDocument();
   });
 
   it("shows an honest 'no open dependencies' state, and real open dependency content otherwise", () => {
@@ -154,10 +208,89 @@ describe("TaskExecutionRow", () => {
     ).toBeVisible();
   });
 
-  it("links View details to the existing, permitted VFX Versions route -- never a /cg/... route", () => {
+  it("labels navigation honestly as the Shot-wide Versions destination, not a Task-specific one", () => {
     render(<TaskExecutionRow shotId="s1" task={task()} />);
-    const link = screen.getByRole("link", { name: "View details →" });
+    const link = screen.getByRole("link", { name: "View Shot Versions →" });
     expect(link).toHaveAttribute("href", "/vfx/shots/s1/versions");
+    expect(screen.queryByText(/^View details/)).not.toBeInTheDocument();
+  });
+
+  it("identifies CG task focus as CG-owned context, never an unqualified second-person sentence", () => {
+    render(
+      <TaskExecutionRow
+        shotId="s1"
+        task={task({
+          current_focus_type: "execution_anchor_gate_pending",
+          current_focus_actionable: true,
+          current_focus_title:
+            "Execution Anchor draft awaiting your confirmation",
+        })}
+      />,
+    );
+    expect(screen.getByText(/^CG task focus:/)).toBeVisible();
+    expect(screen.queryByText(/your confirmation/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/\byour\b/i)).not.toBeInTheDocument();
+  });
+
+  it("states no current CG action without implying VFX itself needs no attention", () => {
+    render(
+      <TaskExecutionRow
+        shotId="s1"
+        task={task({
+          current_focus_type: "none",
+          current_focus_actionable: false,
+          alignment_concern_summary: "High-attention drift observed in tone.",
+          alignment_concern_attention_level: "high",
+        })}
+      />,
+    );
+    expect(
+      screen.getByText("No current CG action is required for this Task."),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/High-attention drift observed in tone\./),
+    ).toBeVisible();
+  });
+
+  it("lets a no-CG-action focus coexist with a high advisory concern without contradiction, and never turns it into a formal escalation", () => {
+    render(
+      <TaskExecutionRow
+        shotId="s1"
+        task={task({
+          current_focus_type: "none",
+          current_focus_actionable: false,
+          alignment_concern_summary:
+            "Restraint may be drifting across departments.",
+          alignment_concern_attention_level: "high",
+          open_escalation: false,
+        })}
+      />,
+    );
+    expect(
+      screen.getByText("No current CG action is required for this Task."),
+    ).toBeVisible();
+    expect(screen.getByText("AI interpretation")).toBeVisible();
+    expect(screen.getByText("No open escalation to VFX.")).toBeVisible();
+    expect(screen.queryByText("Escalated to VFX")).not.toBeInTheDocument();
+  });
+
+  it("shows a formal escalation from persisted escalation data alone, regardless of the advisory concern", () => {
+    render(
+      <TaskExecutionRow
+        shotId="s1"
+        task={task({
+          alignment_concern_summary: null,
+          alignment_concern_attention_level: null,
+          open_escalation: true,
+          open_escalation_summary:
+            "Lighting cannot proceed without a revised Core Anchor.",
+        })}
+      />,
+    );
+    expect(screen.getByText("Escalated to VFX")).toBeVisible();
+    expect(
+      screen.getByText("No current alignment concern recorded."),
+    ).toBeVisible();
   });
 
   it("never renders a CG confirm/reject/generate/resolve control", () => {

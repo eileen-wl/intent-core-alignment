@@ -301,6 +301,56 @@ async def test_superseded_revision_is_never_shown_as_current(client: AsyncClient
     assert row["execution_anchor_revision_number"] != first_confirmed["revision_number"]
 
 
+# --- Current focus: real discriminator, never conflated with escalation ---
+
+
+async def test_current_focus_type_is_none_when_nothing_needs_cg_action(
+    client: AsyncClient,
+) -> None:
+    shot_id, _task_id = await _build_ready_shot_with_task(client)
+
+    response = await client.get(f"/vfx/shots/{shot_id}/department-execution-overview", headers=VFX)
+
+    row = response.json()["tasks"][0]
+    assert row["current_focus_type"] == "none"
+    assert row["current_focus_actionable"] is False
+
+
+async def test_current_focus_type_reflects_the_real_gate_pending_state(
+    client: AsyncClient,
+) -> None:
+    shot_id, task_id = await _build_ready_shot_with_task(client)
+    await _create_execution_anchor_draft(client, task_id)
+
+    response = await client.get(f"/vfx/shots/{shot_id}/department-execution-overview", headers=VFX)
+
+    row = response.json()["tasks"][0]
+    assert row["current_focus_type"] == "execution_anchor_gate_pending"
+    assert row["current_focus_actionable"] is True
+
+
+async def test_current_focus_type_is_independent_of_escalation_and_advisory_concern(
+    client: AsyncClient,
+) -> None:
+    """A real, persisted escalation must never be inferred from Current
+    focus (a CG-owned, unrelated concept) -- and Current focus being
+    ``none`` must not be read as "no open escalation" either. Both stay
+    real, independently-sourced facts on the same row."""
+    shot_id, task_id = await _build_ready_shot_with_task(client)
+    await client.post(
+        f"/tasks/{task_id}/escalate",
+        json={"description": "Lighting cannot proceed without a revised Core Anchor."},
+        headers=CG,
+    )
+
+    response = await client.get(f"/vfx/shots/{shot_id}/department-execution-overview", headers=VFX)
+
+    row = response.json()["tasks"][0]
+    assert row["current_focus_type"] == "none"
+    assert row["current_focus_actionable"] is False
+    assert row["open_escalation"] is True
+
+
 # --- Dependencies and escalation ------------------------------------------
 
 
@@ -457,6 +507,9 @@ async def test_source_created_at_ordering_wins_over_created_at(session: AsyncSes
     assert overview is not None
     row = overview.tasks[0]
     assert row.latest_version_name == "Backfilled but newer"
+    # source_created_at ordering is unaffected by, and independent of, the
+    # Version-scope correction: both candidates are Task-linked here.
+    assert row.latest_version_scope == "task"
 
 
 async def test_version_linked_to_a_different_task_is_excluded(session: AsyncSession) -> None:
@@ -475,7 +528,9 @@ async def test_version_linked_to_a_different_task_is_excluded(session: AsyncSess
     row_a = next(row for row in overview.tasks if row.task_id == task_a.id)
     row_b = next(row for row in overview.tasks if row.task_id == task_b.id)
     assert row_a.latest_version_id is None
+    assert row_a.latest_version_scope is None
     assert row_b.latest_version_id == version_for_b.id
+    assert row_b.latest_version_scope == "task"
 
 
 async def test_nullable_task_id_version_is_shared_across_tasks(session: AsyncSession) -> None:
@@ -493,6 +548,32 @@ async def test_nullable_task_id_version_is_shared_across_tasks(session: AsyncSes
     assert overview is not None
     for row in overview.tasks:
         assert row.latest_version_id == shared_manual_version.id
+        # A nullable-task_id fallback must be visibly distinguished from a
+        # real Task link -- never reported as `"task"` scope.
+        assert row.latest_version_scope == "shot_unscoped"
+
+
+async def test_version_scope_does_not_depend_on_version_name(session: AsyncSession) -> None:
+    """Scope must come only from the real `Version.task_id` column --
+    never inferred from a name that happens to look Task- or Shot-
+    specific (owner-observed example: `bc0040_comp_v003` naming pattern
+    must not imply a Task link it does not actually have)."""
+    shot = await _create_project_shot(session)
+    task = Task(shot_id=shot.id, name="Tracking")
+    session.add(task)
+    await session.flush()
+
+    unlinked_but_task_shaped_name = Version(
+        **_version_kwargs(shot.id, name="bc0040_comp_v003", source="ftrack")
+    )
+    session.add(unlinked_but_task_shaped_name)
+    await session.commit()
+
+    overview = await get_department_execution_overview(session, _VFX_ACTOR, shot.id)
+    assert overview is not None
+    row = overview.tasks[0]
+    assert row.latest_version_name == "bc0040_comp_v003"
+    assert row.latest_version_scope == "shot_unscoped"
 
 
 async def test_legacy_draft_without_gate_reports_draft_state(session: AsyncSession) -> None:

@@ -25,6 +25,7 @@ from intent_core_contracts.api.department_execution_overview import (
     DepartmentExecutionLastUpdatedSource,
     DepartmentExecutionOverviewRead,
     DepartmentExecutionTaskRead,
+    DepartmentExecutionVersionScope,
 )
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -58,6 +59,14 @@ def _is_version_in_task_scope(version: Version, task_id: uuid.UUID) -> bool:
     created Version with no Task link belongs to every Task under its
     Shot; a Version explicitly linked to a *different* Task is excluded."""
     return version.task_id is None or version.task_id == task_id
+
+
+def _version_scope(version: Version, task_id: uuid.UUID) -> DepartmentExecutionVersionScope:
+    """Real scope of an already-selected in-scope Version -- never
+    inferred from the Version's name, only from its own ``task_id``
+    column. ``"task"`` only when explicitly linked to this Task;
+    ``"shot_unscoped"`` for the nullable-task_id Shot-level fallback."""
+    return "task" if version.task_id == task_id else "shot_unscoped"
 
 
 @dataclass(frozen=True)
@@ -186,6 +195,9 @@ async def _build_task_row(
         version for version in shot_versions if _is_version_in_task_scope(version, task.id)
     ]
     latest_version = max(versions_in_scope, key=_effective_timestamp) if versions_in_scope else None
+    latest_version_scope: DepartmentExecutionVersionScope | None = (
+        _version_scope(latest_version, task.id) if latest_version is not None else None
+    )
 
     version_review_available = False
     if (
@@ -254,6 +266,8 @@ async def _build_task_row(
         latest_version_name=latest_version.name if latest_version else None,
         latest_version_number=latest_version.version_number if latest_version else None,
         latest_version_source=(latest_version.source if latest_version else None),  # type: ignore[arg-type]
+        latest_version_scope=latest_version_scope,
+        current_focus_type=current_focus.focus_type,
         current_focus_title=current_focus.title,
         current_focus_actionable=current_focus.actionable,
         open_dependency_count=len(open_dependencies),

@@ -445,7 +445,10 @@ describe("ShotOverviewPage -- Step 9B-3 Department Execution Overview", () => {
               latest_version_name: "SH010_v001",
               latest_version_number: 1,
               latest_version_source: "manual",
-              current_focus_title: "Nothing requires CG attention right now",
+              latest_version_scope: "task",
+              current_focus_type: "none",
+              current_focus_title:
+                "Nothing requires your attention on this Task right now",
               current_focus_actionable: false,
               open_dependency_count: 0,
               top_open_dependency_description: null,
