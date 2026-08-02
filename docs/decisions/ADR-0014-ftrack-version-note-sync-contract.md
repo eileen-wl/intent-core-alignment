@@ -67,4 +67,4 @@ The same investigation also produced an exact, workspace-real number for how oft
 
 ## Status
 
-Locked as of Step 8B (this document + `docs/step-8/02_STEP_8B_VERSION_NOTE_SYNC_CONTRACT.md`). Not yet implemented — Step 8C (not started) is the implementation phase, per the ordered slice plan in the Step 8B document §15. No model, migration, contract, or endpoint described here exists in the codebase yet.
+Locked as of Step 8B (this document + `docs/step-8/02_STEP_8B_VERSION_NOTE_SYNC_CONTRACT.md`). **Implemented and real-controlled-workspace-validated as of Step 8C** (migration `0024`; the trusted internal sync API; the connector's targeted reads; the `reconcile_ftrack_versions_and_notes` worker job; VFX/CG/Artist frontend Task-scoped integration; a real reconciliation run against the controlled trial workspace with owner visual validation) — see `docs/step-8/03_STEP_8C_REAL_FTRACK_ACCEPTANCE.md` and `docs/step-8/04_STEP_8_COMPLETION_BASELINE.md` for the complete closure record. Every decision recorded above was implemented exactly as decided; none was revised during implementation.
