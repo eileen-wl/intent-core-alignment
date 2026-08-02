@@ -1,9 +1,10 @@
 # Step 9B-1 — Role-Aware Working Direction
 
-**Status:** Implementation and automated validation complete. Owner visual validation pending (a first attempt failed and has been corrected — see §15; a second attempt found one further selector-level defect, corrected — see §16. The owner has not yet re-validated).
+**Status:** **Step 9B-1 complete — role-aware Working Direction implemented, automatically validated and owner visually validated.** See §17 for the recorded owner-validation evidence and §§15-16 for the two correction rounds that preceded it.
 **Correction applied (same branch, same task):** the original pass's `GET /intent/execution-anchor-revisions/{id}/decisions` endpoint had no backend role check, only the frontend route guard. Backend authorization is now explicit — see §8.1.
-**Owner-validation correction applied (same branch, same task):** the first owner visual validation attempt failed for four reasons (an unavailable primary CG page, misleading fallback authority, an unreadable shared authority strip, and excessive duplication with pre-existing detailed content). All four are corrected — see §15. Validation is still pending, not re-claimed as complete.
-**Second owner-validation correction applied (same branch, same task):** the second owner visual validation attempt confirmed the §15 fixes but found one remaining semantic defect — a confirmed parent Execution Anchor's empty optional child field (production-ready criteria / allowed refinements) rendered the parent-level "no confirmed Anchor" fallback with an inherited Human-confirmed badge. Corrected — see §16. Validation is still pending, not re-claimed as complete.
+**Owner-validation correction applied (same branch, same task):** the first owner visual validation attempt failed for four reasons (an unavailable primary CG page, misleading fallback authority, an unreadable shared authority strip, and excessive duplication with pre-existing detailed content). All four are corrected — see §15.
+**Second owner-validation correction applied (same branch, same task):** the second owner visual validation attempt confirmed the §15 fixes but found one remaining semantic defect — a confirmed parent Execution Anchor's empty optional child field (production-ready criteria / allowed refinements) rendered the parent-level "no confirmed Anchor" fallback with an inherited Human-confirmed badge. Corrected — see §16.
+**Owner visual validation passed (same branch, same task):** the third owner visual validation attempt, performed after both correction rounds above, passed across all four targets (complete-data VFX/CG/Artist and the real ftrack partial-data state). Recorded in full in §17.
 **Branch:** `feat/step9b1-role-aware-working-direction`
 **Companion documents:** `docs/step-9/01_STEP_9_PRESENTATION_AND_COMPREHENSION_BASELINE.md` (locked baseline, unmodified), `docs/step-9/02_STEP_9A_CURRENT_STATE_AND_IMPLEMENTATION_MAP.md` (the audit this implementation follows), `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` §L.
 
@@ -11,7 +12,7 @@
 
 ## 1. Scope and completion verdict
 
-**Step 9B-1 is complete: the VFX Shot Overview, CG Task Overview, and Artist Task Overview pages each gained a compact, derived, read-only Working Direction section**, built entirely from existing persisted objects and one small, additive, read-only backend endpoint (§8). No new authoritative domain object was created. No Agent-generated summary was added — every selector is a deterministic, pure TypeScript function with explicit input/output types and no I/O.
+**Step 9B-1 complete — role-aware Working Direction implemented, automatically validated and owner visually validated.** The VFX Shot Overview, CG Task Overview, and Artist Task Overview pages each gained a compact, derived, read-only Working Direction section, built entirely from existing persisted objects and one small, additive, read-only backend endpoint (§8). No new authoritative domain object was created. No Agent-generated summary was added — every selector is a deterministic, pure TypeScript function with explicit input/output types and no I/O. Owner visual validation passed after two correction rounds (§§15-16); the full evidence is recorded in §17.
 
 Not started, per this task's explicit scope: Step 9B-2 (Evidence/Agent/Human layering as its own pass), Step 9B-3 (Department Execution Overview), Step 9B-4 (media/thumbnail), Step 9C (visual-system unification). Some Evidence/Agent/Human distinction is a structural side effect of this work (every Working Direction item already carries an authority category), but no dedicated 9B-2 layering pass was performed on the six priority pages that step names.
 
@@ -207,7 +208,7 @@ Coverage against the task's required list: confirmed-over-draft Anchor selection
 
 ## 12. Owner visual-validation targets
 
-Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http://localhost:3000`, entry via `http://localhost:3000/demo`. The owner has not yet performed this validation; it is not claimed as complete. **A first attempt at this validation failed and has since been corrected — see §15 for the four causes and the fix applied to each. The table below still describes the intended content; the visual layout, authority-badge behaviour, and duplication have all changed since the original pass per §15.**
+Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http://localhost:3000`, entry via `http://localhost:3000/demo`. **Owner visual validation against these targets has now passed — see §17 for the recorded results.** Two attempts preceded the pass: a first attempt failed for four reasons corrected in §15, and a second attempt found one further defect corrected in §16. The table below describes the intended content that the passed §17 validation confirmed.
 
 **Real-data check performed before choosing these targets (read-only, no data changed):** none of the 9 real ftrack-synced Shots/Tasks from Step 8C-8 have a confirmed Core or Execution Anchor yet (ftrack sync and ICAS Anchor confirmation are separate, independent actions — syncing a Version never confirms an Anchor). Pointing the owner at one of those would show mostly honest-empty `human-confirmed` fallback lines rather than "sufficient confirmed/current data" as required. The D1 demo/manual Shot below is the one real dataset in this database with a confirmed Core Anchor **and** a confirmed Execution Anchor **and** a real Version/Review Note/Artist guidance, so it is used instead; a ftrack-synced Task remains a valid secondary check specifically for the honest-fallback states (§9).
 
@@ -236,7 +237,7 @@ Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http
 
 ## 14. Readiness for Step 9B-2
 
-**Ready**, pending owner visual validation (§12) of this step. Step 9B-2's own scope (Production Evidence / Agent Interpretation / Human Decision layering on VFX Intent, VFX Alignment, CG Execution, CG Version Review, Artist Current Version, Artist Feedback History) is materially de-risked by this step: the `AuthorityLabel`-based vocabulary, the `WorkingDirectionItem` authority categorisation pattern, and the CG Execution Anchor Decision-listing endpoint are all now real, tested, and reusable rather than needing to be designed from scratch.
+**Ready. Owner visual validation is now complete (§17)** — Step 9B-1 itself is done, not merely de-risked. Step 9B-2's own scope (Production Evidence / Agent Interpretation / Human Decision layering on VFX Intent, VFX Alignment, CG Execution, CG Version Review, Artist Current Version, Artist Feedback History) is materially de-risked by this step: the `AuthorityLabel`-based vocabulary, the `WorkingDirectionItem` authority categorisation pattern, and the CG Execution Anchor Decision-listing endpoint are all now real, tested, owner-validated, and reusable rather than needing to be designed from scratch. Step 9B-2 itself has not been started.
 
 Files changed, original pass (exhaustive): `apps/api/src/intent_core_api/intent/router.py`; `apps/api/tests/test_execution_anchor_decisions_list.py` (new); `apps/api/openapi.json` (regenerated, gitignored, not committed); `packages/contracts/ts/src/generated/api.ts` (regenerated); `apps/web/src/lib/workingDirection.ts` (new); `apps/web/src/design/components/WorkingDirectionSection.tsx` + `.module.css` (new); `apps/web/src/design/components/index.ts`; `apps/web/src/features/vfx/shot-overview/{data,selectCurrentCreativeDirection}.ts` (+ `.test.ts` for both, new); `apps/web/src/features/cg/api.ts`; `apps/web/src/features/cg/task-overview/{data,selectCurrentExecutionDirection}.ts` (+ `.test.ts` for the selector, new); `apps/web/src/features/artist/task-overview/{data,selectCurrentWorkingDirection}.ts` (+ `.test.ts` for the selector, new); `apps/web/src/app/vfx/shots/[shotId]/{page,ShotOverviewPage,ShotOverviewPage.test}.tsx`; `apps/web/src/app/cg/tasks/[taskId]/{TaskOverviewPage,TaskOverviewPage.test}.tsx`; `apps/web/src/app/artist/tasks/[taskId]/{TaskOverviewPage,TaskOverviewPage.test}.tsx`.
 
@@ -351,3 +352,67 @@ New focused tests added to all three selector test files, covering exactly the r
 **This does not constitute owner visual validation.** The owner must still re-check the CG and Artist targets in §12.
 
 **Files changed, this correction (additional, on top of §15):** `apps/web/src/features/cg/task-overview/selectCurrentExecutionDirection.ts` (+ `.test.ts`); `apps/web/src/features/artist/task-overview/selectCurrentWorkingDirection.ts` (+ `.test.ts`); `apps/web/src/features/vfx/shot-overview/selectCurrentCreativeDirection.ts` (+ `.test.ts`). No other file changed — no backend, route, sidebar, tab, migration, or persistence file was touched.
+
+---
+
+## 17. Owner visual validation — passed
+
+**Final verdict: Step 9B-1 complete — role-aware Working Direction implemented, automatically validated and owner visually validated.**
+
+This is a documentation-only closeout of an owner-performed visual check against the same four targets named in §12, after both correction rounds in §§15-16. No application source, test, contract, generated file, route, style, database row, or ftrack entity was changed to produce this record.
+
+### 17.1 Correction history (accurate summary)
+
+1. **First validation — failed.** Four causes, all corrected in §15:
+   - a stale local `apps/api` runtime process pre-dated the new CG Execution Anchor Decision endpoint's route registration, producing "This Task is unavailable" on the primary CG target (no source defect — a fresh process resolved it);
+   - fallback authority semantics were misleading (an absent confirmed object rendered with a "Human-confirmed" badge);
+   - the shared authority/provenance layout was unreadable (duplicated marker text, overlapping provenance, a fixed-height clipped strip);
+   - the new Working Direction summary excessively duplicated pre-existing detailed Overview content.
+2. **Second validation — found one remaining defect.** Corrected in §16: a confirmed parent Execution/Core Anchor's empty *optional child field* (production-ready criteria, allowed refinements) incorrectly inherited the parent's Human-confirmed authority and confirmation provenance instead of using an honest field-specific fallback with no authority badge.
+3. **Third validation — passed**, across all four targets, recorded below.
+
+### 17.2 VFX — Current Creative Direction
+
+`http://localhost:3000/vfx/shots/8a72858d-8d06-47ab-a28d-5ee077f561c8`
+
+- Compact two-column layout was readable.
+- `Human-confirmed`, `Production fact`, `AI interpretation`, and `Human review required` were visibly distinguishable from one another.
+- Provenance (e.g. "Confirmed by VFX Supervisor") did not overlap the badge or the value text.
+- Long Review Note and Assessment content was shortened deterministically (excerpted, not summarised by an LLM), with the full source still reachable.
+- Full source context remained reachable through the separate "View details" link on each item.
+- The duplicated lower content (Confirmed Core Anchor / Latest Version / Latest assessment / Activity) was collapsed under "Detailed context", collapsed by default.
+
+### 17.3 CG — Current Execution Direction
+
+`http://localhost:3000/cg/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684`
+
+- The page loaded successfully after restarting the stale local API process (§15.1) — confirming that cause, not a source defect.
+- Confirmed Execution Anchor content ("What this Task must achieve", from `technical_boundaries`) remained labelled `Human-confirmed`.
+- Confirmed Core Anchor context retained its own, correct VFX provenance ("Confirmed by VFX Supervisor"), never CG's.
+- Missing production-ready criteria used the field-specific fallback ("No production-ready criteria have been recorded in the confirmed Execution Anchor.") rather than the parent-missing fallback.
+- That missing field carried no authority badge and no fabricated "Confirmed by CG Supervisor" provenance (§16).
+- Version, feedback, dependency, and escalation information remained readable and correctly categorised as `Production fact`.
+
+### 17.4 Artist — Current Working Direction
+
+`http://localhost:3000/artist/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684`
+
+- Confirmed working instructions ("What you are being asked to do") and Core Anchor Constraints ("What must remain unchanged") retained correct `Human-confirmed` provenance where actually populated.
+- Missing allowed refinements ("What you may explore") used the field-specific fallback ("No allowed refinements have been recorded in the confirmed Execution Anchor.") rather than the parent-missing fallback.
+- That missing field carried no authority badge and no fabricated "Confirmed by CG Supervisor" provenance (§16).
+- Production Version and feedback remained labelled `Production fact`.
+- Artist Guidance remained explicitly labelled `AI interpretation` — advisory, never presented as a Human Decision.
+- No Anchor-authority or cross-role editing control was exposed anywhere on the page (both Anchors remain read-only references, matching §2's locked authority boundary).
+
+### 17.5 Real ftrack partial-data state
+
+`http://localhost:3000/cg/tasks/f1451fda-80be-4820-8d9f-172d71df668f`
+
+- No confirmed Core or Execution Anchor content was fabricated for this genuinely unconfirmed real ftrack Task.
+- The missing parent objects were not labelled `Human-confirmed` — every "No confirmed ... yet." line carried no authority badge.
+- Real, ftrack-synced Version and feedback information remained visible and correctly categorised as `Production fact`.
+- Absence of a recorded Intent Signal / drift risk was not represented as confirmed alignment — the "current risk" line stays honestly absent, never defaulting to an implied "aligned" state.
+
+### 17.6 Next approved activity
+
+Step 9B-1 is complete. The next approved activity is **Step 9B-2** (Production Evidence / Agent Interpretation / Human Decision layering on VFX Intent, VFX Alignment, CG Execution, CG Version Review, Artist Current Version, Artist Feedback History). **Step 9B-2 has not been started by this task** — this task is documentation closeout only. Step 9B-3, Step 9B-4, and Step 9C remain not started, as do Step 9D through Step 9F.
