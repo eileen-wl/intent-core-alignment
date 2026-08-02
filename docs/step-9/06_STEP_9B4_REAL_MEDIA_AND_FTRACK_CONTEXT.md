@@ -1,6 +1,6 @@
 # Step 9B-4 — Real Media and ftrack Context
 
-**Status:** Implementation and automated validation complete. Real read-only acceptance against the live, controlled ftrack workspace complete. **Owner visual validation pending.**
+**Status:** **Complete.** Implementation, automated validation, real read-only acceptance, the post-incident security fix, post-rotation security re-verification, and final owner visual validation are all done. See §16/§18 for the final verdict.
 **Branch:** `feat/step9b4-real-media-ftrack-context`
 **Companion documents:** `docs/step-9/01_STEP_9_PRESENTATION_AND_COMPREHENSION_BASELINE.md` (locked baseline), `docs/step-9/02_STEP_9A_CURRENT_STATE_AND_IMPLEMENTATION_MAP.md` §9/§11 (the feasibility audit this implementation follows, and corrects — see §3 below), `docs/step-9/05_STEP_9B3_DEPARTMENT_EXECUTION_OVERVIEW.md`, `docs/FTRACK_INTEGRATION.md`, `docs/DOMAIN_MODEL.md`, `docs/ROLE_PERMISSIONS.md`, `docs/ARCHITECTURE.md` §3.4/§10 (Connector-only ftrack access), `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` §L.
 
@@ -12,7 +12,7 @@ Step 9B-4 delivers a transient, read-only ftrack media/thumbnail/source-context 
 
 This is the final Step 9B presentation/comprehension package. Step 9C (visual-system unification) has **not** begun.
 
-**A real, safety-critical correction was made mid-implementation** (§3, §7, §15): the connector's first implementation used ftrack's documented `Location.get_url()`/`get_thumbnail_url()` methods, which were discovered — via this task's own live, read-only, authenticated probe against the real controlled trial workspace — to embed this service's own live ftrack API user and API key directly in the returned URL as query-string parameters. Sending such a URL to a browser would have handed out real, reusable ftrack service credentials to every VFX/CG/Artist session that loaded a Version's media panel. This was found, fixed, and re-verified (with a full live re-sample proving zero credential leakage) before this task was closed out. **The real ftrack API key that was briefly exposed in this task's own tool output should be rotated as a precaution** — this is called out again in §7 and in the final response.
+**A real, safety-critical correction was made mid-implementation** (§3, §7, §15): the connector's first implementation used ftrack's documented `Location.get_url()`/`get_thumbnail_url()` methods, which were discovered — via this task's own live, read-only, authenticated probe against the real controlled trial workspace — to embed this service's own live ftrack API user and API key directly in the returned URL as query-string parameters. Sending such a URL to a browser would have handed out real, reusable ftrack service credentials to every VFX/CG/Artist session that loaded a Version's media panel. This was found and fixed before this task was closed out, and a full live re-sample confirmed zero credential leakage in the corrected implementation. **The owner subsequently rotated the exposed ftrack API key**, all local services were restarted with the rotated credentials, and a dedicated post-rotation security-verification pass (§7) re-confirmed: authenticated read-only ftrack access succeeds with the new key; the real media acceptance counts are unchanged; zero credential-parameter matches across every browser-facing response, scanned field-by-field; zero occurrences of the old or new key anywhere in the repository or its git history.
 
 ---
 
@@ -140,7 +140,17 @@ A manual/local Version with no `ExternalEntityLink` produces an honest `200` wit
 - **Refresh, not silent reuse.** `VersionMediaPanel`'s "Refresh media" action re-invokes the same authorised resolution path; the previous URL is discarded, never reused after a known/suspected failure.
 - **Credentials never reach the browser** — this is the exact property this task's mid-implementation correction (§3.3) restored after finding it briefly violated. `url_expires_at` is always `None` today, honestly: this workspace's safe `thumbnail_url` field exposes no expiry metadata to read.
 
-**Incident note, recorded here in full per the task's own instruction not to omit it:** during this task's real, read-only acceptance verification (§14), the first connector implementation's resolved thumbnail/playable URLs were printed (truncated in most cases, but one full URL appeared in this task's own intermediate tool output) while confirming live behaviour. That URL contained the real, live ftrack API user (`eileen.wl0930@gmail.com`) and a real ftrack API key. **This key should be rotated in the ftrack workspace admin console as a precaution.** No other secret, credential, or signed URL was written to any Git-tracked file, commit, or this documentation — only the connector's own fix and the final, verified-safe re-sample (§14) are recorded here.
+**Security incident and containment, recorded here in full per the task's own instruction not to omit it — no sensitive value included:**
+
+- During this task's real, read-only acceptance verification (§14), the first connector implementation's resolved thumbnail/playable URLs were inspected while confirming live behaviour. Those URLs were found to contain the real ftrack API user and API key as authentication query parameters (`Location.get_url()`/`get_thumbnail_url()`'s own documented SDK behaviour — see §3).
+- One credential-bearing URL appeared in the local Claude Code session output while diagnosing this.
+- No credential-bearing URL entered any Git-tracked file, commit, database row, or the browser-facing final implementation at any point.
+- The unsafe connector path (`Location.get_url()`/`get_thumbnail_url()`) was removed before this branch's first commit (§3.3).
+- The owner rotated the exposed ftrack API key in the ftrack workspace admin console.
+- All local services (`apps/api`, `apps/web`) were restarted so no running process retained the old credential or an ftrack session opened under it.
+- A dedicated post-rotation verification pass confirmed: a minimal authenticated, read-only ftrack query succeeds with the rotated key; the real media acceptance counts are unchanged (§14); every browser-facing media response was scanned field-by-field for `apiKey`/`api_key`/`ftrack-api-key`/`username`/`access_token`/`auth_token` (case-insensitive) with **zero matches**; neither the old nor the rotated key occurs anywhere in the repository's tracked files, untracked project files, or full git history on any branch (`git log --all -S<value>`, zero hits for either value); the only occurrence of the rotated key anywhere on disk is the ignored root `.env`.
+
+**Final safe implementation, confirmed:** only `AssetVersion.thumbnail_url` is ever used; its real-workspace response was verified credential-free for browser exposure; browser-facing responses contain zero credential-parameter matches; `Cache-Control: no-store` is set on every response; URLs are resolved transiently, only for the selected Version, never pre-resolved for a list; no URL is persisted anywhere (confirmed directly against the live Postgres schema — no `media`/`thumbnail`/`url`-shaped column or table exists); no full URL is logged; no media proxy exposes ftrack credentials; no ftrack write or `session.commit()` occurs (enforced by the connector's own no-write test traps, §13).
 
 ---
 
@@ -231,6 +241,8 @@ Live-verified via `curl` against the running dev servers (both left running for 
 - `/artist/tasks/f1451fda-.../current-version` page HTML: a real `<img>` with the safe thumbnail URL, **zero** `<video>` elements, **zero** occurrences of `apiKey`/`username=` anywhere in the rendered page.
 - `/vfx/shots/.../versions` and `/cg/tasks/.../version-review` pages: `200`, honest client-side "Resolving media…" initial state (these two pages resolve media client-side after hydration, which a plain `curl` cannot execute — verified instead via the Vitest suite's jsdom-based integration tests, §13).
 
+**Re-run in full, post-rotation, after the owner rotated the exposed ftrack API key and all local services were restarted with the new credentials (§7):** identical counts (34 sampled, 32 `thumbnail_only`, 2 `unavailable`, 0 `playable`, 0 `external_context_only`, 0 failures), and a field-by-field scan of every one of those 34 responses (plus the CG/Artist/manual-fallback spot checks above) for `apiKey`/`api_key`/`ftrack-api-key`/`username`/`access_token`/`auth_token` confirmed **0 matches** with the rotated key in use.
+
 ---
 
 ## 15. Known limitations
@@ -238,43 +250,30 @@ Live-verified via `curl` against the running dev servers (both left running for 
 - **Playable video is not currently achievable safely in this real ftrack workspace.** The only ftrack SDK mechanism capable of resolving a Component's playable URL (`Location.get_url()`) embeds this service's own live API credentials in the URL; no credential-free equivalent schema field exists on `FileComponent` today (confirmed via `session.schemas`). The `"playable"` tier, its deterministic Component-selection rule (§5), and its full frontend rendering path (native `<video>`, poster, controls) are implemented and tested, but structurally unreachable against this workspace until a safe resolution mechanism exists (a future ftrack SDK/workspace feature, or a deliberately-scoped later task adding a genuinely safe server-side proxy — explicitly out of this task's scope and not attempted here, since "avoid an unbounded public proxy endpoint" and "do not download or copy media binaries into ICAS" were both explicit constraints).
 - **`external_web_url` is always `None`.** No ftrack web deep-link format was independently proven safe/correct in this task (§11) — omitted honestly rather than guessed.
 - **`url_expires_at` is always `None`.** The one safe field this workspace exposes (`AssetVersion.thumbnail_url`) carries no expiry metadata to read.
-- **A real ftrack API key was briefly exposed in this task's own tool output** while diagnosing the credential-leak finding (§7) — recommended for rotation. No Git-tracked file, commit, or documentation contains it.
+- **A real ftrack API key was briefly exposed in this task's own tool output** while diagnosing the credential-leak finding (§7). **Resolved:** the owner has since rotated the key, all local services were restarted with the rotated credentials, and a dedicated post-rotation verification pass (§7/§14) confirmed both successful authenticated access with the new key and zero occurrences of either the old or new key anywhere in the repository, its git history, or any browser-facing response. No Git-tracked file, commit, or documentation contains either key.
 - **The two demo-seed manual Versions are the only `unavailable` case sampled** — no live example of a *linked-but-service-currently-down* case was captured (that state is covered by an automated test with an injected failure instead, `test_ftrack_service_unavailable_returns_honest_state_not_a_500`).
 
 ---
 
 ## 16. Owner visual-validation targets
 
-Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http://localhost:3000`, entry via `http://localhost:3000/demo`. **Both are left running for this validation.** **The owner has not yet performed this validation; it is not claimed as complete.**
+Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http://localhost:3000`, entry via `http://localhost:3000/demo`.
 
-**Real VFX Shot Versions** (5 real ftrack-linked Versions, all thumbnail-only):
-`http://localhost:3000/vfx/shots/d79f904f-89ce-429f-8e82-eea9f5bca638/versions`
+**Final owner visual validation has PASSED for all four required contexts, post-rotation.**
 
-**Real CG Version Review:**
-`http://localhost:3000/cg/tasks/f1451fda-80be-4820-8d9f-172d71df668f/version-review`
+**Real VFX Shot Versions** — `http://localhost:3000/vfx/shots/d79f904f-89ce-429f-8e82-eea9f5bca638/versions`. Observed: a real ftrack thumbnail appeared for the selected Version; no fake media, black placeholder frame, or browser video player appeared; the UI honestly stated "Playable media is unavailable for this Version."; ftrack source context was clear; Review Notes, Core Anchor, and Alignment Assessment context all remained usable; no API key, credential parameter, full media URL, or raw external id appeared anywhere on the page; media remained supporting Production Evidence rather than dominating the page.
 
-**Real Artist Current Version** (server-rendered — the real thumbnail should already be visible on first load, no client-side delay):
-`http://localhost:3000/artist/tasks/f1451fda-80be-4820-8d9f-172d71df668f/current-version`
+**Real CG Version Review** — `http://localhost:3000/cg/tasks/f1451fda-80be-4820-8d9f-172d71df668f/version-review`. Observed: a real thumbnail appeared under Production Evidence; Agent Interpretation and Human Decision and Provenance remained visibly distinct sections; Review Notes and the authorised review/escalation actions remained available; no media upload, ftrack write, media approval, or Anchor-edit capability was introduced; media remained compact review context, not a dominant region.
 
-**Manual/local media-unavailable fallback:**
-`http://localhost:3000/vfx/shots/8a72858d-8d06-47ab-a28d-5ee077f561c8/versions`
+**Real Artist Current Version** — `http://localhost:3000/artist/tasks/f1451fda-80be-4820-8d9f-172d71df668f/current-version`. Observed: a real thumbnail appeared under Production Evidence; Artist Guidance remained advisory Agent Interpretation; Review Notes, CG Supervisor reviews, Cross-role Assessments, and the existing authority references all remained visible; no upload, approval, Anchor-edit, or ftrack-write control appeared; the page remained readable.
 
-A known thumbnail-only Version for a direct spot-check: `http://localhost:3000/vfx/shots/d79f904f-89ce-429f-8e82-eea9f5bca638/versions` then select "bc0040_comp_v003 (v3)" from the list.
+**Manual/local fallback** — `http://localhost:3000/vfx/shots/8a72858d-8d06-47ab-a28d-5ee077f561c8/versions`. Observed: no fake thumbnail or black player was displayed; the UI honestly stated the Version had no linked ftrack record; `source` remained `manual`; the Review Note, Core Anchor, and Alignment Assessment context all remained usable; no invalid "Open in ftrack" link appeared (§11 — no link is ever shown, since none was proven safe).
 
-**The owner must verify:**
+**Version-switch interaction, verified on the primary VFX Versions URL:** the owner switched the selection from `bc0040_comp_v003 (v3)` to `bc0040_layout_v002 (v2)` and confirmed: the left-side selection changed; the right-side Version title changed; the thumbnail changed from the motorcycle shot to the layout/city shot; the Version description and Review Note changed with the selected Version; no previous media or metadata remained stale from the prior selection; the remainder of the Version context stayed available throughout the switch.
 
-- the shown thumbnail corresponds to the selected Version (switching Versions updates the image);
-- no video plays or autoplays anywhere (none currently should render at all — see §15);
-- the thumbnail is a real image, not a placeholder;
-- the manual-fallback Shot's Versions honestly state no ftrack link exists, with no broken image;
-- switching Versions on VFX/CG updates the panel (a brief "Resolving media…" state is expected and honest, not a bug);
-- a media error/absence never removes Review Notes or Anchor context anywhere on any of the three pages;
-- ftrack source context is clear (media is presented as Production Evidence, never as Agent Interpretation or a Human Decision);
-- no credentials, signed URL, or raw external id is visibly exposed anywhere in the page text or (for a technically-inclined check) the page source;
-- CG/Artist role boundaries remain intact — no upload/approve/write control anywhere near the media panel;
-- the pages remain readable and are not dominated by the media region (a compact thumbnail, not a large hero image).
+**Final Step 9B-4 verdict: Step 9B-4 complete — safe, transient real ftrack thumbnail context was implemented, automatically validated, post-rotation security validated, real-workspace accepted, and owner visually validated.**
 
-**This document does not perform or claim owner visual validation.**
+One non-blocking presentation-comprehension observation was recorded during this validation, out of Step 9B-4's own scope (not a media synchronization defect — the media/metadata panel itself updated correctly on every Version switch): see `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` §L's Step 9C/9D backlog item on the VFX Shot context header's "VERSION ..." label versus the separately-selected Version list.
 
 ---
 
@@ -294,11 +293,11 @@ A known thumbnail-only Version for a direct spot-check: `http://localhost:3000/v
 
 ## 18. Step 9B completion readiness
 
-**Step 9B-4 implementation and automated validation are complete; real read-only acceptance against the live ftrack workspace is complete and confirmed credential-safe. Owner visual validation is pending — this is the last outstanding item before Step 9B (as a whole) can be marked complete.**
+**Step 9B-4 is complete: implementation, automated validation, real read-only acceptance, the mid-implementation security fix, post-rotation security re-verification, and final owner visual validation are all done (§16).**
 
-Step 9B-4 is the final planned Step 9B package (`02_STEP_9A_...md` §11). Once owner visual validation of this step passes, and given Step 9B-1/9B-2/9B-3 are already independently complete with their own owner validation, Step 9B as a whole is ready to be marked complete in `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` — not done in this pass, per the task's own instruction to leave that for after visual validation.
+Step 9B-4 was the final planned Step 9B package (`02_STEP_9A_...md` §11/§17). With Step 9B-1/9B-2/9B-3 already independently complete with their own owner validation, and Step 9B-4 now complete, **Step 9B as a whole is complete** — recorded in `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` §L in this same documentation-closeout pass.
 
-Step 9C (design-system visual unification) has explicitly **not** begun, and depends on Step 9B being fully closed out first (`02_STEP_9A_...md` §12's own locked sequencing).
+Step 9C (design-system visual unification) has explicitly **not** begun. The next approved activity is Step 9C. One non-blocking presentation-comprehension item surfaced during Step 9B-4's owner validation — the VFX Shot context header's "VERSION ..." label versus a separately-selected browsing Version — is recorded as a Step 9C/9D backlog item (`docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` §L), not implemented here, and is not a Step 9B-4 defect (the media panel itself always tracked the selected Version correctly, per §16's Version-switch evidence).
 
 **Files changed, this step (exhaustive):**
 
