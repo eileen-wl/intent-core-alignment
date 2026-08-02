@@ -9,6 +9,12 @@ os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 # developer's local .env has set for real manual DeepSeek testing -- tests
 # must never make a real model-provider network request (Step 4c scope).
 os.environ["MODEL_PROVIDER"] = "deterministic"
+# A stable, known, test-only token for the internal ftrack sync endpoints
+# (Step 8C-3) -- never a real secret, never printed. Tests that need to
+# exercise the "server-side token not configured" fail-closed path
+# override this via monkeypatch + get_settings.cache_clear() for just
+# that one test (see test_ftrack_version_note_sync_auth.py).
+os.environ.setdefault("INTERNAL_SYNC_TOKEN", "test-internal-sync-token")
 
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient

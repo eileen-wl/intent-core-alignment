@@ -113,11 +113,17 @@ class VersionNoteSyncItemResult(BaseModel):
     # "skipped" (no local row was created or matched).
     entity_id: UUID | None = None
     external_id: str
-    # Populated only for "skipped" -- e.g. "shot_not_linked",
-    # "task_not_linked", "version_not_linked" (ReviewNote), or
-    # "review_session_object_unresolvable" (Step 8B §5/§12 -- expected
-    # for the large majority of review_session_object-parented Notes in
-    # the real controlled workspace). Free text for now, not a Literal:
-    # the real Step 8C-3 skip reasons are not yet enumerated against a
-    # real sync run, and inventing a closed set now would be a guess.
+    # Populated for "skipped" -- e.g. "shot_not_linked",
+    # "version_not_linked" (ReviewNote), or "review_session_object_
+    # unresolvable" (Step 8B §5/§12 -- expected for the large majority
+    # of review_session_object-parented Notes in the real controlled
+    # workspace). Also populated for a "created" Version whose optional
+    # task_external_id was supplied but did not resolve (task_id=None,
+    # Step 8B §13's explicit "skip only the task_id assignment, not the
+    # whole Version" rule) -- e.g. "task_not_linked" -- so the future
+    # worker can report a partial-lineage creation distinctly from a
+    # fully-resolved one, without inventing a fourth SyncOutcome. Free
+    # text, not a Literal: the real Step 8C-3 reasons are not yet
+    # enumerated against a real sync run, and inventing a closed set now
+    # would be a guess.
     reason: str | None = None

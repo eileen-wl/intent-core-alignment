@@ -28,6 +28,17 @@ class Settings(BaseSettings):
     # default in .env.example, same as model_provider itself.
     model_api_key: str = ""
     model_name: str = ""
+    # Step 8C-3 (docs/step-8/02_STEP_8B_VERSION_NOTE_SYNC_CONTRACT.md §8,
+    # ADR-0014 Decision 3): the shared secret the trusted internal ftrack
+    # Version/ReviewNote sync endpoints require via the X-Internal-Sync-
+    # Token header. Blank by default (matching model_api_key's own
+    # convention) -- intent_core_api.ftrack_version_note_sync.auth fails
+    # closed (rejects every request) when this is blank, rather than
+    # treating an unconfigured token as "no auth required". Distinct
+    # from AUTH_SECRET (reserved for human-facing auth, unrelated and
+    # not yet wired to anything): this token grants no ActorContext, no
+    # human_role, no permission any require_human_role check recognizes.
+    internal_sync_token: str = ""
 
 
 @lru_cache
