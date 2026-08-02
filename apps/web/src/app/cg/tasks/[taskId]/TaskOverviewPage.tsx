@@ -6,6 +6,7 @@ import {
   ContextTabs,
   Divider,
   ErrorState,
+  WorkingDirectionSection,
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
@@ -104,6 +105,8 @@ export function TaskOverviewPage({
           />
 
           <TaskCurrentFocusPanel focus={data.item.current_focus} />
+
+          <WorkingDirectionSection section={data.workingDirection} />
 
           <Divider />
 

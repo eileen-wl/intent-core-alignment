@@ -460,6 +460,25 @@ async def get_execution_anchor_revision_human_gate(
     return gate
 
 
+@router.get(
+    "/execution-anchor-revisions/{revision_id}/decisions", response_model=list[DecisionRead]
+)
+async def list_execution_anchor_revision_decisions(
+    revision_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+) -> list[Decision]:
+    # Step 9B-1: the Execution Anchor analogue of
+    # list_core_anchor_revision_decisions above -- same generic,
+    # already-existing `decision_service.list_decisions_for_entity`,
+    # scoped to this one revision's real confirm/reject Decision rows
+    # (entity_type="execution_anchor_revision", per
+    # execution_anchor_service.confirm_revision/reject_revision). A
+    # read-only, entity-scoped listing; never creates or mutates a
+    # Decision, and introduces no migration or new search surface.
+    return await decision_service.list_decisions_for_entity(
+        session, "execution_anchor_revision", revision_id
+    )
+
+
 @router.patch(
     "/execution-anchor-revisions/{revision_id}", response_model=ExecutionAnchorRevisionRead
 )

@@ -7,9 +7,11 @@ import {
   ContextTabs,
   Divider,
   ErrorState,
+  WorkingDirectionSection,
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
+import type { WorkingDirectionSection as WorkingDirectionSectionModel } from "@/lib/workingDirection";
 import { signalStateLabel } from "../../vfxWording";
 import { CurrentFocusPanel } from "../CurrentFocusPanel";
 import { NextFocusPanel } from "../NextFocusPanel";
@@ -33,9 +35,14 @@ const ALIGNMENT_FOCUS_TYPES = new Set([
  * never produces an empty heading or list. */
 export function ShotOverviewPage({
   item,
+  workingDirection,
   onExitRole,
 }: {
   item: VfxInboxItemRead | null;
+  /** Step 9B-1: the derived, read-only Current Creative Direction
+   * summary -- optional so every pre-existing caller/test that only
+   * ever supplied `item` keeps compiling and rendering unchanged. */
+  workingDirection?: WorkingDirectionSectionModel;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
@@ -100,6 +107,10 @@ export function ShotOverviewPage({
           <CurrentFocusPanel focus={item.current_focus} />
 
           <NextFocusPanel items={item.next_candidates ?? []} />
+
+          {workingDirection && (
+            <WorkingDirectionSection section={workingDirection} />
+          )}
 
           <Divider />
 

@@ -45,8 +45,12 @@ function data(overrides: Partial<TaskOverviewData> = {}): TaskOverviewData {
   return {
     item: item(),
     coreAnchorSummary: null,
+    confirmedExecutionAnchorRevision: null,
+    executionAnchorDecisions: [],
     dependencies: [],
     recentActivity: [],
+    latestReviewNote: null,
+    workingDirection: { title: "Current Execution Direction", items: [] },
     ...overrides,
   };
 }
@@ -153,6 +157,51 @@ describe("TaskOverviewPage", () => {
     expect(
       screen.getByText("No Core Anchor is confirmed for this Shot yet."),
     ).toBeVisible();
+  });
+
+  it("renders the Current Execution Direction section with real authority badges when workingDirection has items", () => {
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data({
+          workingDirection: {
+            title: "Current Execution Direction",
+            items: [
+              {
+                id: "task-goal",
+                label: "What this Task must achieve",
+                value: "24fps, no motion blur.",
+                authority: "human-confirmed",
+                sourceType: "execution_anchor_revision",
+                detail: "Confirmed by CG Supervisor",
+                href: "/cg/tasks/t1/execution",
+              },
+            ],
+          },
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Current Execution Direction")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "24fps, no motion blur." }),
+    ).toHaveAttribute("href", "/cg/tasks/t1/execution");
+    expect(screen.getByText("Human-confirmed")).toBeVisible();
+  });
+
+  it("renders nothing extra when workingDirection has no items (honest empty state)", () => {
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByText("Current Execution Direction"),
+    ).not.toBeInTheDocument();
   });
 
   it("shows an honest empty Activity state for a genuinely bare Task", () => {

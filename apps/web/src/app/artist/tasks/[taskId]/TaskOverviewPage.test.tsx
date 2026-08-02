@@ -57,6 +57,8 @@ function data(overrides: Partial<TaskOverviewData> = {}): TaskOverviewData {
     executionAnchorRevision: null,
     latestGuidance: null,
     dependencies: [],
+    latestReviewNote: null,
+    workingDirection: { title: "Current Working Direction", items: [] },
     ...overrides,
   };
 }
@@ -351,6 +353,51 @@ describe("TaskOverviewPage", () => {
     expect(
       screen.getByText("Push the rim light slightly warmer."),
     ).toBeVisible();
+  });
+
+  it("renders the Current Working Direction section with the Artist guidance line labelled as Agent interpretation", () => {
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data({
+          workingDirection: {
+            title: "Current Working Direction",
+            items: [
+              {
+                id: "artist-guidance",
+                label: "Artist Agent guidance",
+                value: "Push the rim light slightly warmer.",
+                authority: "ai-interpretation",
+                sourceType: "artist_agent_guidance",
+                detail: "Artist Agent guidance",
+                href: "/artist/tasks/t1/current-version",
+              },
+            ],
+          },
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Current Working Direction")).toBeVisible();
+    expect(screen.getByText("AI interpretation")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Push the rim light slightly warmer." }),
+    ).toHaveAttribute("href", "/artist/tasks/t1/current-version");
+  });
+
+  it("renders nothing extra when workingDirection has no items (honest empty state)", () => {
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByText("Current Working Direction"),
+    ).not.toBeInTheDocument();
   });
 
   it("honestly states no dependencies have been recorded for a genuinely bare Task", () => {

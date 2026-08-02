@@ -59,6 +59,65 @@ function buildItem(
   };
 }
 
+describe("ShotOverviewPage -- Step 9B-1 Current Creative Direction", () => {
+  it("renders nothing extra when workingDirection is not supplied (pre-existing callers keep working unchanged)", () => {
+    render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
+    expect(
+      screen.queryByText("Current Creative Direction"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("renders the Current Creative Direction section when supplied, with authority badges visible", () => {
+    render(
+      <ShotOverviewPage
+        item={buildItem()}
+        workingDirection={{
+          title: "Current Creative Direction",
+          items: [
+            {
+              id: "creative-objective",
+              label: "Current creative objective",
+              value: "A restrained dusk confrontation.",
+              authority: "human-confirmed",
+              sourceType: "core_anchor_revision",
+              detail: "Confirmed by VFX Supervisor",
+              href: "/vfx/shots/s1/intent",
+            },
+            {
+              id: "current-risk",
+              label: "Current alignment / drift risk",
+              value: "Attention needed -- Cross-role tension detected.",
+              authority: "ai-interpretation",
+              sourceType: "cross_role_assessment",
+              href: "/vfx/shots/s1/alignment",
+            },
+          ],
+        }}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Current Creative Direction")).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "A restrained dusk confrontation." }),
+    ).toHaveAttribute("href", "/vfx/shots/s1/intent");
+    expect(screen.getByText("Human-confirmed")).toBeVisible();
+    expect(screen.getByText("AI interpretation")).toBeVisible();
+  });
+
+  it("renders nothing when workingDirection has an empty items array (honest, not an empty heading)", () => {
+    render(
+      <ShotOverviewPage
+        item={buildItem()}
+        workingDirection={{ title: "Current Creative Direction", items: [] }}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByText("Current Creative Direction"),
+    ).not.toBeInTheDocument();
+  });
+});
+
 describe("ShotOverviewPage", () => {
   it("shows an honest not-found/unavailable state when the Shot could not be resolved", () => {
     render(<ShotOverviewPage item={null} onExitRole={vi.fn()} />);

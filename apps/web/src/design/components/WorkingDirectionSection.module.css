@@ -1,0 +1,19 @@
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.value {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  line-height: 1.4;
+}
