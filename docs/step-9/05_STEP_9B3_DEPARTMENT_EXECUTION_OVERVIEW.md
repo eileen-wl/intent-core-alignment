@@ -1,6 +1,6 @@
 # Step 9B-3 — Department Execution Overview
 
-**Status:** Implementation and automated validation complete, including a post-first-review owner-validation correction pass (§16). Owner visual re-validation pending.
+**Status:** **Complete.** Implementation, automated validation, a post-first-review owner-validation correction pass (§16), and final owner visual validation (§13) are all done. See §17 for the final verdict.
 **Branch:** `feat/step9b3-department-execution-overview`
 **Starting HEAD:** `a05904c`
 **Companion documents:** `docs/step-9/01_STEP_9_PRESENTATION_AND_COMPREHENSION_BASELINE.md` (locked baseline), `docs/step-9/02_STEP_9A_CURRENT_STATE_AND_IMPLEMENTATION_MAP.md` §8 (the feasibility audit this implementation follows almost field-for-field), `docs/step-9/03_STEP_9B1_ROLE_AWARE_WORKING_DIRECTION.md` (the Working Direction pattern this section sits directly below), `docs/step-9/04_STEP_9B2_EVIDENCE_AGENT_HUMAN_LAYERING.md` (the Production Evidence / Agent Interpretation / Human Decision vocabulary this section preserves), `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` §L.
@@ -270,12 +270,14 @@ Honest copy used throughout (§6/§7): "No Execution Anchor yet", "Draft awaitin
 
 **§16 correction pass verification specifically:** `pytest tests/test_department_execution_overview.py` 26/26; full `pytest` 930/930; `mypy`/`ruff check`/`ruff format --check` clean; `uv lock --check` clean; contracts Python lint/format/mypy clean; contracts TS `tsc --noEmit` clean; full Vitest suite 1001/1001; `tsc --noEmit` clean; ESLint clean; Prettier clean; production `next build` succeeded.
 
+**Route-count discrepancy, investigated and resolved (closeout pass):** earlier narrative summaries in this document and in this branch's commit responses variously reported "30 routes" and "29 routes" for the production build. `git diff --name-status a05904c..79280bd` was run and shows **zero** `page.tsx`/`layout.tsx`/`route.ts` files added, deleted, or renamed anywhere under `apps/web/src/app/` across this entire branch — the only such file touched is one modification, `apps/web/src/app/vfx/shots/[shotId]/page.tsx` (identity resolution + one new prop passed through). `git ls-files` under `apps/web/src/app/**/page.tsx`, `apps/web/src/app/**/layout.tsx`, and `apps/web/src/app/**/route.ts` (plus the root `page.tsx`) currently lists exactly 30 route-defining files. A fresh `next build` route table lists exactly 31 rows: those same 30 page-file-backed routes plus Next.js's own automatic `/_not-found` route — a stable, reproducible count with no route file changed. **Conclusion: this was a build-reporting/manual-count discrepancy in prior narrative summaries (both "30" and "29" undercounted or overcounted the same unchanged 31-row table by eye), not a lost or newly-added route.** No route was deleted, renamed, or made undiscoverable; no route file was changed to force a count match.
+
 ---
 
 ## 12. Known limitations
 
 - **`draft` (an un-gated draft revision) is not reachable through the live product today.** Every real draft-creation call path opens a `HumanGate` in the same transaction (`execution_anchor_service.create_draft_revision`), so this state only occurs for a historical revision that predates the HumanGate migration — a real, already-documented legacy-compatibility case (`intent.models.HumanGate`'s own module docstring), exercised in this step's tests at the model layer directly, not via the live API.
-- **The "View details" destination is the same Versions page for every row**, regardless of what specifically needs attention on that Task (a dependency vs. an escalation vs. simply wanting to see the Version). This is a deliberate, honest consequence of no per-Task VFX route existing — adding one is out of this step's scope (§9). A future step could add a Task-scoped anchor/query-parameter on the Versions page if this is judged worth doing.
+- **The "View Shot Versions" destination is the same Versions page for every row**, regardless of what specifically needs attention on that Task (a dependency vs. an escalation vs. simply wanting to see the Version). This is a deliberate, honest consequence of no per-Task VFX route existing — adding one is out of this step's scope (§9). A future step could add a Task-scoped anchor/query-parameter on the Versions page if this is judged worth doing.
 - **No `AgentRun`/model/prompt provenance drill-down** is added for the alignment-concern line — it shows the real summary/attention-level text only, consistent with `04_STEP_9B2_...md` §14's same limitation on the other five priority pages (a deliberate scope boundary, not an oversight).
 - **No live example of a genuinely zero-Task Shot exists in the current persisted demo/seed data** — every real Shot sampled from the running dev database has at least one real Task. The empty-list state is nonetheless fully covered by an automated backend test (`test_valid_shot_with_no_tasks_returns_empty_list`) and the frontend's own honest-empty-state test — not silently unverified, and no fake Shot was created to force a live example.
 
@@ -283,7 +285,7 @@ Honest copy used throughout (§6/§7): "No Execution Anchor yet", "Draft awaitin
 
 ## 13. Owner visual-validation targets
 
-Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http://localhost:3000`, entry via `http://localhost:3000/demo`. **The first owner validation pass found the two defects corrected in §16. Owner re-validation of the corrected behaviour has not yet been performed; it is not claimed as complete.**
+Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http://localhost:3000`, entry via `http://localhost:3000/demo`. **The first owner validation pass found the two defects corrected in §16. A final owner visual re-validation of the corrected behaviour has now PASSED on both URLs below.**
 
 **Primary URL** (real, persisted D1 demo data — two real Tasks in varied states):
 
@@ -300,7 +302,7 @@ Expected (updated for the §16 correction, live-verified against the running dev
 
 Expected (updated for the §16 correction): one row, "Tracking" (department "Tracking", `task_source` ftrack) — "No Execution Anchor yet"; a real ftrack-synced Version ("bc0040_comp_v003 (v3) · ftrack-synced — Shot-level Version fallback — not linked to this Task in ICAS" — this Version's `task_id` is `null`; its name alone must never be read as implying a link to Tracking); Current focus "No current CG action is required for this Task."; "No open dependencies."; "No current alignment concern recorded."; "No open escalation to VFX."
 
-**The owner must verify:**
+**The owner verified, and the following all PASSED:**
 
 - all Tasks for the Shot are represented (both URLs: the exact Task count matches `GET /shots/{shot_id}/tasks`);
 - Task/Department names are understandable, plain text, never a raw id;
@@ -317,7 +319,47 @@ Expected (updated for the §16 correction): one row, "Tracking" (department "Tra
 - the section improves cross-department understanding (a VFX Supervisor can tell, without leaving this page, that Lighting Pass needs CG confirmation and is blocked on Compositing's contrast grade);
 - the Overview remains readable and not overloaded (two rows fit comfortably; each row is a handful of short lines, not a dense grid).
 
-**This document does not perform or claim owner visual validation.**
+### Final owner visual validation results (recorded)
+
+**Primary multi-Task Shot** (`http://localhost:3000/vfx/shots/8a72858d-8d06-47ab-a28d-5ee077f561c8`):
+
+- both "Compositing Review" and "Lighting Pass" appeared exactly once each;
+- Task and Department names were understandable;
+- "Compositing Review" showed a Confirmed Execution Anchor, revision 2;
+- "Lighting Pass" showed "Awaiting CG confirmation";
+- no draft or confirmed state was confused;
+- CG task focus was explicitly identified as CG-owned context on both rows;
+- no unqualified CG second-person "your attention" copy remained anywhere on the page;
+- "Compositing Review"'s high-attention advisory alignment concern coexisted with "No current CG action is required for this Task." and "No open escalation to VFX." without reading as contradictory;
+- the concern remained visibly marked "AI interpretation" (advisory, never a confirmed fact);
+- "Lighting Pass" showed its real open Dependency (the contrast-grade blocker, medium severity);
+- formal escalation remained derived only from persisted escalation state ("No open escalation to VFX." on both rows, correctly independent of the advisory concern and of Current focus);
+- no CG edit, confirm, reject, Agent-generation, or Dependency-resolution control was exposed anywhere in the section.
+
+Version scope:
+
+- both rows honestly identified the selected Version as "Shot-level Version fallback — not linked to this Task in ICAS";
+- no nullable-`task_id` Version was presented as explicitly belonging to a Task;
+- Task-linked-first selection and the nullable-`task_id` compatibility rule remained intact (unchanged selection logic; only the display label was added);
+- no Version was assigned by name matching (scope came only from the real `task_id` column).
+
+Navigation:
+
+- every row displayed "View Shot Versions" as its action label;
+- every link used the existing, VFX-permitted, Shot-wide Versions route (`/vfx/shots/{shotId}/versions`);
+- no broken `/cg/...` route and no implied Task-detail destination was introduced.
+
+**Real ftrack partial-data Shot** (`http://localhost:3000/vfx/shots/d79f904f-89ce-429f-8e82-eea9f5bca638`):
+
+- the "Tracking" Task appeared;
+- no Execution Anchor was fabricated ("No Execution Anchor yet" shown honestly);
+- `bc0040_comp_v003` was explicitly identified as a Shot-level Version fallback, not linked to Tracking in ICAS;
+- no current CG action, Dependency, concern, or escalation was fabricated (all honest "no ..." fallbacks);
+- the missing Assessment was not described as confirmed alignment ("No current alignment concern recorded.", never "aligned");
+- ftrack linkage (`task_source: "ftrack"`, the real ftrack-synced Version) and the absence of an ICAS Execution Anchor remained visibly distinct facts, never conflated;
+- no raw UUID or raw `HumanRole` enum value appeared anywhere on the page.
+
+**Final verdict: Step 9B-3 complete — the read-only Department Execution Overview was implemented, automatically validated, and owner visually validated.**
 
 ---
 
@@ -336,7 +378,7 @@ Expected (updated for the §16 correction): one row, "Tracking" (department "Tra
 
 ## 15. Readiness for Step 9B-4
 
-**Ready**, pending owner visual validation of this step (§13). Step 9B-4's own scope (media/thumbnail/ftrack context on VFX Versions and/or Shot Overview and/or Artist Current Version, per `02_STEP_9A_...md` §9's own recommendation) is unaffected by and independent of this step's work — it needs its own new, small, read-only, per-request ftrack-resolving endpoint (explicitly out of this step's boundary) and does not depend on `DepartmentExecutionOverviewSection`/`TaskExecutionRow`, though a future pass could choose to surface a thumbnail on each Task row's Latest Version line if Step 9B-4 is scoped to include it.
+**Ready.** Owner visual validation of this step has now passed (§13, §17). Step 9B-4's own scope (media/thumbnail/ftrack context on VFX Versions and/or Shot Overview and/or Artist Current Version, per `02_STEP_9A_...md` §9's own recommendation) is unaffected by and independent of this step's work — it needs its own new, small, read-only, per-request ftrack-resolving endpoint (explicitly out of this step's boundary) and does not depend on `DepartmentExecutionOverviewSection`/`TaskExecutionRow`, though a future pass could choose to surface a thumbnail on each Task row's Latest Version line if Step 9B-4 is scoped to include it.
 
 **Files changed, this step (exhaustive):**
 
@@ -366,9 +408,11 @@ No route, sidebar, tab, migration, Agent, ftrack, or Step 8 acceptance file was 
 - Changed the per-row action label from `"View details →"` (implied a dedicated Task-detail destination) to `"View Shot Versions →"` (honestly names the real, Shot-wide destination every row has always linked to; the destination itself, `/vfx/shots/{shotId}/versions`, is unchanged) (§9).
 - No change to: the underlying Current-focus derivation (`cg_inbox.current_focus.derive_current_focus`, still called exactly once, still not re-implemented); the Execution Anchor/Dependency/Assessment/escalation selection rules; the endpoint's authorization; the page's locked IA (§2); or any other already-passing behaviour (§4 of the correction task explicitly required preserving all of it, and the full regression suite — §11 — confirms nothing else changed).
 
+**A temporary local runtime interruption occurred during re-validation.** The already-running local `apps/api` process (started before the §16 code changes were made) continued serving its previously-loaded code and did not pick up the new `current_focus_type`/`latest_version_scope` fields — confirmed directly: a request to the primary owner-validation URL's endpoint returned a response without either field, then, after the process was stopped and a fresh `uv run uvicorn intent_core_api.main:app` instance was started against the same unchanged database, the identical request returned both fields correctly. The local `apps/api` and `apps/web` services were restarted, and both owner-validation pages subsequently returned successfully with the corrected content on every following check (§13).
+
 **Tests added for the correction:** backend — `test_current_focus_type_is_none_when_nothing_needs_cg_action`, `test_current_focus_type_reflects_the_real_gate_pending_state`, `test_current_focus_type_is_independent_of_escalation_and_advisory_concern`, `test_version_scope_does_not_depend_on_version_name`, plus `latest_version_scope` assertions added to the existing Task-scoped/nullable-`task_id` model-layer tests (26 tests total in `test_department_execution_overview.py`, up from 22). Frontend — `cgTaskFocusLabel`/`latestVersionScopeLabel` unit tests in `departmentExecutionOverview.test.ts`; `TaskExecutionRow.test.tsx` gained tests for CG-owned focus labelling, no-unqualified-"your"-copy, no-CG-action-coexisting-with-high-advisory-concern, advisory-concern-never-becomes-escalation, escalation-depends-only-on-persisted-data, Task-linked-vs-Shot-level Version labelling, no-raw-UUID-in-Version-text, and the corrected navigation label/destination.
 
-**Owner re-validation of the corrected behaviour has not been performed and is not claimed complete.** Step 9B-3 remains **not** marked complete in `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` until it passes. Step 9B-4 and Step 9C remain not started.
+**Update (closeout pass):** owner re-validation of the corrected behaviour has since been performed and has PASSED — see §13's "Final owner visual validation results" and §17. Step 9B-3 is now marked complete in `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md`. Step 9B-4 and Step 9C remain not started.
 
 **Files changed, this correction pass:**
 
@@ -378,6 +422,27 @@ Contracts: `apps/api/openapi.json` (regenerated, gitignored); `packages/contract
 
 Frontend: `apps/web/src/lib/departmentExecutionOverview.ts` (+`cgTaskFocusLabel`, +`latestVersionScopeLabel`); `apps/web/src/lib/departmentExecutionOverview.test.ts` (+tests); `apps/web/src/app/vfx/shots/[shotId]/TaskExecutionRow.tsx` (role-neutral focus display, Version-scope display, corrected nav label); `apps/web/src/app/vfx/shots/[shotId]/TaskExecutionRow.test.tsx` (updated fixture, +tests); `apps/web/src/app/vfx/shots/[shotId]/DepartmentExecutionOverviewSection.test.tsx` (fixture updated for the two new required fields); `apps/web/src/app/vfx/shots/[shotId]/ShotOverviewPage.test.tsx` (fixture updated for the two new required fields).
 
-Documentation: this file (§1/§3/§5/§7/§9/§13, this §16); `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` (correction recorded, Step 9B-3 still not marked complete).
+Documentation: this file (§1/§3/§5/§7/§9/§13, this §16); `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` (correction recorded, Step 9B-3 still not marked complete at the time of this correction pass — completed in the subsequent closeout pass, §17).
 
 No route, sidebar, tab, migration, Agent prompt/runtime, ftrack entity, or Step 8 acceptance data row was touched in this correction pass either.
+
+---
+
+## 17. Documentation closeout — final verdict
+
+This closeout pass records the final owner visual validation outcome (§13) and closes Step 9B-3. **No application source, tests, styles, contracts, generated files, database rows, or ftrack data were changed in this pass — documentation only.**
+
+**Owner-validation correction history, summarized:**
+
+1. **First owner pass** confirmed: Task completeness; Execution Anchor state selection; Dependency, advisory-concern, and formal-escalation separation; partial-data behaviour; and the read-only authority boundary. It found: CG `current_focus` copy displayed as unqualified, second-person, VFX-facing "your attention" text; the nullable-`task_id` Shot-level Version fallback not visibly distinguished from a Task-linked Version; and a "View details" label implying a Task-specific destination despite linking to the Shot-wide Versions page.
+2. **Corrections made** (§16): `current_focus_type` added and rendered as role-explicit CG task-focus copy; `latest_version_scope` added (`"task"` / `"shot_unscoped"` / `null`); Shot-level fallback Versions now explicitly state they are not linked to the Task; the navigation label changed to "View Shot Versions".
+3. **A temporary local runtime interruption occurred during re-validation** (§16): the already-running local `apps/api` process had not picked up the §16 code changes and was serving stale responses missing the two new fields; the local `apps/api`/`apps/web` services were restarted, after which both owner-validation pages returned successfully with the corrected content.
+4. **Final owner visual validation** (§13) has now **PASSED** on both the primary multi-Task Shot and the real ftrack partial-data Shot, with every item on the corrected checklist confirmed.
+
+**Route-count discrepancy:** investigated and resolved (§11) — proven, via `git diff --name-status a05904c..79280bd` and a current file listing, to be a manual-count discrepancy in prior narrative summaries, not a lost or changed route. No route file was modified to force agreement.
+
+**Final verdict:**
+
+**Step 9B-3 complete — the read-only Department Execution Overview was implemented, automatically validated and owner visually validated.**
+
+Step 9B-4 (media/thumbnail/ftrack context) and Step 9C (visual-system unification) have not been started. Step 9B-4 is the next approved activity.
