@@ -1,5 +1,6 @@
 import type { CgInboxItemRead } from "@intent-core/contracts";
 import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { TaskOverviewData } from "@/features/cg/task-overview/data";
@@ -54,6 +55,33 @@ function data(overrides: Partial<TaskOverviewData> = {}): TaskOverviewData {
     ...overrides,
   };
 }
+
+describe("TaskOverviewPage -- Step 9B-1 Detailed context disclosure", () => {
+  it("collapses the pre-existing detailed context by default, without deleting it", async () => {
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data({
+          coreAnchorSummary: "A restrained dusk confrontation.",
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const summary = screen.getByText("Detailed context");
+    expect(summary.closest("details")).not.toHaveAttribute("open");
+    expect(screen.getByText("Latest Production Version")).toBeInTheDocument();
+    expect(
+      screen.getByText("No dependencies have been recorded for this Task yet."),
+    ).toBeInTheDocument();
+    await userEvent.click(summary);
+    expect(summary.closest("details")).toHaveAttribute("open");
+    expect(screen.getByText("Latest Production Version")).toBeVisible();
+    expect(
+      screen.getByText("No dependencies have been recorded for this Task yet."),
+    ).toBeVisible();
+  });
+});
 
 describe("TaskOverviewPage", () => {
   it("renders Project > Shot > Task > Overview breadcrumbs and all five real Context Tabs, Overview active", () => {
@@ -129,7 +157,7 @@ describe("TaskOverviewPage", () => {
     ).toHaveAttribute("href", "/cg/tasks/t1/execution");
   });
 
-  it("shows Core Anchor context as honestly read-only, never an edit control", () => {
+  it("shows Core Anchor context as honestly read-only, never an edit control", async () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -138,6 +166,10 @@ describe("TaskOverviewPage", () => {
         onExitRole={vi.fn()}
       />,
     );
+    expect(
+      screen.getByText("Confirmed Core Anchor (read-only)"),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Detailed context"));
     expect(screen.getByText("Confirmed Core Anchor (read-only)")).toBeVisible();
     expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
     expect(
@@ -145,7 +177,7 @@ describe("TaskOverviewPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("honestly states no Core Anchor when none is confirmed", () => {
+  it("honestly states no Core Anchor when none is confirmed, present but collapsed under Detailed context", async () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -154,6 +186,12 @@ describe("TaskOverviewPage", () => {
         onExitRole={vi.fn()}
       />,
     );
+    const summary = screen.getByText("Detailed context");
+    expect(summary.closest("details")).not.toHaveAttribute("open");
+    expect(
+      screen.getByText("No Core Anchor is confirmed for this Shot yet."),
+    ).toBeInTheDocument();
+    await userEvent.click(summary);
     expect(
       screen.getByText("No Core Anchor is confirmed for this Shot yet."),
     ).toBeVisible();
@@ -184,9 +222,12 @@ describe("TaskOverviewPage", () => {
       />,
     );
     expect(screen.getByText("Current Execution Direction")).toBeVisible();
-    expect(
-      screen.getByRole("link", { name: "24fps, no motion blur." }),
-    ).toHaveAttribute("href", "/cg/tasks/t1/execution");
+    expect(screen.getByText("24fps, no motion blur.")).toBeVisible();
+    expect(screen.getByText("24fps, no motion blur.").closest("a")).toBeNull();
+    expect(screen.getByRole("link", { name: "View details" })).toHaveAttribute(
+      "href",
+      "/cg/tasks/t1/execution",
+    );
     expect(screen.getByText("Human-confirmed")).toBeVisible();
   });
 
@@ -204,7 +245,7 @@ describe("TaskOverviewPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("shows an honest empty Activity state for a genuinely bare Task", () => {
+  it("shows an honest empty Activity state for a genuinely bare Task", async () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -213,6 +254,7 @@ describe("TaskOverviewPage", () => {
         onExitRole={vi.fn()}
       />,
     );
+    await userEvent.click(screen.getByText("Detailed context"));
     expect(
       screen.getByText("No recorded activity exists for this Task yet."),
     ).toBeVisible();

@@ -230,12 +230,21 @@ describe("selectCurrentWorkingDirection", () => {
     expect(why?.authority).toBe("human-confirmed");
   });
 
-  it("produces an honest pending state when no Execution Anchor is confirmed yet (draft-only)", () => {
+  it("produces an honest pending state when no Execution Anchor is confirmed yet (draft-only), never labelled human-confirmed", () => {
     const section = selectCurrentWorkingDirection(
-      baseData({ executionAnchorRevision: null }),
+      baseData({ executionAnchorRevision: null, coreAnchorRevision: null }),
     );
     const whatToDo = section.items.find((i) => i.id === "what-to-do");
+    const why = section.items.find((i) => i.id === "why-it-matters");
+    const unchanged = section.items.find(
+      (i) => i.id === "must-remain-unchanged",
+    );
+    const mayExplore = section.items.find((i) => i.id === "may-explore");
     expect(whatToDo?.value).toBe("No confirmed Execution Anchor yet.");
+    expect(whatToDo?.authority).toBeUndefined();
+    expect(why?.authority).toBeUndefined();
+    expect(unchanged?.authority).toBeUndefined();
+    expect(mayExplore?.authority).toBeUndefined();
   });
 
   it("keeps Artist Agent guidance labelled as Agent interpretation, never Human Decision", () => {
@@ -248,12 +257,13 @@ describe("selectCurrentWorkingDirection", () => {
     expect(guidanceItem?.value).toBe("Push the rim light slightly warmer.");
   });
 
-  it("honestly states no guidance has been generated yet when latestGuidance is null", () => {
+  it("honestly states no guidance has been generated yet when latestGuidance is null, never labelled AI interpretation", () => {
     const section = selectCurrentWorkingDirection(baseData());
     const guidanceItem = section.items.find((i) => i.id === "artist-guidance");
     expect(guidanceItem?.value).toBe(
       "No Artist guidance has been generated yet.",
     );
+    expect(guidanceItem?.authority).toBeUndefined();
   });
 
   it("categorises the latest Version/Review Note as production evidence", () => {
@@ -331,6 +341,19 @@ describe("selectCurrentWorkingDirection", () => {
       expect(item.value).not.toContain("8b4f11eb");
       expect(item.detail ?? "").not.toContain("8b4f11eb");
     }
+  });
+
+  it("excerpts long Review Note content rather than showing it in full, while preserving the source link", () => {
+    const longContent =
+      "Contrast reads slightly hot across the whole sequence, particularly in the highlight rolloff around the practical lights in the background plate -- please pull it back half a stop before the next pass.";
+    const section = selectCurrentWorkingDirection(
+      baseData({ latestReviewNote: note({ content: longContent }) }),
+    );
+    const feedback = section.items.find((i) => i.id === "latest-feedback");
+    expect(feedback?.value.length).toBeLessThan(longContent.length);
+    expect(feedback?.value.endsWith("…")).toBe(true);
+    expect(longContent.startsWith(feedback!.value.slice(0, -1))).toBe(true);
+    expect(feedback?.href).toBe("/artist/tasks/t1/feedback-history");
   });
 
   it("shows the ask-CG line only from a real open Dependency, and never exposes a create-escalation control (data only)", () => {

@@ -7,9 +7,10 @@ import type {
   TaskDependencyRead,
 } from "@intent-core/contracts";
 
-import type {
-  WorkingDirectionItem,
-  WorkingDirectionSection,
+import {
+  excerptText,
+  type WorkingDirectionItem,
+  type WorkingDirectionSection,
 } from "@/lib/workingDirection";
 
 /** Explicit input for the pure selector below -- its own local shape (a
@@ -46,7 +47,7 @@ export function selectCurrentWorkingDirection(
     value:
       executionAnchor?.technical_boundaries ??
       "No confirmed Execution Anchor yet.",
-    authority: "human-confirmed",
+    authority: executionAnchor ? "human-confirmed" : undefined,
     sourceType: "execution_anchor_revision",
     sourceId: executionAnchor?.id,
     timestamp: executionAnchor?.confirmed_at ?? undefined,
@@ -57,7 +58,7 @@ export function selectCurrentWorkingDirection(
     id: "why-it-matters",
     label: "Why this matters",
     value: coreAnchor?.core_summary ?? "No confirmed Core Anchor yet.",
-    authority: "human-confirmed",
+    authority: coreAnchor ? "human-confirmed" : undefined,
     sourceType: "core_anchor_revision",
     sourceId: coreAnchor?.id,
     detail: coreAnchor ? "Confirmed by VFX Supervisor" : undefined,
@@ -72,7 +73,7 @@ export function selectCurrentWorkingDirection(
           "No Constraints recorded on the confirmed Core Anchor.",
         )
       : "No confirmed Core Anchor yet.",
-    authority: "human-confirmed",
+    authority: coreAnchor ? "human-confirmed" : undefined,
     sourceType: "core_anchor_revision",
     sourceId: coreAnchor?.id,
     detail: coreAnchor ? "Confirmed by VFX Supervisor" : undefined,
@@ -84,7 +85,7 @@ export function selectCurrentWorkingDirection(
     value:
       executionAnchor?.allowed_refinements ??
       "No confirmed Execution Anchor yet.",
-    authority: "human-confirmed",
+    authority: executionAnchor ? "human-confirmed" : undefined,
     sourceType: "execution_anchor_revision",
     sourceId: executionAnchor?.id,
     detail: executionAnchor ? "Confirmed by CG Supervisor" : undefined,
@@ -93,7 +94,9 @@ export function selectCurrentWorkingDirection(
   items.push({
     id: "latest-feedback",
     label: "Latest feedback",
-    value: data.latestReviewNote?.content ?? "No new feedback.",
+    value: data.latestReviewNote
+      ? excerptText(data.latestReviewNote.content)
+      : "No new feedback.",
     authority: "production-fact",
     sourceType: "review_note",
     sourceId: data.latestReviewNote?.id,
@@ -130,7 +133,7 @@ export function selectCurrentWorkingDirection(
     value:
       data.latestGuidance?.guidance_output.executive_summary ??
       "No Artist guidance has been generated yet.",
-    authority: "ai-interpretation",
+    authority: data.latestGuidance ? "ai-interpretation" : undefined,
     sourceType: "artist_agent_guidance",
     sourceId: data.latestGuidance?.id,
     timestamp: data.latestGuidance?.created_at,

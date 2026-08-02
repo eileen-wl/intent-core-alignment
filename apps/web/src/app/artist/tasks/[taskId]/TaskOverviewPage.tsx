@@ -5,6 +5,7 @@ import {
   AuthorityLabel,
   Breadcrumbs,
   ContextTabs,
+  DetailedContext,
   Divider,
   ErrorState,
   MetadataRow,
@@ -107,82 +108,86 @@ export function TaskOverviewPage({
 
           <Divider />
 
-          <SectionHeader
-            title="Why: Creative Intent"
-            description="The confirmed Core Anchor for this Shot -- what this work is for."
-          />
-          <Panel>
-            <AuthorityLabel
-              variant="read-only"
-              detail="Confirmed by the VFX Supervisor"
+          <DetailedContext>
+            <SectionHeader
+              title="Why: Creative Intent"
+              description="The confirmed Core Anchor for this Shot -- what this work is for."
             />
-            {data.coreAnchorRevision ? (
-              <MetadataRow
-                items={[
-                  {
-                    label: "Shot objective",
-                    value:
-                      data.coreAnchorRevision.shot_objective ?? "Not recorded",
-                  },
-                  {
-                    label: "Emotional tone",
-                    value:
-                      data.coreAnchorRevision.emotional_tone ?? "Not recorded",
-                  },
-                  {
-                    label: "Narrative priority",
-                    value:
-                      data.coreAnchorRevision.narrative_priority ??
-                      "Not recorded",
-                  },
-                  {
-                    label: "Core summary",
-                    value:
-                      data.coreAnchorRevision.core_summary ?? "Not recorded",
-                  },
-                ]}
+            <Panel>
+              <AuthorityLabel
+                variant="read-only"
+                detail="Confirmed by the VFX Supervisor"
               />
-            ) : (
-              <p>No Core Anchor is confirmed for this Shot yet.</p>
-            )}
-          </Panel>
+              {data.coreAnchorRevision ? (
+                <MetadataRow
+                  items={[
+                    {
+                      label: "Shot objective",
+                      value:
+                        data.coreAnchorRevision.shot_objective ??
+                        "Not recorded",
+                    },
+                    {
+                      label: "Emotional tone",
+                      value:
+                        data.coreAnchorRevision.emotional_tone ??
+                        "Not recorded",
+                    },
+                    {
+                      label: "Narrative priority",
+                      value:
+                        data.coreAnchorRevision.narrative_priority ??
+                        "Not recorded",
+                    },
+                    {
+                      label: "Core summary",
+                      value:
+                        data.coreAnchorRevision.core_summary ?? "Not recorded",
+                    },
+                  ]}
+                />
+              ) : (
+                <p>No Core Anchor is confirmed for this Shot yet.</p>
+              )}
+            </Panel>
 
-          <SectionHeader
-            title="How: Execution Approach"
-            description="The confirmed Execution Anchor for this Task -- how this work should be carried out."
-          />
-          <Panel>
-            <AuthorityLabel
-              variant="read-only"
-              detail="Confirmed by the CG Supervisor"
+            <SectionHeader
+              title="How: Execution Approach"
+              description="The confirmed Execution Anchor for this Task -- how this work should be carried out."
             />
-            {data.executionAnchorRevision ? (
-              <MetadataRow
-                items={[
-                  {
-                    label: "Technical boundaries",
-                    value:
-                      data.executionAnchorRevision.technical_boundaries ??
-                      "Not recorded",
-                  },
-                  {
-                    label: "Allowed refinements",
-                    value:
-                      data.executionAnchorRevision.allowed_refinements ??
-                      "Not recorded",
-                  },
-                  {
-                    label: "Escalation conditions",
-                    value:
-                      data.executionAnchorRevision.escalation_conditions ??
-                      "Not recorded",
-                  },
-                ]}
+            <Panel>
+              <AuthorityLabel
+                variant="read-only"
+                detail="Confirmed by the CG Supervisor"
               />
-            ) : (
-              <p>No Execution Anchor is confirmed for this Task yet.</p>
-            )}
-          </Panel>
+              {data.executionAnchorRevision ? (
+                <MetadataRow
+                  items={[
+                    {
+                      label: "Technical boundaries",
+                      value:
+                        data.executionAnchorRevision.technical_boundaries ??
+                        "Not recorded",
+                    },
+                    {
+                      label: "Allowed refinements",
+                      value:
+                        data.executionAnchorRevision.allowed_refinements ??
+                        "Not recorded",
+                    },
+                    {
+                      label: "Escalation conditions",
+                      value:
+                        data.executionAnchorRevision.escalation_conditions ??
+                        "Not recorded",
+                    },
+                  ]}
+                />
+              ) : (
+                <p>No Execution Anchor is confirmed for this Task yet.</p>
+              )}
+            </Panel>
+          </DetailedContext>
 
           <SectionHeader
             title="What to do now: Artist Guidance"
@@ -286,34 +291,36 @@ export function TaskOverviewPage({
 
           <Divider />
 
-          <dl>
-            <dt>Latest Production Version</dt>
-            <dd>
-              {data.item.latest_version_name ? (
-                <Link href={`/artist/tasks/${taskId}/current-version`}>
-                  {versionDisplayText(data.item)}
+          <DetailedContext>
+            <dl>
+              <dt>Latest Production Version</dt>
+              <dd>
+                {data.item.latest_version_name ? (
+                  <Link href={`/artist/tasks/${taskId}/current-version`}>
+                    {versionDisplayText(data.item)}
+                  </Link>
+                ) : (
+                  "No Version recorded yet."
+                )}
+              </dd>
+
+              <dt>Latest feedback</dt>
+              <dd>
+                <Link href={`/artist/tasks/${taskId}/feedback-history`}>
+                  {data.item.open_review_note_count > 0
+                    ? `${data.item.open_review_note_count} Review Note(s) recorded →`
+                    : "View Feedback History →"}
                 </Link>
-              ) : (
-                "No Version recorded yet."
-              )}
-            </dd>
+              </dd>
 
-            <dt>Latest feedback</dt>
-            <dd>
-              <Link href={`/artist/tasks/${taskId}/feedback-history`}>
-                {data.item.open_review_note_count > 0
-                  ? `${data.item.open_review_note_count} Review Note(s) recorded →`
-                  : "View Feedback History →"}
-              </Link>
-            </dd>
-
-            <dt>Blockers</dt>
-            <dd>
-              {data.dependencies.length === 0
-                ? "No dependencies have been recorded for this Task yet."
-                : `${data.item.open_dependency_count} open of ${data.dependencies.length} recorded.`}
-            </dd>
-          </dl>
+              <dt>Blockers</dt>
+              <dd>
+                {data.dependencies.length === 0
+                  ? "No dependencies have been recorded for this Task yet."
+                  : `${data.item.open_dependency_count} open of ${data.dependencies.length} recorded.`}
+              </dd>
+            </dl>
+          </DetailedContext>
         </>
       )}
     </AppShell>

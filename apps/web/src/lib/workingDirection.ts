@@ -19,8 +19,8 @@ export type WorkingDirectionAuthority = Extract<
   | "human-review-required"
 >;
 
-/** One line of a role's Working Direction summary. Every non-`unavailable`
- * item must be traceable to a real object (`sourceType`/`sourceId`) --
+/** One line of a role's Working Direction summary. Every item with a
+ * real backing object is traceable to it (`sourceType`/`sourceId`) --
  * `sourceId` exists for traceability and tests only and must never be
  * rendered as visible raw-UUID text (Step 9B-1 §2/§6). `href` is always
  * an existing, already-locked route -- this module never invents a new
@@ -32,7 +32,15 @@ export interface WorkingDirectionItem {
   /** Concise summary text, or an honest fallback string when the source
    * object is absent -- never generic motivational copy. */
   value: string;
-  authority: WorkingDirectionAuthority;
+  /** Owner-validation correction (Step 9B-1): **omitted, never
+   * `"human-confirmed"`, whenever the item's `value` is a fallback
+   * string for an absent object** -- e.g. "No confirmed Core Anchor
+   * yet." is a current production/system state, not confirmed human
+   * direction, and must render with no authority badge at all rather
+   * than a misleading one. Every selector must set this only when a
+   * real backing object (a confirmed revision, a real Note, a real
+   * Guidance row, etc.) actually exists. */
+  authority?: WorkingDirectionAuthority;
   /** The real object type this line was derived from, e.g.
    * `"core_anchor_revision"`, `"version"`, `"cross_role_assessment"`,
    * `"current_focus"` -- for tests/traceability, not rendered as body
@@ -56,4 +64,21 @@ export interface WorkingDirectionItem {
 export interface WorkingDirectionSection {
   title: string;
   items: WorkingDirectionItem[];
+}
+
+/** Owner-validation correction (Step 9B-1): a deterministic,
+ * character-count excerpt for long free-text source content (a
+ * ReviewNote's content, an Intent Signal summary) -- never an LLM
+ * summary, and never a change in meaning, only length. The full text
+ * always remains reachable via the item's existing `href` to the real
+ * source page, so nothing is hidden, only shortened for the card. Cuts
+ * on a word boundary so it never splits mid-word. */
+export function excerptText(text: string, maxLength = 140): string {
+  if (text.length <= maxLength) {
+    return text;
+  }
+  const cut = text.slice(0, maxLength);
+  const lastSpace = cut.lastIndexOf(" ");
+  const trimmed = lastSpace > 0 ? cut.slice(0, lastSpace) : cut;
+  return `${trimmed}…`;
 }

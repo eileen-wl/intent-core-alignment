@@ -4,6 +4,7 @@ import type {
   VfxInboxItemRead,
 } from "@intent-core/contracts";
 import { cleanup, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ShotOverviewPage } from "./ShotOverviewPage";
@@ -96,12 +97,30 @@ describe("ShotOverviewPage -- Step 9B-1 Current Creative Direction", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByText("Current Creative Direction")).toBeVisible();
+    const heading = screen.getByText("Current Creative Direction");
+    expect(heading).toBeVisible();
+    // Scoped to the section: the same objective text also appears,
+    // collapsed, inside Detailed context below (Step 9B-1 §5), so an
+    // unscoped query would be ambiguous.
+    const section = heading.closest("section");
+    expect(section).not.toBeNull();
+    const scoped = within(section!);
+    // The value is plain text, not a whole-paragraph link -- a separate,
+    // concise "View details" link carries the same destination.
+    expect(scoped.getByText("A restrained dusk confrontation.")).toBeVisible();
     expect(
-      screen.getByRole("link", { name: "A restrained dusk confrontation." }),
-    ).toHaveAttribute("href", "/vfx/shots/s1/intent");
-    expect(screen.getByText("Human-confirmed")).toBeVisible();
-    expect(screen.getByText("AI interpretation")).toBeVisible();
+      scoped.getByText("A restrained dusk confrontation.").closest("a"),
+    ).toBeNull();
+    const viewDetailsLinks = scoped.getAllByRole("link", {
+      name: "View details",
+    });
+    expect(
+      viewDetailsLinks.some(
+        (link) => link.getAttribute("href") === "/vfx/shots/s1/intent",
+      ),
+    ).toBe(true);
+    expect(scoped.getByText("Human-confirmed")).toBeVisible();
+    expect(scoped.getByText("AI interpretation")).toBeVisible();
   });
 
   it("renders nothing when workingDirection has an empty items array (honest, not an empty heading)", () => {
@@ -226,16 +245,24 @@ describe("ShotOverviewPage", () => {
     expect(screen.queryByText("Latest assessment")).not.toBeInTheDocument();
   });
 
-  it("shows the Signal summary in supporting context when Current focus is not alignment-driven", () => {
+  it("shows the Signal summary in supporting context when Current focus is not alignment-driven, once Detailed context is opened", async () => {
     const item = buildItem({
       current_focus: focus("assessment_generation_available"),
     });
     render(<ShotOverviewPage item={item} onExitRole={vi.fn()} />);
+    expect(screen.getByText("Latest assessment")).toBeInTheDocument();
+    await userEvent.click(screen.getByText("Detailed context"));
     expect(screen.getByText("Latest assessment")).toBeVisible();
   });
 
-  it("shows an honest confirmed Core Anchor summary", () => {
+  it("shows an honest confirmed Core Anchor summary, present but collapsed by default under Detailed context", async () => {
     render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
+    const summary = screen.getByText("Detailed context");
+    expect(summary.closest("details")).not.toHaveAttribute("open");
+    expect(
+      screen.getByText("A restrained dusk confrontation."),
+    ).toBeInTheDocument();
+    await userEvent.click(summary);
     expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
   });
 

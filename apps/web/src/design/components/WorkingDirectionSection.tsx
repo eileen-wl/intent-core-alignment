@@ -28,18 +28,24 @@ export function WorkingDirectionSection({
   return (
     <section>
       <SectionHeader title={section.title} />
-      <Grid minColumnWidth="14rem" gap={3}>
+      <Grid
+        minColumnWidth="26rem"
+        gap={3}
+        className={styles.grid}
+        style={{ alignItems: "start" }}
+      >
         {section.items.map((item) => (
           <Panel key={item.id} className={styles.item}>
             <p className={styles.label}>{item.label}</p>
-            <p className={styles.value}>
-              {item.href ? (
-                <Link href={item.href}>{item.value}</Link>
-              ) : (
-                item.value
-              )}
-            </p>
-            <AuthorityLabel variant={item.authority} detail={item.detail} />
+            <p className={styles.value}>{item.value}</p>
+            {item.authority && (
+              <AuthorityLabel variant={item.authority} detail={item.detail} />
+            )}
+            {item.href && (
+              <Link href={item.href} className={styles.viewDetails}>
+                View details
+              </Link>
+            )}
           </Panel>
         ))}
       </Grid>

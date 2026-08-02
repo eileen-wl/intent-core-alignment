@@ -1,6 +1,7 @@
-import type {
-  WorkingDirectionItem,
-  WorkingDirectionSection,
+import {
+  excerptText,
+  type WorkingDirectionItem,
+  type WorkingDirectionSection,
 } from "@/lib/workingDirection";
 import { signalStateLabel } from "@/app/vfx/vfxWording";
 import type { ShotOverviewData } from "./data";
@@ -25,7 +26,10 @@ export function selectCurrentCreativeDirection(
     id: "creative-objective",
     label: "Current creative objective",
     value: revision?.core_summary ?? "No confirmed Core Anchor yet.",
-    authority: "human-confirmed",
+    // Owner-validation correction: an absent confirmed revision is a
+    // current production state, never confirmed human direction -- no
+    // authority badge renders for the fallback string.
+    authority: revision ? "human-confirmed" : undefined,
     sourceType: "core_anchor_revision",
     sourceId: revision?.id,
     timestamp: revision?.confirmed_at ?? undefined,
@@ -44,7 +48,7 @@ export function selectCurrentCreativeDirection(
           "No Constraints recorded on the confirmed Core Anchor.",
         )
       : "No confirmed Core Anchor yet.",
-    authority: "human-confirmed",
+    authority: revision ? "human-confirmed" : undefined,
     sourceType: "core_anchor_revision",
     sourceId: revision?.id,
     detail: revision ? "Confirmed by VFX Supervisor" : undefined,
@@ -60,7 +64,7 @@ export function selectCurrentCreativeDirection(
           "No Variation Zones recorded on the confirmed Core Anchor.",
         )
       : "No confirmed Core Anchor yet.",
-    authority: "human-confirmed",
+    authority: revision ? "human-confirmed" : undefined,
     sourceType: "core_anchor_revision",
     sourceId: revision?.id,
     detail: revision ? "Confirmed by VFX Supervisor" : undefined,
@@ -71,9 +75,11 @@ export function selectCurrentCreativeDirection(
     id: "current-risk",
     label: "Current alignment / drift risk",
     value: data.item.latest_signal_id
-      ? `${signalStateLabel(data.item.latest_signal_attention_level)} -- ${data.item.latest_signal_summary}`
+      ? `${signalStateLabel(data.item.latest_signal_attention_level)} -- ${excerptText(data.item.latest_signal_summary ?? "")}`
       : "No current Intent Signal. A successful Cross-role Assessment is required.",
-    authority: "ai-interpretation",
+    // No Intent Signal is an honest absence, not an Agent interpretation
+    // of "aligned" -- omit the badge rather than imply one exists.
+    authority: data.item.latest_signal_id ? "ai-interpretation" : undefined,
     sourceType: "cross_role_assessment",
     sourceId: data.currentAssessment?.id,
     timestamp: data.currentAssessment?.created_at,
@@ -84,7 +90,9 @@ export function selectCurrentCreativeDirection(
   items.push({
     id: "latest-feedback",
     label: "Latest meaningful production feedback",
-    value: data.latestReviewNote?.content ?? "No new feedback.",
+    value: data.latestReviewNote
+      ? excerptText(data.latestReviewNote.content)
+      : "No new feedback.",
     authority: "production-fact",
     sourceType: "review_note",
     sourceId: data.latestReviewNote?.id,

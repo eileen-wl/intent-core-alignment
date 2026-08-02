@@ -155,12 +155,34 @@ describe("selectCurrentExecutionDirection", () => {
     expect(goal?.authority).toBe("human-confirmed");
   });
 
-  it("produces an honest pending state when no Execution Anchor is confirmed (draft-only Task)", () => {
+  it("produces an honest pending state when no Execution Anchor is confirmed (draft-only Task), never labelled human-confirmed", () => {
     const section = selectCurrentExecutionDirection(
       baseData({ confirmedExecutionAnchorRevision: null }),
     );
     const goal = section.items.find((i) => i.id === "task-goal");
+    const criteria = section.items.find(
+      (i) => i.id === "production-ready-criteria",
+    );
     expect(goal?.value).toBe("No confirmed Execution Anchor yet.");
+    expect(goal?.authority).toBeUndefined();
+    expect(criteria?.authority).toBeUndefined();
+  });
+
+  it("never labels a missing confirmed Core Anchor context as human-confirmed", () => {
+    const section = selectCurrentExecutionDirection(
+      baseData({ coreAnchorSummary: null }),
+    );
+    const context = section.items.find((i) => i.id === "core-anchor-context");
+    expect(context?.value).toBe("No confirmed Core Anchor yet.");
+    expect(context?.authority).toBeUndefined();
+
+    const withSummary = selectCurrentExecutionDirection(
+      baseData({ coreAnchorSummary: "A restrained dusk confrontation." }),
+    );
+    const contextWithSummary = withSummary.items.find(
+      (i) => i.id === "core-anchor-context",
+    );
+    expect(contextWithSummary?.authority).toBe("human-confirmed");
   });
 
   it("shows an honest provenance limitation when no confirmation Decision/rationale exists", () => {
@@ -266,6 +288,21 @@ describe("selectCurrentExecutionDirection", () => {
       expect(item.value).not.toContain("8b4f11eb");
       expect(item.detail ?? "").not.toContain("8b4f11eb");
     }
+  });
+
+  it("excerpts long Review Note content rather than showing it in full, while preserving the source link", () => {
+    const longContent =
+      "Contrast reads slightly hot across the whole sequence, particularly in the highlight rolloff around the practical lights in the background plate -- please pull it back half a stop before the next pass.";
+    const section = selectCurrentExecutionDirection(
+      baseData({ latestReviewNote: note({ content: longContent }) }),
+    );
+    const feedback = section.items.find(
+      (i) => i.id === "latest-version-feedback",
+    );
+    expect(feedback?.value.length).toBeLessThan(longContent.length);
+    expect(feedback?.value.endsWith("…")).toBe(true);
+    expect(longContent.startsWith(feedback!.value.slice(0, -1))).toBe(true);
+    expect(feedback?.href).toBe("/cg/tasks/t1/version-review");
   });
 
   it("shows the escalate-to-VFX line only from a real open escalation Dependency", () => {

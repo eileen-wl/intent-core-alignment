@@ -1,7 +1,8 @@
 # Step 9B-1 — Role-Aware Working Direction
 
-**Status:** Implementation and automated validation complete. Owner visual validation pending.
+**Status:** Implementation and automated validation complete. Owner visual validation pending (a first attempt failed and has been corrected — see §15; the owner has not yet re-validated).
 **Correction applied (same branch, same task):** the original pass's `GET /intent/execution-anchor-revisions/{id}/decisions` endpoint had no backend role check, only the frontend route guard. Backend authorization is now explicit — see §8.1.
+**Owner-validation correction applied (same branch, same task):** the first owner visual validation attempt failed for four reasons (an unavailable primary CG page, misleading fallback authority, an unreadable shared authority strip, and excessive duplication with pre-existing detailed content). All four are corrected — see §15. Validation is still pending, not re-claimed as complete.
 **Branch:** `feat/step9b1-role-aware-working-direction`
 **Companion documents:** `docs/step-9/01_STEP_9_PRESENTATION_AND_COMPREHENSION_BASELINE.md` (locked baseline, unmodified), `docs/step-9/02_STEP_9A_CURRENT_STATE_AND_IMPLEMENTATION_MAP.md` (the audit this implementation follows), `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` §L.
 
@@ -171,30 +172,33 @@ None of these fallbacks are generic motivational copy — each names the specifi
 
 ## 10. Tests and validation
 
-**New focused test files (all passing):**
+**New focused test files (all passing, counts as of the §15 owner-validation correction):**
 
-- `apps/web/src/features/vfx/shot-overview/selectCurrentCreativeDirection.test.ts` (10 tests)
+- `apps/web/src/features/vfx/shot-overview/selectCurrentCreativeDirection.test.ts` (13 tests)
 - `apps/web/src/features/vfx/shot-overview/data.test.ts` (6 tests)
-- `apps/web/src/features/cg/task-overview/selectCurrentExecutionDirection.test.ts` (11 tests)
-- `apps/web/src/features/artist/task-overview/selectCurrentWorkingDirection.test.ts` (10 tests)
-- `apps/api/tests/test_execution_anchor_decisions_list.py` (13 tests — 6 from the original pass, 7 new authorization tests added this correction)
+- `apps/web/src/features/cg/task-overview/selectCurrentExecutionDirection.test.ts` (13 tests)
+- `apps/web/src/features/artist/task-overview/selectCurrentWorkingDirection.test.ts` (11 tests)
+- `apps/web/src/lib/workingDirection.test.ts` (3 tests — new this correction, covers `excerptText`)
+- `apps/web/src/design/components/WorkingDirectionSection.test.tsx` (6 tests — new this correction)
+- `apps/web/src/design/components/AuthorityLabel.test.tsx` (15 tests — 14 pre-existing + 1 new this correction)
+- `apps/api/tests/test_execution_anchor_decisions_list.py` (13 tests — 6 from the original pass, 7 new authorization tests added the prior correction)
 
-Plus new rendering-level tests added to the three existing page-component test files (7 new tests total), and every pre-existing test in those three files (VFX 20, CG 7, Artist 13) left unmodified and still passing.
+Plus rendering-level tests updated/added in the three existing page-component test files (VFX 23, CG 10, Artist 16, all passing) to cover the §15 corrections: the "View details" link pattern, the collapsed-by-default Detailed context disclosure, and the absence of a Human-confirmed badge on fallback content.
 
 Coverage against the task's required list: confirmed-over-draft Anchor selection (VFX/CG/Artist); draft-only honest pending state; Agent interpretation never categorised as Human Decision (Intent Signal, Artist Guidance); Version/ReviewNote categorised as production evidence; VFX Shot-wide vs. CG/Artist Task-scoped Version context; Artist guidance remains advisory; role-appropriate navigation destinations (every `href` asserted to start with the current role's own route prefix); missing-data fallbacks; no raw id in any visible summary value (dedicated test per selector, using a deliberately UUID-shaped fixture id). Backend: correct scoped records, unrelated-revision exclusion, human role/actor provenance retention, superseded-revision history retention, empty-result validity, no mutation side effect, **plus this correction's authorization matrix**: allowed CG Supervisor request succeeds; allowed VFX Supervisor request succeeds (with the `docs/ROLE_PERMISSIONS.md` §2 evidence documented in the test itself); Artist request rejected (403); missing role header rejected (401); invalid (non-`HumanRole`) role header rejected (401); a valid role with a missing actor id rejected (401); a rejected request creates no row, leaks no Decision content in its response body, and does not affect what an authorised request subsequently sees.
 
-**Full regression, all green:**
+**Full regression, all green (as of the §15 owner-validation correction):**
 
-- Frontend: Vitest 888/888 (115 files, unchanged from the original pass — this correction touched no frontend test assertions, only added trusted-header plumbing), ESLint (0 errors, 1 pre-existing/unrelated warning), `tsc --noEmit` (apps/web and contracts package, both clean), Prettier (clean, repo-root), production `next build` (18 routes, succeeded).
-- Backend: `pytest apps/api` 904/904 (897 after the original pass + 7 new authorization tests), `mypy` across all four exact CI scopes (clean, 130 files), `ruff check` (clean), `ruff format --check` (clean, 232 files), `uv lock --check` (no drift).
-- Contracts: OpenAPI export + TypeScript regeneration (run again this correction, for the endpoint's new header parameters) produced a clean, additive-only diff; both the contracts package and `apps/web` typecheck cleanly against it.
+- Frontend: Vitest 906/906 (117 files), ESLint (0 errors, 1 pre-existing/unrelated warning), `tsc --noEmit` (apps/web and contracts package, both clean), Prettier (clean, repo-root), production `next build` (30 routes, succeeded).
+- Backend: unchanged from the prior authorization correction — no backend source was touched in the §15 pass (Task 1's diagnosis found no source defect; only a stale local process). `pytest apps/api` 904/904, `mypy` across all four exact CI scopes (clean, 130 files), `ruff check` (clean), `ruff format --check` (clean, 232 files), `uv lock --check` (no drift).
+- Contracts: unchanged from the prior authorization correction — no schema or endpoint change in the §15 pass.
 
 ---
 
 ## 11. Known limitations
 
 - **Artist Agent guidance is its own line, not folded into "what to do next"** — a deliberate choice (§6) so it can carry its own `ai-interpretation` label distinct from the `current_focus`-derived pending-action line, matching the task's explicit "must be labelled accordingly" rule more precisely than merging the two would have.
-- **The pre-existing VFX Shot Overview `<dl>` "supporting context" block was left unchanged**, even though it now overlaps partially with the new Current Creative Direction section (both show a Core Anchor summary and latest Version, from slightly different source calls). Removing or consolidating it was avoided specifically to not touch or risk any of the 15+ pre-existing `ShotOverviewPage.test.tsx` assertions this task must not weaken. Consolidation is deferred to Step 9C (visual-unification), named here so it is not mistaken for an oversight.
+- ~~The pre-existing VFX Shot Overview `<dl>` "supporting context" block was left unchanged...~~ **Superseded by §15.4** — the owner-validation correction wrapped this block (and its CG/Artist equivalents) in a collapsed-by-default "Detailed context" disclosure rather than leaving the duplication unaddressed.
 - **The Execution Anchor Decision-listing endpoint is now role-gated (§8.1: CG Supervisor + VFX Supervisor); the Core Anchor decisions endpoint it mirrors remains unguarded**, unchanged and out of this correction's scope — a real, named asymmetry between the two now-similar endpoints, not an oversight. Retrofitting the Core Anchor endpoint the same way is a separate, future decision.
 - **`joinOrFallback` for Constraints/Variation Zones renders a semicolon-joined string**, not a bulleted list — a deliberately minimal presentation choice for this step; Step 9C may revisit the visual treatment without needing to touch the selector's data shape.
 
@@ -202,7 +206,7 @@ Coverage against the task's required list: confirmed-over-draft Anchor selection
 
 ## 12. Owner visual-validation targets
 
-Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http://localhost:3000`, entry via `http://localhost:3000/demo`. The owner has not yet performed this validation; it is not claimed as complete.
+Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http://localhost:3000`, entry via `http://localhost:3000/demo`. The owner has not yet performed this validation; it is not claimed as complete. **A first attempt at this validation failed and has since been corrected — see §15 for the four causes and the fix applied to each. The table below still describes the intended content; the visual layout, authority-badge behaviour, and duplication have all changed since the original pass per §15.**
 
 **Real-data check performed before choosing these targets (read-only, no data changed):** none of the 9 real ftrack-synced Shots/Tasks from Step 8C-8 have a confirmed Core or Execution Anchor yet (ftrack sync and ICAS Anchor confirmation are separate, independent actions — syncing a Version never confirms an Anchor). Pointing the owner at one of those would show mostly honest-empty `human-confirmed` fallback lines rather than "sufficient confirmed/current data" as required. The D1 demo/manual Shot below is the one real dataset in this database with a confirmed Core Anchor **and** a confirmed Execution Anchor **and** a real Version/Review Note/Artist guidance, so it is used instead; a ftrack-synced Task remains a valid secondary check specifically for the honest-fallback states (§9).
 
@@ -236,3 +240,57 @@ Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http
 Files changed, original pass (exhaustive): `apps/api/src/intent_core_api/intent/router.py`; `apps/api/tests/test_execution_anchor_decisions_list.py` (new); `apps/api/openapi.json` (regenerated, gitignored, not committed); `packages/contracts/ts/src/generated/api.ts` (regenerated); `apps/web/src/lib/workingDirection.ts` (new); `apps/web/src/design/components/WorkingDirectionSection.tsx` + `.module.css` (new); `apps/web/src/design/components/index.ts`; `apps/web/src/features/vfx/shot-overview/{data,selectCurrentCreativeDirection}.ts` (+ `.test.ts` for both, new); `apps/web/src/features/cg/api.ts`; `apps/web/src/features/cg/task-overview/{data,selectCurrentExecutionDirection}.ts` (+ `.test.ts` for the selector, new); `apps/web/src/features/artist/task-overview/{data,selectCurrentWorkingDirection}.ts` (+ `.test.ts` for the selector, new); `apps/web/src/app/vfx/shots/[shotId]/{page,ShotOverviewPage,ShotOverviewPage.test}.tsx`; `apps/web/src/app/cg/tasks/[taskId]/{TaskOverviewPage,TaskOverviewPage.test}.tsx`; `apps/web/src/app/artist/tasks/[taskId]/{TaskOverviewPage,TaskOverviewPage.test}.tsx`.
 
 **Files changed, this authorization correction (additional, on top of the above):** `apps/api/src/intent_core_api/intent/router.py` (added `actor`/`require_human_role`, `_EXECUTION_ANCHOR_DECISION_READERS`); `apps/api/tests/test_execution_anchor_decisions_list.py` (existing calls given `headers=CG`; 7 new authorization tests); `apps/api/openapi.json` (regenerated again, gitignored); `packages/contracts/ts/src/generated/api.ts` (regenerated again, additive header-parameter metadata only); `apps/web/src/features/cg/api.ts` (`listExecutionAnchorRevisionDecisions` now requires `actorHeaders`); `apps/web/src/features/cg/task-overview/data.ts` (`loadTaskOverviewData` now requires `actorHeaders`); `apps/web/src/app/cg/tasks/[taskId]/page.tsx` (resolves the real session identity and forwards trusted headers). No frontend test file needed a content change — the existing CG `page.test.tsx` mock already exercises `next/headers`' `cookies()` the same way `resolveIdentity()` now also reads it.
+
+---
+
+## 15. Owner-validation correction (second pass)
+
+**The first owner visual validation attempt failed.** This section records why, and the correction applied. Owner visual validation itself is **not** re-claimed as complete by this correction — it remains pending, and Step 9B-1 must not be marked owner-validated in `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` until the owner actually re-checks the four targets in §12.
+
+### 15.1 (a) Primary CG target page was unavailable
+
+**Symptom:** `http://localhost:3000/cg/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684` (the Task with a confirmed Execution Anchor) showed "This Task is unavailable. The ICAS service could not be reached." A real ftrack Task with no confirmed Execution Anchor (`.../cg/tasks/f1451fda-80be-4820-8d9f-172d71df668f`) opened correctly.
+
+**Diagnosis (not assumed — reproduced and confirmed):** the long-running local `apps/api` process had been started via `uv run uvicorn ... ` **without** `--reload` before `GET /intent/execution-anchor-revisions/{revision_id}/decisions` (§8) existed in its route table, and was never restarted across the subsequent authorization-correction pass (which only ran through `pytest`'s own isolated test client, never the long-running dev process). `listExecutionAnchorRevisionDecisions` uses the non-null-tolerant `cgFetch`, so the stale process's genuine 404 became an uncaught `CgApiError`, propagating to `page.tsx`'s outer `try/catch` and producing `unavailable: true`. Confirmed by: killing the stale `node`/`python` processes on ports 3000/8000, starting both fresh, and directly curl-testing the decisions endpoint (401 with no headers, 200 with real data given `X-Actor-Role: cg_supervisor`), then loading all four §12/§15.5 URLs successfully against the fresh processes.
+
+**Correction:** none — per this task's own instruction, no source change was made for a stale-process cause. The cause and successful fresh-process verification are recorded here.
+
+### 15.2 (b) Fallback authority semantics were misleading
+
+**Symptom:** absence states ("No confirmed Core Anchor yet.", "No confirmed Execution Anchor yet.") rendered with a "Human-confirmed" badge — an absent confirmed object is a current production/system state, never confirmed human direction.
+
+**Correction:** `WorkingDirectionItem.authority` (`apps/web/src/lib/workingDirection.ts`) changed from required to optional. All three selectors now set `authority` to `"human-confirmed"` / `"ai-interpretation"` conditionally on the real backing object actually existing (a confirmed revision, a real Core Anchor summary, real Artist guidance), and to `undefined` otherwise — never omitting or fabricating the category, only omitting the badge when there is nothing confirmed to badge. `WorkingDirectionSection.tsx` renders `<AuthorityLabel>` only when `item.authority` is set. §11's earlier note (an absence state stays "under `human-confirmed` styling") is superseded by this correction and no longer accurate — an absence state now never carries any authority badge.
+
+### 15.3 (c) Shared authority strip was visually broken
+
+**Symptom:** category text was duplicated ("CONFIRMED Human-confirmed", "AI AI interpretation"); provenance overlapped other text; a fixed-height narrow strip clipped longer source details.
+
+**Correction, in the shared `apps/web/src/design/components/AuthorityLabel.tsx` (+ `.module.css`)** — the component used by all eleven authority variants across the app, not only Working Direction:
+
+- Removed the abbreviated `MARKER_TEXT` span entirely (it duplicated `LABEL_TEXT`'s wording, e.g. "CONFIRMED" beside "Human-confirmed"). Exactly one concise badge now renders per item.
+- `detail` (provenance) now renders in a separate block beneath the badge (a `flex-column` wrapper), not packed into the same row — it wraps naturally (`overflow-wrap: break-word`) and is never clipped by a fixed height (`line-height: 1` was removed from the badge).
+
+`WorkingDirectionSection.tsx` additionally: widened `Grid`'s `minColumnWidth` from `14rem` to `26rem` and capped the grid's own `max-width` at the existing `--content-width-comparison` (`75rem`) token, so normal desktop workspace width shows at most two columns (one below that); added `align-items: start` so cards grow to their natural height instead of stretching to match their row's tallest sibling; replaced the whole-paragraph-as-link pattern with plain `value` text plus a separate, concise "View details" link when `item.href` exists.
+
+### 15.4 (d) Working Direction summary duplicated pre-existing detailed content
+
+**Correction, smallest safe presentation approach, nothing deleted:**
+
+- New shared `apps/web/src/design/components/DetailedContext.tsx` (+ `.module.css`) — a native `<details>`/`<summary>` disclosure, collapsed by default, labelled "Detailed context". Follows the same native-disclosure pattern already established by `EvidenceProvenanceDrawer.tsx`.
+- **VFX Shot Overview:** the pre-existing `<dl>` (Confirmed Core Anchor / Latest Version / Latest assessment / Activity) is now wrapped in one `DetailedContext`.
+- **CG Task Overview:** the pre-existing `<dl>` (Confirmed Core Anchor / Execution Anchor / Latest Production Version / Dependencies / Activity) is now wrapped in one `DetailedContext`.
+- **Artist Task Overview:** the "Why: Creative Intent" and "How: Execution Approach" sections (both read-only Anchor detail, directly duplicating Working Direction's `why-it-matters`/`must-remain-unchanged`/`what-to-do`/`may-explore` items) are wrapped in one `DetailedContext`; the final `<dl>` (Latest Production Version / Latest feedback / Blockers) is wrapped in a second `DetailedContext`. The "What to do now: Artist Guidance" section — including the `GenerateArtistGuidanceButton` action and its detail Panel (non-negotiables, allowed variations, iteration priorities, risks — content not shown anywhere in Working Direction) — is deliberately **not** collapsed: it is the page's one genuinely non-duplicated critical action and stays visible per this task's own instruction.
+- Long free-text source content is now excerpted rather than shown in full: a new deterministic, non-LLM `excerptText()` helper (`apps/web/src/lib/workingDirection.ts`) truncates on a word boundary and appends "…", applied to every ReviewNote-content item (VFX/CG/Artist "latest feedback") and to VFX's Intent Signal summary in "current alignment / drift risk". The excerpt is always a literal prefix of the real source text (asserted directly in tests) and the item's existing `href` still links to the full source page — nothing is hidden, only shortened for the card.
+
+### 15.5 Fresh-process re-verification
+
+All four owner-validation URLs reloaded successfully against freshly restarted `apps/api`/`apps/web` processes after this correction:
+
+- VFX: `http://localhost:3000/vfx/shots/8a72858d-8d06-47ab-a28d-5ee077f561c8` — 200.
+- CG (confirmed Execution Anchor): `http://localhost:3000/cg/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684` — 200, "Current Execution Direction" present, no "This Task is unavailable".
+- Artist: `http://localhost:3000/artist/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684` — 200.
+- CG (real ftrack fallback, no confirmed Execution Anchor): `http://localhost:3000/cg/tasks/f1451fda-80be-4820-8d9f-172d71df668f` — 200; every "No confirmed ... yet." line carries no authority badge (confirmed directly in the rendered HTML — zero "Human-confirmed" occurrences on this page).
+
+Confirmed absent on all four pages: the old duplicated-marker pattern ("CONFIRMED" beside "Human-confirmed").
+
+**This does not constitute owner visual validation.** The owner must still perform the checklist in §12.

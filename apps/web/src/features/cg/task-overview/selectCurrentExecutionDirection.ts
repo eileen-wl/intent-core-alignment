@@ -6,9 +6,10 @@ import type {
   TaskDependencyRead,
 } from "@intent-core/contracts";
 
-import type {
-  WorkingDirectionItem,
-  WorkingDirectionSection,
+import {
+  excerptText,
+  type WorkingDirectionItem,
+  type WorkingDirectionSection,
 } from "@/lib/workingDirection";
 
 /** Explicit input for the pure selector below -- deliberately its own
@@ -46,7 +47,9 @@ export function selectCurrentExecutionDirection(
     label: "What this Task must achieve",
     value:
       revision?.technical_boundaries ?? "No confirmed Execution Anchor yet.",
-    authority: "human-confirmed",
+    // Owner-validation correction: an absent confirmed revision is a
+    // current production state, never confirmed human direction.
+    authority: revision ? "human-confirmed" : undefined,
     sourceType: "execution_anchor_revision",
     sourceId: revision?.id,
     timestamp: revision?.confirmed_at ?? undefined,
@@ -63,7 +66,7 @@ export function selectCurrentExecutionDirection(
     id: "core-anchor-context",
     label: "Relevant confirmed Core Anchor context",
     value: data.coreAnchorSummary ?? "No confirmed Core Anchor yet.",
-    authority: "human-confirmed",
+    authority: data.coreAnchorSummary ? "human-confirmed" : undefined,
     sourceType: "core_anchor_revision",
     detail: data.coreAnchorSummary ? "Confirmed by VFX Supervisor" : undefined,
   });
@@ -74,7 +77,7 @@ export function selectCurrentExecutionDirection(
     value:
       revision?.production_ready_criteria ??
       "No confirmed Execution Anchor yet.",
-    authority: "human-confirmed",
+    authority: revision ? "human-confirmed" : undefined,
     sourceType: "execution_anchor_revision",
     sourceId: revision?.id,
     detail: revision ? "Confirmed by CG Supervisor" : undefined,
@@ -99,7 +102,9 @@ export function selectCurrentExecutionDirection(
   items.push({
     id: "latest-version-feedback",
     label: "Latest Version and feedback",
-    value: data.latestReviewNote?.content ?? "No new feedback.",
+    value: data.latestReviewNote
+      ? excerptText(data.latestReviewNote.content)
+      : "No new feedback.",
     authority: "production-fact",
     sourceType: "review_note",
     sourceId: data.latestReviewNote?.id,

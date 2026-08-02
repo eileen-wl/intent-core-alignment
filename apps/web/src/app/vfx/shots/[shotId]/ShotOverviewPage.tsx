@@ -5,6 +5,7 @@ import {
   AppShell,
   Breadcrumbs,
   ContextTabs,
+  DetailedContext,
   Divider,
   ErrorState,
   WorkingDirectionSection,
@@ -114,49 +115,51 @@ export function ShotOverviewPage({
 
           <Divider />
 
-          <dl>
-            <dt>Confirmed Core Anchor</dt>
-            <dd>
-              {item.active_core_anchor_summary ??
-                "No confirmed Core Anchor yet."}
-            </dd>
+          <DetailedContext>
+            <dl>
+              <dt>Confirmed Core Anchor</dt>
+              <dd>
+                {item.active_core_anchor_summary ??
+                  "No confirmed Core Anchor yet."}
+              </dd>
 
-            <dt>Latest Version</dt>
-            <dd>
-              {item.relevant_version_name ? (
-                <Link href={`/vfx/shots/${item.shot_id}/versions`}>
-                  {item.relevant_version_number
-                    ? `${item.relevant_version_name} (v${item.relevant_version_number})`
-                    : item.relevant_version_name}
-                </Link>
-              ) : (
-                "No Version recorded yet."
+              <dt>Latest Version</dt>
+              <dd>
+                {item.relevant_version_name ? (
+                  <Link href={`/vfx/shots/${item.shot_id}/versions`}>
+                    {item.relevant_version_number
+                      ? `${item.relevant_version_name} (v${item.relevant_version_number})`
+                      : item.relevant_version_name}
+                  </Link>
+                ) : (
+                  "No Version recorded yet."
+                )}
+              </dd>
+
+              {!ALIGNMENT_FOCUS_TYPES.has(item.current_focus.focus_type) && (
+                <>
+                  <dt>Latest assessment</dt>
+                  <dd>
+                    {item.latest_signal_id ? (
+                      <Link href={`/vfx/shots/${item.shot_id}/alignment`}>
+                        {signalStateLabel(item.latest_signal_attention_level)}{" "}
+                        -- {item.latest_signal_summary}
+                      </Link>
+                    ) : (
+                      "No current Intent Signal. A successful Cross-role Assessment is required."
+                    )}
+                  </dd>
+                </>
               )}
-            </dd>
 
-            {!ALIGNMENT_FOCUS_TYPES.has(item.current_focus.focus_type) && (
-              <>
-                <dt>Latest assessment</dt>
-                <dd>
-                  {item.latest_signal_id ? (
-                    <Link href={`/vfx/shots/${item.shot_id}/alignment`}>
-                      {signalStateLabel(item.latest_signal_attention_level)} --{" "}
-                      {item.latest_signal_summary}
-                    </Link>
-                  ) : (
-                    "No current Intent Signal. A successful Cross-role Assessment is required."
-                  )}
-                </dd>
-              </>
-            )}
-
-            <dt>Activity</dt>
-            <dd>
-              <Link href={`/vfx/shots/${item.shot_id}/activity`}>
-                View full activity →
-              </Link>
-            </dd>
-          </dl>
+              <dt>Activity</dt>
+              <dd>
+                <Link href={`/vfx/shots/${item.shot_id}/activity`}>
+                  View full activity →
+                </Link>
+              </dd>
+            </dl>
+          </DetailedContext>
         </>
       )}
     </AppShell>

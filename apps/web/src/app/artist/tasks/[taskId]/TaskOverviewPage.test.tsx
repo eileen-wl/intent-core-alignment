@@ -1,5 +1,6 @@
 import type { ArtistInboxItemRead } from "@intent-core/contracts";
 import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { TaskOverviewData } from "@/features/artist/task-overview/data";
@@ -156,7 +157,7 @@ describe("TaskOverviewPage", () => {
     ).toHaveAttribute("href", "/artist/tasks/t1");
   });
 
-  it("shows Core Anchor context as honestly read-only, never an edit or confirm control", () => {
+  it("shows Core Anchor context as honestly read-only, never an edit or confirm control", async () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -198,6 +199,11 @@ describe("TaskOverviewPage", () => {
         onExitRole={vi.fn()}
       />,
     );
+    expect(screen.getByText("Why: Creative Intent")).toBeInTheDocument();
+    expect(
+      screen.getByText("A restrained dusk confrontation."),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getAllByText("Detailed context")[0]);
     expect(screen.getByText("Why: Creative Intent")).toBeVisible();
     expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
     expect(
@@ -208,7 +214,7 @@ describe("TaskOverviewPage", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("honestly states no Core Anchor when none is confirmed", () => {
+  it("honestly states no Core Anchor when none is confirmed, present but collapsed under Detailed context", async () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -217,12 +223,18 @@ describe("TaskOverviewPage", () => {
         onExitRole={vi.fn()}
       />,
     );
+    const summary = screen.getAllByText("Detailed context")[0];
+    expect(summary.closest("details")).not.toHaveAttribute("open");
+    expect(
+      screen.getByText("No Core Anchor is confirmed for this Shot yet."),
+    ).toBeInTheDocument();
+    await userEvent.click(summary);
     expect(
       screen.getByText("No Core Anchor is confirmed for this Shot yet."),
     ).toBeVisible();
   });
 
-  it("honestly states no Execution Anchor when none is confirmed", () => {
+  it("honestly states no Execution Anchor when none is confirmed", async () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -231,6 +243,10 @@ describe("TaskOverviewPage", () => {
         onExitRole={vi.fn()}
       />,
     );
+    expect(
+      screen.getByText("No Execution Anchor is confirmed for this Task yet."),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getAllByText("Detailed context")[0]);
     expect(
       screen.getByText("No Execution Anchor is confirmed for this Task yet."),
     ).toBeVisible();
@@ -382,8 +398,15 @@ describe("TaskOverviewPage", () => {
     expect(screen.getByText("Current Working Direction")).toBeVisible();
     expect(screen.getByText("AI interpretation")).toBeVisible();
     expect(
-      screen.getByRole("link", { name: "Push the rim light slightly warmer." }),
-    ).toHaveAttribute("href", "/artist/tasks/t1/current-version");
+      screen.getByText("Push the rim light slightly warmer."),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Push the rim light slightly warmer.").closest("a"),
+    ).toBeNull();
+    expect(screen.getByRole("link", { name: "View details" })).toHaveAttribute(
+      "href",
+      "/artist/tasks/t1/current-version",
+    );
   });
 
   it("renders nothing extra when workingDirection has no items (honest empty state)", () => {
@@ -400,7 +423,7 @@ describe("TaskOverviewPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("honestly states no dependencies have been recorded for a genuinely bare Task", () => {
+  it("honestly states no dependencies have been recorded for a genuinely bare Task", async () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -411,6 +434,29 @@ describe("TaskOverviewPage", () => {
     );
     expect(
       screen.getByText("No dependencies have been recorded for this Task yet."),
+    ).toBeInTheDocument();
+    await userEvent.click(screen.getAllByText("Detailed context")[1]);
+    expect(
+      screen.getByText("No dependencies have been recorded for this Task yet."),
+    ).toBeVisible();
+  });
+
+  it("keeps the Generate/Regenerate guidance action visible outside any collapsed Detailed context", () => {
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data({
+          item: item({ latest_version_id: "v1", latest_version_name: "v001" }),
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    // Step 9B-1 owner-validation correction: the Guidance action is a
+    // genuinely non-duplicated critical action and must stay visible,
+    // never collapsed inside a Detailed context disclosure.
+    expect(
+      screen.getByRole("button", { name: "Generate guidance" }),
     ).toBeVisible();
   });
 });

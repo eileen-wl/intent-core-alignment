@@ -135,13 +135,42 @@ describe("selectCurrentCreativeDirection", () => {
     expect(objective?.authority).toBe("human-confirmed");
   });
 
-  it("produces an honest pending state when no Core Anchor is confirmed (draft-only Shot)", () => {
+  it("produces an honest pending state when no Core Anchor is confirmed (draft-only Shot), never labelled human-confirmed", () => {
     const section = selectCurrentCreativeDirection(
       baseData({ confirmedCoreAnchorRevision: null }),
     );
     const objective = section.items.find((i) => i.id === "creative-objective");
+    const unchanged = section.items.find(
+      (i) => i.id === "must-remain-unchanged",
+    );
+    const mayVary = section.items.find((i) => i.id === "may-vary");
     expect(objective?.value).toBe("No confirmed Core Anchor yet.");
-    expect(objective?.authority).toBe("human-confirmed");
+    expect(objective?.authority).toBeUndefined();
+    expect(unchanged?.authority).toBeUndefined();
+    expect(mayVary?.authority).toBeUndefined();
+  });
+
+  it("excerpts a long Intent Signal summary rather than showing it in full", () => {
+    const longSummary =
+      "Multiple cross-role tensions have accumulated between the confirmed Core Anchor and the latest Production Version, including a mismatch in the emotional tone of the confrontation beat and an unresolved question about the rim light colour temperature raised by CG.";
+    const section = selectCurrentCreativeDirection(
+      baseData({
+        item: item({
+          latest_signal_id: "sig1",
+          latest_signal_attention_level: "high",
+          latest_signal_summary: longSummary,
+        }),
+      }),
+    );
+    const risk = section.items.find((i) => i.id === "current-risk");
+    expect(risk?.value.length).toBeLessThan(longSummary.length);
+    expect(risk?.value).toContain("…");
+  });
+
+  it("never labels a missing Intent Signal as Agent interpretation", () => {
+    const section = selectCurrentCreativeDirection(baseData());
+    const risk = section.items.find((i) => i.id === "current-risk");
+    expect(risk?.authority).toBeUndefined();
   });
 
   it("never labels Agent interpretation (the Intent Signal) as Human Decision", () => {
@@ -248,6 +277,19 @@ describe("selectCurrentCreativeDirection", () => {
       expect(item.value).not.toContain("8b4f11eb");
       expect(item.detail ?? "").not.toContain("8b4f11eb");
     }
+  });
+
+  it("excerpts long Review Note content rather than showing it in full, while preserving the source link", () => {
+    const longContent =
+      "Tighten the timing across the whole sequence and reconsider the pacing of the confrontation beat, especially in the final third where the cut feels rushed relative to the emotional build established earlier in the shot.";
+    const section = selectCurrentCreativeDirection(
+      baseData({ latestReviewNote: note({ content: longContent }) }),
+    );
+    const feedback = section.items.find((i) => i.id === "latest-feedback");
+    expect(feedback?.value.length).toBeLessThan(longContent.length);
+    expect(feedback?.value.endsWith("…")).toBe(true);
+    expect(longContent.startsWith(feedback!.value.slice(0, -1))).toBe(true);
+    expect(feedback?.href).toBe("/vfx/shots/s1/versions");
   });
 
   it("shows the escalation line as an honest production fact, not Agent interpretation", () => {

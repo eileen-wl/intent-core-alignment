@@ -32,23 +32,6 @@ const LABEL_TEXT: Record<AuthorityLabelVariant, string> = {
   "read-only": "Read-only for your role",
 };
 
-/** Short marker text distinguishing each variant independent of colour.
- * Purely decorative (`aria-hidden`) -- the full label text already
- * carries the meaning for assistive technology. */
-const MARKER_TEXT: Record<AuthorityLabelVariant, string> = {
-  "production-fact": "FACT",
-  "human-intent": "INTENT",
-  "human-confirmed": "CONFIRMED",
-  "ai-interpretation": "AI",
-  "ai-proposal": "PROPOSAL",
-  "intent-signal": "SIGNAL",
-  "human-review-required": "REVIEW",
-  "open-question": "OPEN",
-  historical: "HISTORY",
-  "integration-ready": "SYNC",
-  "read-only": "READ-ONLY",
-};
-
 const TONE_CLASS: Record<AuthorityLabelVariant, string> = {
   "production-fact": styles.fact,
   "human-intent": styles.neutral,
@@ -77,6 +60,13 @@ const BORDER_CLASS: Record<AuthorityLabelVariant, string> = {
   "read-only": styles.borderDashed,
 };
 
+/** Step 9B-1 owner-validation correction: renders exactly one concise
+ * badge (no separate abbreviated marker duplicating the same wording --
+ * the earlier "CONFIRMED Human-confirmed" layout read as a duplicated
+ * label). Optional `detail` (provenance, e.g. "Confirmed by VFX
+ * Supervisor") renders on its own line below the badge and wraps
+ * naturally -- never forced onto the same row or clipped by a fixed
+ * height. */
 export function AuthorityLabel({
   variant,
   detail,
@@ -85,17 +75,16 @@ export function AuthorityLabel({
   detail?: string;
 }) {
   return (
-    <span
-      className={[
-        styles.label,
-        TONE_CLASS[variant],
-        BORDER_CLASS[variant],
-      ].join(" ")}
-    >
-      <span className={styles.marker} aria-hidden="true">
-        {MARKER_TEXT[variant]}
+    <span className={styles.wrapper}>
+      <span
+        className={[
+          styles.label,
+          TONE_CLASS[variant],
+          BORDER_CLASS[variant],
+        ].join(" ")}
+      >
+        {LABEL_TEXT[variant]}
       </span>
-      <span className={styles.text}>{LABEL_TEXT[variant]}</span>
       {detail && <span className={styles.detail}>{detail}</span>}
     </span>
   );

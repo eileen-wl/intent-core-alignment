@@ -4,6 +4,7 @@ import {
   AppShell,
   Breadcrumbs,
   ContextTabs,
+  DetailedContext,
   Divider,
   ErrorState,
   WorkingDirectionSection,
@@ -110,57 +111,59 @@ export function TaskOverviewPage({
 
           <Divider />
 
-          <dl>
-            <dt>Confirmed Core Anchor (read-only)</dt>
-            <dd>
-              {data.coreAnchorSummary ??
-                "No Core Anchor is confirmed for this Shot yet."}
-            </dd>
+          <DetailedContext>
+            <dl>
+              <dt>Confirmed Core Anchor (read-only)</dt>
+              <dd>
+                {data.coreAnchorSummary ??
+                  "No Core Anchor is confirmed for this Shot yet."}
+              </dd>
 
-            <dt>Execution Anchor</dt>
-            <dd>
-              <Link href={`/cg/tasks/${taskId}/execution`}>
-                {data.item.active_execution_anchor_summary ??
-                  "No Execution Anchor is confirmed for this Task yet."}
-              </Link>
-            </dd>
-
-            <dt>Latest Production Version</dt>
-            <dd>
-              {data.item.latest_version_name ? (
-                <Link href={`/cg/tasks/${taskId}/version-review`}>
-                  {versionDisplayText(data.item)}
+              <dt>Execution Anchor</dt>
+              <dd>
+                <Link href={`/cg/tasks/${taskId}/execution`}>
+                  {data.item.active_execution_anchor_summary ??
+                    "No Execution Anchor is confirmed for this Task yet."}
                 </Link>
-              ) : (
-                "No Version recorded yet."
-              )}
-            </dd>
+              </dd>
 
-            <dt>Dependencies</dt>
-            <dd>
-              <Link href={`/cg/tasks/${taskId}/dependencies`}>
-                {data.dependencies.length === 0
-                  ? "No dependencies have been recorded for this Task yet."
-                  : `${data.item.open_dependency_count} open of ${data.dependencies.length} recorded →`}
-              </Link>
-            </dd>
+              <dt>Latest Production Version</dt>
+              <dd>
+                {data.item.latest_version_name ? (
+                  <Link href={`/cg/tasks/${taskId}/version-review`}>
+                    {versionDisplayText(data.item)}
+                  </Link>
+                ) : (
+                  "No Version recorded yet."
+                )}
+              </dd>
 
-            <dt>Activity</dt>
-            <dd>
-              {data.recentActivity.length === 0 ? (
-                "No recorded activity exists for this Task yet."
-              ) : (
-                <ul>
-                  {data.recentActivity.map((event) => (
-                    <li key={event.id}>{event.summary}</li>
-                  ))}
-                </ul>
-              )}
-              <Link href={`/cg/tasks/${taskId}/activity`}>
-                View full activity →
-              </Link>
-            </dd>
-          </dl>
+              <dt>Dependencies</dt>
+              <dd>
+                <Link href={`/cg/tasks/${taskId}/dependencies`}>
+                  {data.dependencies.length === 0
+                    ? "No dependencies have been recorded for this Task yet."
+                    : `${data.item.open_dependency_count} open of ${data.dependencies.length} recorded →`}
+                </Link>
+              </dd>
+
+              <dt>Activity</dt>
+              <dd>
+                {data.recentActivity.length === 0 ? (
+                  "No recorded activity exists for this Task yet."
+                ) : (
+                  <ul>
+                    {data.recentActivity.map((event) => (
+                      <li key={event.id}>{event.summary}</li>
+                    ))}
+                  </ul>
+                )}
+                <Link href={`/cg/tasks/${taskId}/activity`}>
+                  View full activity →
+                </Link>
+              </dd>
+            </dl>
+          </DetailedContext>
         </>
       )}
     </AppShell>
