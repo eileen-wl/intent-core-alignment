@@ -334,6 +334,22 @@ describe("AlignmentWorkspacePage", () => {
       within(agentSection).getByText("Aligned findings (1)"),
     ).toBeVisible();
 
+    // Owner-validation correction: the CrossRoleAssessment executive
+    // summary card must never render inside Production Evidence -- it
+    // is Agent Interpretation, even though it references a real
+    // Version/Core Anchor.
+    expect(
+      within(evidenceSection).queryByText(
+        "The Version stays close to the confirmed Core Anchor.",
+      ),
+    ).not.toBeInTheDocument();
+    expect(
+      within(agentSection).getByText(
+        "The Version stays close to the confirmed Core Anchor.",
+      ),
+    ).toBeVisible();
+    expect(within(agentSection).getByText("AI interpretation")).toBeVisible();
+
     // No Decision object is attached to a CrossRoleAssessment -- the
     // Human Decision layer states this honestly rather than
     // manufacturing one from the Agent's findings.
@@ -345,6 +361,30 @@ describe("AlignmentWorkspacePage", () => {
         /No Human Decision has been recorded directly against this assessment/,
       ),
     ).toBeVisible();
+  });
+
+  it("keeps human-review-required as a pending action inside Agent Interpretation's Recommended next action, never inside Human Decision and Provenance (Step 9B-2 correction)", () => {
+    render(
+      <AlignmentWorkspacePage
+        shotId="s1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const agentSection = screen
+      .getByText("Agent Interpretation")
+      .closest("[data-evidence-layer]") as HTMLElement;
+    const humanDecisionSection = screen
+      .getByText("Human Decision and Provenance")
+      .closest("[data-evidence-layer]") as HTMLElement;
+
+    expect(
+      within(agentSection).getByText("Human review required"),
+    ).toBeVisible();
+    expect(
+      within(humanDecisionSection).queryByText("Human review required"),
+    ).not.toBeInTheDocument();
   });
 
   it("never fabricates a percentage or numeric alignment score", () => {

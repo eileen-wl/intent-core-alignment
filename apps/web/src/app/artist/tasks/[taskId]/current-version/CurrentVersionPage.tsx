@@ -290,19 +290,49 @@ export function CurrentVersionPage({
 
                       <EvidenceLayerSection kind="human-decision">
                         <p className={styles.contextText}>
-                          {data.coreAnchorRevision
-                            ? "This Task's Core Anchor is confirmed, owned by the VFX Supervisor."
-                            : "No Core Anchor is confirmed for this Shot yet."}
+                          Confirmed authority references
                         </p>
-                        <p className={styles.contextText}>
-                          {data.executionAnchorRevision
-                            ? "This Task's Execution Anchor is confirmed, owned by the CG Supervisor."
-                            : "No Execution Anchor is confirmed for this Task yet."}
-                        </p>
-                        <p className={styles.empty}>
-                          Artist has read-only reference access to both Anchors
-                          and cannot confirm, reject, or edit either.
-                        </p>
+
+                        <section className={styles.section}>
+                          <h4 className={styles.sectionHeading}>Core Anchor</h4>
+                          {data.coreAnchorRevision ? (
+                            <>
+                              <p className={styles.contextText}>
+                                Confirmed under VFX Supervisor authority.
+                              </p>
+                              <p className={styles.empty}>
+                                Detailed Decision provenance is not exposed in
+                                the Artist role view.
+                              </p>
+                            </>
+                          ) : (
+                            <p className={styles.contextText}>
+                              No Core Anchor is confirmed for this Shot yet.
+                            </p>
+                          )}
+                        </section>
+
+                        <section className={styles.section}>
+                          <h4 className={styles.sectionHeading}>
+                            Execution Anchor
+                          </h4>
+                          {data.executionAnchorRevision ? (
+                            <>
+                              <p className={styles.contextText}>
+                                Confirmed under CG Supervisor authority.
+                              </p>
+                              <p className={styles.empty}>
+                                Detailed Decision provenance is not exposed in
+                                the Artist role view.
+                              </p>
+                            </>
+                          ) : (
+                            <p className={styles.contextText}>
+                              No Execution Anchor is confirmed for this Task
+                              yet.
+                            </p>
+                          )}
+                        </section>
                       </EvidenceLayerSection>
                     </>
                   )}

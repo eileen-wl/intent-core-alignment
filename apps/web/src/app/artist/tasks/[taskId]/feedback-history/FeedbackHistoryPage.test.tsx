@@ -266,6 +266,29 @@ describe("FeedbackHistoryPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("formats a human actor's role as a human-readable label, never the raw enum (Step 9B-2 correction)", () => {
+    render(
+      <FeedbackHistoryPage
+        taskId="t1"
+        data={data({
+          history: {
+            task_id: "t1",
+            events: [
+              event({
+                actor_kind: "human",
+                actor_human_role: "cg_supervisor",
+              }),
+            ],
+          },
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("CG Supervisor")).toBeVisible();
+    expect(screen.queryByText("cg_supervisor")).not.toBeInTheDocument();
+  });
+
   it("does not fabricate a read or resolved state anywhere on the page", () => {
     render(
       <FeedbackHistoryPage

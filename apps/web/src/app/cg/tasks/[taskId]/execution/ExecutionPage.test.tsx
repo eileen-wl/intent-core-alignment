@@ -359,12 +359,20 @@ describe("ExecutionPage", () => {
     ) as HTMLElement;
     expect(
       within(humanDecisionSection).getByText(
+        "Confirmed Execution Anchor revision 1",
+      ),
+    ).toBeVisible();
+    expect(
+      within(humanDecisionSection).getByText(
         "Matches the confirmed Core Anchor exactly.",
       ),
     ).toBeVisible();
     expect(
-      within(humanDecisionSection).getByText("cg_supervisor"),
+      within(humanDecisionSection).getByText("CG Supervisor"),
     ).toBeVisible();
+    expect(
+      within(humanDecisionSection).queryByText("cg_supervisor"),
+    ).not.toBeInTheDocument();
     // The real Decision's rationale must not also appear duplicated
     // inside the Production Evidence content.
     expect(
@@ -395,7 +403,104 @@ describe("ExecutionPage", () => {
       .getByText("Human Decision and Provenance")
       .closest("[data-evidence-layer]") as HTMLElement;
     expect(
-      within(humanDecisionSection).getByText("cg_supervisor"),
+      within(humanDecisionSection).getByText("CG Supervisor"),
     ).toBeVisible();
+    expect(
+      within(humanDecisionSection).queryByText("cg_supervisor"),
+    ).not.toBeInTheDocument();
+    // No real Decision record was found -- the outcome statement must
+    // not be fabricated from the Anchor's own confirmed-by/at fields.
+    expect(
+      within(humanDecisionSection).queryByText(
+        /Confirmed Execution Anchor revision/,
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a human-readable supersession note when the confirmed revision supersedes an earlier one", () => {
+    render(
+      <ExecutionPage
+        taskId="t1"
+        data={data({
+          confirmedRevision: revision({
+            status: "confirmed",
+            revision_number: 2,
+            confirmed_by_human_role: "cg_supervisor",
+            confirmed_at: "2026-01-02T00:00:00Z",
+            supersedes_revision_id: "r-old",
+          }),
+          coreAnchorConfirmed: true,
+          confirmDecision: decision(),
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const humanDecisionSection = screen
+      .getByText("Human Decision and Provenance")
+      .closest("[data-evidence-layer]") as HTMLElement;
+    expect(
+      within(humanDecisionSection).getByText(
+        "Confirmed Execution Anchor revision 2",
+      ),
+    ).toBeVisible();
+    expect(
+      within(humanDecisionSection).getByText(
+        "Supersedes a previous Execution Anchor revision.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("uses the state-dependent action heading: Start Execution Anchor when none exists, Revise Execution Anchor once one is confirmed", () => {
+    const { rerender } = render(
+      <ExecutionPage
+        taskId="t1"
+        data={data()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Start Execution Anchor")).toBeVisible();
+    expect(
+      screen.queryByText("Revise Execution Anchor"),
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <ExecutionPage
+        taskId="t1"
+        data={data({
+          confirmedRevision: revision({ status: "confirmed" }),
+          coreAnchorConfirmed: true,
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Revise Execution Anchor")).toBeVisible();
+    expect(
+      screen.queryByText("Start Execution Anchor"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("still shows Draft Execution Anchor, unchanged, when a draft is in progress regardless of confirmed state", () => {
+    render(
+      <ExecutionPage
+        taskId="t1"
+        data={data({
+          confirmedRevision: revision({ status: "confirmed" }),
+          draftRevision: revision({ id: "r2", status: "draft" }),
+          coreAnchorConfirmed: true,
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Draft Execution Anchor")).toBeVisible();
+    expect(
+      screen.queryByText("Start Execution Anchor"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Revise Execution Anchor"),
+    ).not.toBeInTheDocument();
   });
 });

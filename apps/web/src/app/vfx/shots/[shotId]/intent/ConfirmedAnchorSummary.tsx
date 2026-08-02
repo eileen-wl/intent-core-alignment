@@ -10,6 +10,7 @@ import {
   summarizeEstablishedContent,
 } from "@/features/vfx/intent-workspace/changeSummary";
 import type { IntentEvidenceData } from "@/features/vfx/intent-workspace/data";
+import { humanRoleLabel } from "@/lib/humanRoleLabel";
 import styles from "./ConfirmedAnchorSummary.module.css";
 
 const ALWAYS_VISIBLE_FIELDS: {
@@ -263,7 +264,10 @@ export function ConfirmedAnchorSummary({
           {revision.confirmed_by_human_role && revision.confirmed_at && (
             <p className={styles.confirmedFooter}>
               <span>
-                Confirmed by <strong>{revision.confirmed_by_human_role}</strong>
+                Confirmed by{" "}
+                <strong>
+                  {humanRoleLabel(revision.confirmed_by_human_role)}
+                </strong>
               </span>
               <span>
                 Confirmed at {new Date(revision.confirmed_at).toLocaleString()}
@@ -323,13 +327,18 @@ export function ConfirmedAnchorSummary({
                   {previousConfirmedRevision.revision_number}
                 </p>
               )}
-              {evidenceData !== null && (
-                <p className={styles.supportingText}>
-                  {evidenceCount} evidence{" "}
-                  {evidenceCount === 1 ? "source" : "sources"} -- see Evidence
-                  and provenance below.
-                </p>
-              )}
+              {evidenceData !== null &&
+                (evidenceCount === 0 ? (
+                  <p className={styles.supportingText}>
+                    No evidence references were recorded for this Decision.
+                  </p>
+                ) : (
+                  <p className={styles.supportingText}>
+                    {evidenceCount} evidence{" "}
+                    {evidenceCount === 1 ? "source" : "sources"} -- see Evidence
+                    and provenance below.
+                  </p>
+                ))}
               <p className={styles.supportingText}>{nextStepStatement}</p>
             </EvidenceLayerSection>
           )}

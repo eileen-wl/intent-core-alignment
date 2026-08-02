@@ -220,31 +220,28 @@ export function AlignmentWorkspacePage({
                 />
               </EvidenceLayerSection>
 
-              <section className={styles.summaryCard}>
-                <div className={styles.summaryHeader}>
-                  <AuthorityLabel variant="ai-interpretation" />
-                  {current.intent_signal.attention_level !== "low" && (
-                    <AuthorityLabel variant="human-review-required" />
-                  )}
-                </div>
-                <p className={styles.executiveSummary}>
-                  {current.assessment_output.executive_summary}
-                </p>
-                <MetadataRow
-                  items={[
-                    {
-                      label: "Assessed at",
-                      value: new Date(current.created_at).toLocaleString(),
-                    },
-                    {
-                      label: "Assessor",
-                      value: "Core Agent · cross-role assessment",
-                    },
-                  ]}
-                />
-              </section>
-
               <EvidenceLayerSection kind="agent-interpretation">
+                <section className={styles.summaryCard}>
+                  <div className={styles.summaryHeader}>
+                    <AuthorityLabel variant="ai-interpretation" />
+                  </div>
+                  <p className={styles.executiveSummary}>
+                    {current.assessment_output.executive_summary}
+                  </p>
+                  <MetadataRow
+                    items={[
+                      {
+                        label: "Assessed at",
+                        value: new Date(current.created_at).toLocaleString(),
+                      },
+                      {
+                        label: "Assessor",
+                        value: "Core Agent · cross-role assessment",
+                      },
+                    ]}
+                  />
+                </section>
+
                 <section className={styles.findingsSection}>
                   <h2 className={styles.sectionTitle}>Findings</h2>
                   <FindingGroup
@@ -296,6 +293,9 @@ export function AlignmentWorkspacePage({
                   <h2 className={styles.sectionTitle}>
                     Recommended next action
                   </h2>
+                  {current.intent_signal.attention_level !== "low" && (
+                    <AuthorityLabel variant="human-review-required" />
+                  )}
                   <p className={styles.nextActionText}>
                     {current.intent_signal.signal_output.summary}
                   </p>

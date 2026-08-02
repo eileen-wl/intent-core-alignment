@@ -11,6 +11,7 @@ import {
   EvidenceLayerSection,
   FtrackLinkageBadge,
   MetadataRow,
+  SectionHeader,
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
@@ -270,13 +271,20 @@ export function VersionReviewPage({
                         </p>
                       </EvidenceLayerSection>
 
-                      <VersionReviewActions
-                        taskId={taskId}
-                        versionId={selected.version.id}
-                        activeExecutionRevisionId={
-                          data.activeExecutionRevision?.id ?? null
-                        }
-                      />
+                      <section className={styles.section}>
+                        <SectionHeader
+                          title="Review actions"
+                          description="Recording a Review Note or requesting a CG Supervisor review produces new evidence/interpretation; escalating creates a pending action -- none of these is itself a Human Decision."
+                          level={3}
+                        />
+                        <VersionReviewActions
+                          taskId={taskId}
+                          versionId={selected.version.id}
+                          activeExecutionRevisionId={
+                            data.activeExecutionRevision?.id ?? null
+                          }
+                        />
+                      </section>
                     </>
                   )}
                 </div>

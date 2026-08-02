@@ -175,6 +175,45 @@ describe("ConfirmedAnchorSummary", () => {
     expect(screen.getByText(/1 evidence source/)).toBeVisible();
   });
 
+  it("states honestly when no evidence references were recorded, never a confusing 0 evidence sources line (Step 9B-2 correction)", () => {
+    render(
+      <ConfirmedAnchorSummary
+        revision={revision({
+          confirmed_by_human_role: "vfx_supervisor",
+          confirmed_at: "2026-01-01T00:00:00Z",
+        })}
+        evidenceData={{
+          evidence: [],
+          run: null,
+          snapshot: null,
+          decompositions: [],
+          reconstructions: [],
+        }}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "No evidence references were recorded for this Decision.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/0 evidence/)).not.toBeInTheDocument();
+  });
+
+  it("formats the main card's Confirmed by role as a human-readable label, never the raw enum (Step 9B-2 correction)", () => {
+    render(
+      <ConfirmedAnchorSummary
+        revision={revision({
+          confirmed_by_human_role: "vfx_supervisor",
+          confirmed_at: "2026-01-01T00:00:00Z",
+        })}
+      />,
+    );
+    // Both the main card's "Confirmed by" footer and the Decision
+    // recorded card's own provenance now format the role identically.
+    expect(screen.getAllByText("VFX Supervisor").length).toBeGreaterThan(0);
+    expect(screen.queryByText("vfx_supervisor")).not.toBeInTheDocument();
+  });
+
   it("shows Revision N · Active identity badges on the main card", () => {
     render(
       <ConfirmedAnchorSummary revision={revision({ revision_number: 3 })} />,

@@ -264,6 +264,83 @@ describe("VersionReviewPage", () => {
     ).toBeVisible();
   });
 
+  it("places Add Review Note, Generate CG Supervisor review, and Escalate to VFX in their own Review actions section, outside every evidence layer (Step 9B-2 correction)", () => {
+    render(
+      <VersionReviewPage
+        taskId="t1"
+        data={data({
+          activeExecutionRevision: {
+            id: "ea1",
+            execution_anchor_id: "ea",
+            core_anchor_revision_id: "ca1",
+            revision_number: 1,
+            status: "confirmed",
+            technical_boundaries: "24fps, no motion blur.",
+            parameter_ranges: null,
+            delivery_conditions: null,
+            production_ready_criteria: null,
+            downstream_dependencies: null,
+            publish_requirements: null,
+            allowed_refinements: null,
+            escalation_conditions: null,
+            created_by_actor_kind: "human",
+            created_by_actor_id: "cg-1",
+            created_by_human_role: "cg_supervisor",
+            created_by_agent_type: null,
+            created_by_agent_run_id: null,
+            confirmed_by_human_role: "cg_supervisor",
+            confirmed_by_actor_id: "cg-1",
+            confirmed_at: "2026-08-01T00:00:00Z",
+            supersedes_revision_id: null,
+            created_at: "2026-08-01T00:00:00Z",
+            updated_at: "2026-08-01T00:00:00Z",
+          },
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const humanDecisionSection = screen
+      .getByText("Human Decision and Provenance")
+      .closest("[data-evidence-layer]") as HTMLElement;
+    const reviewActionsHeading = screen.getByText("Review actions");
+    expect(reviewActionsHeading).toBeVisible();
+
+    // None of the four controls renders inside any evidence-layer section.
+    expect(
+      within(humanDecisionSection).queryByText("Add Review Note"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryAllByRole("button", { name: "Record Review Note" }),
+    ).toHaveLength(1);
+    expect(
+      within(humanDecisionSection).queryByRole("button", {
+        name: "Record Review Note",
+      }),
+    ).toBeNull();
+    expect(
+      within(humanDecisionSection).queryByRole("button", {
+        name: "Generate CG Supervisor review",
+      }),
+    ).toBeNull();
+    expect(
+      within(humanDecisionSection).queryByRole("button", {
+        name: "Escalate to VFX",
+      }),
+    ).toBeNull();
+
+    // All three remain reachable, real, role-safe controls.
+    expect(
+      screen.getByRole("button", { name: "Record Review Note" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Generate CG Supervisor review" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Escalate to VFX" }),
+    ).toBeVisible();
+  });
+
   it("honestly shows no CG Supervisor review has been generated yet", () => {
     render(
       <VersionReviewPage

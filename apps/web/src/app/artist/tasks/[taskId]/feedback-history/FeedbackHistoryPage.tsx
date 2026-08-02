@@ -13,6 +13,7 @@ import {
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { feedbackEventLayer } from "@/lib/feedbackEventLayer";
+import { humanRoleLabel } from "@/lib/humanRoleLabel";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import type { FeedbackHistoryData } from "@/features/artist/feedback-history/data";
 import { TaskContextHeader } from "../TaskContextHeader";
@@ -150,7 +151,9 @@ export function FeedbackHistoryPage({
                   <div className={styles.eventFooter}>
                     {(event.actor_human_role || event.actor_kind) && (
                       <span className={styles.eventActor}>
-                        {event.actor_human_role ?? event.actor_kind}
+                        {event.actor_human_role
+                          ? humanRoleLabel(event.actor_human_role)
+                          : event.actor_kind}
                       </span>
                     )}
                     <Link href={event.route} className={styles.eventLink}>

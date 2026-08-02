@@ -1,8 +1,9 @@
 # Step 9B-2 — Production Evidence / Agent Interpretation / Human Decision Layering
 
-**Status:** Implementation and automated validation complete. Owner visual validation pending.
+**Status:** Implementation and automated validation complete. Owner visual validation pending (a first attempt found five presentation-semantic defects, all corrected — see §18; the owner has not yet re-validated).
 **Branch:** `feat/step9b2-evidence-agent-human-layering`
 **Starting HEAD:** `9997477`
+**Owner-validation correction applied (same branch, same task):** the first owner visual validation attempt found: a CrossRoleAssessment summary card visually reading as Production Evidence on VFX Alignment; CG Execution's Human Decision section omitting the Decision's actual outcome; CG Version Review's review/Agent/escalation action controls visually nested inside Human Decision and Provenance; Artist Current Version's authority references implying more provenance access than the role actually has; and raw human-role enum values rendered in several places. All five are corrected — see §18. Validation is still pending, not re-claimed as complete.
 **Companion documents:** `docs/step-9/01_STEP_9_PRESENTATION_AND_COMPREHENSION_BASELINE.md` (locked baseline), `docs/step-9/02_STEP_9A_CURRENT_STATE_AND_IMPLEMENTATION_MAP.md` §7 (the Evidence/Agent/Human layering map this implementation follows), `docs/step-9/03_STEP_9B1_ROLE_AWARE_WORKING_DIRECTION.md` (the authority vocabulary and shared component pattern this step reuses), `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` §L.
 
 ---
@@ -191,26 +192,28 @@ No disclosure/collapse was added anywhere in this step (unlike Step 9B-1's `Deta
 
 ## 13. Tests and validation
 
-**New focused test files:**
+**New focused test files (counts as of the §18 owner-validation correction):**
 
 - `apps/web/src/design/components/EvidenceLayerSection.test.tsx` (6 tests) — fixed heading/question text per `kind`, `data-evidence-layer` attribute, children rendering, `className` merging.
-- `apps/web/src/lib/decisionProvenance.test.ts` (3 tests) — real actor/rationale/timestamp, honest no-rationale fallback, supersession without a raw id.
+- `apps/web/src/lib/decisionProvenance.test.ts` (6 tests — +3 this correction) — real actor/rationale/timestamp with a human-readable role label, honest no-rationale fallback, supersession without a raw id, and `decisionOutcomeStatement`'s confirm/reject/Core-Anchor outcomes.
 - `apps/web/src/lib/feedbackEventLayer.test.ts` (4 tests) — all eleven event types classify correctly, including the explicit "human-authored Production Evidence event stays Production Evidence" case.
+- `apps/web/src/lib/humanRoleLabel.test.ts` (4 tests — new this correction) — every real `HumanRole` formats correctly, a stray mixed-case variant normalises the same way, an unrecognised value falls back to itself, and a missing value returns an honest "Unknown".
 
-**New tests added to existing page-component test files** (one to three per page, all passing alongside every pre-existing test in the same file, none weakened or deleted):
+**Tests added/updated in existing page-component test files, across both the original 9B-2 pass and the §18 correction** (all passing alongside every pre-existing test in the same file, none weakened or deleted):
 
-- `IntentWorkspacePage.test.tsx` (+1, 14 total): confirmed content under Production Evidence, the Decision's rationale under Human Decision and Provenance, not duplicated in Production Evidence.
-- `AlignmentWorkspacePage.test.tsx` (+1, 13 total): Version/Anchor reference under Production Evidence, findings under Agent Interpretation, the honest no-Decision statement under Human Decision and Provenance.
-- `ExecutionPage.test.tsx` (+2, 10 total): a real Decision's actor/rationale render under Human Decision and Provenance (and not duplicated in Production Evidence); the legacy fallback to the revision's own confirmed-by/at fields when no Decision is found.
-- `VersionReviewPage.test.tsx` (+1, 12 total): Production Evidence/Agent Interpretation grouping, and the honest Human Decision statement present (never manufactured).
-- `CurrentVersionPage.test.tsx` (+1, 17 total): Agent Interpretation groups guidance/reviews/assessments; Human Decision states Anchor authority ownership without duplicating the Working Direction summary.
-- `FeedbackHistoryPage.test.tsx` (+1, 8 total): chronology (newest-first) preserved across mixed-layer events; classification badge matches `event_type`, including the human-authored-but-Production-Evidence case; no cross-contamination between badges.
+- `IntentWorkspacePage.test.tsx` (14 total): confirmed content under Production Evidence, the Decision's rationale under Human Decision and Provenance, not duplicated in Production Evidence.
+- `ConfirmedAnchorSummary.test.tsx` (18 total — +2 this correction): the honest "No evidence references were recorded for this Decision." state; the main card's "Confirmed by" role renders as a human-readable label, never the raw enum.
+- `AlignmentWorkspacePage.test.tsx` (14 total — +1 this correction): Version/Anchor reference under Production Evidence; the CrossRoleAssessment summary and its `AI interpretation` badge render under Agent Interpretation and never under Production Evidence; the honest no-Decision statement under Human Decision and Provenance; `human-review-required` renders inside Agent Interpretation's Recommended next action, never inside Human Decision and Provenance.
+- `ExecutionPage.test.tsx` (13 total — +3 this correction): a real Decision's actor/rationale render under Human Decision and Provenance with a human-readable role label and a concise outcome statement ("Confirmed Execution Anchor revision N"), never duplicated in Production Evidence; the legacy fallback to the revision's own confirmed-by/at fields (also human-readable) when no Decision is found, with no fabricated outcome statement; a human-readable supersession note; the state-dependent action heading (Start / Revise / Draft Execution Anchor) for all three real states.
+- `VersionReviewPage.test.tsx` (13 total — +1 this correction): Production Evidence/Agent Interpretation grouping and the honest Human Decision statement (never manufactured); Add Review Note, Generate CG Supervisor review, and Escalate to VFX all render inside a separate "Review actions" section, outside every evidence layer, and remain reachable.
+- `CurrentVersionPage.test.tsx` (19 total — +2 this correction): Agent Interpretation groups guidance/reviews/assessments; Human Decision shows only "Confirmed authority references" wording with no actor/rationale/decided-at detail and no confirm/reject/edit control; an unconfirmed Anchor is never described as confirmed.
+- `FeedbackHistoryPage.test.tsx` (9 total — +1 this correction): chronology (newest-first) preserved across mixed-layer events; classification badge matches `event_type`, including the human-authored-but-Production-Evidence case; a human actor's role renders as a human-readable label, never the raw enum.
 
-**Full regression, all green:**
+**Full regression, all green (as of the §18 owner-validation correction):**
 
-- Frontend: Vitest 934/934 (120 files), ESLint (0 errors, 1 pre-existing/unrelated warning), `tsc --noEmit` (apps/web and contracts package, both clean), Prettier (clean, repo-root), production `next build` (30 routes, succeeded).
-- Backend: no Python source was changed in this step (only the existing, already-tested Step 9B-1 endpoint gained one more caller) — no backend/contract test re-run was required or performed, per the task's own instruction to run API/contract tests only when an approved additive contract change is made (none was).
-- Every one of the 934 tests that existed before this step still passes unmodified — confirmed by running the complete suite both before and after this step's changes.
+- Frontend: Vitest 951/951 (121 files), ESLint (0 errors, 1 pre-existing/unrelated warning), `tsc --noEmit` (apps/web and contracts package, both clean), Prettier (clean, repo-root), production `next build` (30 routes, succeeded).
+- Backend: no Python source was changed in this step or its correction (only the existing, already-tested Step 9B-1 endpoint gained call sites) — no backend/contract test re-run was required or performed, per the task's own instruction to run API/contract tests only when an approved additive contract change is made (none was).
+- Every test that existed before the §18 correction still passes unmodified, plus the new tests listed above — confirmed by running the complete suite both before and after this correction's changes.
 
 ---
 
@@ -225,18 +228,18 @@ No disclosure/collapse was added anywhere in this step (unlike Step 9B-1's `Deta
 
 ## 15. Owner visual-validation targets
 
-Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http://localhost:3000`, entry via `http://localhost:3000/demo`. **The owner has not yet performed this validation; it is not claimed as complete.**
+Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http://localhost:3000`, entry via `http://localhost:3000/demo`. **The owner has not yet performed this validation; it is not claimed as complete.** A first attempt found five presentation-semantic defects, all corrected — see §18. The checklists below describe the corrected behaviour.
 
 | Page | Exact URL | Checklist |
 |---|---|---|
-| VFX Intent | `http://localhost:3000/vfx/shots/8a72858d-8d06-47ab-a28d-5ee077f561c8/intent` | Production Evidence / Human Decision and Provenance / Agent Interpretation headings are understandable at a glance; the confirmed Anchor's content and its confirming Decision are visibly distinct, not duplicated; provenance (confirmed-by role, rationale) is readable; the draft editor (if a draft exists) is untouched and its Save/Confirm/Reject controls remain reachable; no role boundary changed |
-| VFX Alignment | `http://localhost:3000/vfx/shots/8a72858d-8d06-47ab-a28d-5ee077f561c8/alignment` | Assessed Version/Core Anchor reference reads as Production Evidence, distinct from the Agent's findings/recommendations; the Human Decision section honestly states no Decision is recorded against the Assessment; Review proposal still leads only to Intent; page density remains manageable |
-| CG Execution | `http://localhost:3000/cg/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684/execution` | Confirmed Execution Anchor content reads as Production Evidence; the real confirm Decision's actor/rationale/timestamp render under Human Decision and Provenance; VFX read access was not turned into edit access; all CG confirm/edit controls remain reachable |
-| CG Version Review | `http://localhost:3000/cg/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684/version-review` | Version/Anchor context reads as Production Evidence; CG Supervisor reviews read as Agent Interpretation; the Human Decision section never implies a Decision exists where none does; Escalate/Generate actions remain reachable |
-| Artist Current Version | `http://localhost:3000/artist/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684/current-version` | Artist Guidance reads as clearly advisory; the Human Decision section states Anchor ownership without exposing confirmation rationale to Artist; nothing here duplicates the Task Overview's Working Direction section; Generate/Regenerate guidance remains reachable |
-| Artist Feedback History | `http://localhost:3000/artist/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684/feedback-history` | Chronological order is unchanged; each event's small layer badge is understandable without breaking the timeline's read flow; a human-authored production event (e.g. a Dependency) still reads as Production Evidence, not Human Decision; Open → links remain correct |
+| VFX Intent | `http://localhost:3000/vfx/shots/8a72858d-8d06-47ab-a28d-5ee077f561c8/intent` | Production Evidence / Human Decision and Provenance / Agent Interpretation headings are understandable at a glance; the confirmed Anchor's content and its confirming Decision are visibly distinct, not duplicated; provenance (confirmed-by role as a human-readable label, rationale) is readable; a genuinely empty evidence-reference count reads as an honest statement, not "0 evidence sources"; the draft editor (if a draft exists) is untouched and its Save/Confirm/Reject controls remain reachable; no role boundary changed |
+| VFX Alignment | `http://localhost:3000/vfx/shots/8a72858d-8d06-47ab-a28d-5ee077f561c8/alignment` | Assessed Version/Core Anchor reference reads as Production Evidence; the CrossRoleAssessment executive summary, findings, and `AI interpretation` badge all read as Agent Interpretation, never Production Evidence; `Human review required` appears as a pending action inside Agent Interpretation's Recommended next action, never inside Human Decision and Provenance; the Human Decision section honestly states no Decision is recorded against the Assessment; Review proposal still leads only to Intent; page density remains manageable |
+| CG Execution | `http://localhost:3000/cg/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684/execution` | Confirmed Execution Anchor content reads as Production Evidence; Human Decision and Provenance states the real Decision outcome ("Confirmed Execution Anchor revision N") plus a human-readable actor role, rationale, and timestamp — never a raw role enum, never inferred from the Anchor's own state when no Decision record exists; the action heading reads "Start Execution Anchor" with none, "Revise Execution Anchor" once one is confirmed, "Draft Execution Anchor" while one is in progress; VFX read access was not turned into edit access; all CG confirm/edit controls remain reachable |
+| CG Version Review | `http://localhost:3000/cg/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684/version-review` | Version/Anchor context reads as Production Evidence; CG Supervisor reviews read as Agent Interpretation; the Human Decision section never implies a Decision exists where none does; Add Review Note, Generate CG Supervisor review, and Escalate to VFX all sit in their own "Review actions" section, visually outside every evidence layer, and remain reachable |
+| Artist Current Version | `http://localhost:3000/artist/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684/current-version` | Artist Guidance reads as clearly advisory; the Human Decision section shows only "Confirmed authority references" — which authority (VFX Supervisor / CG Supervisor) confirmed each Anchor, and an explicit statement that detailed Decision provenance is not exposed in the Artist role view — never actor/rationale/timestamp detail and never a confirm/reject/edit control; an unconfirmed Anchor is never described as confirmed; nothing here duplicates the Task Overview's Working Direction section; Generate/Regenerate guidance remains reachable |
+| Artist Feedback History | `http://localhost:3000/artist/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684/feedback-history` | Chronological order is unchanged; each event's small layer badge is understandable without breaking the timeline's read flow; a human-authored production event (e.g. a Dependency) still reads as Production Evidence, not Human Decision; a human actor's role renders as a human-readable label ("CG Supervisor"), never the raw enum; Open → links remain correct |
 
-Each of the six URLs above returned `200` and rendered its expected layer content against freshly restarted `apps/api`/`apps/web` processes in this task (§17). **This does not constitute owner visual validation.**
+Each of the six URLs above returned `200` and rendered its expected layer content — including the §18 corrections — against freshly restarted `apps/api`/`apps/web` processes in this task (§18.6). **This does not constitute owner visual validation.**
 
 ---
 
@@ -253,8 +256,73 @@ Each of the six URLs above returned `200` and rendered its expected layer conten
 
 ## 17. Readiness for Step 9B-3
 
-**Ready**, pending owner visual validation of this step (§15). Step 9B-3's own scope (a VFX-facing Department Execution Overview aggregate) is unaffected by and independent of this step's work — it needs its own new aggregate read endpoint (per `02_STEP_9A_...md` §8, explicitly out of this step's boundary, §16) and does not depend on the `EvidenceLayerSection` component, though it may reuse it if Department Execution Overview rows are later judged to need Evidence/Agent/Human grouping of their own.
+**Ready**, pending owner visual validation of this step (§15), which now depends on the §18 correction being re-checked. Step 9B-3's own scope (a VFX-facing Department Execution Overview aggregate) is unaffected by and independent of this step's work — it needs its own new aggregate read endpoint (per `02_STEP_9A_...md` §8, explicitly out of this step's boundary, §16) and does not depend on the `EvidenceLayerSection` component, though it may reuse it if Department Execution Overview rows are later judged to need Evidence/Agent/Human grouping of their own.
 
-**Fresh-process re-verification (this task):** `apps/api`/`apps/web` restarted fresh; all six §15 URLs returned `200`; all three layer headings confirmed present (via direct grep of the rendered HTML) on VFX Intent, VFX Alignment, CG Execution (Production Evidence + Human Decision and Provenance only, per §7/§14), CG Version Review, and Artist Current Version; Artist Feedback History confirmed to render zero layer-section headings (by design, §10) and real per-event `Production fact`/`AI interpretation`/`Human-confirmed` badges (4/12/4 respectively, across its real D1 demo event history) instead. CG Execution's Human Decision and Provenance section confirmed showing the real `cg_supervisor` actor role and a real `2026-08-01` decided-at timestamp, sourced live from `listExecutionAnchorRevisionDecisions`, not fabricated.
+**Files changed, original 9B-2 pass (exhaustive):** `apps/web/src/design/components/EvidenceLayerSection.tsx` + `.module.css` (new); `apps/web/src/design/components/index.ts`; `apps/web/src/lib/decisionProvenance.ts` (new) + `.test.ts` (new); `apps/web/src/lib/feedbackEventLayer.ts` (new) + `.test.ts` (new); `apps/web/src/app/vfx/shots/[shotId]/intent/{IntentWorkspacePage,ConfirmedAnchorSummary}.tsx` + `IntentWorkspacePage.test.tsx`; `apps/web/src/app/vfx/shots/[shotId]/alignment/AlignmentWorkspacePage.tsx` + `.test.tsx`; `apps/web/src/features/cg/execution-workspace/data.ts`; `apps/web/src/app/cg/tasks/[taskId]/execution/page.tsx`; `apps/web/src/app/cg/tasks/[taskId]/execution/ExecutionPage.tsx` + `.test.tsx`; `apps/web/src/app/cg/tasks/[taskId]/version-review/VersionReviewPage.tsx` + `.test.tsx`; `apps/web/src/app/artist/tasks/[taskId]/current-version/CurrentVersionPage.tsx` + `.test.tsx`; `apps/web/src/app/artist/tasks/[taskId]/feedback-history/FeedbackHistoryPage.tsx` + `.test.tsx`.
 
-**Files changed (exhaustive):** `apps/web/src/design/components/EvidenceLayerSection.tsx` + `.module.css` (new); `apps/web/src/design/components/index.ts`; `apps/web/src/lib/decisionProvenance.ts` (new) + `.test.ts` (new); `apps/web/src/lib/feedbackEventLayer.ts` (new) + `.test.ts` (new); `apps/web/src/app/vfx/shots/[shotId]/intent/{IntentWorkspacePage,ConfirmedAnchorSummary}.tsx` + `IntentWorkspacePage.test.tsx`; `apps/web/src/app/vfx/shots/[shotId]/alignment/AlignmentWorkspacePage.tsx` + `.test.tsx`; `apps/web/src/features/cg/execution-workspace/data.ts`; `apps/web/src/app/cg/tasks/[taskId]/execution/page.tsx`; `apps/web/src/app/cg/tasks/[taskId]/execution/ExecutionPage.tsx` + `.test.tsx`; `apps/web/src/app/cg/tasks/[taskId]/version-review/VersionReviewPage.tsx` + `.test.tsx`; `apps/web/src/app/artist/tasks/[taskId]/current-version/CurrentVersionPage.tsx` + `.test.tsx`; `apps/web/src/app/artist/tasks/[taskId]/feedback-history/FeedbackHistoryPage.tsx` + `.test.tsx`.
+---
+
+## 18. Owner-validation correction (second pass)
+
+**The first owner visual validation attempt found five presentation-semantic defects**, all on the same primary VFX/CG/Artist validation targets (§15). This section records each defect, its correction, and re-verification. Owner visual validation is **not** re-claimed as complete by this correction — it remains pending, and Step 9B-2 must not be marked owner-validated in `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` until the owner actually re-checks the six targets in §15.
+
+### 18.1 (a) VFX Alignment: CrossRoleAssessment rendered under Production Evidence
+
+**Symptom:** the assessment summary card (executive summary, `AI interpretation`/`Human review required` badges, findings) sat in the page's DOM between the closing Production Evidence section and the opening Agent Interpretation section, with no heading of its own — reading as if it belonged to Production Evidence, while visibly carrying Agent-interpretation content.
+
+**Correction, `apps/web/src/app/vfx/shots/[shotId]/alignment/AlignmentWorkspacePage.tsx`:**
+
+- The summary card (executive summary, `Assessed at`/`Assessor` metadata) moved inside `<EvidenceLayerSection kind="agent-interpretation">`, as the first child before Findings.
+- Production Evidence now contains only the "Assessed Version" / "Core Anchor used" `MetadataRow` — real object references, nothing assessment-authored.
+- The `human-review-required` badge (a pending-action state, not a completed Human Decision) moved out of the summary card's badge row into the "Recommended next action" section — still inside Agent Interpretation, since a pending-action recommendation is itself Agent-derived, but visibly in the *action* sub-area, not beside the confirmed-Decision-adjacent `ai-interpretation` badge.
+- Human Decision and Provenance is unchanged — the honest no-Decision statement.
+
+### 18.2 (b) CG Execution: Human Decision section omitted the Decision outcome
+
+**Symptom:** the section showed actor role, rationale, and decided-at, but never stated *what* was decided — a reader could not tell from this section alone that the Execution Anchor had been confirmed (as opposed to, say, merely reviewed).
+
+**Correction, `apps/web/src/lib/decisionProvenance.ts` (new `decisionOutcomeStatement`) + `apps/web/src/app/cg/tasks/[taskId]/execution/ExecutionPage.tsx`:**
+
+- A new concise outcome statement (e.g. "Confirmed Execution Anchor revision 2") renders above the actor/rationale/decided-at `MetadataRow`, derived only from the real, persisted `decision_type` (`confirm_execution_anchor` → "Confirmed", `reject_execution_anchor` → "Rejected") and `entity_type`, plus the real confirmed revision's own `revision_number` — never inferred from the Anchor's state.
+- **When no real Decision record was found** (`confirmDecision === null`), the outcome statement is not shown at all — only the revision's own `confirmed_by_human_role`/`confirmed_at` fields render, honestly, with no fabricated "Confirmed ... revision N" sentence standing in for a Decision that was never actually loaded.
+- A human-readable supersession line ("Supersedes a previous Execution Anchor revision.") now renders when `confirmedRevision.supersedes_revision_id` is set.
+- The state-dependent action heading (§18.5) also lives in this file.
+
+### 18.3 (c) CG Version Review: review/Agent/escalation actions visually inside Human Decision
+
+**Symptom:** `VersionReviewActions` (Add Review Note / Record Review Note, Generate CG Supervisor review, Escalate to VFX) rendered as the next DOM sibling immediately after the Human Decision and Provenance section's closing tag, with no heading of its own — visually reading as a continuation of that section rather than a distinct control surface.
+
+**Correction, `apps/web/src/app/cg/tasks/[taskId]/version-review/VersionReviewPage.tsx`:** `VersionReviewActions` is now wrapped in its own `<section>` with a `SectionHeader` titled **"Review actions"** and a one-line description stating that recording a Note/requesting a review produces new evidence/interpretation and escalating creates a pending action — none of the three is itself a completed Human Decision. All three controls, and their real underlying Server Actions (`createReviewNoteAction`, `generateCgSupervisorReviewAction`, `escalateTaskAction`), are otherwise completely unchanged.
+
+### 18.4 (d) Artist Current Version: authority references overstated available provenance
+
+**Symptom:** the wording ("This Task's Core Anchor is confirmed, owned by the VFX Supervisor...") did not make explicit that Artist genuinely cannot see the underlying Decision's actor/rationale/timestamp — a reader could reasonably wonder whether that detail simply wasn't loaded, rather than being an intentional role boundary.
+
+**Correction, `apps/web/src/app/artist/tasks/[taskId]/current-version/CurrentVersionPage.tsx`:** the section now opens with "Confirmed authority references," then for each Anchor states "Confirmed under [Role] authority." followed by an explicit "Detailed Decision provenance is not exposed in the Artist role view." — making the boundary a stated fact, not an implied one. The honest "No ... confirmed ... yet." fallback is unchanged for an unconfirmed Anchor. No Decision actor/rationale/timestamp field is fetched or rendered here (unchanged) — Artist's permissions are not broadened.
+
+### 18.5 (e) Raw human-role enum values in visible provenance
+
+**Symptom:** `cg_supervisor`/`vfx_supervisor` rendered as literal visible text in three places: `ConfirmedAnchorSummary`'s main-card "Confirmed by" footer (VFX Intent); CG Execution's Human Decision section (both the real-Decision and legacy-fallback paths); Artist Feedback History's per-event actor footer. (`decisionProvenanceItems`'s "Actor role" item already had the same defect, fixed as part of the same correction.)
+
+**Correction:**
+
+- New `apps/web/src/lib/humanRoleLabel.ts` — `humanRoleLabel(role)`, normalising any real `HumanRole` (including a stray mixed-case variant) to the existing `ROLE_LABEL` display text, falling back to the raw value only for a genuinely unrecognised role, and to `"Unknown"` for a missing one. Never alters the persisted value — presentation-only.
+- `decisionProvenanceItems` (`apps/web/src/lib/decisionProvenance.ts`) now formats "Actor role" through `humanRoleLabel` — fixes every consumer (VFX Intent's Decision-recorded card, CG Execution's Human Decision section) in one place.
+- `ConfirmedAnchorSummary.tsx`'s main-card footer, CG Execution's legacy-fallback "Confirmed by" value, and `FeedbackHistoryPage.tsx`'s per-event actor footer each now call `humanRoleLabel` directly.
+- **Also corrected in the same pass:** VFX Intent's confusing "0 evidence sources -- see Evidence and provenance below." — `ConfirmedAnchorSummary.tsx` now renders "No evidence references were recorded for this Decision." when `evidenceCount === 0`, and the normal count/navigation sentence otherwise, unchanged.
+
+### 18.6 Tests and fresh-process re-verification
+
+New/updated tests are listed per file in §13. All 951 frontend tests pass (121 files); typecheck, ESLint, Prettier, and production build all clean (§13).
+
+`apps/api`/`apps/web` restarted fresh; all six §15 URLs returned `200`. Directly verified against the rendered HTML of the real D1 demo pages:
+
+- **VFX Alignment:** the CrossRoleAssessment executive summary text does not appear inside the `data-evidence-layer="production-evidence"` section; it appears inside `data-evidence-layer="agent-interpretation"` instead.
+- **CG Execution:** "Confirmed Execution Anchor revision 2" and "CG Supervisor" (not "cg_supervisor") both render inside the Human Decision and Provenance section, sourced from the real confirm Decision.
+- **CG Version Review:** a "Review actions" heading is present, structurally separate from the Human Decision and Provenance section.
+- **Artist Current Version:** "Confirmed authority references", "Confirmed under VFX Supervisor authority", "Confirmed under CG Supervisor authority", and "Detailed Decision provenance is not exposed..." all render inside the Human Decision and Provenance section.
+- **Cross-page:** a targeted check for any raw role enum rendered as literal element text (as opposed to internal RSC hydration payload data) — `>cg_supervisor<` / `>vfx_supervisor<` — returned zero matches on VFX Alignment, CG Execution, Artist Feedback History, and VFX Intent.
+
+**This does not constitute owner visual validation.** The owner must still perform the checklist in §15.
+
+**Files changed, this correction (additional, on top of §17's list):** `apps/web/src/lib/humanRoleLabel.ts` (new) + `.test.ts` (new); `apps/web/src/lib/decisionProvenance.ts` (+`decisionOutcomeStatement`, human-readable "Actor role") + `.test.ts`; `apps/web/src/app/vfx/shots/[shotId]/alignment/AlignmentWorkspacePage.tsx` + `.test.tsx`; `apps/web/src/app/vfx/shots/[shotId]/intent/ConfirmedAnchorSummary.tsx` + `.test.tsx`; `apps/web/src/app/cg/tasks/[taskId]/execution/ExecutionPage.tsx` + `.test.tsx`; `apps/web/src/app/cg/tasks/[taskId]/version-review/VersionReviewPage.tsx` + `.test.tsx`; `apps/web/src/app/artist/tasks/[taskId]/current-version/CurrentVersionPage.tsx` + `.test.tsx`; `apps/web/src/app/artist/tasks/[taskId]/feedback-history/FeedbackHistoryPage.tsx` + `.test.tsx`. No backend, route, sidebar, tab, migration, or persistence file was touched.

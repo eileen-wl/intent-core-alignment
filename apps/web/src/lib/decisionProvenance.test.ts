@@ -1,7 +1,10 @@
 import type { DecisionRead } from "@intent-core/contracts";
 import { describe, expect, it } from "vitest";
 
-import { decisionProvenanceItems } from "./decisionProvenance";
+import {
+  decisionOutcomeStatement,
+  decisionProvenanceItems,
+} from "./decisionProvenance";
 
 function decision(overrides: Partial<DecisionRead> = {}): DecisionRead {
   return {
@@ -22,12 +25,13 @@ function decision(overrides: Partial<DecisionRead> = {}): DecisionRead {
 }
 
 describe("decisionProvenanceItems", () => {
-  it("includes the real actor role, rationale, and decided-at timestamp", () => {
+  it("includes the real actor role as a human-readable label, rationale, and decided-at timestamp -- never the raw role enum", () => {
     const items = decisionProvenanceItems(decision());
     expect(items).toContainEqual({
       label: "Actor role",
-      value: "cg_supervisor",
+      value: "CG Supervisor",
     });
+    expect(items.some((item) => item.value === "cg_supervisor")).toBe(false);
     expect(items).toContainEqual({
       label: "Rationale",
       value: "Matches the confirmed Core Anchor exactly.",
@@ -57,5 +61,34 @@ describe("decisionProvenanceItems", () => {
     );
     expect(supersedesItem).toBeDefined();
     expect(supersedesItem?.value).not.toContain("8b4f11eb");
+  });
+});
+
+describe("decisionOutcomeStatement", () => {
+  it("renders a concise confirmed outcome from the real decision_type and revision number", () => {
+    expect(decisionOutcomeStatement(decision(), 2)).toBe(
+      "Confirmed Execution Anchor revision 2",
+    );
+  });
+
+  it("renders a concise rejected outcome, where applicable", () => {
+    expect(
+      decisionOutcomeStatement(
+        decision({ decision_type: "reject_execution_anchor" }),
+        3,
+      ),
+    ).toBe("Rejected Execution Anchor revision 3");
+  });
+
+  it("renders a Core Anchor outcome for a core_anchor_revision Decision", () => {
+    expect(
+      decisionOutcomeStatement(
+        decision({
+          decision_type: "confirm_core_anchor",
+          entity_type: "core_anchor_revision",
+        }),
+        1,
+      ),
+    ).toBe("Confirmed Core Anchor revision 1");
   });
 });
