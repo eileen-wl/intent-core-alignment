@@ -10,6 +10,7 @@ import type {
   CrossRoleAssessmentGenerateRequest,
   CrossRoleAssessmentRead,
   DecisionRead,
+  DepartmentExecutionOverviewRead,
   HumanGateRead,
   IntentDecompositionRead,
   ReviewNoteRead,
@@ -306,6 +307,31 @@ export async function fetchVfxInboxItem(
 ): Promise<VfxInboxItemRead | null> {
   try {
     return await vfxFetch<VfxInboxItemRead>(`/vfx/inbox/${shotId}`);
+  } catch (error) {
+    if (error instanceof VfxApiError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/** `GET /vfx/shots/{shot_id}/department-execution-overview` (Step 9B-3)
+ * -- role-gated server-side (VFX Supervisor only), so this call requires
+ * the same trusted, server-resolved Actor headers every mutation in this
+ * module already requires -- never client-supplied (matches the exact
+ * precedent `features/cg/api.ts`'s `listExecutionAnchorRevisionDecisions`
+ * already established for a role-gated *read*). Returns `null` on a real
+ * 404 (Shot not found), distinguished from a thrown `VfxApiError` for any
+ * other failure -- matches `fetchVfxInboxItem`'s own convention. */
+export async function fetchDepartmentExecutionOverview(
+  shotId: string,
+  actorHeaders: ActorHeaders,
+): Promise<DepartmentExecutionOverviewRead | null> {
+  try {
+    return await vfxFetch<DepartmentExecutionOverviewRead>(
+      `/vfx/shots/${shotId}/department-execution-overview`,
+      { headers: actorHeaders },
+    );
   } catch (error) {
     if (error instanceof VfxApiError && error.status === 404) {
       return null;

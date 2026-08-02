@@ -1311,6 +1311,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vfx/shots/{shot_id}/department-execution-overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Department Execution Overview */
+        get: operations["get_department_execution_overview_vfx_shots__shot_id__department_execution_overview_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/shots/{shot_id}/activity": {
         parameters: {
             query?: never;
@@ -2667,6 +2684,83 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** DepartmentExecutionOverviewRead */
+        DepartmentExecutionOverviewRead: {
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Tasks */
+            tasks: components["schemas"]["DepartmentExecutionTaskRead"][];
+            /**
+             * Generated At
+             * Format: date-time
+             */
+            generated_at: string;
+        };
+        /** DepartmentExecutionTaskRead */
+        DepartmentExecutionTaskRead: {
+            /**
+             * Task Id
+             * Format: uuid
+             */
+            task_id: string;
+            /** Task Name */
+            task_name: string;
+            /** Department */
+            department: string | null;
+            /**
+             * Task Source
+             * @enum {string}
+             */
+            task_source: "manual" | "ftrack";
+            /**
+             * Execution Anchor State
+             * @enum {string}
+             */
+            execution_anchor_state: "none" | "draft" | "awaiting_confirmation" | "confirmed" | "rejected";
+            /** Execution Anchor Revision Number */
+            execution_anchor_revision_number: number | null;
+            /** Execution Anchor Summary */
+            execution_anchor_summary: string | null;
+            /** Latest Version Id */
+            latest_version_id: string | null;
+            /** Latest Version Name */
+            latest_version_name: string | null;
+            /** Latest Version Number */
+            latest_version_number: number | null;
+            /** Latest Version Source */
+            latest_version_source: ("manual" | "ftrack") | null;
+            /** Current Focus Title */
+            current_focus_title: string;
+            /** Current Focus Actionable */
+            current_focus_actionable: boolean;
+            /** Open Dependency Count */
+            open_dependency_count: number;
+            /** Top Open Dependency Description */
+            top_open_dependency_description: string | null;
+            /** Top Open Dependency Severity */
+            top_open_dependency_severity: ("low" | "medium" | "high") | null;
+            /** Alignment Concern Summary */
+            alignment_concern_summary: string | null;
+            /** Alignment Concern Attention Level */
+            alignment_concern_attention_level: ("low" | "medium" | "high") | null;
+            /** Open Escalation */
+            open_escalation: boolean;
+            /** Open Escalation Summary */
+            open_escalation_summary: string | null;
+            /**
+             * Last Updated At
+             * Format: date-time
+             */
+            last_updated_at: string;
+            /**
+             * Last Updated Source
+             * @enum {string}
+             */
+            last_updated_source: "task_created" | "execution_anchor_revision" | "version" | "dependency" | "escalation" | "alignment_assessment";
         };
         /** DriftRiskInput */
         DriftRiskInput: {
@@ -6712,6 +6806,40 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VfxInboxItemRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_department_execution_overview_vfx_shots__shot_id__department_execution_overview_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DepartmentExecutionOverviewRead"];
                 };
             };
             /** @description Validation Error */

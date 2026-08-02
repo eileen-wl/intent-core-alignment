@@ -121,6 +121,7 @@ function baseData(overrides: Partial<ShotOverviewData> = {}): ShotOverviewData {
     latestVersion: null,
     latestReviewNote: null,
     currentAssessment: null,
+    departmentExecutionOverview: null,
     ...overrides,
   };
 }

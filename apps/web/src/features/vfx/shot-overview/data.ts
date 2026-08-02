@@ -1,12 +1,14 @@
 import type {
   CoreAnchorRevisionRead,
   CrossRoleAssessmentRead,
+  DepartmentExecutionOverviewRead,
   ReviewNoteRead,
   VersionRead,
   VfxInboxItemRead,
 } from "@intent-core/contracts";
 
 import {
+  fetchDepartmentExecutionOverview,
   fetchVfxInboxItem,
   listCoreAnchorRevisions,
   listCrossRoleAssessmentsForShot,
@@ -43,24 +45,39 @@ export interface ShotOverviewData {
   /** The Shot's current (newest) Cross-role Assessment, or `null` when
    * none has ever been generated. */
   currentAssessment: CrossRoleAssessmentRead | null;
+  /** Step 9B-3: the Shot's real Tasks and their Execution Anchor/
+   * Version/dependency/alignment/escalation state, one row per real
+   * `Task.id` -- `null` when the role-gated backend call itself fails
+   * (network/auth/unexpected error), so the Department Execution
+   * Overview section can render its own honest "unavailable" state
+   * without failing the whole Shot Overview page. */
+  departmentExecutionOverview: DepartmentExecutionOverviewRead | null;
 }
 
 /** Returns `null` only when the Shot itself does not exist -- any other
  * failure propagates as a thrown `VfxApiError`, matching every other
- * Step 7C loader's honest-state convention. */
+ * Step 7C loader's honest-state convention.
+ *
+ * `actorHeaders` (Step 9B-3): the trusted, server-resolved VFX Supervisor
+ * identity, forwarded only to the one role-gated call
+ * (`fetchDepartmentExecutionOverview`) -- every other call in this loader
+ * remains an unauthenticated read, unchanged from Step 9B-1/9B-2. */
 export async function loadShotOverviewData(
   shotId: string,
+  actorHeaders: Record<string, string>,
 ): Promise<ShotOverviewData | null> {
   const item = await fetchVfxInboxItem(shotId);
   if (item === null) {
     return null;
   }
 
-  const [revisions, versions, assessments] = await Promise.all([
-    listCoreAnchorRevisions(shotId),
-    listVersionsForShot(shotId),
-    listCrossRoleAssessmentsForShot(shotId),
-  ]);
+  const [revisions, versions, assessments, departmentExecutionOverview] =
+    await Promise.all([
+      listCoreAnchorRevisions(shotId),
+      listVersionsForShot(shotId),
+      listCrossRoleAssessmentsForShot(shotId),
+      fetchDepartmentExecutionOverview(shotId, actorHeaders).catch(() => null),
+    ]);
 
   const confirmedCoreAnchorRevision =
     revisions.find((revision) => revision.status === "confirmed") ?? null;
@@ -101,5 +118,6 @@ export async function loadShotOverviewData(
     latestVersion,
     latestReviewNote,
     currentAssessment,
+    departmentExecutionOverview,
   };
 }

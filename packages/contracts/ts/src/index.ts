@@ -127,6 +127,15 @@ export type VfxInboxNextFocusRead = Schemas["VfxInboxNextFocusRead"];
 export type VfxInboxItemRead = Schemas["VfxInboxItemRead"];
 export type VfxInboxRead = Schemas["VfxInboxRead"];
 
+export type DepartmentExecutionAnchorState =
+  Schemas["DepartmentExecutionTaskRead"]["execution_anchor_state"];
+export type DepartmentExecutionLastUpdatedSource =
+  Schemas["DepartmentExecutionTaskRead"]["last_updated_source"];
+export type DepartmentExecutionTaskRead =
+  Schemas["DepartmentExecutionTaskRead"];
+export type DepartmentExecutionOverviewRead =
+  Schemas["DepartmentExecutionOverviewRead"];
+
 export type ShotActivityEventType =
   Schemas["ShotActivityEventRead"]["event_type"];
 export type ShotActivityEventRead = Schemas["ShotActivityEventRead"];

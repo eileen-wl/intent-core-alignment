@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { actorHeaders, resolveIdentity } from "@/features/session/identity";
 import { loadShotOverviewData } from "@/features/vfx/shot-overview/data";
 import { selectCurrentCreativeDirection } from "@/features/vfx/shot-overview/selectCurrentCreativeDirection";
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
@@ -26,9 +27,18 @@ export default async function Page({
 
   const { shotId } = await params;
 
+  // Step 9B-3: the Department Execution Overview aggregate is role-gated
+  // server-side (VFX Supervisor only) -- the real, trusted session
+  // identity (already confirmed vfx_supervisor above) is resolved and
+  // forwarded, never a client-supplied value.
+  const identity = await resolveIdentity();
+  if (identity === null) {
+    redirect("/demo");
+  }
+
   let data: Awaited<ReturnType<typeof loadShotOverviewData>>;
   try {
-    data = await loadShotOverviewData(shotId);
+    data = await loadShotOverviewData(shotId, actorHeaders(identity));
   } catch {
     data = null;
   }
@@ -37,6 +47,7 @@ export default async function Page({
     <ShotOverviewPage
       item={data?.item ?? null}
       workingDirection={data ? selectCurrentCreativeDirection(data) : undefined}
+      departmentExecutionOverview={data?.departmentExecutionOverview ?? null}
       onExitRole={exitRoleView}
     />
   );

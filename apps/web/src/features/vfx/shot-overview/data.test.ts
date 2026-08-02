@@ -4,6 +4,11 @@ import { loadShotOverviewData } from "./data";
 
 const fetchMock = vi.fn();
 
+const VFX_ACTOR_HEADERS = {
+  "X-Actor-Role": "vfx_supervisor",
+  "X-Actor-Id": "vfx-1",
+};
+
 function jsonResponse(status: number, body: unknown) {
   return {
     ok: status >= 200 && status < 300,
@@ -62,7 +67,10 @@ afterEach(() => {
 describe("loadShotOverviewData", () => {
   it("returns null on a real 404 (Shot not found)", async () => {
     fetchMock.mockResolvedValue(jsonResponse(404, { detail: "not found" }));
-    const result = await loadShotOverviewData("missing-shot");
+    const result = await loadShotOverviewData(
+      "missing-shot",
+      VFX_ACTOR_HEADERS,
+    );
     expect(result).toBeNull();
   });
 
@@ -77,6 +85,13 @@ describe("loadShotOverviewData", () => {
       ) // listCoreAnchorRevisions
       .mockResolvedValueOnce(jsonResponse(200, [])) // listVersionsForShot
       .mockResolvedValueOnce(jsonResponse(200, [])) // listCrossRoleAssessmentsForShot
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          shot_id: "s1",
+          tasks: [],
+          generated_at: "2026-08-01T00:00:00Z",
+        }),
+      ) // fetchDepartmentExecutionOverview
       .mockResolvedValueOnce(
         jsonResponse(200, [
           {
@@ -96,7 +111,7 @@ describe("loadShotOverviewData", () => {
         ]),
       ); // listDecisionsForRevision
 
-    const result = await loadShotOverviewData("s1");
+    const result = await loadShotOverviewData("s1", VFX_ACTOR_HEADERS);
     expect(result?.confirmedCoreAnchorRevision?.id).toBe("rev1");
     expect(result?.confirmedCoreAnchorRevision?.status).toBe("confirmed");
     expect(result?.confirmedDecisionRationale).toBe(
@@ -113,9 +128,16 @@ describe("loadShotOverviewData", () => {
         ]),
       )
       .mockResolvedValueOnce(jsonResponse(200, []))
-      .mockResolvedValueOnce(jsonResponse(200, []));
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          shot_id: "s1",
+          tasks: [],
+          generated_at: "2026-08-01T00:00:00Z",
+        }),
+      ); // fetchDepartmentExecutionOverview
 
-    const result = await loadShotOverviewData("s1");
+    const result = await loadShotOverviewData("s1", VFX_ACTOR_HEADERS);
     expect(result?.confirmedCoreAnchorRevision).toBeNull();
     expect(result?.confirmedDecisionRationale).toBeNull();
   });
@@ -137,6 +159,13 @@ describe("loadShotOverviewData", () => {
       .mockResolvedValueOnce(jsonResponse(200, [olderVersion, newerVersion]))
       .mockResolvedValueOnce(jsonResponse(200, []))
       .mockResolvedValueOnce(
+        jsonResponse(200, {
+          shot_id: "s1",
+          tasks: [],
+          generated_at: "2026-08-01T00:00:00Z",
+        }),
+      ) // fetchDepartmentExecutionOverview
+      .mockResolvedValueOnce(
         jsonResponse(200, [
           {
             id: "n1",
@@ -151,7 +180,7 @@ describe("loadShotOverviewData", () => {
         ]),
       ); // listReviewNotesForVersion(v-new)
 
-    const result = await loadShotOverviewData("s1");
+    const result = await loadShotOverviewData("s1", VFX_ACTOR_HEADERS);
     expect(result?.latestVersion?.id).toBe("v-new");
     expect(result?.latestReviewNote?.content).toBe("Tighten the timing.");
   });
@@ -161,9 +190,16 @@ describe("loadShotOverviewData", () => {
       .mockResolvedValueOnce(jsonResponse(200, ITEM))
       .mockResolvedValueOnce(jsonResponse(200, []))
       .mockResolvedValueOnce(jsonResponse(200, []))
-      .mockResolvedValueOnce(jsonResponse(200, []));
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          shot_id: "s1",
+          tasks: [],
+          generated_at: "2026-08-01T00:00:00Z",
+        }),
+      ); // fetchDepartmentExecutionOverview
 
-    const result = await loadShotOverviewData("s1");
+    const result = await loadShotOverviewData("s1", VFX_ACTOR_HEADERS);
     expect(result?.confirmedCoreAnchorRevision).toBeNull();
     expect(result?.latestVersion).toBeNull();
     expect(result?.latestReviewNote).toBeNull();
@@ -180,9 +216,51 @@ describe("loadShotOverviewData", () => {
           { id: "a-newest", version_id: "v1" },
           { id: "a-older", version_id: "v1" },
         ]),
-      );
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          shot_id: "s1",
+          tasks: [],
+          generated_at: "2026-08-01T00:00:00Z",
+        }),
+      ); // fetchDepartmentExecutionOverview
 
-    const result = await loadShotOverviewData("s1");
+    const result = await loadShotOverviewData("s1", VFX_ACTOR_HEADERS);
     expect(result?.currentAssessment?.id).toBe("a-newest");
+  });
+
+  it("attaches a real Department Execution Overview when the role-gated call succeeds (Step 9B-3)", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(200, ITEM))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(
+        jsonResponse(200, {
+          shot_id: "s1",
+          tasks: [{ task_id: "t1", task_name: "Compositing Review" }],
+          generated_at: "2026-08-01T00:00:00Z",
+        }),
+      ); // fetchDepartmentExecutionOverview
+
+    const result = await loadShotOverviewData("s1", VFX_ACTOR_HEADERS);
+    expect(result?.departmentExecutionOverview?.tasks).toHaveLength(1);
+    expect(result?.departmentExecutionOverview?.tasks[0]?.task_id).toBe("t1");
+  });
+
+  it("does not fail the whole Shot Overview load when the Department Execution Overview call itself fails", async () => {
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(200, ITEM))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(
+        jsonResponse(403, { detail: "action requires vfx_supervisor" }),
+      ); // fetchDepartmentExecutionOverview
+
+    const result = await loadShotOverviewData("s1", VFX_ACTOR_HEADERS);
+    expect(result).not.toBeNull();
+    expect(result?.item.shot_id).toBe("s1");
+    expect(result?.departmentExecutionOverview).toBeNull();
   });
 });
