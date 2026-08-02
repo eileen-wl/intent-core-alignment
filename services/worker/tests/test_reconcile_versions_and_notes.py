@@ -44,6 +44,16 @@ def _note_context(external_id: str, version_external_id: str, **overrides: Any) 
     return NoteContext(**base)
 
 
+def _http_status_error(status_code: int, message: str = "error") -> httpx.HTTPStatusError:
+    request = httpx.Request("POST", "http://test")
+    response = httpx.Response(status_code, request=request)
+    return httpx.HTTPStatusError(message, request=request, response=response)
+
+
+def _forbid_call(*args: Any, **kwargs: Any) -> Any:
+    raise AssertionError("must not be called after a systemic failure aborts the run")
+
+
 class _Result:
     """Minimal stand-in for VersionNoteSyncItemResult (no contracts
     dependency needed in this fake -- just the two fields the job
@@ -534,3 +544,237 @@ async def test_one_bad_shot_query_does_not_abort_other_shots(
     assert summary["linked_shots_examined"] == 2
     assert summary["asset_versions_discovered"] == 1
     assert call_log == ["sync_version:v1"]
+
+
+# --- Reliability correction: systemic vs. item-local sync failures --------
+
+
+async def test_linked_shots_401_aborts_the_job(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("INTERNAL_SYNC_TOKEN", "test-token")
+    tasks.get_settings.cache_clear()
+
+    async def fake_list_linked_shots(**kwargs: Any) -> list[dict[str, str]]:
+        raise _http_status_error(401)
+
+    monkeypatch.setattr(tasks, "list_linked_shots", fake_list_linked_shots)
+    monkeypatch.setattr(tasks, "FtrackConnector", _forbid_call)
+
+    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        await tasks.reconcile_ftrack_versions_and_notes({})
+
+    assert exc_info.value.response.status_code == 401
+
+
+async def test_linked_shots_503_aborts_the_job(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("INTERNAL_SYNC_TOKEN", "test-token")
+    tasks.get_settings.cache_clear()
+
+    async def fake_list_linked_shots(**kwargs: Any) -> list[dict[str, str]]:
+        raise _http_status_error(503)
+
+    monkeypatch.setattr(tasks, "list_linked_shots", fake_list_linked_shots)
+    monkeypatch.setattr(tasks, "FtrackConnector", _forbid_call)
+
+    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        await tasks.reconcile_ftrack_versions_and_notes({})
+
+    assert exc_info.value.response.status_code == 503
+
+
+async def test_version_sync_401_aborts_immediately_no_later_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connector = _FakeReconciliationConnector(
+        versions_by_shot={
+            "shot-1": AssetVersionSweepResult(
+                versions=[_version_context("v1"), _version_context("v2")]
+            )
+        },
+    )
+    call_log: list[str] = []
+    _install(
+        monkeypatch,
+        connector=connector,
+        linked_shots=[{"shot_id": "internal-1", "shot_external_id": "shot-1"}],
+        version_outcomes={"v1": _http_status_error(401)},
+        note_outcomes={},
+        call_log=call_log,
+    )
+
+    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        await tasks.reconcile_ftrack_versions_and_notes({})
+
+    assert exc_info.value.response.status_code == 401
+    # v2 (and any Note request) is never attempted once a systemic
+    # failure is detected.
+    assert call_log == ["sync_version:v1"]
+    # Cleanup still runs even though the exception propagates.
+    assert connector.closed is True
+
+
+async def test_review_note_sync_401_aborts_immediately_no_later_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connector = _FakeReconciliationConnector(
+        versions_by_shot={
+            "shot-1": AssetVersionSweepResult(
+                versions=[_version_context("v1"), _version_context("v2")]
+            )
+        },
+        direct_notes_by_version={
+            "v1": DirectNoteResult(notes=[_note_context("n1", "v1"), _note_context("n2", "v1")]),
+        },
+    )
+    call_log: list[str] = []
+    _install(
+        monkeypatch,
+        connector=connector,
+        linked_shots=[{"shot_id": "internal-1", "shot_external_id": "shot-1"}],
+        version_outcomes={
+            "v1": _Result("created", "local-v1"),
+            "v2": _Result("created", "local-v2"),
+        },
+        note_outcomes={"n1": _http_status_error(401)},
+        call_log=call_log,
+    )
+
+    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        await tasks.reconcile_ftrack_versions_and_notes({})
+
+    assert exc_info.value.response.status_code == 401
+    # n2 (same Version) and v2 (next Version) are never attempted.
+    assert call_log == ["sync_version:v1", "sync_note:n1"]
+
+
+async def test_api_5xx_aborts_the_job(monkeypatch: pytest.MonkeyPatch) -> None:
+    connector = _FakeReconciliationConnector(
+        versions_by_shot={"shot-1": AssetVersionSweepResult(versions=[_version_context("v1")])},
+    )
+    call_log: list[str] = []
+    _install(
+        monkeypatch,
+        connector=connector,
+        linked_shots=[{"shot_id": "internal-1", "shot_external_id": "shot-1"}],
+        version_outcomes={"v1": _http_status_error(500)},
+        note_outcomes={},
+        call_log=call_log,
+    )
+
+    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        await tasks.reconcile_ftrack_versions_and_notes({})
+
+    assert exc_info.value.response.status_code == 500
+
+
+async def test_409_is_counted_and_reconciliation_continues(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connector = _FakeReconciliationConnector(
+        versions_by_shot={
+            "shot-1": AssetVersionSweepResult(
+                versions=[_version_context("v1"), _version_context("v2")]
+            )
+        },
+    )
+    call_log: list[str] = []
+    _install(
+        monkeypatch,
+        connector=connector,
+        linked_shots=[{"shot_id": "internal-1", "shot_external_id": "shot-1"}],
+        version_outcomes={
+            "v1": _http_status_error(409),
+            "v2": _Result("created", "local-v2"),
+        },
+        note_outcomes={},
+        call_log=call_log,
+    )
+
+    summary = await tasks.reconcile_ftrack_versions_and_notes({})
+
+    assert call_log == ["sync_version:v1", "sync_version:v2"]
+    assert summary["api_conflicts_or_failures"] == 1
+    assert summary["api_created"] == 1
+
+
+async def test_422_is_counted_as_item_failure_and_reconciliation_continues(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connector = _FakeReconciliationConnector(
+        versions_by_shot={
+            "shot-1": AssetVersionSweepResult(
+                versions=[_version_context("v1"), _version_context("v2")]
+            )
+        },
+    )
+    call_log: list[str] = []
+    _install(
+        monkeypatch,
+        connector=connector,
+        linked_shots=[{"shot_id": "internal-1", "shot_external_id": "shot-1"}],
+        version_outcomes={
+            "v1": _http_status_error(422),
+            "v2": _Result("created", "local-v2"),
+        },
+        note_outcomes={},
+        call_log=call_log,
+    )
+
+    summary = await tasks.reconcile_ftrack_versions_and_notes({})
+
+    assert call_log == ["sync_version:v1", "sync_version:v2"]
+    assert summary["api_conflicts_or_failures"] == 1
+    assert summary["api_created"] == 1
+
+
+async def test_skipped_outcome_continues_normally_to_next_item(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connector = _FakeReconciliationConnector(
+        versions_by_shot={
+            "shot-1": AssetVersionSweepResult(
+                versions=[_version_context("v1"), _version_context("v2")]
+            )
+        },
+    )
+    call_log: list[str] = []
+    _install(
+        monkeypatch,
+        connector=connector,
+        linked_shots=[{"shot_id": "internal-1", "shot_external_id": "shot-1"}],
+        version_outcomes={
+            "v1": _Result("skipped"),
+            "v2": _Result("created", "local-v2"),
+        },
+        note_outcomes={},
+        call_log=call_log,
+    )
+
+    summary = await tasks.reconcile_ftrack_versions_and_notes({})
+
+    assert call_log == ["sync_version:v1", "sync_version:v2"]
+    assert summary["api_skipped"] == 1
+    assert summary["api_created"] == 1
+
+
+async def test_token_value_never_appears_in_systemic_exception_text(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    connector = _FakeReconciliationConnector(
+        versions_by_shot={"shot-1": AssetVersionSweepResult(versions=[_version_context("v1")])},
+    )
+    call_log: list[str] = []
+    secret_token = "super-secret-token-value"
+    _install(
+        monkeypatch,
+        connector=connector,
+        linked_shots=[{"shot_id": "internal-1", "shot_external_id": "shot-1"}],
+        version_outcomes={"v1": _http_status_error(401, message="Invalid internal sync token")},
+        note_outcomes={},
+        call_log=call_log,
+        token=secret_token,
+    )
+
+    with pytest.raises(httpx.HTTPStatusError) as exc_info:
+        await tasks.reconcile_ftrack_versions_and_notes({})
+
+    assert secret_token not in str(exc_info.value)

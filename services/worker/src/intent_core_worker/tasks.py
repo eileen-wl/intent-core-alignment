@@ -27,6 +27,22 @@ SYNC_CURSOR_KEY = "ftrack_shot_reconciliation"
 # ever" (ADR-0011).
 _DEFAULT_LOOKBACK = timedelta(hours=24)
 
+# reconcile_ftrack_versions_and_notes reliability correction: 401/403 (the
+# internal sync token is being rejected) and any 5xx (apps/api itself is
+# unavailable, including a 503 from require_internal_sync_token's own
+# fail-closed check on an unconfigured server-side token) mean every
+# subsequent Version/Note request in this run would fail for the same
+# systemic reason -- continuing would just waste time producing a
+# misleading pile of "conflicts/failures" instead of surfacing the real
+# problem. 409 (an idempotency race) and 422 (one payload's own content)
+# are the only sync-endpoint failures still treated as item-local.
+_SYSTEMIC_SYNC_HTTP_STATUS_CODES = frozenset({401, 403})
+
+
+def _is_systemic_sync_error(exc: httpx.HTTPStatusError) -> bool:
+    status = exc.response.status_code
+    return status in _SYSTEMIC_SYNC_HTTP_STATUS_CODES or status >= 500
+
 
 async def ping(ctx: dict[str, Any], heartbeat_name: str) -> None:
     """Prove the api -> Redis -> worker -> api async job path works.
@@ -152,9 +168,20 @@ async def reconcile_ftrack_versions_and_notes(ctx: dict[str, Any]) -> dict[str, 
     `already_exists` Version's Notes are ever attempted -- a `skipped`
     Version (unresolved Shot lineage) or a failed sync call has no
     local row for a Note to resolve against, so its Notes are never
-    submitted. One malformed AssetVersion/Note/ReviewSessionObject, or
-    one failed per-item API call, is recorded in the returned summary
-    and does not abort the Shot it belongs to or the run as a whole.
+    submitted. One malformed AssetVersion/Note/ReviewSessionObject read,
+    or one item-local sync-endpoint failure (409 conflict, 422
+    validation), is recorded in the returned summary and does not abort
+    the Shot it belongs to or the run as a whole.
+
+    A *systemic* failure -- fetching the linked-Shot list itself, or a
+    401/403/5xx from a per-item sync call (`_is_systemic_sync_error`) --
+    is not caught here: it propagates uncaught, exactly like
+    `reconcile_ftrack_shots`' own cursor-read failure, so the arq job
+    fails loudly instead of returning a misleading "successful" partial
+    aggregate. Safe to rerun once the real cause (bad token, apps/api
+    down) is fixed: every already-synced row is untouched, and sync
+    identity is keyed by `ExternalEntityLink`, not by anything this job
+    remembers between runs.
     """
     settings = get_settings()
     summary = {
@@ -208,7 +235,9 @@ async def reconcile_ftrack_versions_and_notes(ctx: dict[str, Any]) -> dict[str, 
                         api_base_url=settings.api_base_url,
                         internal_sync_token=settings.internal_sync_token,
                     )
-                except (httpx.HTTPStatusError, IntegrationError):
+                except httpx.HTTPStatusError as exc:
+                    if _is_systemic_sync_error(exc):
+                        raise
                     summary["api_conflicts_or_failures"] += 1
                     continue
 
@@ -251,7 +280,9 @@ async def reconcile_ftrack_versions_and_notes(ctx: dict[str, Any]) -> dict[str, 
                             api_base_url=settings.api_base_url,
                             internal_sync_token=settings.internal_sync_token,
                         )
-                    except (httpx.HTTPStatusError, IntegrationError):
+                    except httpx.HTTPStatusError as exc:
+                        if _is_systemic_sync_error(exc):
+                            raise
                         summary["api_conflicts_or_failures"] += 1
                         continue
 
