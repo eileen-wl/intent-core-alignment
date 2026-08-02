@@ -1,8 +1,9 @@
 # Step 9B-1 — Role-Aware Working Direction
 
-**Status:** Implementation and automated validation complete. Owner visual validation pending (a first attempt failed and has been corrected — see §15; the owner has not yet re-validated).
+**Status:** Implementation and automated validation complete. Owner visual validation pending (a first attempt failed and has been corrected — see §15; a second attempt found one further selector-level defect, corrected — see §16. The owner has not yet re-validated).
 **Correction applied (same branch, same task):** the original pass's `GET /intent/execution-anchor-revisions/{id}/decisions` endpoint had no backend role check, only the frontend route guard. Backend authorization is now explicit — see §8.1.
 **Owner-validation correction applied (same branch, same task):** the first owner visual validation attempt failed for four reasons (an unavailable primary CG page, misleading fallback authority, an unreadable shared authority strip, and excessive duplication with pre-existing detailed content). All four are corrected — see §15. Validation is still pending, not re-claimed as complete.
+**Second owner-validation correction applied (same branch, same task):** the second owner visual validation attempt confirmed the §15 fixes but found one remaining semantic defect — a confirmed parent Execution Anchor's empty optional child field (production-ready criteria / allowed refinements) rendered the parent-level "no confirmed Anchor" fallback with an inherited Human-confirmed badge. Corrected — see §16. Validation is still pending, not re-claimed as complete.
 **Branch:** `feat/step9b1-role-aware-working-direction`
 **Companion documents:** `docs/step-9/01_STEP_9_PRESENTATION_AND_COMPREHENSION_BASELINE.md` (locked baseline, unmodified), `docs/step-9/02_STEP_9A_CURRENT_STATE_AND_IMPLEMENTATION_MAP.md` (the audit this implementation follows), `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` §L.
 
@@ -172,26 +173,26 @@ None of these fallbacks are generic motivational copy — each names the specifi
 
 ## 10. Tests and validation
 
-**New focused test files (all passing, counts as of the §15 owner-validation correction):**
+**New focused test files (all passing, counts as of the §16 owner-validation correction):**
 
-- `apps/web/src/features/vfx/shot-overview/selectCurrentCreativeDirection.test.ts` (13 tests)
+- `apps/web/src/features/vfx/shot-overview/selectCurrentCreativeDirection.test.ts` (14 tests — +1 this correction)
 - `apps/web/src/features/vfx/shot-overview/data.test.ts` (6 tests)
-- `apps/web/src/features/cg/task-overview/selectCurrentExecutionDirection.test.ts` (13 tests)
-- `apps/web/src/features/artist/task-overview/selectCurrentWorkingDirection.test.ts` (11 tests)
-- `apps/web/src/lib/workingDirection.test.ts` (3 tests — new this correction, covers `excerptText`)
-- `apps/web/src/design/components/WorkingDirectionSection.test.tsx` (6 tests — new this correction)
-- `apps/web/src/design/components/AuthorityLabel.test.tsx` (15 tests — 14 pre-existing + 1 new this correction)
-- `apps/api/tests/test_execution_anchor_decisions_list.py` (13 tests — 6 from the original pass, 7 new authorization tests added the prior correction)
+- `apps/web/src/features/cg/task-overview/selectCurrentExecutionDirection.test.ts` (16 tests — +3 this correction)
+- `apps/web/src/features/artist/task-overview/selectCurrentWorkingDirection.test.ts` (15 tests — +4 this correction)
+- `apps/web/src/lib/workingDirection.test.ts` (3 tests)
+- `apps/web/src/design/components/WorkingDirectionSection.test.tsx` (6 tests)
+- `apps/web/src/design/components/AuthorityLabel.test.tsx` (15 tests)
+- `apps/api/tests/test_execution_anchor_decisions_list.py` (13 tests — unchanged, no backend source touched this correction)
 
 Plus rendering-level tests updated/added in the three existing page-component test files (VFX 23, CG 10, Artist 16, all passing) to cover the §15 corrections: the "View details" link pattern, the collapsed-by-default Detailed context disclosure, and the absence of a Human-confirmed badge on fallback content.
 
 Coverage against the task's required list: confirmed-over-draft Anchor selection (VFX/CG/Artist); draft-only honest pending state; Agent interpretation never categorised as Human Decision (Intent Signal, Artist Guidance); Version/ReviewNote categorised as production evidence; VFX Shot-wide vs. CG/Artist Task-scoped Version context; Artist guidance remains advisory; role-appropriate navigation destinations (every `href` asserted to start with the current role's own route prefix); missing-data fallbacks; no raw id in any visible summary value (dedicated test per selector, using a deliberately UUID-shaped fixture id). Backend: correct scoped records, unrelated-revision exclusion, human role/actor provenance retention, superseded-revision history retention, empty-result validity, no mutation side effect, **plus this correction's authorization matrix**: allowed CG Supervisor request succeeds; allowed VFX Supervisor request succeeds (with the `docs/ROLE_PERMISSIONS.md` §2 evidence documented in the test itself); Artist request rejected (403); missing role header rejected (401); invalid (non-`HumanRole`) role header rejected (401); a valid role with a missing actor id rejected (401); a rejected request creates no row, leaks no Decision content in its response body, and does not affect what an authorised request subsequently sees.
 
-**Full regression, all green (as of the §15 owner-validation correction):**
+**Full regression, all green (as of the §16 owner-validation correction):**
 
-- Frontend: Vitest 906/906 (117 files), ESLint (0 errors, 1 pre-existing/unrelated warning), `tsc --noEmit` (apps/web and contracts package, both clean), Prettier (clean, repo-root), production `next build` (30 routes, succeeded).
-- Backend: unchanged from the prior authorization correction — no backend source was touched in the §15 pass (Task 1's diagnosis found no source defect; only a stale local process). `pytest apps/api` 904/904, `mypy` across all four exact CI scopes (clean, 130 files), `ruff check` (clean), `ruff format --check` (clean, 232 files), `uv lock --check` (no drift).
-- Contracts: unchanged from the prior authorization correction — no schema or endpoint change in the §15 pass.
+- Frontend: Vitest 914/914 (117 files), ESLint (0 errors, 1 pre-existing/unrelated warning), `tsc --noEmit` (apps/web and contracts package, both clean), Prettier (clean, repo-root), production `next build` (30 routes, succeeded).
+- Backend: unchanged from the prior corrections — no backend source was touched in either the §15 or §16 pass. `pytest apps/api` 904/904, `mypy` across all four exact CI scopes (clean, 130 files), `ruff check` (clean), `ruff format --check` (clean, 232 files), `uv lock --check` (no drift).
+- Contracts: unchanged from the prior corrections — no schema or endpoint change in the §15 or §16 pass.
 
 ---
 
@@ -294,3 +295,59 @@ All four owner-validation URLs reloaded successfully against freshly restarted `
 Confirmed absent on all four pages: the old duplicated-marker pattern ("CONFIRMED" beside "Human-confirmed").
 
 **This does not constitute owner visual validation.** The owner must still perform the checklist in §12.
+
+---
+
+## 16. Owner-validation correction (third pass) — confirmed parent vs. missing child field
+
+**The second owner visual validation attempt confirmed §15's layout, runtime, and general fallback corrections**, but found one further, narrower semantic defect on the same primary CG/Artist validation Task (`4cd95082-df46-4d67-92bb-a217cf0e8684`), which has a **real confirmed Execution Anchor**.
+
+### 16.1 Root cause
+
+Two selector items read a specific optional field on the confirmed `ExecutionAnchorRevisionRead` object and, when that one field was `null`, fell back to the same parent-level "no confirmed Anchor" copy and kept the parent's `human-confirmed` authority and `"Confirmed by ..."` provenance — even though the Execution Anchor itself is genuinely confirmed and other fields on it (`technical_boundaries`) render correctly:
+
+- **CG `production-ready-criteria`** (`apps/web/src/features/cg/task-overview/selectCurrentExecutionDirection.ts`): `value: revision?.production_ready_criteria ?? "No confirmed Execution Anchor yet."` — a confirmed revision with `production_ready_criteria: null` produced the parent-missing fallback text, `authority: "human-confirmed"`, and `detail: "Confirmed by CG Supervisor"`.
+- **Artist `may-explore`** (`apps/web/src/features/artist/task-overview/selectCurrentWorkingDirection.ts`): same pattern on `executionAnchor?.allowed_refinements`.
+
+The same shape of bug existed for two further optional child fields not yet reported as visibly wrong on the validation Task, but sharing the identical selector pattern: VFX's `must-remain-unchanged`/`may-vary` (`CoreAnchorRevisionRead.constraints`/`variation_zones`) and Artist's `must-remain-unchanged` (`coreAnchor.constraints`) already used a field-specific fallback *string* (`joinOrFallback`) but still unconditionally inherited the parent's `authority`/`detail` whenever any confirmed revision existed, regardless of whether the specific list was empty.
+
+### 16.2 Corrected field-specific fallbacks
+
+| Selector item | Field | Corrected field-empty text (parent confirmed, field empty) | Parent-missing text (unchanged) |
+|---|---|---|---|
+| CG `production-ready-criteria` | `production_ready_criteria` | "No production-ready criteria have been recorded in the confirmed Execution Anchor." | "No confirmed Execution Anchor yet." |
+| Artist `may-explore` | `allowed_refinements` | "No allowed refinements have been recorded in the confirmed Execution Anchor." | "No confirmed Execution Anchor yet." |
+| VFX `must-remain-unchanged` | `constraints[]` | "No Constraints recorded on the confirmed Core Anchor." (pre-existing wording, unchanged) | "No confirmed Core Anchor yet." |
+| VFX `may-vary` | `variation_zones[]` | "No Variation Zones recorded on the confirmed Core Anchor." (pre-existing wording, unchanged) | "No confirmed Core Anchor yet." |
+| Artist `must-remain-unchanged` | `coreAnchor.constraints[]` | "No Constraints recorded on the confirmed Core Anchor." (pre-existing wording, unchanged) | "No confirmed Core Anchor yet." |
+
+Only the two CG/Artist Execution Anchor items needed new field-specific copy — the three Constraints/Variation-Zones items already had correct field-specific value text (via the pre-existing `joinOrFallback` helper) and needed only the authority/provenance correction below.
+
+### 16.3 Authority and provenance inheritance correction
+
+For all five items above, `authority` and `detail` are now derived from **whether the specific optional field itself has content**, not from whether the parent revision exists:
+
+```ts
+const hasProductionReadyCriteria = !!revision?.production_ready_criteria;
+// ...
+authority: hasProductionReadyCriteria ? "human-confirmed" : undefined,
+detail: hasProductionReadyCriteria ? "Confirmed by CG Supervisor" : undefined,
+```
+
+(and equivalently for `allowed_refinements`, and for `constraints.length > 0` / `variation_zones.length > 0`). A missing optional child field on a confirmed parent now renders with **no authority badge and no confirmation provenance** — never a fabricated "Confirmed by ..." for content that was never recorded. `sourceId` and `href` are left pointing at the parent revision/route regardless, since the "View details" destination (the real Execution/Intent editor) is still useful and correct even when this one field is empty. No new persisted authority category was introduced — this is purely a selector-level derivation change, reusing the existing `WorkingDirectionAuthority` vocabulary exactly as before. The parent Anchor's *other*, actually-populated fields (`task-goal`/`what-to-do`, `creative-objective`/`why-it-matters`) are unaffected and continue to show `human-confirmed` correctly, confirmed directly by tests (§16.4) and by the real-data re-check (§16.5).
+
+### 16.4 Tests
+
+New focused tests added to all three selector test files, covering exactly the required cases: a populated field retains `human-confirmed` authority and provenance; a confirmed parent with the specific field empty renders the field-specific fallback text (never the parent-missing text) with no authority and no detail, while the same section's other, populated item stays `human-confirmed`; no confirmed parent at all still renders the parent-level fallback; a draft-only Execution Anchor is never treated as confirmed. 8 new tests total (1 VFX, 3 CG, 4 Artist) — see §10 for updated per-file counts.
+
+### 16.5 Fresh-process re-verification
+
+`apps/api`/`apps/web` restarted fresh (no backend change to verify — Task 1 of this pass confirmed no backend source was touched). Both affected pages reloaded successfully and re-checked directly against the rendered HTML:
+
+- CG: `http://localhost:3000/cg/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684` — "Production-ready criteria" now shows "No production-ready criteria have been recorded in the confirmed Execution Anchor." with no authority badge and no "Confirmed by ..." detail; "What this Task must achieve" (the same confirmed revision's `technical_boundaries`) still shows its real content with `Human-confirmed`.
+- Artist: `http://localhost:3000/artist/tasks/4cd95082-df46-4d67-92bb-a217cf0e8684` — "What you may explore" now shows "No allowed refinements have been recorded in the confirmed Execution Anchor." with no authority badge; "What you are being asked to do" still shows `Human-confirmed`.
+- Neither page contains the string "No confirmed Execution Anchor yet." anywhere (confirmed by direct grep on the rendered HTML) — the parent-missing fallback no longer appears on a Task that genuinely has a confirmed Execution Anchor.
+
+**This does not constitute owner visual validation.** The owner must still re-check the CG and Artist targets in §12.
+
+**Files changed, this correction (additional, on top of §15):** `apps/web/src/features/cg/task-overview/selectCurrentExecutionDirection.ts` (+ `.test.ts`); `apps/web/src/features/artist/task-overview/selectCurrentWorkingDirection.ts` (+ `.test.ts`); `apps/web/src/features/vfx/shot-overview/selectCurrentCreativeDirection.ts` (+ `.test.ts`). No other file changed — no backend, route, sidebar, tab, migration, or persistence file was touched.

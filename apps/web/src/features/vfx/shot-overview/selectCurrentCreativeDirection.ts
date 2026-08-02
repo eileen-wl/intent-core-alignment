@@ -39,6 +39,7 @@ export function selectCurrentCreativeDirection(
     href: `/vfx/shots/${shotId}/intent`,
   });
 
+  const hasConstraints = (revision?.constraints.length ?? 0) > 0;
   items.push({
     id: "must-remain-unchanged",
     label: "What must remain unchanged",
@@ -48,13 +49,18 @@ export function selectCurrentCreativeDirection(
           "No Constraints recorded on the confirmed Core Anchor.",
         )
       : "No confirmed Core Anchor yet.",
-    authority: revision ? "human-confirmed" : undefined,
+    // A confirmed parent Core Anchor does not make an empty optional
+    // child field (Constraints) confirmed content -- only the actual
+    // recorded Constraints inherit Human-confirmed authority and
+    // confirmation provenance.
+    authority: hasConstraints ? "human-confirmed" : undefined,
     sourceType: "core_anchor_revision",
     sourceId: revision?.id,
-    detail: revision ? "Confirmed by VFX Supervisor" : undefined,
+    detail: hasConstraints ? "Confirmed by VFX Supervisor" : undefined,
     href: `/vfx/shots/${shotId}/intent`,
   });
 
+  const hasVariationZones = (revision?.variation_zones.length ?? 0) > 0;
   items.push({
     id: "may-vary",
     label: "What may vary",
@@ -64,10 +70,10 @@ export function selectCurrentCreativeDirection(
           "No Variation Zones recorded on the confirmed Core Anchor.",
         )
       : "No confirmed Core Anchor yet.",
-    authority: revision ? "human-confirmed" : undefined,
+    authority: hasVariationZones ? "human-confirmed" : undefined,
     sourceType: "core_anchor_revision",
     sourceId: revision?.id,
-    detail: revision ? "Confirmed by VFX Supervisor" : undefined,
+    detail: hasVariationZones ? "Confirmed by VFX Supervisor" : undefined,
     href: `/vfx/shots/${shotId}/intent`,
   });
 

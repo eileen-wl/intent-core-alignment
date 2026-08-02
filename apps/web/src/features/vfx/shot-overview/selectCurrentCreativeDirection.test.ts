@@ -249,7 +249,7 @@ describe("selectCurrentCreativeDirection", () => {
     }
   });
 
-  it("honestly falls back when Constraints/Variation Zones are absent, even on a confirmed revision", () => {
+  it("honestly falls back when Constraints/Variation Zones are absent, even on a confirmed revision, without inheriting the parent's authority or provenance", () => {
     const section = selectCurrentCreativeDirection(
       baseData({ confirmedCoreAnchorRevision: revision() }),
     );
@@ -263,6 +263,52 @@ describe("selectCurrentCreativeDirection", () => {
     expect(mayVary?.value).toBe(
       "No Variation Zones recorded on the confirmed Core Anchor.",
     );
+    // Confirmed parent Core Anchor, but these two optional child fields
+    // are empty -- must not inherit Human-confirmed authority or
+    // confirmation provenance from the confirmed parent.
+    expect(unchanged?.authority).toBeUndefined();
+    expect(unchanged?.detail).toBeUndefined();
+    expect(mayVary?.authority).toBeUndefined();
+    expect(mayVary?.detail).toBeUndefined();
+    // The parent Core Anchor is still confirmed elsewhere on the same
+    // section (creative-objective), unaffected by these empty fields.
+    const objective = section.items.find((i) => i.id === "creative-objective");
+    expect(objective?.authority).toBe("human-confirmed");
+  });
+
+  it("retains Human-confirmed authority and provenance for populated Constraints/Variation Zones", () => {
+    const section = selectCurrentCreativeDirection(
+      baseData({
+        confirmedCoreAnchorRevision: revision({
+          constraints: [
+            {
+              id: "c1",
+              content: "Keep the silhouette readable.",
+              order_index: 0,
+              created_at: "2026-08-01T00:00:00Z",
+            },
+          ],
+          variation_zones: [
+            {
+              id: "v1",
+              content: "Rim light colour may shift.",
+              order_index: 0,
+              created_at: "2026-08-01T00:00:00Z",
+            },
+          ],
+        }),
+      }),
+    );
+    const unchanged = section.items.find(
+      (i) => i.id === "must-remain-unchanged",
+    );
+    const mayVary = section.items.find((i) => i.id === "may-vary");
+    expect(unchanged?.value).toBe("Keep the silhouette readable.");
+    expect(unchanged?.authority).toBe("human-confirmed");
+    expect(unchanged?.detail).toBe("Confirmed by VFX Supervisor");
+    expect(mayVary?.value).toBe("Rim light colour may shift.");
+    expect(mayVary?.authority).toBe("human-confirmed");
+    expect(mayVary?.detail).toBe("Confirmed by VFX Supervisor");
   });
 
   it("never renders a raw id in any visible summary value", () => {

@@ -185,6 +185,56 @@ describe("selectCurrentExecutionDirection", () => {
     expect(contextWithSummary?.authority).toBe("human-confirmed");
   });
 
+  it("retains Human-confirmed authority and provenance for populated production-ready criteria on a confirmed revision", () => {
+    const section = selectCurrentExecutionDirection(
+      baseData({ confirmedExecutionAnchorRevision: revision() }),
+    );
+    const criteria = section.items.find(
+      (i) => i.id === "production-ready-criteria",
+    );
+    expect(criteria?.value).toBe("Final render, no watermark.");
+    expect(criteria?.authority).toBe("human-confirmed");
+    expect(criteria?.detail).toBe("Confirmed by CG Supervisor");
+  });
+
+  it("distinguishes a missing confirmed Execution Anchor from a confirmed Anchor with an empty optional field", () => {
+    // Confirmed parent, but production_ready_criteria itself was never
+    // recorded -- must not read as "no confirmed Execution Anchor" and
+    // must not inherit the parent's Human-confirmed authority or
+    // confirmation provenance.
+    const section = selectCurrentExecutionDirection(
+      baseData({
+        confirmedExecutionAnchorRevision: revision({
+          production_ready_criteria: null,
+        }),
+      }),
+    );
+    const criteria = section.items.find(
+      (i) => i.id === "production-ready-criteria",
+    );
+    expect(criteria?.value).toBe(
+      "No production-ready criteria have been recorded in the confirmed Execution Anchor.",
+    );
+    expect(criteria?.value).not.toBe("No confirmed Execution Anchor yet.");
+    expect(criteria?.authority).toBeUndefined();
+    expect(criteria?.detail).toBeUndefined();
+    // The parent Execution Anchor is still confirmed elsewhere on the
+    // same section (task-goal), unaffected by this one empty field.
+    const goal = section.items.find((i) => i.id === "task-goal");
+    expect(goal?.authority).toBe("human-confirmed");
+  });
+
+  it("never treats a draft-only Execution Anchor as confirmed for production-ready criteria", () => {
+    const section = selectCurrentExecutionDirection(
+      baseData({ confirmedExecutionAnchorRevision: null }),
+    );
+    const criteria = section.items.find(
+      (i) => i.id === "production-ready-criteria",
+    );
+    expect(criteria?.value).toBe("No confirmed Execution Anchor yet.");
+    expect(criteria?.authority).toBeUndefined();
+  });
+
   it("shows an honest provenance limitation when no confirmation Decision/rationale exists", () => {
     const section = selectCurrentExecutionDirection(
       baseData({

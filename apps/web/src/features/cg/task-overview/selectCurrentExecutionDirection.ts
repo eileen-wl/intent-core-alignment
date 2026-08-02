@@ -71,16 +71,25 @@ export function selectCurrentExecutionDirection(
     detail: data.coreAnchorSummary ? "Confirmed by VFX Supervisor" : undefined,
   });
 
+  const hasProductionReadyCriteria = !!revision?.production_ready_criteria;
   items.push({
     id: "production-ready-criteria",
     label: "Production-ready criteria",
-    value:
-      revision?.production_ready_criteria ??
-      "No confirmed Execution Anchor yet.",
-    authority: revision ? "human-confirmed" : undefined,
+    value: !revision
+      ? "No confirmed Execution Anchor yet."
+      : hasProductionReadyCriteria
+        ? revision.production_ready_criteria!
+        : "No production-ready criteria have been recorded in the confirmed Execution Anchor.",
+    // A confirmed parent Execution Anchor does not make an empty
+    // optional child field (production-ready criteria) confirmed
+    // content -- only the actual recorded criteria inherit
+    // Human-confirmed authority and confirmation provenance.
+    authority: hasProductionReadyCriteria ? "human-confirmed" : undefined,
     sourceType: "execution_anchor_revision",
     sourceId: revision?.id,
-    detail: revision ? "Confirmed by CG Supervisor" : undefined,
+    detail: hasProductionReadyCriteria
+      ? "Confirmed by CG Supervisor"
+      : undefined,
     href: `/cg/tasks/${taskId}/execution`,
   });
 

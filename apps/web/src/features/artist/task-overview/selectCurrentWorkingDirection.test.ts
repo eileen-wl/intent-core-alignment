@@ -247,6 +247,81 @@ describe("selectCurrentWorkingDirection", () => {
     expect(mayExplore?.authority).toBeUndefined();
   });
 
+  it("retains Human-confirmed authority and provenance for populated Constraints and allowed refinements", () => {
+    const section = selectCurrentWorkingDirection(
+      baseData({
+        coreAnchorRevision: coreAnchorRevision({
+          constraints: [
+            {
+              id: "c1",
+              content: "Keep the silhouette readable.",
+              order_index: 0,
+              created_at: "2026-08-01T00:00:00Z",
+            },
+          ],
+        }),
+        executionAnchorRevision: executionAnchorRevision(),
+      }),
+    );
+    const unchanged = section.items.find(
+      (i) => i.id === "must-remain-unchanged",
+    );
+    const mayExplore = section.items.find((i) => i.id === "may-explore");
+    expect(unchanged?.value).toBe("Keep the silhouette readable.");
+    expect(unchanged?.authority).toBe("human-confirmed");
+    expect(unchanged?.detail).toBe("Confirmed by VFX Supervisor");
+    expect(mayExplore?.value).toBe(
+      "Rim light color may shift within warm tones.",
+    );
+    expect(mayExplore?.authority).toBe("human-confirmed");
+    expect(mayExplore?.detail).toBe("Confirmed by CG Supervisor");
+  });
+
+  it("distinguishes a missing confirmed Execution Anchor from a confirmed Anchor with empty allowed refinements, without inheriting the parent's authority or provenance", () => {
+    const section = selectCurrentWorkingDirection(
+      baseData({
+        executionAnchorRevision: executionAnchorRevision({
+          allowed_refinements: null,
+        }),
+      }),
+    );
+    const mayExplore = section.items.find((i) => i.id === "may-explore");
+    expect(mayExplore?.value).toBe(
+      "No allowed refinements have been recorded in the confirmed Execution Anchor.",
+    );
+    expect(mayExplore?.value).not.toBe("No confirmed Execution Anchor yet.");
+    expect(mayExplore?.authority).toBeUndefined();
+    expect(mayExplore?.detail).toBeUndefined();
+    // The parent Execution Anchor is still confirmed elsewhere on the
+    // same section (what-to-do), unaffected by this one empty field.
+    const whatToDo = section.items.find((i) => i.id === "what-to-do");
+    expect(whatToDo?.authority).toBe("human-confirmed");
+  });
+
+  it("distinguishes a missing confirmed Core Anchor from a confirmed Anchor with empty Constraints, without inheriting the parent's authority or provenance", () => {
+    const section = selectCurrentWorkingDirection(
+      baseData({ coreAnchorRevision: coreAnchorRevision({ constraints: [] }) }),
+    );
+    const unchanged = section.items.find(
+      (i) => i.id === "must-remain-unchanged",
+    );
+    expect(unchanged?.value).toBe(
+      "No Constraints recorded on the confirmed Core Anchor.",
+    );
+    expect(unchanged?.value).not.toBe("No confirmed Core Anchor yet.");
+    expect(unchanged?.authority).toBeUndefined();
+    expect(unchanged?.detail).toBeUndefined();
+  });
+
+  it("never treats a draft-only/missing Execution Anchor as confirmed for allowed refinements", () => {
+    const section = selectCurrentWorkingDirection(
+      baseData({ executionAnchorRevision: null }),
+    );
+    const mayExplore = section.items.find((i) => i.id === "may-explore");
+    expect(mayExplore?.value).toBe("No confirmed Execution Anchor yet.");
+    expect(mayExplore?.authority).toBeUndefined();
+  });
+
   it("keeps Artist Agent guidance labelled as Agent interpretation, never Human Decision", () => {
     const section = selectCurrentWorkingDirection(
       baseData({ latestGuidance: guidance() }),

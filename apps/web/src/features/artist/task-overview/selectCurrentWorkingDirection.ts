@@ -64,6 +64,7 @@ export function selectCurrentWorkingDirection(
     detail: coreAnchor ? "Confirmed by VFX Supervisor" : undefined,
   });
 
+  const hasConstraints = (coreAnchor?.constraints.length ?? 0) > 0;
   items.push({
     id: "must-remain-unchanged",
     label: "What must remain unchanged",
@@ -73,22 +74,29 @@ export function selectCurrentWorkingDirection(
           "No Constraints recorded on the confirmed Core Anchor.",
         )
       : "No confirmed Core Anchor yet.",
-    authority: coreAnchor ? "human-confirmed" : undefined,
+    // A confirmed parent Core Anchor does not make an empty optional
+    // child field (Constraints) confirmed content -- only the actual
+    // recorded Constraints inherit Human-confirmed authority and
+    // confirmation provenance.
+    authority: hasConstraints ? "human-confirmed" : undefined,
     sourceType: "core_anchor_revision",
     sourceId: coreAnchor?.id,
-    detail: coreAnchor ? "Confirmed by VFX Supervisor" : undefined,
+    detail: hasConstraints ? "Confirmed by VFX Supervisor" : undefined,
   });
 
+  const hasAllowedRefinements = !!executionAnchor?.allowed_refinements;
   items.push({
     id: "may-explore",
     label: "What you may explore",
-    value:
-      executionAnchor?.allowed_refinements ??
-      "No confirmed Execution Anchor yet.",
-    authority: executionAnchor ? "human-confirmed" : undefined,
+    value: !executionAnchor
+      ? "No confirmed Execution Anchor yet."
+      : hasAllowedRefinements
+        ? executionAnchor.allowed_refinements!
+        : "No allowed refinements have been recorded in the confirmed Execution Anchor.",
+    authority: hasAllowedRefinements ? "human-confirmed" : undefined,
     sourceType: "execution_anchor_revision",
     sourceId: executionAnchor?.id,
-    detail: executionAnchor ? "Confirmed by CG Supervisor" : undefined,
+    detail: hasAllowedRefinements ? "Confirmed by CG Supervisor" : undefined,
   });
 
   items.push({
