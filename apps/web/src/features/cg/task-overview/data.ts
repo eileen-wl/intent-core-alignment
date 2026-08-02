@@ -60,8 +60,15 @@ export interface TaskOverviewData {
 
 const RECENT_ACTIVITY_COUNT = 5;
 
+/** `actorHeaders` (Step 9B-1 correction): the trusted, server-resolved
+ * CG Supervisor Actor headers -- required now that
+ * `listExecutionAnchorRevisionDecisions` is role-gated
+ * (`docs/ROLE_PERMISSIONS.md` §2). The caller (`page.tsx`) resolves
+ * these from the real Demo session identity, never from client state --
+ * this loader never accepts or fabricates its own actor identity. */
 export async function loadTaskOverviewData(
   taskId: string,
+  actorHeaders: Record<string, string>,
 ): Promise<TaskOverviewData | null> {
   const item = await fetchCgInboxItem(taskId);
   if (item === null) {
@@ -92,6 +99,7 @@ export async function loadTaskOverviewData(
   const executionAnchorDecisions = confirmedExecutionAnchorRevision
     ? await listExecutionAnchorRevisionDecisions(
         confirmedExecutionAnchorRevision.id,
+        actorHeaders,
       )
     : [];
 

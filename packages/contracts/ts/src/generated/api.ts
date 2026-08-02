@@ -5581,7 +5581,10 @@ export interface operations {
     list_execution_anchor_revision_decisions_intent_execution_anchor_revisions__revision_id__decisions_get: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
             path: {
                 revision_id: string;
             };

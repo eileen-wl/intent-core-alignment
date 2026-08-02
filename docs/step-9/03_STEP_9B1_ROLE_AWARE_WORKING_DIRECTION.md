@@ -1,6 +1,7 @@
 # Step 9B-1 — Role-Aware Working Direction
 
 **Status:** Implementation and automated validation complete. Owner visual validation pending.
+**Correction applied (same branch, same task):** the original pass's `GET /intent/execution-anchor-revisions/{id}/decisions` endpoint had no backend role check, only the frontend route guard. Backend authorization is now explicit — see §8.1.
 **Branch:** `feat/step9b1-role-aware-working-direction`
 **Companion documents:** `docs/step-9/01_STEP_9_PRESENTATION_AND_COMPREHENSION_BASELINE.md` (locked baseline, unmodified), `docs/step-9/02_STEP_9A_CURRENT_STATE_AND_IMPLEMENTATION_MAP.md` (the audit this implementation follows), `docs/IMPLEMENTATION_STATUS_AND_ROADMAP.md` §L.
 
@@ -123,9 +124,30 @@ It is the Execution Anchor analogue of the already-existing `GET /intent/core-an
 
 Frontend surface: `apps/web/src/features/cg/api.ts::listExecutionAnchorRevisionDecisions` — the only role module that exposes this function; VFX's and Artist's `api.ts` modules do not import it, so it is reachable only from CG's own feature code.
 
-**Authorization note, stated honestly, not silently assumed:** like every other read endpoint in this codebase (including the Core Anchor decisions endpoint it mirrors), this endpoint has **no per-request role/actor check** — reads have never required actor headers anywhere in ICAS (`features/cg/api.ts`'s own long-standing comment: "reads never needed actor headers"). This is an existing, already-audited architectural characteristic (named without remediation in Step 8B/ADR-0014 for the Project/Shot/Task endpoints), not a gap newly introduced by this endpoint, and changing that broader pattern is out of this task's scope. "Role-appropriate" access is enforced structurally instead: only CG's `api.ts`/loader ever calls it, so only the CG Task Overview page ever surfaces its content. No write or mutation path exists on this endpoint.
+### 8.1 Authorization correction (this pass)
 
-The OpenAPI export and generated TypeScript contracts (`packages/contracts/ts/src/generated/api.ts`) were regenerated to include the new path — a clean, additive-only diff (one new `paths` entry, one new `operations` entry, zero changes to any existing schema).
+**The endpoint is now explicitly role-gated at the backend**, not left to rely on the frontend role guard alone. This corrects the original Step 9B-1 pass, which left the endpoint unguarded like the Core Anchor decisions endpoint it mirrors — a real gap, since this read path is CG-owned decision provenance, not a general-purpose listing.
+
+**Mechanism, reusing existing primitives only — no second authorization system:**
+
+- `actor: ActorContext = Depends(get_current_actor)` added as a router parameter — the exact same dependency every mutation endpoint in this codebase already uses (`apps/api/src/intent_core_api/workflow/actors.py`). It parses `X-Actor-Role`/`X-Actor-Id`, raising `HTTPException(401, ...)` when the role header is missing or is not one of the three real `HumanRole` values, or when the actor id is missing.
+- `require_human_role(actor, _EXECUTION_ANCHOR_DECISION_READERS)` — the exact same guard function every mutation's role check already calls, raising `ForbiddenActionError` (mapped to HTTP 403) when the actor's role is not in the allowed set.
+
+**Exact allowed-role policy:** `_EXECUTION_ANCHOR_DECISION_READERS: frozenset[HumanRole] = frozenset({"cg_supervisor", "vfx_supervisor"})`.
+
+**Evidence for this exact set**, from `docs/ROLE_PERMISSIONS.md` §2's table:
+
+| Role | "Read Secondary Execution Anchor" | Included? |
+|---|---|---|
+| CG Supervisor | `Yes` (unconditional) | **Yes** — the required reader; the existing CG Task Overview's Current Execution Direction summary depends on it |
+| VFX Supervisor | `Yes` (unconditional) | **Yes** — reading this Decision is reading part of the Execution Anchor's own real confirmation provenance, which VFX already has an unconditional documented right to read. No VFX call site was added in this pass (`features/vfx/api.ts` still does not expose this function) — the endpoint is authorized for VFX now so a future VFX-side caller does not need a second backend change, but nothing in the frontend calls it as VFX today |
+| Artist | `Yes, when relevant` (conditional) | **No** — evaluating "when relevant" would require Task-relevance scoping this narrow correction does not add; granting Artist an unconditional role would be broader access than the locked policy describes, and this task's own instruction is explicit that Artist must not gain unrestricted CG decision access |
+
+Frontend/backend consistency: `apps/web/src/app/cg/tasks/[taskId]/page.tsx` now resolves the real session identity (`resolveIdentity()`) and forwards the trusted `X-Actor-Role`/`X-Actor-Id` headers (`actorHeaders()`) through `loadTaskOverviewData` → `listExecutionAnchorRevisionDecisions` — the same trusted, server-resolved header pattern every existing mutation call already uses; never a client-supplied value, so there is no actor-spoofing surface distinct from what already exists everywhere else in this codebase.
+
+**Explicitly out of this correction's scope, named not fixed:** the Core Anchor decisions endpoint (`GET /intent/core-anchor-revisions/{revision_id}/decisions`) it mirrors remains unguarded — this is a pre-existing, already-named characteristic of a different endpoint, and broadening this fix to cover it would be exactly the "broad API-wide authorization refactor" this correction's own instructions rule out.
+
+The OpenAPI export and generated TypeScript contracts (`packages/contracts/ts/src/generated/api.ts`) were regenerated twice this session — once for the new endpoint's existence (prior pass), once more for its new header parameters (this correction). Both diffs are clean and additive-only.
 
 ---
 
@@ -155,17 +177,17 @@ None of these fallbacks are generic motivational copy — each names the specifi
 - `apps/web/src/features/vfx/shot-overview/data.test.ts` (6 tests)
 - `apps/web/src/features/cg/task-overview/selectCurrentExecutionDirection.test.ts` (11 tests)
 - `apps/web/src/features/artist/task-overview/selectCurrentWorkingDirection.test.ts` (10 tests)
-- `apps/api/tests/test_execution_anchor_decisions_list.py` (6 tests)
+- `apps/api/tests/test_execution_anchor_decisions_list.py` (13 tests — 6 from the original pass, 7 new authorization tests added this correction)
 
 Plus new rendering-level tests added to the three existing page-component test files (7 new tests total), and every pre-existing test in those three files (VFX 20, CG 7, Artist 13) left unmodified and still passing.
 
-Coverage against the task's required list: confirmed-over-draft Anchor selection (VFX/CG/Artist); draft-only honest pending state; Agent interpretation never categorised as Human Decision (Intent Signal, Artist Guidance); Version/ReviewNote categorised as production evidence; VFX Shot-wide vs. CG/Artist Task-scoped Version context; Artist guidance remains advisory; role-appropriate navigation destinations (every `href` asserted to start with the current role's own route prefix); missing-data fallbacks; no raw id in any visible summary value (dedicated test per selector, using a deliberately UUID-shaped fixture id). Backend: correct scoped records, unrelated-revision exclusion, human role/actor provenance retention, superseded-revision history retention, empty-result validity, no mutation side effect.
+Coverage against the task's required list: confirmed-over-draft Anchor selection (VFX/CG/Artist); draft-only honest pending state; Agent interpretation never categorised as Human Decision (Intent Signal, Artist Guidance); Version/ReviewNote categorised as production evidence; VFX Shot-wide vs. CG/Artist Task-scoped Version context; Artist guidance remains advisory; role-appropriate navigation destinations (every `href` asserted to start with the current role's own route prefix); missing-data fallbacks; no raw id in any visible summary value (dedicated test per selector, using a deliberately UUID-shaped fixture id). Backend: correct scoped records, unrelated-revision exclusion, human role/actor provenance retention, superseded-revision history retention, empty-result validity, no mutation side effect, **plus this correction's authorization matrix**: allowed CG Supervisor request succeeds; allowed VFX Supervisor request succeeds (with the `docs/ROLE_PERMISSIONS.md` §2 evidence documented in the test itself); Artist request rejected (403); missing role header rejected (401); invalid (non-`HumanRole`) role header rejected (401); a valid role with a missing actor id rejected (401); a rejected request creates no row, leaks no Decision content in its response body, and does not affect what an authorised request subsequently sees.
 
 **Full regression, all green:**
 
-- Frontend: Vitest 888/888 (115 files), ESLint (0 errors, 2 pre-existing/unrelated warnings), `tsc --noEmit` (apps/web and contracts package, both clean), Prettier (clean, repo-root), production `next build` (18 routes, succeeded).
-- Backend: `pytest apps/api` 897/897 (was 891; 6 new), `mypy` across all four exact CI scopes (clean, 130 files), `ruff check` (clean), `ruff format --check` (clean, 232 files), `uv lock --check` (no drift).
-- Contracts: OpenAPI export + TypeScript regeneration produced a clean, additive-only diff; both the contracts package and `apps/web` typecheck cleanly against it.
+- Frontend: Vitest 888/888 (115 files, unchanged from the original pass — this correction touched no frontend test assertions, only added trusted-header plumbing), ESLint (0 errors, 1 pre-existing/unrelated warning), `tsc --noEmit` (apps/web and contracts package, both clean), Prettier (clean, repo-root), production `next build` (18 routes, succeeded).
+- Backend: `pytest apps/api` 904/904 (897 after the original pass + 7 new authorization tests), `mypy` across all four exact CI scopes (clean, 130 files), `ruff check` (clean), `ruff format --check` (clean, 232 files), `uv lock --check` (no drift).
+- Contracts: OpenAPI export + TypeScript regeneration (run again this correction, for the endpoint's new header parameters) produced a clean, additive-only diff; both the contracts package and `apps/web` typecheck cleanly against it.
 
 ---
 
@@ -173,7 +195,7 @@ Coverage against the task's required list: confirmed-over-draft Anchor selection
 
 - **Artist Agent guidance is its own line, not folded into "what to do next"** — a deliberate choice (§6) so it can carry its own `ai-interpretation` label distinct from the `current_focus`-derived pending-action line, matching the task's explicit "must be labelled accordingly" rule more precisely than merging the two would have.
 - **The pre-existing VFX Shot Overview `<dl>` "supporting context" block was left unchanged**, even though it now overlaps partially with the new Current Creative Direction section (both show a Core Anchor summary and latest Version, from slightly different source calls). Removing or consolidating it was avoided specifically to not touch or risk any of the 15+ pre-existing `ShotOverviewPage.test.tsx` assertions this task must not weaken. Consolidation is deferred to Step 9C (visual-unification), named here so it is not mistaken for an oversight.
-- **CG's Execution Anchor Decision-listing endpoint has no role/actor check**, consistent with every other read endpoint in the codebase including the Core Anchor endpoint it mirrors — an existing, already-audited characteristic, not a new gap (§8).
+- **The Execution Anchor Decision-listing endpoint is now role-gated (§8.1: CG Supervisor + VFX Supervisor); the Core Anchor decisions endpoint it mirrors remains unguarded**, unchanged and out of this correction's scope — a real, named asymmetry between the two now-similar endpoints, not an oversight. Retrofitting the Core Anchor endpoint the same way is a separate, future decision.
 - **`joinOrFallback` for Constraints/Variation Zones renders a semicolon-joined string**, not a bulleted list — a deliberately minimal presentation choice for this step; Step 9C may revisit the visual treatment without needing to touch the selector's data shape.
 
 ---
@@ -211,4 +233,6 @@ Local services: `apps/api` on `http://localhost:8000`, `apps/web` (dev) on `http
 
 **Ready**, pending owner visual validation (§12) of this step. Step 9B-2's own scope (Production Evidence / Agent Interpretation / Human Decision layering on VFX Intent, VFX Alignment, CG Execution, CG Version Review, Artist Current Version, Artist Feedback History) is materially de-risked by this step: the `AuthorityLabel`-based vocabulary, the `WorkingDirectionItem` authority categorisation pattern, and the CG Execution Anchor Decision-listing endpoint are all now real, tested, and reusable rather than needing to be designed from scratch.
 
-Files changed (exhaustive): `apps/api/src/intent_core_api/intent/router.py`; `apps/api/tests/test_execution_anchor_decisions_list.py` (new); `apps/api/openapi.json` (regenerated, gitignored, not committed); `packages/contracts/ts/src/generated/api.ts` (regenerated); `apps/web/src/lib/workingDirection.ts` (new); `apps/web/src/design/components/WorkingDirectionSection.tsx` + `.module.css` (new); `apps/web/src/design/components/index.ts`; `apps/web/src/features/vfx/shot-overview/{data,selectCurrentCreativeDirection}.ts` (+ `.test.ts` for both, new); `apps/web/src/features/cg/api.ts`; `apps/web/src/features/cg/task-overview/{data,selectCurrentExecutionDirection}.ts` (+ `.test.ts` for the selector, new); `apps/web/src/features/artist/task-overview/{data,selectCurrentWorkingDirection}.ts` (+ `.test.ts` for the selector, new); `apps/web/src/app/vfx/shots/[shotId]/{page,ShotOverviewPage,ShotOverviewPage.test}.tsx`; `apps/web/src/app/cg/tasks/[taskId]/{TaskOverviewPage,TaskOverviewPage.test}.tsx`; `apps/web/src/app/artist/tasks/[taskId]/{TaskOverviewPage,TaskOverviewPage.test}.tsx`.
+Files changed, original pass (exhaustive): `apps/api/src/intent_core_api/intent/router.py`; `apps/api/tests/test_execution_anchor_decisions_list.py` (new); `apps/api/openapi.json` (regenerated, gitignored, not committed); `packages/contracts/ts/src/generated/api.ts` (regenerated); `apps/web/src/lib/workingDirection.ts` (new); `apps/web/src/design/components/WorkingDirectionSection.tsx` + `.module.css` (new); `apps/web/src/design/components/index.ts`; `apps/web/src/features/vfx/shot-overview/{data,selectCurrentCreativeDirection}.ts` (+ `.test.ts` for both, new); `apps/web/src/features/cg/api.ts`; `apps/web/src/features/cg/task-overview/{data,selectCurrentExecutionDirection}.ts` (+ `.test.ts` for the selector, new); `apps/web/src/features/artist/task-overview/{data,selectCurrentWorkingDirection}.ts` (+ `.test.ts` for the selector, new); `apps/web/src/app/vfx/shots/[shotId]/{page,ShotOverviewPage,ShotOverviewPage.test}.tsx`; `apps/web/src/app/cg/tasks/[taskId]/{TaskOverviewPage,TaskOverviewPage.test}.tsx`; `apps/web/src/app/artist/tasks/[taskId]/{TaskOverviewPage,TaskOverviewPage.test}.tsx`.
+
+**Files changed, this authorization correction (additional, on top of the above):** `apps/api/src/intent_core_api/intent/router.py` (added `actor`/`require_human_role`, `_EXECUTION_ANCHOR_DECISION_READERS`); `apps/api/tests/test_execution_anchor_decisions_list.py` (existing calls given `headers=CG`; 7 new authorization tests); `apps/api/openapi.json` (regenerated again, gitignored); `packages/contracts/ts/src/generated/api.ts` (regenerated again, additive header-parameter metadata only); `apps/web/src/features/cg/api.ts` (`listExecutionAnchorRevisionDecisions` now requires `actorHeaders`); `apps/web/src/features/cg/task-overview/data.ts` (`loadTaskOverviewData` now requires `actorHeaders`); `apps/web/src/app/cg/tasks/[taskId]/page.tsx` (resolves the real session identity and forwards trusted headers). No frontend test file needed a content change — the existing CG `page.test.tsx` mock already exercises `next/headers`' `cookies()` the same way `resolveIdentity()` now also reads it.

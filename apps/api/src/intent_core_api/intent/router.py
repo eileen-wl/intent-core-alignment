@@ -82,7 +82,12 @@ from intent_core_api.versions_and_feedback.models import (
     VFXSupervisorReview,
 )
 from intent_core_api.workflow import decision_service
-from intent_core_api.workflow.actors import ActorContext, get_current_actor
+from intent_core_api.workflow.actors import (
+    ActorContext,
+    HumanRole,
+    get_current_actor,
+    require_human_role,
+)
 from intent_core_api.workflow.exceptions import NotFoundError
 from intent_core_api.workflow.models import Decision
 
@@ -460,13 +465,20 @@ async def get_execution_anchor_revision_human_gate(
     return gate
 
 
+_EXECUTION_ANCHOR_DECISION_READERS: frozenset[HumanRole] = frozenset(
+    {"cg_supervisor", "vfx_supervisor"}
+)
+
+
 @router.get(
     "/execution-anchor-revisions/{revision_id}/decisions", response_model=list[DecisionRead]
 )
 async def list_execution_anchor_revision_decisions(
-    revision_id: uuid.UUID, session: AsyncSession = Depends(get_session)
+    revision_id: uuid.UUID,
+    actor: ActorContext = Depends(get_current_actor),
+    session: AsyncSession = Depends(get_session),
 ) -> list[Decision]:
-    # Step 9B-1: the Execution Anchor analogue of
+    # Step 9B-1 correction: the Execution Anchor analogue of
     # list_core_anchor_revision_decisions above -- same generic,
     # already-existing `decision_service.list_decisions_for_entity`,
     # scoped to this one revision's real confirm/reject Decision rows
@@ -474,6 +486,23 @@ async def list_execution_anchor_revision_decisions(
     # execution_anchor_service.confirm_revision/reject_revision). A
     # read-only, entity-scoped listing; never creates or mutates a
     # Decision, and introduces no migration or new search surface.
+    #
+    # Unlike the Core Anchor decisions endpoint above (deliberately left
+    # unguarded -- out of this narrow correction's scope, an existing,
+    # already-named characteristic, not fixed here), this endpoint is
+    # explicitly role-gated: `docs/ROLE_PERMISSIONS.md` §2's "Read
+    # Secondary Execution Anchor" row grants both CG Supervisor and VFX
+    # Supervisor an unconditional "Yes" -- reading this Decision
+    # provenance is part of reading the Execution Anchor it confirmed.
+    # Artist's own row is conditional ("Yes, when relevant"), which this
+    # endpoint cannot evaluate without the Task-relevance context this
+    # narrow fix does not add -- so Artist is excluded rather than given
+    # unrestricted access, per this correction's own explicit
+    # instruction. Reuses the same `get_current_actor`/`require_human_role`
+    # primitives every write endpoint already uses -- no second
+    # authorization system, no actor-spoofing surface (the header is
+    # parsed the same way, by the same trusted dependency, everywhere).
+    require_human_role(actor, _EXECUTION_ANCHOR_DECISION_READERS)
     return await decision_service.list_decisions_for_entity(
         session, "execution_anchor_revision", revision_id
     )
