@@ -387,6 +387,48 @@ describe("AlignmentWorkspacePage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("formats a Finding's Affects list as human-readable role labels, never raw HumanRole enums (Step 9B-2 correction)", () => {
+    render(
+      <AlignmentWorkspacePage
+        shotId="s1"
+        data={data({
+          assessments: [
+            assessment({
+              assessment_output: {
+                executive_summary: "Restraint reads clearly across roles.",
+                shared_intent_read: finding(),
+                role_perspectives: [],
+                agreements: [
+                  finding({
+                    summary: "Restraint reads clearly.",
+                    affected_roles: [
+                      "vfx_supervisor",
+                      "cg_supervisor",
+                      "artist",
+                    ],
+                  }),
+                ],
+                cross_role_tensions: [],
+                local_optimum_risks: [],
+                unresolved_dependencies: [],
+                human_coordination_priorities: [],
+                re_anchor_proposal: null,
+                evidence_gaps: [],
+              },
+            }),
+          ],
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText("Affects: VFX Supervisor, CG Supervisor, Artist"),
+    ).toBeVisible();
+    expect(screen.queryByText(/vfx_supervisor/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/cg_supervisor/)).not.toBeInTheDocument();
+  });
+
   it("never fabricates a percentage or numeric alignment score", () => {
     render(
       <AlignmentWorkspacePage

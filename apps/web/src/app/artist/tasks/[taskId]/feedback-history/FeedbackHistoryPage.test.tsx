@@ -289,6 +289,56 @@ describe("FeedbackHistoryPage", () => {
     expect(screen.queryByText("cg_supervisor")).not.toBeInTheDocument();
   });
 
+  it("composes a human-readable Execution Anchor confirmation description from structured fields, never the raw enum embedded in the server summary (Step 9B-2 correction)", () => {
+    render(
+      <FeedbackHistoryPage
+        taskId="t1"
+        data={data({
+          history: {
+            task_id: "t1",
+            events: [
+              event({
+                id: "e-confirm",
+                event_type: "execution_anchor_confirmed",
+                actor_kind: "human",
+                actor_human_role: "cg_supervisor",
+                summary:
+                  "Human cg_supervisor confirmed Execution Anchor Revision 2 -- this Task's operational boundaries",
+              }),
+              event({
+                id: "e-reject",
+                event_type: "execution_anchor_draft_discarded",
+                actor_kind: "human",
+                actor_human_role: "vfx_supervisor",
+                occurred_at: "2025-12-31T00:00:00Z",
+                summary:
+                  "Human vfx_supervisor discarded the draft for Execution Anchor Revision 1 -- this Task's operational boundaries",
+              }),
+            ],
+          },
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "CG Supervisor confirmed Execution Anchor Revision 2 -- this Task's operational boundaries",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "VFX Supervisor discarded the draft for Execution Anchor Revision 1 -- this Task's operational boundaries",
+      ),
+    ).toBeVisible();
+
+    const bodyText = document.body.textContent ?? "";
+    expect(bodyText).not.toContain("cg_supervisor");
+    expect(bodyText).not.toContain("vfx_supervisor");
+    expect(bodyText).not.toContain("Human cg_supervisor");
+    expect(bodyText).not.toContain("Human vfx_supervisor");
+  });
+
   it("does not fabricate a read or resolved state anywhere on the page", () => {
     render(
       <FeedbackHistoryPage

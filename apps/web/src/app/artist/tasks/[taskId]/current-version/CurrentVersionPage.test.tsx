@@ -263,7 +263,7 @@ describe("CurrentVersionPage", () => {
     expect(screen.queryByText("ext-42")).not.toBeInTheDocument();
   });
 
-  it("keeps the manual Human-role author display unchanged when no ftrack provenance exists", () => {
+  it("shows the manual Human-role author as a human-readable label when no ftrack provenance exists (Step 9B-2 correction)", () => {
     render(
       <CurrentVersionPage
         taskId="t1"
@@ -272,7 +272,8 @@ describe("CurrentVersionPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByText(/· artist$/)).toBeVisible();
+    expect(screen.getByText(/· Artist$/)).toBeVisible();
+    expect(screen.queryByText(/· artist$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Source author:/)).not.toBeInTheDocument();
   });
 

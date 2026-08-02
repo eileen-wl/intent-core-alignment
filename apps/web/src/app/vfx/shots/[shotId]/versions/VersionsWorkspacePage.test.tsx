@@ -181,7 +181,8 @@ describe("VersionsWorkspacePage", () => {
     expect(
       screen.getByText("Tighten the timing on the push-in."),
     ).toBeVisible();
-    expect(screen.getAllByText(/vfx_supervisor/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/VFX Supervisor/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/vfx_supervisor/)).not.toBeInTheDocument();
   });
 
   it("shows an honest empty state for a Version with no Review Notes", () => {
@@ -328,7 +329,7 @@ describe("VersionsWorkspacePage", () => {
     expect(screen.queryByText("ext-42")).not.toBeInTheDocument();
   });
 
-  it("keeps the manual Human-role author display unchanged when no ftrack provenance exists", () => {
+  it("shows the manual Human-role author as a human-readable label when no ftrack provenance exists (Step 9B-2 correction)", () => {
     render(
       <VersionsWorkspacePage
         shotId="s1"
@@ -337,7 +338,8 @@ describe("VersionsWorkspacePage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getAllByText(/vfx_supervisor/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/VFX Supervisor/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/vfx_supervisor/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Source author:/)).not.toBeInTheDocument();
   });
 

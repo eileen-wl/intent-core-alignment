@@ -19,6 +19,7 @@ import {
   MetadataRow,
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
+import { humanRoleLabel } from "@/lib/humanRoleLabel";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import type { AlignmentWorkspaceData } from "@/features/vfx/alignment-workspace/data";
 import { ProductionContextHeader } from "../../ProductionContextHeader";
@@ -68,7 +69,7 @@ function FindingGroup({
             </div>
             <p className={styles.findingWhy}>{finding.why_it_matters}</p>
             <p className={styles.findingRoles}>
-              Affects: {finding.affected_roles.join(", ")}
+              Affects: {finding.affected_roles.map(humanRoleLabel).join(", ")}
             </p>
           </li>
         ))}
