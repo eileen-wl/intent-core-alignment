@@ -1,6 +1,7 @@
 import Link from "next/link";
+import type { AnchorContextRead } from "@intent-core/contracts";
 
-import { FtrackLinkageBadge } from "@/design";
+import { AnchorContextSummary, FtrackLinkageBadge } from "@/design";
 import type { ReviewWorkItem } from "@/features/vfx/review-inbox/workItem";
 import { coreAnchorStateLabel } from "./vfxWording";
 import styles from "./WorkItemRow.module.css";
@@ -24,7 +25,13 @@ function versionText(item: ReviewWorkItem): string {
  * context (Shot, Project, Task, Version, Core Anchor state, ftrack
  * linkage). The Shot name is deliberately part of the secondary line,
  * never the row's primary heading. */
-export function WorkItemRow({ item }: { item: ReviewWorkItem }) {
+export function WorkItemRow({
+  item,
+  anchorContext,
+}: {
+  item: ReviewWorkItem;
+  anchorContext?: AnchorContextRead | null;
+}) {
   return (
     <Link href={item.route} className={styles.row}>
       <span className={styles.main}>
@@ -40,6 +47,7 @@ export function WorkItemRow({ item }: { item: ReviewWorkItem }) {
             <span>{coreAnchorStateLabel(item.coreAnchorState)}</span>
           )}
           {item.shot && <FtrackLinkageBadge source={item.shot.source} />}
+          <AnchorContextSummary context={anchorContext} />
         </span>
       </span>
       <span className={styles.open} aria-hidden="true">

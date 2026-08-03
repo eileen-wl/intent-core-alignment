@@ -1,20 +1,11 @@
 import Link from "next/link";
+import type { AnchorContextRead } from "@intent-core/contracts";
 
-import {
-  AppShell,
-  Breadcrumbs,
-  ContextTabs,
-  DetailedContext,
-  Divider,
-  ErrorState,
-  WorkingDirectionSection,
-} from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
+import { DetailedContext, Divider, WorkingDirectionSection } from "@/design";
 import type { TaskOverviewData } from "@/features/cg/task-overview/data";
 import { versionDisplayText } from "../../cgWording";
-import { TaskContextHeader } from "./TaskContextHeader";
 import { TaskCurrentFocusPanel } from "./TaskCurrentFocusPanel";
+import { CgTaskWorkspaceFrame } from "./CgTaskWorkspaceFrame";
 
 /** `/cg/tasks/:taskId` -- the real Task Overview (Step 7C-4), mirroring
  * `app/vfx/shots/[shotId]/ShotOverviewPage.tsx`'s locked order:
@@ -29,82 +20,26 @@ import { TaskCurrentFocusPanel } from "./TaskCurrentFocusPanel";
 export function TaskOverviewPage({
   taskId,
   data,
+  anchorContext,
   unavailable,
   onExitRole,
 }: {
   taskId: string;
   data: TaskOverviewData | null;
+  anchorContext?: AnchorContextRead | null;
   unavailable: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.cg_supervisor}
-      role={ROLE_LABEL.cg_supervisor}
+    <CgTaskWorkspaceFrame
+      item={data?.item ?? null}
+      anchorContext={anchorContext}
+      activeTab="overview"
+      unavailable={unavailable}
       onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.cg_supervisor}
-      currentPath="/cg/tasks"
     >
-      {unavailable || data === null ? (
+      {data && (
         <>
-          <Breadcrumbs
-            items={[{ label: "Tasks", href: "/cg/tasks" }, { label: "Task" }]}
-          />
-          <ErrorState
-            title={
-              unavailable
-                ? "This Task is unavailable"
-                : "This Task could not be found"
-            }
-            description={
-              unavailable
-                ? "The ICAS service could not be reached. Try refreshing the page."
-                : "This Task does not exist, or its identifier is invalid."
-            }
-          />
-        </>
-      ) : (
-        <>
-          <Breadcrumbs
-            items={[
-              { label: data.item.project_name, href: "/cg/tasks" },
-              { label: data.item.shot_name },
-              { label: data.item.task_name },
-              { label: "Overview" },
-            ]}
-          />
-          <TaskContextHeader item={data.item} />
-          <ContextTabs
-            activeTabId="overview"
-            tabs={[
-              {
-                id: "overview",
-                label: "Overview",
-                href: `/cg/tasks/${taskId}`,
-              },
-              {
-                id: "execution",
-                label: "Execution",
-                href: `/cg/tasks/${taskId}/execution`,
-              },
-              {
-                id: "version-review",
-                label: "Version Review",
-                href: `/cg/tasks/${taskId}/version-review`,
-              },
-              {
-                id: "dependencies",
-                label: "Dependencies",
-                href: `/cg/tasks/${taskId}/dependencies`,
-              },
-              {
-                id: "activity",
-                label: "Activity",
-                href: `/cg/tasks/${taskId}/activity`,
-              },
-            ]}
-          />
-
           <TaskCurrentFocusPanel focus={data.item.current_focus} />
 
           <WorkingDirectionSection section={data.workingDirection} />
@@ -166,6 +101,6 @@ export function TaskOverviewPage({
           </DetailedContext>
         </>
       )}
-    </AppShell>
+    </CgTaskWorkspaceFrame>
   );
 }

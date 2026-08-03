@@ -1,7 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { CgInboxItemRead, CgInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextRead,
+  CgInboxItemRead,
+  CgInboxRead,
+} from "@intent-core/contracts";
 
 import {
   AppShell,
@@ -34,9 +38,11 @@ const EXECUTION_ANCHOR_STATES: CgInboxItemRead["execution_anchor_state"][] = [
  * portfolio. */
 export function TasksListPage({
   inbox,
+  anchorContexts = {},
   onExitRole,
 }: {
   inbox: CgInboxRead | null;
+  anchorContexts?: Record<string, AnchorContextRead | null>;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
@@ -61,13 +67,19 @@ export function TasksListPage({
           description="Tasks will appear here once they exist."
         />
       ) : (
-        <TasksListContent items={inbox.items} />
+        <TasksListContent items={inbox.items} anchorContexts={anchorContexts} />
       )}
     </AppShell>
   );
 }
 
-function TasksListContent({ items }: { items: CgInboxItemRead[] }) {
+function TasksListContent({
+  items,
+  anchorContexts,
+}: {
+  items: CgInboxItemRead[];
+  anchorContexts: Record<string, AnchorContextRead | null>;
+}) {
   const [projectFilter, setProjectFilter] = useState(ALL_VALUE);
   const [stateFilter, setStateFilter] = useState(ALL_VALUE);
   const [departmentFilter, setDepartmentFilter] = useState(ALL_VALUE);
@@ -176,7 +188,10 @@ function TasksListContent({ items }: { items: CgInboxItemRead[] }) {
         <div role="list">
           {filtered.map((item) => (
             <div role="listitem" key={item.task_id}>
-              <CgTaskListRow item={item} />
+              <CgTaskListRow
+                item={item}
+                anchorContext={anchorContexts[item.task_id]}
+              />
             </div>
           ))}
         </div>

@@ -1,4 +1,8 @@
-import type { VfxInboxItemRead, VfxInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextRead,
+  VfxInboxItemRead,
+  VfxInboxRead,
+} from "@intent-core/contracts";
 import Link from "next/link";
 
 import {
@@ -8,10 +12,8 @@ import {
   ErrorState,
   Grid,
   PageHeader,
-  Row,
   SectionHeader,
   Stack,
-  StatusBadge,
   SummaryCard,
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
@@ -36,9 +38,11 @@ const IMPORTANT_SHOT_COUNT = 3;
  * from a real empty portfolio (`items: []`). */
 export function VfxWorkspacePage({
   inbox,
+  anchorContexts = {},
   onExitRole,
 }: {
   inbox: VfxInboxRead | null;
+  anchorContexts?: Record<string, AnchorContextRead | null>;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
@@ -66,7 +70,10 @@ export function VfxWorkspacePage({
           description="Shots will appear here once they exist."
         />
       ) : (
-        <WorkspaceHomeContent items={inbox.items} />
+        <WorkspaceHomeContent
+          items={inbox.items}
+          anchorContexts={anchorContexts}
+        />
       )}
     </AppShell>
   );
@@ -87,15 +94,22 @@ function countByCoreAnchorState(
   return items.filter((item) => item.core_anchor_state === state).length;
 }
 
-function WorkspaceHomeContent({ items }: { items: VfxInboxItemRead[] }) {
-  const totalShots = items.length;
-  const requiringAttention = items.filter(
-    (item) => item.current_focus.actionable,
-  ).length;
-  const humanReviewRequired = countByAttentionLevel(items, "high");
+function WorkspaceHomeContent({
+  items,
+  anchorContexts,
+}: {
+  items: VfxInboxItemRead[];
+  anchorContexts: Record<string, AnchorContextRead | null>;
+}) {
   const noCoreAnchor = countByCoreAnchorState(items, "none");
   const confirmed = countByCoreAnchorState(items, "confirmed");
   const draftPending = countByCoreAnchorState(items, "draft_pending");
+  const mediumAttention = countByAttentionLevel(items, "medium");
+  const highAttention = countByAttentionLevel(items, "high");
+  const highestPriorityContext = anchorContexts[items[0].shot_id];
+  const highestPriorityDirection =
+    highestPriorityContext?.core_anchor.direction_summary ??
+    items[0].active_core_anchor_summary;
 
   // Priority actions: the shared Review work-item model, not a
   // Shot-led list -- `items` already arrives sorted by the backend's
@@ -116,20 +130,30 @@ function WorkspaceHomeContent({ items }: { items: VfxInboxItemRead[] }) {
         minColumnWidth="13rem"
         gap={4}
         role="region"
-        aria-label="Production overview"
+        aria-label="Anchor overview"
       >
-        <SummaryCard label="Total Shots" value={totalShots} />
-        <SummaryCard
-          label="Requiring attention"
-          value={requiringAttention}
-          description="Shots with an actionable Current focus"
-        />
-        <SummaryCard
-          label="Human review required"
-          value={humanReviewRequired}
-        />
+        <SummaryCard label="Confirmed Core Anchors" value={confirmed} />
+        <SummaryCard label="Draft / pending review" value={draftPending} />
         <SummaryCard label="No Core Anchor" value={noCoreAnchor} />
+        <SummaryCard label="Medium attention" value={mediumAttention} />
+        <SummaryCard label="High attention" value={highAttention} />
       </Grid>
+
+      <div role="region" aria-label="Highest-priority Anchor action">
+        <SectionHeader
+          title="Anchor overview"
+          description="Current authority, intent attention, and the next human-controlled action."
+        />
+        <p>
+          <strong>
+            {highestPriorityContext?.next_action.title ??
+              items[0].current_focus.title}
+          </strong>
+          {highestPriorityDirection
+            ? ` — Current direction: ${highestPriorityDirection}`
+            : " — No confirmed Core Anchor direction is available yet."}
+        </p>
+      </div>
 
       <div role="region" aria-label="Priority actions">
         <SectionHeader
@@ -143,29 +167,16 @@ function WorkspaceHomeContent({ items }: { items: VfxInboxItemRead[] }) {
           <div role="list">
             {priorityActions.map((item) => (
               <div role="listitem" key={item.id}>
-                <WorkItemRow item={item} />
+                <WorkItemRow
+                  item={item}
+                  anchorContext={
+                    item.shot ? anchorContexts[item.shot.id] : null
+                  }
+                />
               </div>
             ))}
           </div>
         )}
-      </div>
-
-      <div role="region" aria-label="Production snapshot">
-        <SectionHeader
-          title="Production snapshot"
-          description="Core Anchor state across every Shot."
-        />
-        <Row gap={3}>
-          <StatusBadge status="confirmed" label={`Confirmed: ${confirmed}`} />
-          <StatusBadge
-            status="attention"
-            label={`Draft pending review: ${draftPending}`}
-          />
-          <StatusBadge
-            status="neutral"
-            label={`No Core Anchor: ${noCoreAnchor}`}
-          />
-        </Row>
       </div>
 
       <div role="region" aria-label="Important Shots">
@@ -177,7 +188,10 @@ function WorkspaceHomeContent({ items }: { items: VfxInboxItemRead[] }) {
         <div role="list">
           {importantShots.map((item) => (
             <div role="listitem" key={item.shot_id}>
-              <InboxRow item={item} />
+              <InboxRow
+                item={item}
+                anchorContext={anchorContexts[item.shot_id]}
+              />
             </div>
           ))}
         </div>

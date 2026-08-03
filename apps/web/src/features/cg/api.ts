@@ -1,4 +1,5 @@
 import type {
+  AnchorContextRead,
   AnchorConfirmRequest,
   AnchorRejectRequest,
   CGSupervisorReviewRead,
@@ -117,6 +118,48 @@ export function fetchCgInboxItem(
   taskId: string,
 ): Promise<CgInboxItemRead | null> {
   return cgFetchOrNull<CgInboxItemRead>(`/cg/inbox/${taskId}`);
+}
+
+/** Role-authorized, read-only Anchor Context projection for one Task. */
+export function fetchCgAnchorContext(
+  taskId: string,
+  actorHeaders: ActorHeaders,
+): Promise<AnchorContextRead> {
+  return cgFetch<AnchorContextRead>(`/cg/tasks/${taskId}/anchor-context`, {
+    headers: actorHeaders,
+  });
+}
+
+export async function fetchCgAnchorContextOrNull(
+  taskId: string,
+  actorHeaders: ActorHeaders,
+): Promise<AnchorContextRead | null> {
+  try {
+    return await fetchCgAnchorContext(taskId, actorHeaders);
+  } catch {
+    return null;
+  }
+}
+
+/** Best-effort Anchor Context collection for multi-Task surfaces. */
+export async function fetchCgAnchorContextMap(
+  taskIds: string[],
+  actorHeaders: ActorHeaders,
+): Promise<Record<string, AnchorContextRead | null>> {
+  return Object.fromEntries(
+    await Promise.all(
+      taskIds.map(async (taskId) => {
+        try {
+          return [
+            taskId,
+            await fetchCgAnchorContextOrNull(taskId, actorHeaders),
+          ] as const;
+        } catch {
+          return [taskId, null] as const;
+        }
+      }),
+    ),
+  );
 }
 
 export function getTask(taskId: string): Promise<TaskRead | null> {

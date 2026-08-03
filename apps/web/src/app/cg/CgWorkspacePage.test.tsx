@@ -97,7 +97,7 @@ describe("CgWorkspacePage", () => {
     expect(screen.getByText("No Tasks exist yet")).toBeVisible();
   });
 
-  it("renders real summary metrics derived from the loaded Tasks", () => {
+  it("renders department Anchor readiness from the loaded Tasks", () => {
     render(
       <CgWorkspacePage
         inbox={buildInbox([
@@ -108,22 +108,20 @@ describe("CgWorkspacePage", () => {
       />,
     );
     const overview = within(
-      screen.getByRole("region", { name: "Production overview" }),
+      screen.getByRole("region", { name: "Department anchor readiness" }),
     );
-    expect(overview.getByText("Total Tasks")).toBeVisible();
-    expect(overview.getByText("Requiring attention")).toBeVisible();
     expect(
-      overview.getByText("Execution Anchors awaiting action"),
+      overview.getByText("Awaiting Execution Anchor action"),
     ).toBeVisible();
-    expect(
-      overview.getByText("Version reviews requiring action"),
-    ).toBeVisible();
-    expect(overview.getByText("Unresolved dependencies")).toBeVisible();
+    expect(overview.getByText("Missing Execution Anchors")).toBeVisible();
+    expect(overview.getByText("Outdated Execution Anchors")).toBeVisible();
+    expect(overview.getByText("Ready for Version review")).toBeVisible();
+    expect(overview.getByText("Open VFX escalations")).toBeVisible();
 
-    const totalCard = overview
-      .getByText("Total Tasks")
+    const awaitingCard = overview
+      .getByText("Awaiting Execution Anchor action")
       .closest("div") as HTMLElement;
-    expect(totalCard).toHaveTextContent("2");
+    expect(awaitingCard).toHaveTextContent("1");
   });
 
   it("Priority actions leads with the required action, never the Task name, and contains at most 3 items", () => {
@@ -184,7 +182,7 @@ describe("CgWorkspacePage", () => {
     expect(
       screen.getByText("No priority actions require your attention"),
     ).toBeVisible();
-    expect(screen.getByText("Total Tasks")).toBeVisible();
+    expect(screen.getByText("Awaiting Execution Anchor action")).toBeVisible();
     expect(
       screen.getByRole("link", { name: "View all Tasks →" }),
     ).toBeVisible();

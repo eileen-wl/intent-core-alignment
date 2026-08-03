@@ -5,6 +5,8 @@ import {
   loadAlignmentWorkspaceData,
   type AlignmentWorkspaceData,
 } from "@/features/vfx/alignment-workspace/data";
+import { fetchVfxAnchorContextOrNull } from "@/features/vfx/api";
+import { actorHeaders, resolveIdentity } from "@/features/session/identity";
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
 import { exitRoleView } from "../../../../demo/actions";
 import { AlignmentWorkspacePage } from "./AlignmentWorkspacePage";
@@ -26,9 +28,16 @@ export default async function Page({
   const { shotId } = await params;
 
   let data: AlignmentWorkspaceData | null = null;
+  let anchorContext: Awaited<ReturnType<typeof fetchVfxAnchorContextOrNull>> =
+    null;
   let unavailable = false;
   try {
-    data = await loadAlignmentWorkspaceData(shotId);
+    const identity = await resolveIdentity();
+    if (identity === null) redirect("/demo");
+    [data, anchorContext] = await Promise.all([
+      loadAlignmentWorkspaceData(shotId),
+      fetchVfxAnchorContextOrNull(shotId, actorHeaders(identity)),
+    ]);
   } catch {
     unavailable = true;
   }
@@ -37,6 +46,7 @@ export default async function Page({
     <AlignmentWorkspacePage
       shotId={shotId}
       data={data}
+      anchorContext={anchorContext}
       unavailable={unavailable}
       onExitRole={exitRoleView}
     />

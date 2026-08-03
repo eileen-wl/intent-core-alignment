@@ -5,6 +5,8 @@ import {
   loadActivityWorkspaceData,
   type ActivityWorkspaceData,
 } from "@/features/vfx/activity-workspace/data";
+import { fetchVfxAnchorContextOrNull } from "@/features/vfx/api";
+import { actorHeaders, resolveIdentity } from "@/features/session/identity";
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
 import { exitRoleView } from "../../../../demo/actions";
 import { ActivityWorkspacePage } from "./ActivityWorkspacePage";
@@ -26,9 +28,16 @@ export default async function Page({
   const { shotId } = await params;
 
   let data: ActivityWorkspaceData | null = null;
+  let anchorContext: Awaited<ReturnType<typeof fetchVfxAnchorContextOrNull>> =
+    null;
   let unavailable = false;
   try {
-    data = await loadActivityWorkspaceData(shotId);
+    const identity = await resolveIdentity();
+    if (identity === null) redirect("/demo");
+    [data, anchorContext] = await Promise.all([
+      loadActivityWorkspaceData(shotId),
+      fetchVfxAnchorContextOrNull(shotId, actorHeaders(identity)),
+    ]);
   } catch {
     unavailable = true;
   }
@@ -37,6 +46,7 @@ export default async function Page({
     <ActivityWorkspacePage
       shotId={shotId}
       data={data}
+      anchorContext={anchorContext}
       unavailable={unavailable}
       onExitRole={exitRoleView}
     />

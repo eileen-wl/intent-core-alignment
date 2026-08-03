@@ -5,6 +5,8 @@ import {
   loadVersionsWorkspaceData,
   type VersionsWorkspaceData,
 } from "@/features/vfx/versions-workspace/data";
+import { fetchVfxAnchorContextOrNull } from "@/features/vfx/api";
+import { actorHeaders, resolveIdentity } from "@/features/session/identity";
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
 import { exitRoleView } from "../../../../demo/actions";
 import { VersionsWorkspacePage } from "./VersionsWorkspacePage";
@@ -26,9 +28,16 @@ export default async function Page({
   const { shotId } = await params;
 
   let data: VersionsWorkspaceData | null = null;
+  let anchorContext: Awaited<ReturnType<typeof fetchVfxAnchorContextOrNull>> =
+    null;
   let unavailable = false;
   try {
-    data = await loadVersionsWorkspaceData(shotId);
+    const identity = await resolveIdentity();
+    if (identity === null) redirect("/demo");
+    [data, anchorContext] = await Promise.all([
+      loadVersionsWorkspaceData(shotId),
+      fetchVfxAnchorContextOrNull(shotId, actorHeaders(identity)),
+    ]);
   } catch {
     unavailable = true;
   }
@@ -37,6 +46,7 @@ export default async function Page({
     <VersionsWorkspacePage
       shotId={shotId}
       data={data}
+      anchorContext={anchorContext}
       unavailable={unavailable}
       onExitRole={exitRoleView}
     />

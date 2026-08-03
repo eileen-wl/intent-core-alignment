@@ -138,9 +138,9 @@ describe("ShotOverviewPage -- Step 9B-1 Current Creative Direction", () => {
 });
 
 describe("ShotOverviewPage", () => {
-  it("shows an honest not-found/unavailable state when the Shot could not be resolved", () => {
+  it("shows an honest not-found state when the Shot could not be resolved", () => {
     render(<ShotOverviewPage item={null} onExitRole={vi.fn()} />);
-    expect(screen.getByText("This Shot is unavailable")).toBeVisible();
+    expect(screen.getByText("This Shot could not be found")).toBeVisible();
   });
 
   it("renders the production-context header with independent Task/Version facts", () => {

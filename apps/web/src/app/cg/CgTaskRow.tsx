@@ -1,14 +1,23 @@
-import type { CgInboxItemRead } from "@intent-core/contracts";
+import type {
+  AnchorContextRead,
+  CgInboxItemRead,
+} from "@intent-core/contracts";
 import Link from "next/link";
 
-import { FtrackLinkageBadge } from "@/design";
+import { AnchorContextSummary, FtrackLinkageBadge } from "@/design";
 import { versionDisplayText } from "./cgWording";
 import styles from "./CgTaskRow.module.css";
 
 /** One Workspace-Home "Important Tasks" row -- leads with the Task's
  * real Current-focus title (an action, not a status), matching VFX's
  * `InboxRow`. */
-export function CgTaskRow({ item }: { item: CgInboxItemRead }) {
+export function CgTaskRow({
+  item,
+  anchorContext,
+}: {
+  item: CgInboxItemRead;
+  anchorContext?: AnchorContextRead | null;
+}) {
   return (
     <Link href={`/cg/tasks/${item.task_id}`} className={styles.row}>
       <span className={styles.main}>
@@ -21,6 +30,7 @@ export function CgTaskRow({ item }: { item: CgInboxItemRead }) {
           <span>{item.project_name}</span>
           <span>{versionDisplayText(item)}</span>
           <FtrackLinkageBadge source={item.task_source} />
+          <AnchorContextSummary context={anchorContext} />
         </span>
       </span>
       <span className={styles.open} aria-hidden="true">

@@ -1,4 +1,8 @@
-import type { CgInboxItemRead, CgInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextRead,
+  CgInboxItemRead,
+  CgInboxRead,
+} from "@intent-core/contracts";
 import Link from "next/link";
 
 import {
@@ -30,9 +34,11 @@ const IMPORTANT_TASK_COUNT = 3;
  * `GET /cg/inbox` call failed, distinct from a real empty portfolio. */
 export function CgWorkspacePage({
   inbox,
+  anchorContexts = {},
   onExitRole,
 }: {
   inbox: CgInboxRead | null;
+  anchorContexts?: Record<string, AnchorContextRead | null>;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
@@ -60,30 +66,40 @@ export function CgWorkspacePage({
           description="Tasks will appear here once they exist."
         />
       ) : (
-        <WorkspaceHomeContent items={inbox.items} />
+        <WorkspaceHomeContent
+          items={inbox.items}
+          anchorContexts={anchorContexts}
+        />
       )}
     </AppShell>
   );
 }
 
-function WorkspaceHomeContent({ items }: { items: CgInboxItemRead[] }) {
-  const totalTasks = items.length;
-  const requiringAttention = items.filter(
-    (item) => item.current_focus.actionable,
-  ).length;
-  const executionAwaitingAction = items.filter((item) =>
-    [
-      "execution_anchor_gate_pending",
-      "execution_anchor_draft_needs_review",
-    ].includes(item.current_focus.focus_type),
+function WorkspaceHomeContent({
+  items,
+  anchorContexts,
+}: {
+  items: CgInboxItemRead[];
+  anchorContexts: Record<string, AnchorContextRead | null>;
+}) {
+  const executionAwaitingAction = items.filter(
+    (item) => item.execution_anchor_state === "draft_pending",
   ).length;
   const versionReviewsRequiringAction = items.filter(
     (item) => item.current_focus.focus_type === "version_review_available",
   ).length;
-  const unresolvedDependencies = items.reduce(
-    (sum, item) => sum + item.open_dependency_count,
-    0,
+  const contexts = Object.values(anchorContexts).filter(
+    (context): context is AnchorContextRead => context !== null,
   );
+  const missingExecutionAnchors = items.filter(
+    (item) => item.execution_anchor_state === "none",
+  ).length;
+  const outdatedExecutionAnchors = contexts.filter(
+    (context) => context.execution_anchor?.context_state === "outdated",
+  ).length;
+  const openVfxEscalations = contexts.filter(
+    (context) => context.open_vfx_escalation,
+  ).length;
 
   // Priority actions: the shared CG Review work-item model, not a
   // Task-led list -- `items` already arrives sorted by the backend's
@@ -105,25 +121,28 @@ function WorkspaceHomeContent({ items }: { items: CgInboxItemRead[] }) {
         minColumnWidth="13rem"
         gap={4}
         role="region"
-        aria-label="Production overview"
+        aria-label="Department anchor readiness"
       >
-        <SummaryCard label="Total Tasks" value={totalTasks} />
         <SummaryCard
-          label="Requiring attention"
-          value={requiringAttention}
-          description="Tasks with an actionable Current focus"
-        />
-        <SummaryCard
-          label="Execution Anchors awaiting action"
+          label="Awaiting Execution Anchor action"
           value={executionAwaitingAction}
         />
         <SummaryCard
-          label="Version reviews requiring action"
+          label="Missing Execution Anchors"
+          value={missingExecutionAnchors}
+        />
+        <SummaryCard
+          label="Outdated Execution Anchors"
+          value={outdatedExecutionAnchors}
+        />
+        <SummaryCard
+          label="Ready for Version review"
           value={versionReviewsRequiringAction}
         />
         <SummaryCard
-          label="Unresolved dependencies"
-          value={unresolvedDependencies}
+          label="Open VFX escalations"
+          value={openVfxEscalations}
+          description="Real unresolved escalation records"
         />
       </Grid>
 
@@ -139,7 +158,10 @@ function WorkspaceHomeContent({ items }: { items: CgInboxItemRead[] }) {
           <div role="list">
             {priorityActions.map((item) => (
               <div role="listitem" key={item.id}>
-                <CgTaskWorkItemRow item={item} />
+                <CgTaskWorkItemRow
+                  item={item}
+                  anchorContext={anchorContexts[item.task.id]}
+                />
               </div>
             ))}
           </div>
@@ -155,7 +177,10 @@ function WorkspaceHomeContent({ items }: { items: CgInboxItemRead[] }) {
         <div role="list">
           {importantTasks.map((item) => (
             <div role="listitem" key={item.task_id}>
-              <CgTaskRow item={item} />
+              <CgTaskRow
+                item={item}
+                anchorContext={anchorContexts[item.task_id]}
+              />
             </div>
           ))}
         </div>

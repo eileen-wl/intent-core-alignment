@@ -1,4 +1,5 @@
 import type {
+  AnchorContextRead,
   AgentRunRead,
   AnchorConfirmRequest,
   AnchorRejectRequest,
@@ -314,6 +315,48 @@ export async function fetchVfxInboxItem(
     }
     throw error;
   }
+}
+
+/** Role-authorized, read-only Anchor Context projection for one Shot. */
+export function fetchVfxAnchorContext(
+  shotId: string,
+  actorHeaders: ActorHeaders,
+): Promise<AnchorContextRead> {
+  return vfxFetch<AnchorContextRead>(`/vfx/shots/${shotId}/anchor-context`, {
+    headers: actorHeaders,
+  });
+}
+
+export async function fetchVfxAnchorContextOrNull(
+  shotId: string,
+  actorHeaders: ActorHeaders,
+): Promise<AnchorContextRead | null> {
+  try {
+    return await fetchVfxAnchorContext(shotId, actorHeaders);
+  } catch {
+    return null;
+  }
+}
+
+/** Best-effort Anchor Context collection for multi-Shot surfaces. */
+export async function fetchVfxAnchorContextMap(
+  shotIds: string[],
+  actorHeaders: ActorHeaders,
+): Promise<Record<string, AnchorContextRead | null>> {
+  return Object.fromEntries(
+    await Promise.all(
+      shotIds.map(async (shotId) => {
+        try {
+          return [
+            shotId,
+            await fetchVfxAnchorContextOrNull(shotId, actorHeaders),
+          ] as const;
+        } catch {
+          return [shotId, null] as const;
+        }
+      }),
+    ),
+  );
 }
 
 /** `GET /vfx/shots/{shot_id}/department-execution-overview` (Step 9B-3)

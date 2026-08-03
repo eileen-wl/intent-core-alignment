@@ -1,4 +1,5 @@
 import type {
+  AnchorContextRead,
   ArtistInboxItemRead,
   ArtistInboxRead,
 } from "@intent-core/contracts";
@@ -35,9 +36,11 @@ const IMPORTANT_TASK_COUNT = 3;
  * portfolio. */
 export function ArtistWorkspacePage({
   inbox,
+  anchorContexts = {},
   onExitRole,
 }: {
   inbox: ArtistInboxRead | null;
+  anchorContexts?: Record<string, AnchorContextRead | null>;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
@@ -65,13 +68,22 @@ export function ArtistWorkspacePage({
           description="Tasks will appear here once they exist."
         />
       ) : (
-        <WorkspaceHomeContent items={inbox.items} />
+        <WorkspaceHomeContent
+          items={inbox.items}
+          anchorContexts={anchorContexts}
+        />
       )}
     </AppShell>
   );
 }
 
-function WorkspaceHomeContent({ items }: { items: ArtistInboxItemRead[] }) {
+function WorkspaceHomeContent({
+  items,
+  anchorContexts,
+}: {
+  items: ArtistInboxItemRead[];
+  anchorContexts: Record<string, AnchorContextRead | null>;
+}) {
   const totalTasks = items.length;
   const requiringAttention = items.filter(
     (item) => item.current_focus.actionable,
@@ -87,6 +99,7 @@ function WorkspaceHomeContent({ items }: { items: ArtistInboxItemRead[] }) {
   const blockedTasks = items.filter(
     (item) => item.open_dependency_count > 0,
   ).length;
+  const currentDirection = anchorContexts[items[0].task_id];
 
   // Priority actions: the shared Artist Review work-item model, not a
   // Task-led list -- `items` already arrives sorted by the backend's
@@ -104,6 +117,42 @@ function WorkspaceHomeContent({ items }: { items: ArtistInboxItemRead[] }) {
 
   return (
     <Stack gap={6}>
+      <div role="region" aria-label="My current working direction">
+        <SectionHeader
+          title="My current working direction"
+          description={`Highest-priority Task: ${items[0].task_name}`}
+        />
+        <Grid minColumnWidth="15rem" gap={4}>
+          <SummaryCard
+            label="Why"
+            value={
+              currentDirection?.core_anchor.direction_summary ??
+              "No confirmed Core Anchor direction yet"
+            }
+            description={`Core Anchor ${currentDirection?.core_anchor.confirmed_revision_number ? `R${currentDirection.core_anchor.confirmed_revision_number}` : "not confirmed"}`}
+          />
+          <SummaryCard
+            label="How"
+            value={
+              currentDirection?.execution_anchor?.direction_summary ??
+              "No confirmed department execution direction yet"
+            }
+            description={
+              currentDirection?.execution_anchor?.execution_boundary ??
+              "Execution boundary unavailable"
+            }
+          />
+          <SummaryCard
+            label="What to do now"
+            value={
+              currentDirection?.next_action.title ??
+              items[0].current_focus.title
+            }
+            description={`Guidance: ${currentDirection?.guidance_state.replaceAll("_", " ") ?? "unavailable"}`}
+          />
+        </Grid>
+      </div>
+
       <Grid
         minColumnWidth="13rem"
         gap={4}
@@ -139,7 +188,10 @@ function WorkspaceHomeContent({ items }: { items: ArtistInboxItemRead[] }) {
           <div role="list">
             {priorityActions.map((item) => (
               <div role="listitem" key={item.id}>
-                <ArtistTaskWorkItemRow item={item} />
+                <ArtistTaskWorkItemRow
+                  item={item}
+                  anchorContext={anchorContexts[item.task.id]}
+                />
               </div>
             ))}
           </div>
@@ -155,7 +207,10 @@ function WorkspaceHomeContent({ items }: { items: ArtistInboxItemRead[] }) {
         <div role="list">
           {importantTasks.map((item) => (
             <div role="listitem" key={item.task_id}>
-              <ArtistTaskRow item={item} />
+              <ArtistTaskRow
+                item={item}
+                anchorContext={anchorContexts[item.task_id]}
+              />
             </div>
           ))}
         </div>

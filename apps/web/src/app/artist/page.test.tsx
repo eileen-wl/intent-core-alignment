@@ -18,6 +18,7 @@ const { fetchArtistInboxMock } = vi.hoisted(() => ({
 }));
 vi.mock("@/features/artist/api", () => ({
   fetchArtistInbox: fetchArtistInboxMock,
+  fetchArtistAnchorContextMap: vi.fn(async () => ({})),
 }));
 
 vi.mock("../demo/actions", () => ({

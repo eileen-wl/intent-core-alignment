@@ -1,17 +1,12 @@
 import Link from "next/link";
-import type { ShotActivityEventType } from "@intent-core/contracts";
+import type {
+  AnchorContextRead,
+  ShotActivityEventType,
+} from "@intent-core/contracts";
 
-import {
-  AppShell,
-  Breadcrumbs,
-  ContextTabs,
-  EmptyState,
-  ErrorState,
-} from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
+import { EmptyState } from "@/design";
 import type { ActivityWorkspaceData } from "@/features/vfx/activity-workspace/data";
-import { ProductionContextHeader } from "../../ProductionContextHeader";
+import { VfxShotWorkspaceFrame } from "../VfxShotWorkspaceFrame";
 import styles from "./ActivityWorkspacePage.module.css";
 
 const EVENT_TYPE_LABEL: Record<ShotActivityEventType, string> = {
@@ -33,86 +28,27 @@ const EVENT_TYPE_LABEL: Record<ShotActivityEventType, string> = {
  * chronologically ordered) -- this page never re-sorts, re-labels
  * beyond the fixed vocabulary above, or invents an entry. */
 export function ActivityWorkspacePage({
-  shotId,
   data,
+  anchorContext,
   unavailable,
   onExitRole,
 }: {
   shotId: string;
   data: ActivityWorkspaceData | null;
+  anchorContext?: AnchorContextRead | null;
   unavailable: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.vfx_supervisor}
-      role={ROLE_LABEL.vfx_supervisor}
+    <VfxShotWorkspaceFrame
+      item={data?.item ?? null}
+      anchorContext={anchorContext}
+      activeTab="activity"
+      unavailable={unavailable}
       onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.vfx_supervisor}
-      currentPath="/vfx/shots"
     >
-      {unavailable || data === null ? (
+      {data && (
         <>
-          <Breadcrumbs
-            items={[
-              { label: "Shots", href: "/vfx/shots" },
-              { label: "Activity" },
-            ]}
-          />
-          <ErrorState
-            title={
-              unavailable
-                ? "This Shot is unavailable"
-                : "This Shot could not be found"
-            }
-            description={
-              unavailable
-                ? "The ICAS service could not be reached. Try refreshing the page."
-                : "This Shot does not exist, or its identifier is invalid."
-            }
-          />
-        </>
-      ) : (
-        <>
-          <Breadcrumbs
-            items={[
-              { label: data.item.project_name, href: "/vfx/shots" },
-              { label: data.item.shot_name },
-              { label: "Activity" },
-            ]}
-          />
-          <ProductionContextHeader item={data.item} />
-          <ContextTabs
-            activeTabId="activity"
-            tabs={[
-              {
-                id: "overview",
-                label: "Overview",
-                href: `/vfx/shots/${shotId}`,
-              },
-              {
-                id: "intent",
-                label: "Intent",
-                href: `/vfx/shots/${shotId}/intent`,
-              },
-              {
-                id: "versions",
-                label: "Versions",
-                href: `/vfx/shots/${shotId}/versions`,
-              },
-              {
-                id: "alignment",
-                label: "Alignment",
-                href: `/vfx/shots/${shotId}/alignment`,
-              },
-              {
-                id: "activity",
-                label: "Activity",
-                href: `/vfx/shots/${shotId}/activity`,
-              },
-            ]}
-          />
-
           {data.activity.events.length === 0 ? (
             <EmptyState title="No recorded activity exists for this Shot yet." />
           ) : (
@@ -144,6 +80,6 @@ export function ActivityWorkspacePage({
           )}
         </>
       )}
-    </AppShell>
+    </VfxShotWorkspaceFrame>
   );
 }

@@ -1,4 +1,7 @@
-import type { ArtistInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextRead,
+  ArtistInboxRead,
+} from "@intent-core/contracts";
 import Link from "next/link";
 
 import {
@@ -23,9 +26,11 @@ import { ArtistTaskWorkItemRow } from "../ArtistTaskWorkItemRow";
  * Task's breadcrumb. */
 export function ArtistReviewInboxPage({
   inbox,
+  anchorContexts = {},
   onExitRole,
 }: {
   inbox: ArtistInboxRead | null;
+  anchorContexts?: Record<string, AnchorContextRead | null>;
   onExitRole: () => void | Promise<void>;
 }) {
   const workItems = inbox
@@ -63,7 +68,10 @@ export function ArtistReviewInboxPage({
           <div role="list">
             {workItems.map((item) => (
               <div role="listitem" key={item.id}>
-                <ArtistTaskWorkItemRow item={item} />
+                <ArtistTaskWorkItemRow
+                  item={item}
+                  anchorContext={anchorContexts[item.task.id]}
+                />
               </div>
             ))}
           </div>

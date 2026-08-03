@@ -1,7 +1,10 @@
-import type { VfxInboxItemRead } from "@intent-core/contracts";
+import type {
+  AnchorContextRead,
+  VfxInboxItemRead,
+} from "@intent-core/contracts";
 import Link from "next/link";
 
-import { FtrackLinkageBadge } from "@/design";
+import { AnchorContextSummary, FtrackLinkageBadge } from "@/design";
 import styles from "./InboxRow.module.css";
 import {
   signalStateLabel,
@@ -15,7 +18,13 @@ import {
  * secondary (smaller, muted text on the row's own second line) --
  * never joined into an implied pairing (docs/step-7/15_STEP_7C0C_...md
  * §3.1). The whole row is the link target. */
-export function InboxRow({ item }: { item: VfxInboxItemRead }) {
+export function InboxRow({
+  item,
+  anchorContext,
+}: {
+  item: VfxInboxItemRead;
+  anchorContext?: AnchorContextRead | null;
+}) {
   return (
     <Link href={`/vfx/shots/${item.shot_id}`} className={styles.row}>
       <span className={styles.main}>
@@ -29,6 +38,7 @@ export function InboxRow({ item }: { item: VfxInboxItemRead }) {
           <span>{taskDisplayText(item)}</span>
           <span>{versionDisplayText(item)}</span>
           <FtrackLinkageBadge source={item.shot_source} />
+          <AnchorContextSummary context={anchorContext} />
         </span>
       </span>
       <span className={styles.open} aria-hidden="true">

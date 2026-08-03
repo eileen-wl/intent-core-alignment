@@ -18,6 +18,7 @@ const { fetchVfxInboxMock } = vi.hoisted(() => ({
 }));
 vi.mock("@/features/vfx/api", () => ({
   fetchVfxInbox: fetchVfxInboxMock,
+  fetchVfxAnchorContextMap: vi.fn(async () => ({})),
 }));
 
 vi.mock("../../demo/actions", () => ({

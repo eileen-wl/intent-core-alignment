@@ -1,7 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type { VfxInboxItemRead, VfxInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextRead,
+  VfxInboxItemRead,
+  VfxInboxRead,
+} from "@intent-core/contracts";
 
 import {
   AppShell,
@@ -34,9 +38,11 @@ const CORE_ANCHOR_STATES: VfxInboxItemRead["core_anchor_state"][] = [
  * portfolio. */
 export function ShotsListPage({
   inbox,
+  anchorContexts = {},
   onExitRole,
 }: {
   inbox: VfxInboxRead | null;
+  anchorContexts?: Record<string, AnchorContextRead | null>;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
@@ -61,13 +67,19 @@ export function ShotsListPage({
           description="Shots will appear here once they exist."
         />
       ) : (
-        <ShotsListContent items={inbox.items} />
+        <ShotsListContent items={inbox.items} anchorContexts={anchorContexts} />
       )}
     </AppShell>
   );
 }
 
-function ShotsListContent({ items }: { items: VfxInboxItemRead[] }) {
+function ShotsListContent({
+  items,
+  anchorContexts,
+}: {
+  items: VfxInboxItemRead[];
+  anchorContexts: Record<string, AnchorContextRead | null>;
+}) {
   const [projectFilter, setProjectFilter] = useState(ALL_VALUE);
   const [stateFilter, setStateFilter] = useState(ALL_VALUE);
   const [taskFilter, setTaskFilter] = useState(ALL_VALUE);
@@ -162,7 +174,10 @@ function ShotsListContent({ items }: { items: VfxInboxItemRead[] }) {
         <div role="list">
           {filtered.map((item) => (
             <div role="listitem" key={item.shot_id}>
-              <ShotRow item={item} />
+              <ShotRow
+                item={item}
+                anchorContext={anchorContexts[item.shot_id]}
+              />
             </div>
           ))}
         </div>

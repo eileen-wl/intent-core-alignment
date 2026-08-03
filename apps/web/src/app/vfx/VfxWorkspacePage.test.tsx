@@ -105,7 +105,7 @@ describe("VfxWorkspacePage", () => {
     expect(screen.getByText("No Shots exist yet")).toBeVisible();
   });
 
-  it("renders four distinct real metrics, with no duplicative attention-count pair", () => {
+  it("renders the Anchor overview from real Anchor and attention states", () => {
     render(
       <VfxWorkspacePage
         inbox={buildInbox([
@@ -116,20 +116,18 @@ describe("VfxWorkspacePage", () => {
       />,
     );
     const overview = within(
-      screen.getByRole("region", { name: "Production overview" }),
+      screen.getByRole("region", { name: "Anchor overview" }),
     );
-    expect(overview.getByText("Total Shots")).toBeVisible();
-    expect(overview.getByText("Requiring attention")).toBeVisible();
-    expect(overview.getByText("Human review required")).toBeVisible();
+    expect(overview.getByText("Confirmed Core Anchors")).toBeVisible();
+    expect(overview.getByText("Draft / pending review")).toBeVisible();
     expect(overview.getByText("No Core Anchor")).toBeVisible();
-    // The old "Attention needed" (medium-signal) card duplicated
-    // "Requiring attention" and must be gone.
-    expect(overview.queryByText("Attention needed")).not.toBeInTheDocument();
+    expect(overview.getByText("Medium attention")).toBeVisible();
+    expect(overview.getByText("High attention")).toBeVisible();
 
-    const totalCard = overview
-      .getByText("Total Shots")
+    const confirmedCard = overview
+      .getByText("Confirmed Core Anchors")
       .closest("div") as HTMLElement;
-    expect(totalCard).toHaveTextContent("2");
+    expect(confirmedCard).toHaveTextContent("1");
     const noCoreAnchorCard = overview
       .getByText("No Core Anchor")
       .closest("div") as HTMLElement;
@@ -223,7 +221,7 @@ describe("VfxWorkspacePage", () => {
     expect(link).toHaveAttribute("href", "/vfx/shots/s1/alignment");
   });
 
-  it("shows an honest no-priority-actions state without hiding overview, snapshot, or Shots access", () => {
+  it("shows an honest no-priority-actions state without hiding the Anchor overview or Shots access", () => {
     render(
       <VfxWorkspacePage
         inbox={buildInbox([inactiveItem({ shot_id: "s1" })])}
@@ -233,14 +231,14 @@ describe("VfxWorkspacePage", () => {
     expect(
       screen.getByText("No priority actions require your attention"),
     ).toBeVisible();
-    expect(screen.getByText("Total Shots")).toBeVisible();
-    expect(screen.getByText("Production snapshot")).toBeVisible();
+    expect(screen.getByText("Confirmed Core Anchors")).toBeVisible();
+    expect(screen.getByText("Anchor overview")).toBeVisible();
     expect(
       screen.getByRole("link", { name: "View all Shots →" }),
     ).toBeVisible();
   });
 
-  it("Production snapshot reflects real Core Anchor state counts", () => {
+  it("Anchor overview reflects real Core Anchor state counts", () => {
     render(
       <VfxWorkspacePage
         inbox={buildInbox([
@@ -251,9 +249,18 @@ describe("VfxWorkspacePage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByText("Confirmed: 1")).toBeVisible();
-    expect(screen.getByText("Draft pending review: 1")).toBeVisible();
-    expect(screen.getByText("No Core Anchor: 1")).toBeVisible();
+    const overview = within(
+      screen.getByRole("region", { name: "Anchor overview" }),
+    );
+    expect(
+      overview.getByText("Confirmed Core Anchors").closest("div"),
+    ).toHaveTextContent("1");
+    expect(
+      overview.getByText("Draft / pending review").closest("div"),
+    ).toHaveTextContent("1");
+    expect(
+      overview.getByText("No Core Anchor").closest("div"),
+    ).toHaveTextContent("1");
   });
 
   it("Important Shots contains at most 3 Shots and never the complete catalogue", () => {

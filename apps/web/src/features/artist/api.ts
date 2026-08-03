@@ -1,4 +1,5 @@
 import type {
+  AnchorContextRead,
   ArtistAgentGuidanceRead,
   ArtistFeedbackHistoryRead,
   ArtistGuidanceGenerateRequest,
@@ -112,6 +113,49 @@ export function fetchArtistInboxItem(
   taskId: string,
 ): Promise<ArtistInboxItemRead | null> {
   return artistFetchOrNull<ArtistInboxItemRead>(`/artist/inbox/${taskId}`);
+}
+
+/** Role-authorized, read-only Anchor Context projection for one Task. */
+export function fetchArtistAnchorContext(
+  taskId: string,
+  actorHeaders: ActorHeaders,
+): Promise<AnchorContextRead> {
+  return artistFetch<AnchorContextRead>(
+    `/artist/tasks/${taskId}/anchor-context`,
+    { headers: actorHeaders },
+  );
+}
+
+export async function fetchArtistAnchorContextOrNull(
+  taskId: string,
+  actorHeaders: ActorHeaders,
+): Promise<AnchorContextRead | null> {
+  try {
+    return await fetchArtistAnchorContext(taskId, actorHeaders);
+  } catch {
+    return null;
+  }
+}
+
+/** Best-effort Anchor Context collection for multi-Task surfaces. */
+export async function fetchArtistAnchorContextMap(
+  taskIds: string[],
+  actorHeaders: ActorHeaders,
+): Promise<Record<string, AnchorContextRead | null>> {
+  return Object.fromEntries(
+    await Promise.all(
+      taskIds.map(async (taskId) => {
+        try {
+          return [
+            taskId,
+            await fetchArtistAnchorContextOrNull(taskId, actorHeaders),
+          ] as const;
+        } catch {
+          return [taskId, null] as const;
+        }
+      }),
+    ),
+  );
 }
 
 export function getTask(taskId: string): Promise<TaskRead | null> {

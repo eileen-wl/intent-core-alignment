@@ -1,25 +1,20 @@
 "use client";
 
 import { useState } from "react";
+import type { AnchorContextRead } from "@intent-core/contracts";
 
 import {
-  AppShell,
-  Breadcrumbs,
-  ContextTabs,
   EmptyState,
-  ErrorState,
   EvidenceLayerSection,
   FtrackLinkageBadge,
   MetadataRow,
   SectionHeader,
   VersionMediaResolver,
 } from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import { getAuthorDisplayText } from "@/lib/authorProvenance";
 import type { VersionReviewWorkspaceData } from "@/features/cg/version-review-workspace/data";
 import { resolveVersionMediaAction } from "@/features/cg/actions";
-import { TaskContextHeader } from "../TaskContextHeader";
+import { CgTaskWorkspaceFrame } from "../CgTaskWorkspaceFrame";
 import { VersionReviewActions } from "./VersionReviewActions";
 import styles from "./VersionReviewPage.module.css";
 
@@ -32,11 +27,13 @@ import styles from "./VersionReviewPage.module.css";
 export function VersionReviewPage({
   taskId,
   data,
+  anchorContext,
   unavailable,
   onExitRole,
 }: {
   taskId: string;
   data: VersionReviewWorkspaceData | null;
+  anchorContext?: AnchorContextRead | null;
   unavailable: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
@@ -51,78 +48,20 @@ export function VersionReviewPage({
     : null;
 
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.cg_supervisor}
-      role={ROLE_LABEL.cg_supervisor}
+    <CgTaskWorkspaceFrame
+      item={data?.item ?? null}
+      anchorContext={anchorContext}
+      activeTab="version-review"
+      unavailable={unavailable}
       onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.cg_supervisor}
-      currentPath="/cg/tasks"
     >
-      {unavailable || data === null ? (
+      {data && (
         <>
-          <Breadcrumbs
-            items={[
-              { label: "Tasks", href: "/cg/tasks" },
-              { label: "Version Review" },
-            ]}
-          />
-          <ErrorState
-            title={
-              unavailable
-                ? "This Task is unavailable"
-                : "This Task could not be found"
-            }
-            description={
-              unavailable
-                ? "The ICAS service could not be reached. Try refreshing the page."
-                : "This Task does not exist, or its identifier is invalid."
-            }
-          />
-        </>
-      ) : (
-        <>
-          <Breadcrumbs
-            items={[
-              { label: data.item.project_name, href: "/cg/tasks" },
-              { label: data.item.shot_name },
-              { label: data.item.task_name },
-              { label: "Version Review" },
-            ]}
-          />
-          <TaskContextHeader item={data.item} />
-          <ContextTabs
-            activeTabId="version-review"
-            tabs={[
-              {
-                id: "overview",
-                label: "Overview",
-                href: `/cg/tasks/${taskId}`,
-              },
-              {
-                id: "execution",
-                label: "Execution",
-                href: `/cg/tasks/${taskId}/execution`,
-              },
-              {
-                id: "version-review",
-                label: "Version Review",
-                href: `/cg/tasks/${taskId}/version-review`,
-              },
-              {
-                id: "dependencies",
-                label: "Dependencies",
-                href: `/cg/tasks/${taskId}/dependencies`,
-              },
-              {
-                id: "activity",
-                label: "Activity",
-                href: `/cg/tasks/${taskId}/activity`,
-              },
-            ]}
-          />
-
           {data.versions.length === 0 ? (
-            <EmptyState title="No Production Versions have been recorded for this Task yet." />
+            <EmptyState
+              title="No Production Version is available"
+              description="A Production Version is required before CG Version review and cross-role assessment can run. The Version must arrive from the production workflow; no local upload is implied."
+            />
           ) : (
             <div className={styles.grid}>
               <div className={styles.listColumn}>
@@ -302,6 +241,6 @@ export function VersionReviewPage({
           )}
         </>
       )}
-    </AppShell>
+    </CgTaskWorkspaceFrame>
   );
 }

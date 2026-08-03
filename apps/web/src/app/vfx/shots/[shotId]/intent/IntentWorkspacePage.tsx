@@ -1,22 +1,17 @@
 import Link from "next/link";
+import type { AnchorContextRead } from "@intent-core/contracts";
 
 import type { IntentWorkspaceData } from "@/features/vfx/intent-workspace/data";
 import {
-  AppShell,
   AuthorityBoundary,
   AuthorityLabel,
-  Breadcrumbs,
-  ContextTabs,
-  ErrorState,
   EvidenceLayerSection,
 } from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import {
   createCoreAnchorDraftFromConfirmedAction,
   startBlankCoreAnchorDraftAction,
 } from "@/features/vfx/intent-workspace/actions";
-import { ProductionContextHeader } from "../../ProductionContextHeader";
+import { VfxShotWorkspaceFrame } from "../VfxShotWorkspaceFrame";
 import { ConfirmedAnchorSummary } from "./ConfirmedAnchorSummary";
 import { CoreAnchorRevisionEditor } from "./CoreAnchorRevisionEditor";
 import { IntentEvidenceDisclosures } from "./IntentEvidenceDisclosures";
@@ -35,12 +30,14 @@ import styles from "./IntentWorkspacePage.module.css";
 export function IntentWorkspacePage({
   shotId,
   data,
+  anchorContext,
   unavailable,
   justConfirmed = false,
   onExitRole,
 }: {
   shotId: string;
   data: IntentWorkspaceData | null;
+  anchorContext?: AnchorContextRead | null;
   unavailable: boolean;
   /** True only when the server has validated `?justConfirmed=` names the
    * Shot's real, current confirmed revision (Step 7C-2) -- see
@@ -53,75 +50,15 @@ export function IntentWorkspacePage({
   );
 
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.vfx_supervisor}
-      role={ROLE_LABEL.vfx_supervisor}
+    <VfxShotWorkspaceFrame
+      item={data?.item ?? null}
+      anchorContext={anchorContext}
+      activeTab="intent"
+      unavailable={unavailable}
       onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.vfx_supervisor}
-      currentPath="/vfx/shots"
     >
-      {unavailable || data === null ? (
+      {data && (
         <>
-          <Breadcrumbs
-            items={[
-              { label: "Shots", href: "/vfx/shots" },
-              { label: "Intent" },
-            ]}
-          />
-          <ErrorState
-            title={
-              unavailable
-                ? "This Shot is unavailable"
-                : "This Shot could not be found"
-            }
-            description={
-              unavailable
-                ? "The ICAS service could not be reached. Try refreshing the page."
-                : "This Shot does not exist, or its identifier is invalid."
-            }
-          />
-        </>
-      ) : (
-        <>
-          <Breadcrumbs
-            items={[
-              { label: data.item.project_name, href: "/vfx/shots" },
-              { label: data.item.shot_name },
-              { label: "Intent" },
-            ]}
-          />
-          <ProductionContextHeader item={data.item} />
-          <ContextTabs
-            activeTabId="intent"
-            tabs={[
-              {
-                id: "overview",
-                label: "Overview",
-                href: `/vfx/shots/${data.item.shot_id}`,
-              },
-              {
-                id: "intent",
-                label: "Intent",
-                href: `/vfx/shots/${data.item.shot_id}/intent`,
-              },
-              {
-                id: "versions",
-                label: "Versions",
-                href: `/vfx/shots/${data.item.shot_id}/versions`,
-              },
-              {
-                id: "alignment",
-                label: "Alignment",
-                href: `/vfx/shots/${data.item.shot_id}/alignment`,
-              },
-              {
-                id: "activity",
-                label: "Activity",
-                href: `/vfx/shots/${data.item.shot_id}/activity`,
-              },
-            ]}
-          />
-
           <div className={styles.authorityLine}>
             <AuthorityBoundary
               tone="human"
@@ -188,6 +125,6 @@ export function IntentWorkspacePage({
           )}
         </>
       )}
-    </AppShell>
+    </VfxShotWorkspaceFrame>
   );
 }

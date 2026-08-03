@@ -1,21 +1,16 @@
 import Link from "next/link";
+import type { AnchorContextRead } from "@intent-core/contracts";
 
 import {
-  AppShell,
-  Breadcrumbs,
-  ContextTabs,
   EmptyState,
-  ErrorState,
   EvidenceLayerSection,
   FtrackLinkageBadge,
   MetadataRow,
   VersionMediaPanel,
 } from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import { getAuthorDisplayText } from "@/lib/authorProvenance";
 import type { CurrentVersionData } from "@/features/artist/current-version/data";
-import { TaskContextHeader } from "../TaskContextHeader";
+import { ArtistTaskWorkspaceFrame } from "../ArtistTaskWorkspaceFrame";
 import { GenerateArtistGuidanceButton } from "../GenerateArtistGuidanceButton";
 import styles from "./CurrentVersionPage.module.css";
 
@@ -35,77 +30,31 @@ import styles from "./CurrentVersionPage.module.css";
 export function CurrentVersionPage({
   taskId,
   data,
+  anchorContext,
   unavailable,
   onExitRole,
 }: {
   taskId: string;
   data: CurrentVersionData | null;
+  anchorContext?: AnchorContextRead | null;
   unavailable: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.artist}
-      role={ROLE_LABEL.artist}
+    <ArtistTaskWorkspaceFrame
+      item={data?.item ?? null}
+      anchorContext={anchorContext}
+      activeTab="current-version"
+      unavailable={unavailable}
       onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.artist}
-      currentPath="/artist/tasks"
     >
-      {unavailable || data === null ? (
+      {data && (
         <>
-          <Breadcrumbs
-            items={[
-              { label: "Tasks", href: "/artist/tasks" },
-              { label: "Current Version" },
-            ]}
-          />
-          <ErrorState
-            title={
-              unavailable
-                ? "This Task is unavailable"
-                : "This Task could not be found"
-            }
-            description={
-              unavailable
-                ? "The ICAS service could not be reached. Try refreshing the page."
-                : "This Task does not exist, or its identifier is invalid."
-            }
-          />
-        </>
-      ) : (
-        <>
-          <Breadcrumbs
-            items={[
-              { label: data.item.project_name, href: "/artist/tasks" },
-              { label: data.item.shot_name },
-              { label: data.item.task_name },
-              { label: "Current Version" },
-            ]}
-          />
-          <TaskContextHeader item={data.item} />
-          <ContextTabs
-            activeTabId="current-version"
-            tabs={[
-              {
-                id: "overview",
-                label: "Task Overview",
-                href: `/artist/tasks/${taskId}`,
-              },
-              {
-                id: "current-version",
-                label: "Current Version",
-                href: `/artist/tasks/${taskId}/current-version`,
-              },
-              {
-                id: "feedback-history",
-                label: "Feedback History",
-                href: `/artist/tasks/${taskId}/feedback-history`,
-              },
-            ]}
-          />
-
           {data.versions.length === 0 ? (
-            <EmptyState title="No Production Versions have been recorded for this Task yet." />
+            <EmptyState
+              title="No Production Version is available"
+              description="A Production Version is required before feedback, Guidance, and cross-role assessment can refer to this Task. It must arrive from the production workflow; there is no local upload action here."
+            />
           ) : (
             <div className={styles.grid}>
               <div className={styles.listColumn}>
@@ -344,6 +293,6 @@ export function CurrentVersionPage({
           )}
         </>
       )}
-    </AppShell>
+    </ArtistTaskWorkspaceFrame>
   );
 }

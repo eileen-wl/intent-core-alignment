@@ -1,7 +1,10 @@
-import type { CgInboxItemRead } from "@intent-core/contracts";
+import type {
+  AnchorContextRead,
+  CgInboxItemRead,
+} from "@intent-core/contracts";
 import Link from "next/link";
 
-import { FtrackLinkageBadge } from "@/design";
+import { AnchorContextSummary, FtrackLinkageBadge } from "@/design";
 import { executionAnchorStateLabel, versionDisplayText } from "../cgWording";
 import styles from "../CgTaskRow.module.css";
 
@@ -10,7 +13,13 @@ import styles from "../CgTaskRow.module.css";
  * rather than a Current-focus action title, since this page's purpose
  * is browsing and opening Tasks, not reviewing action items. Mirrors
  * VFX's `ShotRow`. */
-export function CgTaskListRow({ item }: { item: CgInboxItemRead }) {
+export function CgTaskListRow({
+  item,
+  anchorContext,
+}: {
+  item: CgInboxItemRead;
+  anchorContext?: AnchorContextRead | null;
+}) {
   return (
     <Link href={`/cg/tasks/${item.task_id}`} className={styles.row}>
       <span className={styles.main}>
@@ -26,6 +35,7 @@ export function CgTaskListRow({ item }: { item: CgInboxItemRead }) {
           <span>{item.department ?? "No department recorded"}</span>
           <span>{versionDisplayText(item)}</span>
           <FtrackLinkageBadge source={item.task_source} />
+          <AnchorContextSummary context={anchorContext} />
         </span>
       </span>
       <span className={styles.open} aria-hidden="true">

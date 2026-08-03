@@ -1,5 +1,7 @@
 import Link from "next/link";
+import type { AnchorContextRead } from "@intent-core/contracts";
 
+import { AnchorContextSummary } from "@/design";
 import type { CgReviewWorkItem } from "@/features/cg/reviewInbox";
 import styles from "./CgTaskWorkItemRow.module.css";
 
@@ -7,7 +9,13 @@ import styles from "./CgTaskWorkItemRow.module.css";
  * Priority actions and CG Review Inbox. Locked reading order: category
  * -> required-action title -> explanation -> supporting production
  * context (Task, Shot, Project). Mirrors VFX's `WorkItemRow` layout. */
-export function CgTaskWorkItemRow({ item }: { item: CgReviewWorkItem }) {
+export function CgTaskWorkItemRow({
+  item,
+  anchorContext,
+}: {
+  item: CgReviewWorkItem;
+  anchorContext?: AnchorContextRead | null;
+}) {
   return (
     <Link href={item.route} className={styles.row}>
       <span className={styles.main}>
@@ -18,6 +26,7 @@ export function CgTaskWorkItemRow({ item }: { item: CgReviewWorkItem }) {
           <span>{item.task.name}</span>
           <span>{item.shot.name}</span>
           <span>{item.project.name}</span>
+          <AnchorContextSummary context={anchorContext} />
         </span>
       </span>
       <span className={styles.open} aria-hidden="true">

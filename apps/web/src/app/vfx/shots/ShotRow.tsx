@@ -1,7 +1,10 @@
-import type { VfxInboxItemRead } from "@intent-core/contracts";
+import type {
+  AnchorContextRead,
+  VfxInboxItemRead,
+} from "@intent-core/contracts";
 import Link from "next/link";
 
-import { FtrackLinkageBadge } from "@/design";
+import { AnchorContextSummary, FtrackLinkageBadge } from "@/design";
 import {
   coreAnchorStateLabel,
   signalStateLabel,
@@ -17,7 +20,13 @@ import styles from "../InboxRow.module.css";
  * Reuses `InboxRow`'s row layout/CSS (same visual language, no
  * duplicated stylesheet) and the same shared wording helpers so the
  * two surfaces never describe the same Shot differently. */
-export function ShotRow({ item }: { item: VfxInboxItemRead }) {
+export function ShotRow({
+  item,
+  anchorContext,
+}: {
+  item: VfxInboxItemRead;
+  anchorContext?: AnchorContextRead | null;
+}) {
   return (
     <Link href={`/vfx/shots/${item.shot_id}`} className={styles.row}>
       <span className={styles.main}>
@@ -33,6 +42,7 @@ export function ShotRow({ item }: { item: VfxInboxItemRead }) {
           <span>{taskDisplayText(item)}</span>
           <span>{versionDisplayText(item)}</span>
           <FtrackLinkageBadge source={item.shot_source} />
+          <AnchorContextSummary context={anchorContext} />
         </span>
       </span>
       <span className={styles.open} aria-hidden="true">

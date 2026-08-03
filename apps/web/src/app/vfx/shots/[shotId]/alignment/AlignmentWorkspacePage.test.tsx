@@ -243,9 +243,7 @@ describe("AlignmentWorkspacePage", () => {
       />,
     );
     expect(
-      screen.getByText(
-        "No Alignment Assessment has been recorded for this Shot yet.",
-      ),
+      screen.getByText("Cross-role Assessment is not ready yet"),
     ).toBeVisible();
     expect(
       screen.queryByRole("button", { name: "Generate Assessment" }),
@@ -277,9 +275,7 @@ describe("AlignmentWorkspacePage", () => {
       screen.getByRole("button", { name: "Generate Assessment" }),
     ).toBeVisible();
     expect(
-      screen.queryByText(
-        "No Alignment Assessment has been recorded for this Shot yet.",
-      ),
+      screen.queryByText("Cross-role Assessment is not ready yet"),
     ).not.toBeInTheDocument();
   });
 

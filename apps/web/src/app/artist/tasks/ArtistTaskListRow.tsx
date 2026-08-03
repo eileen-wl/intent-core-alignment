@@ -1,7 +1,10 @@
-import type { ArtistInboxItemRead } from "@intent-core/contracts";
+import type {
+  AnchorContextRead,
+  ArtistInboxItemRead,
+} from "@intent-core/contracts";
 import Link from "next/link";
 
-import { FtrackLinkageBadge } from "@/design";
+import { AnchorContextSummary, FtrackLinkageBadge } from "@/design";
 import {
   executionAnchorStateLabel,
   guidanceStateLabel,
@@ -14,7 +17,13 @@ import styles from "../ArtistTaskRow.module.css";
  * department/latest Version context, and ftrack linkage -- every field
  * the Tasks catalogue is required to show. Mirrors
  * `app/cg/tasks/CgTaskListRow.tsx`'s row shape. */
-export function ArtistTaskListRow({ item }: { item: ArtistInboxItemRead }) {
+export function ArtistTaskListRow({
+  item,
+  anchorContext,
+}: {
+  item: ArtistInboxItemRead;
+  anchorContext?: AnchorContextRead | null;
+}) {
   return (
     <Link href={`/artist/tasks/${item.task_id}`} className={styles.row}>
       <span className={styles.main}>
@@ -30,6 +39,7 @@ export function ArtistTaskListRow({ item }: { item: ArtistInboxItemRead }) {
           <span>{item.department ?? "No department recorded"}</span>
           <span>{versionDisplayText(item)}</span>
           <FtrackLinkageBadge source={item.task_source} />
+          <AnchorContextSummary context={anchorContext} />
         </span>
       </span>
       <span className={styles.open} aria-hidden="true">
