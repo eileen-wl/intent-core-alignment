@@ -11,6 +11,7 @@ import type {
 import {
   AuthorityBoundary,
   AuthorityLabel,
+  AgentContributionPanel,
   EmptyState,
   EvidenceLayerSection,
   MetadataRow,
@@ -117,6 +118,22 @@ export function AlignmentWorkspacePage({
               statement="owns interpretation and confirmation of alignment findings. The Core Agent's cross-role assessment is advisory only."
             />
           </div>
+
+          <AgentContributionPanel
+            agent="Core Agent"
+            capability="Cross-role Assessment"
+            state={current ? "completed" : data.item.generation_ready_task_id && data.item.generation_ready_version_id ? "ready" : "not_ready"}
+            generatedAt={current?.created_at}
+            inputs={current ? [versionLabel(data.versionsById.get(current.version_id)), "Confirmed Core Anchor context"] : ["Confirmed Anchor and role outputs", "Production Version and review evidence"]}
+            readiness={[
+              { label: "Confirmed Core Anchor", available: data.item.core_anchor_state === "confirmed" },
+              { label: "Qualifying Production Version", available: Boolean(data.item.relevant_version_id) },
+              { label: "Role review/guidance evidence", available: Boolean(data.item.generation_ready_task_id) },
+            ]}
+            output={<p>{current ? "Cross-role findings and an Intent Signal are available below." : "No Cross-role Assessment has been generated for this Shot yet."}</p>}
+            authority="Advisory interpretation only; the VFX Supervisor decides whether to create or revise a Core Anchor."
+            nextAction={current?.re_anchor_proposal ? "Review the Re-anchor Proposal in Intent." : "Complete prerequisites, generate the assessment, and review the findings."}
+          />
 
           {current === null ? (
             data.item.generation_ready_task_id &&

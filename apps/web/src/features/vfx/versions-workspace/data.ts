@@ -1,5 +1,6 @@
 import type {
   CrossRoleAssessmentRead,
+  VFXSupervisorReviewRead,
   ReviewNoteRead,
   VersionRead,
   VfxInboxItemRead,
@@ -9,6 +10,7 @@ import {
   fetchVfxInboxItem,
   listCrossRoleAssessmentsForShot,
   listReviewNotesForVersion,
+  listVfxSupervisorReviews,
   listVersionsForShot,
 } from "@/features/vfx/api";
 import { getEffectiveTimestamp } from "@/lib/effectiveTimestamp";
@@ -23,6 +25,8 @@ export interface VersionWithReviewNotes {
   version: VersionRead;
   /** Oldest first, matching the backend's own real ordering. */
   reviewNotes: ReviewNoteRead[];
+  /** Optional for compatibility with existing local read-model fixtures. */
+  vfxReviews?: VFXSupervisorReviewRead[];
 }
 
 export interface VersionsWorkspaceData {
@@ -85,6 +89,7 @@ export async function loadVersionsWorkspaceData(
       reviewNotes: [...(await listReviewNotesForVersion(version.id))].sort(
         (a, b) => getEffectiveTimestamp(a) - getEffectiveTimestamp(b),
       ),
+      vfxReviews: await listVfxSupervisorReviews(version.id),
     })),
   );
 

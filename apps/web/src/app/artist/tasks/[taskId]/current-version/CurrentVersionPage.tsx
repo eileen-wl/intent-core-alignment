@@ -3,6 +3,7 @@ import type { AnchorContextRead } from "@intent-core/contracts";
 
 import {
   EmptyState,
+  AgentContributionPanel,
   EvidenceLayerSection,
   FtrackLinkageBadge,
   MetadataRow,
@@ -170,6 +171,34 @@ export function CurrentVersionPage({
                       </EvidenceLayerSection>
 
                       <EvidenceLayerSection kind="agent-interpretation">
+                        <AgentContributionPanel
+                          agent="Artist Agent"
+                          capability="Iteration Guidance"
+                          state={data.guidances.length ? "completed" : data.coreAnchorRevision && data.executionAnchorRevision ? "ready" : "not_ready"}
+                          generatedAt={data.guidances[0]?.created_at}
+                          inputs={[
+                            `Version ${data.selectedVersion.name}`,
+                            data.coreAnchorRevision ? `Core Anchor R${data.coreAnchorRevision.revision_number}` : "Core Anchor missing",
+                            data.executionAnchorRevision ? `Execution Anchor R${data.executionAnchorRevision.revision_number}` : "Execution Anchor missing",
+                            `${data.reviewNotes.length} Review Notes`,
+                          ]}
+                          readiness={[
+                            { label: "Confirmed Core Anchor", available: Boolean(data.coreAnchorRevision) },
+                            { label: "Confirmed Execution Anchor", available: Boolean(data.executionAnchorRevision) },
+                            { label: "Current Production Version", available: Boolean(data.selectedVersion) },
+                          ]}
+                          output={
+                            data.guidances[0] ? (
+                              <>
+                                <p>{data.guidances[0].guidance_output.executive_summary}</p>
+                                <p>Feedback translations: {data.guidances[0].guidance_output.feedback_translations.length}</p>
+                                <p>Iteration priorities: {data.guidances[0].guidance_output.iteration_priorities.length}</p>
+                              </>
+                            ) : <p>No guidance has been generated for this Version yet.</p>
+                          }
+                          authority="Advisory execution guidance; the Artist may act within the confirmed boundaries, but cannot edit or confirm either Anchor or approve the Version."
+                          nextAction="Use the guidance for the current Version, then escalate supervisor questions through the existing workflow."
+                        />
                         <section className={styles.section}>
                           <h4 className={styles.sectionHeading}>
                             Applicable Artist guidance

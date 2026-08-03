@@ -5,6 +5,7 @@ import type { AnchorContextRead } from "@intent-core/contracts";
 
 import {
   EmptyState,
+  AgentContributionPanel,
   EvidenceLayerSection,
   FtrackLinkageBadge,
   MetadataRow,
@@ -190,6 +191,33 @@ export function VersionReviewPage({
                       </EvidenceLayerSection>
 
                       <EvidenceLayerSection kind="agent-interpretation">
+                        <AgentContributionPanel
+                          agent="CG Supervisor Agent"
+                          capability="Execution Review"
+                          state={data.cgSupervisorReviews.length ? "completed" : data.activeExecutionRevision ? "ready" : "not_ready"}
+                          generatedAt={data.cgSupervisorReviews[0]?.created_at}
+                          inputs={[
+                            `Version ${selected.version.name}`,
+                            data.coreAnchorSummary ? "Confirmed Core Anchor" : "Core Anchor missing",
+                            data.activeExecutionRevision ? `Execution Anchor R${data.activeExecutionRevision.revision_number}` : "Execution Anchor missing",
+                          ]}
+                          readiness={[
+                            { label: "Production Version", available: true },
+                            { label: "Confirmed Core Anchor", available: Boolean(data.coreAnchorSummary) },
+                            { label: "Confirmed Execution Anchor", available: Boolean(data.activeExecutionRevision) },
+                          ]}
+                          output={
+                            data.cgSupervisorReviews[0] ? (
+                              <>
+                                <p>{data.cgSupervisorReviews[0].review_output.executive_summary}</p>
+                                <p>Technical concerns: {data.cgSupervisorReviews[0].review_output.technical_concerns.length}</p>
+                                <p>Questions for the human CG Supervisor: {data.cgSupervisorReviews[0].review_output.questions_for_human_cg_supervisor.length}</p>
+                              </>
+                            ) : <p>No Execution Review has been generated for this selected Version yet.</p>
+                          }
+                          authority="Advisory technical interpretation; it does not approve the Version or resolve a Human Decision."
+                          nextAction="Inspect the review, then record a Review Note, dependency, or escalation as appropriate."
+                        />
                         <section className={styles.section}>
                           <h4 className={styles.sectionHeading}>
                             CG Supervisor reviews

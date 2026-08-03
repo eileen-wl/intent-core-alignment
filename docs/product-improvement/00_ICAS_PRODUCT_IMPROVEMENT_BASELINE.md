@@ -944,6 +944,16 @@ Goal:
 - strengthen Artist Guidance/submission preparation;
 - make cross-role/cross-department Assessment prerequisites actionable.
 
+### Package B implementation checkpoint (2026-08-03)
+
+Package B is in progress on `feat/package-b-agent-journey-completion`. The first implementation
+pass adds a shared `AgentContributionPanel` to formal VFX, CG, and Artist routes, presenting Inputs,
+Agent contribution, Human authority, Next human action, lifecycle, and collapsed provenance. It
+wires existing decomposition, reconstruction, drafting, creative review, execution review,
+iteration guidance, and cross-role assessment capabilities without adding roles, routes, persistence,
+Demo seed data, or ftrack writes. Focused frontend tests (96 tests), web typecheck, touched ESLint,
+and `git diff --check` pass; owner visual validation is pending. Package B is not complete.
+
 ## Package C — Coherent Golden Demo scenario
 
 Goal:

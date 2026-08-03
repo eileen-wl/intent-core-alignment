@@ -16,6 +16,8 @@ import {
   listCoreAnchorRevisions,
   rejectCoreAnchorRevision,
   updateCoreAnchorDraft,
+  generateIntentDecomposition,
+  generateContextReconstruction,
 } from "@/features/vfx/api";
 
 /** Server-authoritative Core Anchor mutations for the VFX Intent
@@ -46,6 +48,10 @@ export interface IntentActionError {
 
 export type IntentActionResult =
   | { ok: true; revision: CoreAnchorRevisionRead }
+  | { ok: false; error: IntentActionError };
+
+export type AgentGenerationResult =
+  | { ok: true }
   | { ok: false; error: IntentActionError };
 
 const FORBIDDEN_ERROR: IntentActionError = {
@@ -99,6 +105,34 @@ function revalidateIntentAndOverview(shotId: string, alsoInbox: boolean): void {
   revalidatePath(`/vfx/shots/${shotId}`);
   if (alsoInbox) {
     revalidatePath("/vfx");
+  }
+}
+
+export async function generateIntentDecompositionAction(
+  shotId: string,
+): Promise<AgentGenerationResult> {
+  const identity = await requireVfxIdentity();
+  if ("error" in identity) return { ok: false, error: identity.error };
+  try {
+    await generateIntentDecomposition(shotId, actorHeaders(identity));
+    revalidatePath(`/vfx/shots/${shotId}/intent`);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: mapThrownError(error) };
+  }
+}
+
+export async function generateContextReconstructionAction(
+  shotId: string,
+): Promise<AgentGenerationResult> {
+  const identity = await requireVfxIdentity();
+  if ("error" in identity) return { ok: false, error: identity.error };
+  try {
+    await generateContextReconstruction(shotId, actorHeaders(identity));
+    revalidatePath(`/vfx/shots/${shotId}/intent`);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: mapThrownError(error) };
   }
 }
 

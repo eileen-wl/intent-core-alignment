@@ -4,3 +4,4 @@ export * from "./authority";
 export * from "./evidence";
 export * from "./ftrack";
 export * from "./version-media";
+export * from "./agent-contribution/AgentContributionPanel";

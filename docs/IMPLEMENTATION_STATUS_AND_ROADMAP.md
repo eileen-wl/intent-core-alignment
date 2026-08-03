@@ -500,6 +500,11 @@ Real read-only acceptance against the live workspace (post-fix, re-confirmed pos
 
 ## M. Approved Product-Improvement Phase (dated 2026-08-03)
 
+Package B implementation is now in progress on `feat/package-b-agent-journey-completion`. The
+shared Agent Contribution semantic layer and first formal-route wiring pass are implemented;
+focused frontend validation has passed and owner visual validation is pending. Package B is not
+complete; Packages C and D have not started.
+
 This additive section preserves the Step 0–9 record above as history while replacing its
 forward-looking surface-polish sequence with the approved four-package product-improvement phase.
 
