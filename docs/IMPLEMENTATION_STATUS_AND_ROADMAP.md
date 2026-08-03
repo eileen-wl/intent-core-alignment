@@ -495,3 +495,26 @@ Real read-only acceptance against the live workspace (post-fix, re-confirmed pos
 **Step 9B (as a whole) is complete.** All four sub-steps — 9B-1 (Role-aware Working Direction), 9B-2 (Evidence/Agent/Human layering), 9B-3 (Department Execution Overview), and 9B-4 (real ftrack media context) — have each independently completed implementation, automated validation, and owner visual validation. Step 9B-4 additionally completed a real-workspace security incident, fix, owner-performed credential rotation, and post-rotation re-verification before being marked complete. **Step 9C (design-system visual unification) has not started**, nor have Step 9D–9F. **Step 9C is the next approved activity.**
 
 **Non-blocking Step 9C/9D presentation-comprehension item, recorded for the later visual-unification pass, not fixed here:** on the VFX Versions page, the Shot context header may display the current Shot Version (e.g. "VERSION bc0040_comp_v002 (v2)") while the user has separately selected a different Version in the Version list below (e.g. "bc0040_layout_v002 (v2)"). The selected-Version detail panel, thumbnail, metadata, and Review Notes all update correctly on selection — this is **not** a Step 9B-4 media synchronization defect, confirmed by the owner's own live Version-switch check above. A later presentation pass should clarify the distinction between the Shot's own current Version and the Version currently being browsed — for example by renaming the header to "Current Shot Version" or otherwise making the browsing context more explicit. Not implemented in this closeout.
+
+---
+
+## M. Approved Product-Improvement Phase (dated 2026-08-03)
+
+This additive section preserves the Step 0–9 record above as history while replacing its
+forward-looking surface-polish sequence with the approved four-package product-improvement phase.
+
+- **Step 9B remains complete.** Its implementation and validation record is unchanged.
+- The previous standalone Step 9C/9D surface-polish sequence is superseded and absorbed into the
+  four packages below; it is no longer the active delivery sequence.
+- The approved source of truth for this phase is
+  `docs/product-improvement/00_ICAS_PRODUCT_IMPROVEMENT_BASELINE.md`.
+
+| Package | Scope | Current status |
+|---|---|---|
+| **Package A — Anchor-first experience** | Persistent, role-appropriate Anchor context and Intent Signal orientation across the current role-aware journey | **Next approved implementation package; not started** |
+| **Package B — Visible Agent journey completion** | Discoverable Agent input → output → human-authority chains on current role-aware routes | **Not started** |
+| **Package C — Coherent Golden Demo scenario** | Resettable/loadable three-department journey with separated Demo, live ftrack, and development-fixture data worlds | **Not started** |
+| **Package D — UX and visual convergence** | Journey, terminology, navigation, hierarchy, usability, and visual convergence after the product structure is coherent | **Not started** |
+
+This documentation bootstrap establishes the approved baseline only. It includes no application,
+data, schema, permission, Agent, or ftrack change, and it does not start Package A.
