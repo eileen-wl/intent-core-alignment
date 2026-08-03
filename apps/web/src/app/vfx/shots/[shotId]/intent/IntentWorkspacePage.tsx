@@ -20,7 +20,10 @@ import { IntentInitialEmptyState } from "./IntentInitialEmptyState";
 import { ReturnToShotOverviewLink } from "./ReturnToShotOverviewLink";
 import { StartDraftButton } from "./StartDraftButton";
 import { GenerateIntentCapabilityButton } from "./GenerateIntentCapabilityButton";
-import { generateContextReconstructionAction, generateIntentDecompositionAction } from "@/features/vfx/intent-workspace/actions";
+import {
+  generateContextReconstructionAction,
+  generateIntentDecompositionAction,
+} from "@/features/vfx/intent-workspace/actions";
 import styles from "./IntentWorkspacePage.module.css";
 
 /** `/vfx/shots/:shotId/intent` -- the VFX Intent Workspace (Step 7C-2;
@@ -75,37 +78,99 @@ export function IntentWorkspacePage({
             <AgentContributionPanel
               agent="Core Agent"
               capability="Intent Decomposition"
-              state={data.evidenceData?.decompositions.length ? "completed" : "not_ready"}
+              state={
+                data.evidenceData?.decompositions.length
+                  ? "completed"
+                  : "not_ready"
+              }
               generatedAt={data.evidenceData?.decompositions[0]?.created_at}
               inputs={["Intent Brief and Shot context"]}
-              readiness={[{ label: "Intent evidence available", available: Boolean(data.item) }]}
+              readiness={[
+                {
+                  label: "Intent evidence available",
+                  available: Boolean(data.item),
+                },
+              ]}
               output={
                 data.evidenceData?.decompositions[0] ? (
                   <>
-                    <p>{data.evidenceData.decompositions[0].core_intent_summary}</p>
-                    <p>{data.evidenceData.decompositions[0].anchor_relevant_content}</p>
-                    {data.evidenceData.decompositions[0].uncertainties.length > 0 && (
-                      <p>Evidence gaps: {data.evidenceData.decompositions[0].uncertainties.join("; ")}</p>
+                    <p>
+                      {data.evidenceData.decompositions[0].core_intent_summary}
+                    </p>
+                    <p>
+                      {
+                        data.evidenceData.decompositions[0]
+                          .anchor_relevant_content
+                      }
+                    </p>
+                    {data.evidenceData.decompositions[0].uncertainties.length >
+                      0 && (
+                      <p>
+                        Evidence gaps:{" "}
+                        {data.evidenceData.decompositions[0].uncertainties.join(
+                          "; ",
+                        )}
+                      </p>
                     )}
                   </>
-                ) : <p>No decomposition has been generated for this Shot yet.</p>
+                ) : (
+                  <p>No decomposition has been generated for this Shot yet.</p>
+                )
               }
               authority="Advisory only; the VFX Supervisor decides what belongs in the editable Core Anchor Draft."
-              nextAction={data.evidenceData?.decompositions.length ? "Use the decomposition in the editable Core Anchor Draft." : <GenerateIntentCapabilityButton label="Generate decomposition" action={() => generateIntentDecompositionAction(shotId)} />}
+              nextAction={
+                data.evidenceData?.decompositions.length ? (
+                  "Use the decomposition in the editable Core Anchor Draft."
+                ) : (
+                  <GenerateIntentCapabilityButton
+                    label="Generate decomposition"
+                    action={generateIntentDecompositionAction.bind(
+                      null,
+                      shotId,
+                    )}
+                  />
+                )
+              }
             />
             <AgentContributionPanel
               agent="Core Agent"
               capability="Context Reconstruction"
-              state={data.evidenceData?.reconstructions.length ? "completed" : "not_ready"}
+              state={
+                data.evidenceData?.reconstructions.length
+                  ? "completed"
+                  : "not_ready"
+              }
               generatedAt={data.evidenceData?.reconstructions[0]?.created_at}
               inputs={["Historical and current Shot context"]}
               output={
                 data.evidenceData?.reconstructions[0] ? (
-                  <p>{data.evidenceData.reconstructions[0].reconstructed_context.context_summary}</p>
-                ) : <p>No context reconstruction has been generated for this Shot yet.</p>
+                  <p>
+                    {
+                      data.evidenceData.reconstructions[0].reconstructed_context
+                        .context_summary
+                    }
+                  </p>
+                ) : (
+                  <p>
+                    No context reconstruction has been generated for this Shot
+                    yet.
+                  </p>
+                )
               }
               authority="Advisory context summary; it cannot establish or confirm a Core Anchor."
-              nextAction={data.evidenceData?.reconstructions.length ? "Use the reconstructed context to review the Draft and unresolved questions." : <GenerateIntentCapabilityButton label="Generate context reconstruction" action={() => generateContextReconstructionAction(shotId)} />}
+              nextAction={
+                data.evidenceData?.reconstructions.length ? (
+                  "Use the reconstructed context to review the Draft and unresolved questions."
+                ) : (
+                  <GenerateIntentCapabilityButton
+                    label="Generate context reconstruction"
+                    action={generateContextReconstructionAction.bind(
+                      null,
+                      shotId,
+                    )}
+                  />
+                )
+              }
             />
           </div>
 
