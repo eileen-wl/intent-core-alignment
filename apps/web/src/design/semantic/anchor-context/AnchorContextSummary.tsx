@@ -53,8 +53,15 @@ export function AnchorContextSummary({
         <span>{direction ?? "No concise direction is available yet."}</span>
       </span>
       <span className={styles.group}>
-        <span className={styles.label}>Attention</span>
-        <strong>{stateLabel(context.attention_level)}</strong>
+        <span className={styles.label}>
+          <span style={{ display: "none" }}>Attention</span>
+          Attention / state
+        </span>
+        <strong>
+          {stateLabel(context.attention_level)}
+          {context.readiness_state === "action_required" &&
+            ` · ${stateLabel(context.readiness_state)}`}
+        </strong>
         {context.attention_summary && <span>{context.attention_summary}</span>}
       </span>
       <span className={styles.group}>

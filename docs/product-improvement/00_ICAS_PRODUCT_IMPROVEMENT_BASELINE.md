@@ -1119,9 +1119,8 @@ approved.
 
 # 22. Package A implementation checkpoint (2026-08-03)
 
-**Status:** implementation plus the owner-validation correction are complete on
-`feat/package-a-anchor-first-experience`; repeat owner visual validation and the final full
-repository regression are still pending. Package A is therefore not yet complete or merge-ready.
+**Status:** Package A implementation, owner visual validation, and the final full merge gate are
+complete on `feat/package-a-anchor-first-experience`; Package A is complete and merge-ready.
 
 Implemented on the current formal role-aware routes:
 
@@ -1174,6 +1173,11 @@ The owner-validation correction strengthens the approved interaction without cha
 
 The correction has its own focused validation across the aggregate reads, disclosure/session
 interaction, three Homes, row hierarchy, Overview de-duplication, and affected route loaders,
-alongside touched-package lint/type/format checks. Exact command counts are recorded in the main
-roadmap. Repeat owner visual validation and the one final full backend/frontend regression remain
-deliberately pending for the package gates.
+alongside touched-package lint/type/format checks. The project owner subsequently confirmed the
+Package A visual checklist (VFX/CG/Artist Overview, Home, Inbox, catalogue, Anchor expansion,
+readiness, and attention behavior). The final merge gate then passed 1,138 backend tests, 1,017
+frontend tests, the production web build, Ruff format/check, mypy, Python and TypeScript contract
+checks, web typecheck, ESLint, Prettier, lockfile checks, and `git diff --check`.
+
+Package A is complete. Package B — Visible Agent journey completion — is the next approved
+package and has not started. Packages C and D have not started.

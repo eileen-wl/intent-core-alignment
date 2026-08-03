@@ -530,13 +530,29 @@ ftrack call/write. Stored Execution-to-Core revision references are shown only w
 Draft is labelled Demo/fixture only if future persisted provenance can prove that source (today an
 unprovable source is `unknown`). Focused validation passed: 7 backend API/service tests, 52 Python
 contract-schema tests, 329 frontend tests, touched Python lint/type checks, generated-contract
-typecheck, web typecheck, and touched-file format/lint checks. Package A remains **in progress**, not
-complete: repeat owner visual validation and the final full repository regression are still
-required before merge. Package B has not started; Packages C and D remain deferred.
+ typecheck, web typecheck, and touched-file format/lint checks. Package A is **complete**: owner
+ visual validation and the final full repository regression and production build passed. Package B
+ has not started and is the next approved package; Packages C and D have not started.
 
 Owner-correction focused validation passed separately: 10 Anchor Context backend API/service tests;
 53 Python contract-schema tests; 370 unique frontend tests across 47 affected semantic, Home,
 Inbox/catalogue, route-loader, and object-workspace test files; Ruff format/check for touched Python;
 mypy for the contracts and API packages; generated-contract and web TypeScript checks; touched-file
 ESLint/Prettier; and `git diff --check`. The complete repository pytest/Vitest regression and
-production build were intentionally not run and remain part of the post-owner-visual merge gate.
+ production build were intentionally not run and remained part of the post-owner-visual merge gate.
+
+### Package A final merge gate (2026-08-03)
+
+Package A owner visual validation passed. The complete repository regression then passed: 53
+contract tests, 966 API tests, 36 worker tests, 81 ftrack-connector tests, and 2 infrastructure
+tests (1,138 backend tests total); 129 frontend test files (1,017 tests total); and the production
+web build (`next build`, 18 static pages generated). Ruff format/check, mypy for all four Python
+projects, Python and TypeScript contract checks, web TypeScript typecheck, ESLint, Prettier,
+`uv lock --check`, frozen pnpm lockfile installation, and `git diff --check` also passed. One
+shared Anchor summary label regression found by the full frontend suite was restored to the
+existing `Attention / state` contract before the passing rerun; no authority or product boundary
+changed.
+
+Package A is complete. Package B is the next approved package and has not started. Packages C and D
+have not started. This closeout was recorded on `feat/package-a-anchor-first-experience`; no push
+was performed.
