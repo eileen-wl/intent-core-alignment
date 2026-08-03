@@ -36,6 +36,12 @@ export function TaskOverviewPage({
   unavailable: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
+  const showPageSpecificFocus =
+    !anchorContext ||
+    (data !== null &&
+      data.item.current_focus.focus_type !== "none" &&
+      data.item.current_focus.title !== anchorContext.next_action.title);
+
   const guidancePrerequisites: string[] = [];
   if (!data?.item.latest_version_id) {
     guidancePrerequisites.push("A Production Version is required.");
@@ -67,7 +73,7 @@ export function TaskOverviewPage({
     >
       {data && (
         <>
-          {!anchorContext && (
+          {showPageSpecificFocus && (
             <TaskCurrentFocusPanel focus={data.item.current_focus} />
           )}
 

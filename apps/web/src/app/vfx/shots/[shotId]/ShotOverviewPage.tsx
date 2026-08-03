@@ -48,6 +48,11 @@ export function ShotOverviewPage({
   departmentExecutionOverview?: DepartmentExecutionOverviewRead | null;
   onExitRole: () => void | Promise<void>;
 }) {
+  const showPageSpecificFocus =
+    !anchorContext ||
+    (item?.current_focus.focus_type !== "none" &&
+      item?.current_focus.title !== anchorContext.next_action.title);
+
   return (
     <VfxShotWorkspaceFrame
       item={item}
@@ -57,7 +62,9 @@ export function ShotOverviewPage({
     >
       {item && (
         <>
-          {!anchorContext && <CurrentFocusPanel focus={item.current_focus} />}
+          {showPageSpecificFocus && (
+            <CurrentFocusPanel focus={item.current_focus} />
+          )}
 
           <NextFocusPanel items={item.next_candidates ?? []} />
 

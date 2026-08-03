@@ -18,7 +18,10 @@
 }
 .summary {
   display: grid;
-  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto minmax(0, auto);
+  grid-template-columns: minmax(0, 1fr) minmax(12rem, 18rem);
+  grid-template-areas:
+    "authority controls"
+    "direction controls";
   gap: var(--space-4);
   align-items: center;
   padding: var(--space-3) var(--space-4);
@@ -34,6 +37,14 @@
 .artistChain > div {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+.authorityGroup,
+.chain,
+.artistChain {
+  grid-area: authority;
+}
+.direction {
+  grid-area: direction;
 }
 .authorityGroup small,
 .expanded small {
@@ -59,7 +70,7 @@
 }
 .artistChain {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
   min-width: 0;
 }
 .chainArrow {
@@ -74,6 +85,18 @@
   flex-wrap: wrap;
   gap: var(--space-2);
   justify-content: flex-end;
+}
+.controls {
+  grid-area: controls;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  min-width: 0;
+}
+.controls .statuses {
+  width: 100%;
 }
 .disclosureButton {
   display: inline-flex;
@@ -139,7 +162,11 @@
     position: static;
   }
   .summary {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "authority"
+      "direction"
+      "controls";
   }
   .statuses {
     justify-content: flex-start;

@@ -185,53 +185,57 @@ export function AnchorContextLayer({
           <AuthorityChain context={context} />
           <div className={styles.direction}>
             <span className={styles.eyebrow}>Current direction</span>
-            <span>{direction ?? "No concise direction is available yet."}</span>
-          </div>
-          <div className={styles.statuses}>
-            {execution && (
-              <StatusBadge
-                status={
-                  execution.context_state === "outdated"
-                    ? "attention"
-                    : execution.context_state === "current"
-                      ? "confirmed"
-                      : "unavailable"
-                }
-                label={contextStateLabel(execution.context_state)}
-              />
-            )}
-            <StatusBadge
-              status={attentionTone(context.attention.level)}
-              label={ATTENTION_LABEL[context.attention.level]}
-            />
-            {context.role === "artist" && (
-              <StatusBadge
-                status={
-                  context.guidance_state === "outdated"
-                    ? "attention"
-                    : context.guidance_state === "current"
-                      ? "confirmed"
-                      : "unavailable"
-                }
-                label={GUIDANCE_LABEL[context.guidance_state]}
-              />
-            )}
-            {upstream && <StatusBadge status="attention" label={upstream} />}
-          </div>
-          <button
-            type="button"
-            className={styles.disclosureButton}
-            aria-expanded={expanded}
-            aria-controls={contentId}
-            onClick={toggleExpanded}
-          >
-            <span>
-              {expanded ? "Collapse anchor context" : "Expand anchor context"}
+            <span title={direction ?? undefined}>
+              {direction ?? "No concise direction is available yet."}
             </span>
-            <span className={styles.chevron} aria-hidden="true">
-              ⌄
-            </span>
-          </button>
+          </div>
+          <div className={styles.controls}>
+            <div className={styles.statuses}>
+              {execution && (
+                <StatusBadge
+                  status={
+                    execution.context_state === "outdated"
+                      ? "attention"
+                      : execution.context_state === "current"
+                        ? "confirmed"
+                        : "unavailable"
+                  }
+                  label={contextStateLabel(execution.context_state)}
+                />
+              )}
+              <StatusBadge
+                status={attentionTone(context.attention.level)}
+                label={ATTENTION_LABEL[context.attention.level]}
+              />
+              {context.role === "artist" && (
+                <StatusBadge
+                  status={
+                    context.guidance_state === "outdated"
+                      ? "attention"
+                      : context.guidance_state === "current"
+                        ? "confirmed"
+                        : "unavailable"
+                  }
+                  label={GUIDANCE_LABEL[context.guidance_state]}
+                />
+              )}
+              {upstream && <StatusBadge status="attention" label={upstream} />}
+            </div>
+            <button
+              type="button"
+              className={styles.disclosureButton}
+              aria-expanded={expanded}
+              aria-controls={contentId}
+              onClick={toggleExpanded}
+            >
+              <span>
+                {expanded ? "Collapse anchor context" : "Expand anchor context"}
+              </span>
+              <span className={styles.chevron} aria-hidden="true">
+                ⌄
+              </span>
+            </button>
+          </div>
         </div>
 
         {expanded && (

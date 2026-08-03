@@ -1,7 +1,14 @@
 import Link from "next/link";
 import type { AnchorContextRead } from "@intent-core/contracts";
 
-import { DetailedContext, Divider, WorkingDirectionSection } from "@/design";
+import {
+  DetailedContext,
+  Divider,
+  Panel,
+  SectionHeader,
+  StatusBadge,
+  WorkingDirectionSection,
+} from "@/design";
 import type { TaskOverviewData } from "@/features/cg/task-overview/data";
 import { versionDisplayText } from "../../cgWording";
 import { TaskCurrentFocusPanel } from "./TaskCurrentFocusPanel";
@@ -30,6 +37,12 @@ export function TaskOverviewPage({
   unavailable: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
+  const showPageSpecificFocus =
+    !anchorContext ||
+    (data !== null &&
+      data.item.current_focus.focus_type !== "none" &&
+      data.item.current_focus.title !== anchorContext.next_action.title);
+
   return (
     <CgTaskWorkspaceFrame
       item={data?.item ?? null}
@@ -40,13 +53,55 @@ export function TaskOverviewPage({
     >
       {data && (
         <>
-          {!anchorContext && (
+          {showPageSpecificFocus && (
             <TaskCurrentFocusPanel focus={data.item.current_focus} />
           )}
 
           {!anchorContext && (
             <WorkingDirectionSection section={data.workingDirection} />
           )}
+
+          <SectionHeader
+            title="Execution operations"
+            description="Department production context remains available below the shared Anchor Context."
+          />
+          <Panel tone="elevated">
+            <StatusBadge
+              status={
+                data.confirmedExecutionAnchorRevision
+                  ? "confirmed"
+                  : "attention"
+              }
+              label={
+                data.confirmedExecutionAnchorRevision
+                  ? "Execution Anchor confirmed"
+                  : "Execution Anchor not confirmed"
+              }
+            />
+            <dl>
+              <dt>Production-ready criteria</dt>
+              <dd>
+                {data.confirmedExecutionAnchorRevision
+                  ?.production_ready_criteria ??
+                  "No confirmed Execution Anchor production-ready criteria are recorded yet."}
+              </dd>
+              <dt>Technical boundaries</dt>
+              <dd>
+                {data.confirmedExecutionAnchorRevision?.technical_boundaries ??
+                  "Execution translation is not available until the CG Supervisor confirms an Execution Anchor."}
+              </dd>
+              <dt>Escalation conditions</dt>
+              <dd>
+                {data.confirmedExecutionAnchorRevision?.escalation_conditions ??
+                  "No escalation conditions are recorded."}
+              </dd>
+            </dl>
+            {!data.confirmedExecutionAnchorRevision && (
+              <Link href={`/cg/tasks/${taskId}/execution`}>
+                Establish the Execution Anchor →
+              </Link>
+            )}
+          </Panel>
 
           <Divider />
 

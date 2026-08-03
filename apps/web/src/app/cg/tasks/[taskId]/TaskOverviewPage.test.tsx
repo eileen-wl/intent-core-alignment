@@ -280,6 +280,28 @@ describe("TaskOverviewPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("keeps CG operational context below the Anchor briefing when execution is not confirmed", () => {
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data()}
+        anchorContext={cgAnchorContext()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Execution operations")).toBeVisible();
+    expect(
+      screen.getByText(
+        "No confirmed Execution Anchor production-ready criteria are recorded yet.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Establish the Execution Anchor →" }),
+    ).toHaveAttribute("href", "/cg/tasks/t1/execution");
+    expect(screen.getByText("Detailed context")).toBeInTheDocument();
+  });
+
   it("uses the Anchor layer unavailable state instead of a second missing-direction summary", () => {
     render(
       <TaskOverviewPage
