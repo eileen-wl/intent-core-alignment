@@ -1,4 +1,5 @@
 import type {
+  AnchorContextRead,
   VfxCurrentFocusType,
   VfxInboxCurrentFocusRead,
   VfxInboxItemRead,
@@ -57,6 +58,55 @@ function buildItem(
     next_candidates: [],
     sort_rank: 3000000000000,
     ...overrides,
+  };
+}
+
+function vfxAnchorContext(): AnchorContextRead {
+  return {
+    role: "vfx_supervisor",
+    shot_id: "s1",
+    task_id: null,
+    core_anchor: {
+      exists: true,
+      lifecycle_state: "confirmed",
+      confirmed_revision_id: "ca1",
+      confirmed_revision_number: 1,
+      direction_summary: "A restrained dusk confrontation.",
+      must_preserve: "Keep the response internal.",
+      allowed_variation: "Local exposure may vary.",
+      confirmed_by_human_role: "vfx_supervisor",
+      confirmed_by_actor_id: "vfx-1",
+      link_target: "/vfx/shots/s1/intent",
+      newer_draft_exists: true,
+      pending_human_gate_exists: true,
+      draft_revision_number: 2,
+    },
+    execution_anchor: null,
+    attention: {
+      level: "high",
+      summary: "The draft needs VFX confirmation.",
+      review_requirement: "Human VFX review is required.",
+      source_assessment_id: null,
+      source_signal_id: null,
+      assessed_at: null,
+      link_target: "/vfx/shots/s1/alignment",
+    },
+    current_version: {
+      version_id: "v1",
+      name: "SH010_v001",
+      version_number: 1,
+      link_target: "/vfx/shots/s1/versions",
+    },
+    guidance_state: "unavailable",
+    open_vfx_escalation: false,
+    next_action: {
+      title: "Core Anchor draft awaiting your confirmation",
+      why_now: "A proposed revision is ready for VFX review.",
+      downstream_effect: "Confirmation will update department direction.",
+      target_route: "/vfx/shots/s1/intent",
+      action_label: "Review and confirm",
+      executable: true,
+    },
   };
 }
 
@@ -138,9 +188,9 @@ describe("ShotOverviewPage -- Step 9B-1 Current Creative Direction", () => {
 });
 
 describe("ShotOverviewPage", () => {
-  it("shows an honest not-found/unavailable state when the Shot could not be resolved", () => {
+  it("shows an honest not-found state when the Shot could not be resolved", () => {
     render(<ShotOverviewPage item={null} onExitRole={vi.fn()} />);
-    expect(screen.getByText("This Shot is unavailable")).toBeVisible();
+    expect(screen.getByText("This Shot could not be found")).toBeVisible();
   });
 
   it("renders the production-context header with independent Task/Version facts", () => {
@@ -232,6 +282,29 @@ describe("ShotOverviewPage", () => {
     ).toHaveAttribute("href", "/vfx/shots/s1/intent");
   });
 
+  it("suppresses a duplicate Current Focus card when expanded Anchor Context represents it", () => {
+    const title = "Core Anchor draft awaiting your confirmation";
+    render(
+      <ShotOverviewPage
+        item={buildItem({
+          current_focus: focus("core_anchor_gate_pending", {
+            title,
+            explanation: "A proposed revision is ready for VFX review.",
+            primary_action_label: "Review and confirm",
+          }),
+        })}
+        anchorContext={vfxAnchorContext()}
+        onExitRole={vi.fn()}
+      />,
+    );
+
+    expect(screen.getAllByText(title)).toHaveLength(1);
+    expect(screen.queryByText("Current focus")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Review and confirm/ }),
+    ).toHaveAttribute("href", "/vfx/shots/s1/intent");
+  });
+
   it("does not duplicate the Signal message when Current focus is alignment-driven", () => {
     const item = buildItem({
       current_focus: focus("alignment_not_followed_by_anchor_action", {
@@ -255,15 +328,17 @@ describe("ShotOverviewPage", () => {
     expect(screen.getByText("Latest assessment")).toBeVisible();
   });
 
-  it("shows an honest confirmed Core Anchor summary, present but collapsed by default under Detailed context", async () => {
+  it("does not duplicate the confirmed Core Anchor inside Detailed context", async () => {
     render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
     const summary = screen.getByText("Detailed context");
     expect(summary.closest("details")).not.toHaveAttribute("open");
     expect(
-      screen.getByText("A restrained dusk confrontation."),
-    ).toBeInTheDocument();
+      screen.queryByText("A restrained dusk confrontation."),
+    ).not.toBeInTheDocument();
     await userEvent.click(summary);
-    expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
+    expect(
+      screen.queryByText("A restrained dusk confrontation."),
+    ).not.toBeInTheDocument();
   });
 
   it("does not show full Evidence, three role perspectives, or integration metadata", () => {

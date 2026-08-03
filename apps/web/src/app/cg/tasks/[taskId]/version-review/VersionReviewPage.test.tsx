@@ -149,9 +149,7 @@ describe("VersionReviewPage", () => {
       />,
     );
     expect(
-      screen.getByText(
-        "No Production Versions have been recorded for this Task yet.",
-      ),
+      screen.getByText("No Production Version is available"),
     ).toBeVisible();
   });
 

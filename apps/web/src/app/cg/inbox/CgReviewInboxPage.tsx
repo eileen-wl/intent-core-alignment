@@ -1,4 +1,7 @@
-import type { CgInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextSummaryRead,
+  CgInboxRead,
+} from "@intent-core/contracts";
 import Link from "next/link";
 
 import {
@@ -23,9 +26,11 @@ import { CgTaskWorkItemRow } from "../CgTaskWorkItemRow";
  * appears in a Task's breadcrumb. */
 export function CgReviewInboxPage({
   inbox,
+  anchorContexts = {},
   onExitRole,
 }: {
   inbox: CgInboxRead | null;
+  anchorContexts?: Record<string, AnchorContextSummaryRead | null>;
   onExitRole: () => void | Promise<void>;
 }) {
   const workItems = inbox ? adaptCgCurrentFocusToWorkItems(inbox.items) : null;
@@ -61,7 +66,10 @@ export function CgReviewInboxPage({
           <div role="list">
             {workItems.map((item) => (
               <div role="listitem" key={item.id}>
-                <CgTaskWorkItemRow item={item} />
+                <CgTaskWorkItemRow
+                  item={item}
+                  anchorContext={anchorContexts[item.task.id]}
+                />
               </div>
             ))}
           </div>

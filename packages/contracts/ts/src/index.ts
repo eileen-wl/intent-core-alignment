@@ -107,6 +107,16 @@ export type RoleCoverage = Schemas["RoleCoverage"];
 export type IntentSignalOutput = Schemas["IntentSignalOutput"];
 export type IntentSignalRead = Schemas["IntentSignalRead"];
 
+export type CoreAnchorContextRead = Schemas["CoreAnchorContextRead"];
+export type ExecutionAnchorContextRead = Schemas["ExecutionAnchorContextRead"];
+export type AnchorAttentionContextRead = Schemas["AnchorAttentionContextRead"];
+export type AnchorVersionContextRead = Schemas["AnchorVersionContextRead"];
+export type AnchorNextActionRead = Schemas["AnchorNextActionRead"];
+export type AnchorContextRead = Schemas["AnchorContextRead"];
+export type AnchorContextSummaryRead = Schemas["AnchorContextSummaryRead"];
+export type AnchorContextSummaryListRead =
+  Schemas["AnchorContextSummaryListRead"];
+
 export type SyncCursorRead = Schemas["SyncCursorRead"];
 export type SyncCursorUpsert = Schemas["SyncCursorUpsert"];
 

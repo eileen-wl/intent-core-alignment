@@ -1,4 +1,6 @@
 import type {
+  AnchorContextRead,
+  AnchorContextSummaryListRead,
   AgentRunRead,
   AnchorConfirmRequest,
   AnchorRejectRequest,
@@ -314,6 +316,42 @@ export async function fetchVfxInboxItem(
     }
     throw error;
   }
+}
+
+/** Role-authorized, read-only Anchor Context projection for one Shot. */
+export function fetchVfxAnchorContext(
+  shotId: string,
+  actorHeaders: ActorHeaders,
+): Promise<AnchorContextRead> {
+  return vfxFetch<AnchorContextRead>(`/vfx/shots/${shotId}/anchor-context`, {
+    headers: actorHeaders,
+  });
+}
+
+export async function fetchVfxAnchorContextOrNull(
+  shotId: string,
+  actorHeaders: ActorHeaders,
+): Promise<AnchorContextRead | null> {
+  try {
+    return await fetchVfxAnchorContext(shotId, actorHeaders);
+  } catch {
+    return null;
+  }
+}
+
+/** One bounded, role-authorized compact read for multi-Shot surfaces. */
+export function fetchVfxAnchorContextSummaries(
+  actorHeaders: ActorHeaders,
+  options: { limit?: number; scope?: "all" | "triage" } = {},
+): Promise<AnchorContextSummaryListRead> {
+  const params = new URLSearchParams({
+    limit: String(options.limit ?? 200),
+    scope: options.scope ?? "all",
+  });
+  return vfxFetch<AnchorContextSummaryListRead>(
+    `/vfx/anchor-contexts?${params}`,
+    { headers: actorHeaders },
+  );
 }
 
 /** `GET /vfx/shots/{shot_id}/department-execution-overview` (Step 9B-3)

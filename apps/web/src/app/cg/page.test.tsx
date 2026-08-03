@@ -18,6 +18,11 @@ const { fetchCgInboxMock } = vi.hoisted(() => ({
 }));
 vi.mock("@/features/cg/api", () => ({
   fetchCgInbox: fetchCgInboxMock,
+  fetchCgAnchorContextSummaries: vi.fn(async () => ({
+    items: [],
+    total_count: 0,
+    limit: 5,
+  })),
 }));
 
 vi.mock("../demo/actions", () => ({

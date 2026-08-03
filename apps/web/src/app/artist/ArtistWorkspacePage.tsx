@@ -1,4 +1,5 @@
 import type {
+  AnchorContextSummaryListRead,
   ArtistInboxItemRead,
   ArtistInboxRead,
 } from "@intent-core/contracts";
@@ -17,12 +18,7 @@ import {
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
-import { adaptArtistCurrentFocusToWorkItems } from "@/features/artist/reviewInbox";
 import { ArtistTaskRow } from "./ArtistTaskRow";
-import { ArtistTaskWorkItemRow } from "./ArtistTaskWorkItemRow";
-
-const PRIORITY_ACTION_COUNT = 3;
-const IMPORTANT_TASK_COUNT = 3;
 
 /** `/artist` -- the Artist Workspace Home (Step 7C-5), mirroring
  * `app/cg/CgWorkspacePage.tsx`'s shape exactly: a small, real production
@@ -35,9 +31,13 @@ const IMPORTANT_TASK_COUNT = 3;
  * portfolio. */
 export function ArtistWorkspacePage({
   inbox,
+  readyTasks,
+  waitingTasks,
   onExitRole,
 }: {
   inbox: ArtistInboxRead | null;
+  readyTasks?: AnchorContextSummaryListRead | null;
+  waitingTasks?: AnchorContextSummaryListRead | null;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
@@ -65,13 +65,25 @@ export function ArtistWorkspacePage({
           description="Tasks will appear here once they exist."
         />
       ) : (
-        <WorkspaceHomeContent items={inbox.items} />
+        <WorkspaceHomeContent
+          items={inbox.items}
+          readyTasks={readyTasks}
+          waitingTasks={waitingTasks}
+        />
       )}
     </AppShell>
   );
 }
 
-function WorkspaceHomeContent({ items }: { items: ArtistInboxItemRead[] }) {
+function WorkspaceHomeContent({
+  items,
+  readyTasks,
+  waitingTasks,
+}: {
+  items: ArtistInboxItemRead[];
+  readyTasks?: AnchorContextSummaryListRead | null;
+  waitingTasks?: AnchorContextSummaryListRead | null;
+}) {
   const totalTasks = items.length;
   const requiringAttention = items.filter(
     (item) => item.current_focus.actionable,
@@ -87,78 +99,120 @@ function WorkspaceHomeContent({ items }: { items: ArtistInboxItemRead[] }) {
   const blockedTasks = items.filter(
     (item) => item.open_dependency_count > 0,
   ).length;
-
-  // Priority actions: the shared Artist Review work-item model, not a
-  // Task-led list -- `items` already arrives sorted by the backend's
-  // real priority ordering (`sort_rank`), and the adapter preserves that
-  // order, so the first N *are* the highest-priority work. The exact
-  // same ordering the Artist Review Inbox itself uses.
-  const priorityActions = adaptArtistCurrentFocusToWorkItems(items).slice(
-    0,
-    PRIORITY_ACTION_COUNT,
-  );
-
-  // Important Tasks: a small, clearly secondary, Task-led section --
-  // never the complete catalogue (that is `/artist/tasks`'s job).
-  const importantTasks = items.slice(0, IMPORTANT_TASK_COUNT);
+  const itemsById = new Map(items.map((item) => [item.task_id, item]));
+  const ready = (readyTasks?.items ?? []).flatMap((summary) => {
+    const item = summary.task_id ? itemsById.get(summary.task_id) : undefined;
+    return item ? [{ item, summary }] : [];
+  });
+  const waiting = (waitingTasks?.items ?? []).flatMap((summary) => {
+    const item = summary.task_id ? itemsById.get(summary.task_id) : undefined;
+    return item ? [{ item, summary }] : [];
+  });
+  const singleReady = readyTasks?.total_count === 1 ? ready[0] : undefined;
 
   return (
     <Stack gap={6}>
-      <Grid
-        minColumnWidth="13rem"
-        gap={4}
-        role="region"
-        aria-label="Production overview"
-      >
-        <SummaryCard label="Total Tasks" value={totalTasks} />
-        <SummaryCard
-          label="Requiring attention"
-          value={requiringAttention}
-          description="Tasks with an actionable Current focus"
-        />
-        <SummaryCard
-          label="New or updated guidance"
-          value={newOrUpdatedGuidance}
-        />
-        <SummaryCard
-          label="Feedback requiring response"
-          value={feedbackRequiringResponse}
-        />
-        <SummaryCard label="Blocked Tasks" value={blockedTasks} />
-      </Grid>
-
-      <div role="region" aria-label="Priority actions">
+      <div role="region" aria-label="Ready to work">
         <SectionHeader
-          title="Priority actions"
-          description="The work that most needs your attention or response."
-          actions={<Link href="/artist/inbox">Go to Review Inbox →</Link>}
+          title="Ready to work"
+          description="Tasks with confirmed Core and Execution direction, an executable next step, and no recorded blocker."
         />
-        {priorityActions.length === 0 ? (
-          <EmptyState title="No priority actions require your attention" />
+        {singleReady ? (
+          <>
+            <p>
+              <strong>{singleReady.item.task_name}</strong> ·{" "}
+              {singleReady.item.shot_name}
+            </p>
+            <Grid minColumnWidth="15rem" gap={4}>
+              <SummaryCard
+                label="Why"
+                value={
+                  singleReady.summary.core_direction ??
+                  "Confirmed Core direction is unavailable."
+                }
+                description={`Core Anchor R${singleReady.summary.core_anchor_revision_number}`}
+              />
+              <SummaryCard
+                label="How"
+                value={
+                  singleReady.summary.execution_direction ??
+                  "Confirmed execution direction is unavailable."
+                }
+                description={`Execution Anchor R${singleReady.summary.execution_anchor_revision_number}`}
+              />
+              <SummaryCard
+                label="What to do now"
+                value={singleReady.summary.next_action.title}
+                description={`Guidance: ${singleReady.summary.guidance_state.replaceAll("_", " ")}`}
+              />
+            </Grid>
+          </>
+        ) : ready.length === 0 ? (
+          <EmptyState
+            title="No Tasks are ready to work"
+            description="Tasks waiting for confirmed direction or unblocked Guidance are grouped below."
+          />
         ) : (
           <div role="list">
-            {priorityActions.map((item) => (
-              <div role="listitem" key={item.id}>
-                <ArtistTaskWorkItemRow item={item} />
+            {ready.map(({ item, summary }) => (
+              <div role="listitem" key={item.task_id}>
+                <ArtistTaskRow item={item} anchorContext={summary} />
               </div>
             ))}
           </div>
         )}
       </div>
 
-      <div role="region" aria-label="Important Tasks">
+      <div role="region" aria-label="Waiting for upstream direction">
         <SectionHeader
-          title="Important Tasks"
-          description="A small preview -- browse the complete catalogue in Tasks."
+          title="Waiting for upstream direction"
+          description="Tasks blocked by missing or outdated direction, Guidance, or Dependencies, with the owning next step made explicit."
+          actions={<Link href="/artist/inbox">Go to Review Inbox →</Link>}
+        />
+        {waiting.length === 0 ? (
+          <EmptyState title="No Tasks are waiting upstream" />
+        ) : (
+          <div role="list">
+            {waiting.map(({ item, summary }) => (
+              <div role="listitem" key={item.task_id}>
+                <ArtistTaskRow item={item} anchorContext={summary} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div role="region" aria-label="Task overview">
+        <SectionHeader
+          title="Task overview"
+          description="Scope-level counts follow the executable and waiting work groups."
           actions={<Link href="/artist/tasks">View all Tasks →</Link>}
         />
-        <div role="list">
-          {importantTasks.map((item) => (
-            <div role="listitem" key={item.task_id}>
-              <ArtistTaskRow item={item} />
-            </div>
-          ))}
-        </div>
+        <Grid minColumnWidth="13rem" gap={4}>
+          <SummaryCard label="Total Tasks" value={totalTasks} />
+          <SummaryCard
+            label="Ready to work"
+            value={readyTasks?.total_count ?? 0}
+          />
+          <SummaryCard
+            label="Waiting upstream"
+            value={waitingTasks?.total_count ?? 0}
+          />
+          <SummaryCard
+            label="Requiring attention"
+            value={requiringAttention}
+            description="Tasks with an actionable Current focus"
+          />
+          <SummaryCard
+            label="New or updated guidance"
+            value={newOrUpdatedGuidance}
+          />
+          <SummaryCard
+            label="Feedback requiring response"
+            value={feedbackRequiringResponse}
+          />
+          <SummaryCard label="Blocked Tasks" value={blockedTasks} />
+        </Grid>
       </div>
     </Stack>
   );

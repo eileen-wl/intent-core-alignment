@@ -1,30 +1,47 @@
-import type { CgInboxItemRead } from "@intent-core/contracts";
+import type {
+  AnchorContextSummaryRead,
+  CgInboxItemRead,
+} from "@intent-core/contracts";
 import Link from "next/link";
 
-import { FtrackLinkageBadge } from "@/design";
+import { AnchorContextSummary, FtrackLinkageBadge } from "@/design";
 import { versionDisplayText } from "./cgWording";
 import styles from "./CgTaskRow.module.css";
 
 /** One Workspace-Home "Important Tasks" row -- leads with the Task's
  * real Current-focus title (an action, not a status), matching VFX's
  * `InboxRow`. */
-export function CgTaskRow({ item }: { item: CgInboxItemRead }) {
+export function CgTaskRow({
+  item,
+  anchorContext,
+}: {
+  item: CgInboxItemRead;
+  anchorContext?: AnchorContextSummaryRead | null;
+}) {
   return (
-    <Link href={`/cg/tasks/${item.task_id}`} className={styles.row}>
+    <Link
+      href={
+        anchorContext?.next_action.target_route ?? `/cg/tasks/${item.task_id}`
+      }
+      className={styles.row}
+    >
       <span className={styles.main}>
         <span className={styles.taskLine}>
           <span className={styles.taskName}>{item.task_name}</span>
           <span className={styles.shotName}>{item.shot_name}</span>
         </span>
-        <span className={styles.focusTitle}>{item.current_focus.title}</span>
-        <span className={styles.secondaryLine}>
+        <span className={styles.focusTitle}>
+          {anchorContext?.next_action.title ?? item.current_focus.title}
+        </span>
+        <AnchorContextSummary context={anchorContext} />
+        <span className={styles.secondaryLine} aria-label="Production context">
           <span>{item.project_name}</span>
           <span>{versionDisplayText(item)}</span>
           <FtrackLinkageBadge source={item.task_source} />
         </span>
       </span>
       <span className={styles.open} aria-hidden="true">
-        Open →
+        {anchorContext?.next_action.action_label ?? "Open Task"} →
       </span>
     </Link>
   );

@@ -1,5 +1,7 @@
 import Link from "next/link";
+import type { AnchorContextSummaryRead } from "@intent-core/contracts";
 
+import { AnchorContextSummary } from "@/design";
 import type { ArtistReviewWorkItem } from "@/features/artist/reviewInbox";
 import styles from "./ArtistTaskWorkItemRow.module.css";
 
@@ -10,8 +12,10 @@ import styles from "./ArtistTaskWorkItemRow.module.css";
  * `app/cg/CgTaskWorkItemRow.tsx`. */
 export function ArtistTaskWorkItemRow({
   item,
+  anchorContext,
 }: {
   item: ArtistReviewWorkItem;
+  anchorContext?: AnchorContextSummaryRead | null;
 }) {
   return (
     <Link href={item.route} className={styles.row}>
@@ -19,14 +23,15 @@ export function ArtistTaskWorkItemRow({
         <span className={styles.category}>{item.category}</span>
         <span className={styles.title}>{item.title}</span>
         <span className={styles.explanation}>{item.explanation}</span>
-        <span className={styles.secondaryLine}>
+        <AnchorContextSummary context={anchorContext} />
+        <span className={styles.secondaryLine} aria-label="Production context">
           <span>{item.task.name}</span>
           <span>{item.shot.name}</span>
           <span>{item.project.name}</span>
         </span>
       </span>
       <span className={styles.open} aria-hidden="true">
-        Open →
+        {anchorContext?.next_action.action_label ?? "Review item"} →
       </span>
     </Link>
   );

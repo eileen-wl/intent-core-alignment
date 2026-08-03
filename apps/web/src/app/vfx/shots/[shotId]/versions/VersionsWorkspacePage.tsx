@@ -2,23 +2,18 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import type { AnchorContextRead } from "@intent-core/contracts";
 
 import {
-  AppShell,
-  Breadcrumbs,
-  ContextTabs,
   EmptyState,
-  ErrorState,
   FtrackLinkageBadge,
   MetadataRow,
   VersionMediaResolver,
 } from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import { getAuthorDisplayText } from "@/lib/authorProvenance";
 import type { VersionsWorkspaceData } from "@/features/vfx/versions-workspace/data";
 import { resolveVersionMediaAction } from "@/features/vfx/versions-workspace/actions";
-import { ProductionContextHeader } from "../../ProductionContextHeader";
+import { VfxShotWorkspaceFrame } from "../VfxShotWorkspaceFrame";
 import styles from "./VersionsWorkspacePage.module.css";
 
 /** `/vfx/shots/:shotId/versions` (Step 7C-3) -- the Shot's production-
@@ -32,11 +27,13 @@ import styles from "./VersionsWorkspacePage.module.css";
 export function VersionsWorkspacePage({
   shotId,
   data,
+  anchorContext,
   unavailable,
   onExitRole,
 }: {
   shotId: string;
   data: VersionsWorkspaceData | null;
+  anchorContext?: AnchorContextRead | null;
   unavailable: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
@@ -51,77 +48,20 @@ export function VersionsWorkspacePage({
     : null;
 
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.vfx_supervisor}
-      role={ROLE_LABEL.vfx_supervisor}
+    <VfxShotWorkspaceFrame
+      item={data?.item ?? null}
+      anchorContext={anchorContext}
+      activeTab="versions"
+      unavailable={unavailable}
       onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.vfx_supervisor}
-      currentPath="/vfx/shots"
     >
-      {unavailable || data === null ? (
+      {data && (
         <>
-          <Breadcrumbs
-            items={[
-              { label: "Shots", href: "/vfx/shots" },
-              { label: "Versions" },
-            ]}
-          />
-          <ErrorState
-            title={
-              unavailable
-                ? "This Shot is unavailable"
-                : "This Shot could not be found"
-            }
-            description={
-              unavailable
-                ? "The ICAS service could not be reached. Try refreshing the page."
-                : "This Shot does not exist, or its identifier is invalid."
-            }
-          />
-        </>
-      ) : (
-        <>
-          <Breadcrumbs
-            items={[
-              { label: data.item.project_name, href: "/vfx/shots" },
-              { label: data.item.shot_name },
-              { label: "Versions" },
-            ]}
-          />
-          <ProductionContextHeader item={data.item} />
-          <ContextTabs
-            activeTabId="versions"
-            tabs={[
-              {
-                id: "overview",
-                label: "Overview",
-                href: `/vfx/shots/${shotId}`,
-              },
-              {
-                id: "intent",
-                label: "Intent",
-                href: `/vfx/shots/${shotId}/intent`,
-              },
-              {
-                id: "versions",
-                label: "Versions",
-                href: `/vfx/shots/${shotId}/versions`,
-              },
-              {
-                id: "alignment",
-                label: "Alignment",
-                href: `/vfx/shots/${shotId}/alignment`,
-              },
-              {
-                id: "activity",
-                label: "Activity",
-                href: `/vfx/shots/${shotId}/activity`,
-              },
-            ]}
-          />
-
           {data.versions.length === 0 ? (
-            <EmptyState title="No Production Versions have been recorded for this Shot yet." />
+            <EmptyState
+              title="No Production Version is available"
+              description="A Production Version is required before Version review and cross-role assessment can run. Versions come from the production workflow; ICAS does not offer a fake local upload."
+            />
           ) : (
             <div className={styles.grid}>
               <div className={styles.listColumn}>
@@ -282,6 +222,6 @@ export function VersionsWorkspacePage({
           )}
         </>
       )}
-    </AppShell>
+    </VfxShotWorkspaceFrame>
   );
 }

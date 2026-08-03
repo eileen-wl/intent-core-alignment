@@ -2,27 +2,22 @@
 
 import Link from "next/link";
 import type {
+  AnchorContextRead,
   CoreAnchorRevisionRead,
   CrossRoleFinding,
   VersionRead,
 } from "@intent-core/contracts";
 
 import {
-  AppShell,
   AuthorityBoundary,
   AuthorityLabel,
-  Breadcrumbs,
-  ContextTabs,
   EmptyState,
-  ErrorState,
   EvidenceLayerSection,
   MetadataRow,
 } from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { humanRoleLabel } from "@/lib/humanRoleLabel";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import type { AlignmentWorkspaceData } from "@/features/vfx/alignment-workspace/data";
-import { ProductionContextHeader } from "../../ProductionContextHeader";
+import { VfxShotWorkspaceFrame } from "../VfxShotWorkspaceFrame";
 import { GenerateAssessmentButton } from "./GenerateAssessmentButton";
 import styles from "./AlignmentWorkspacePage.module.css";
 
@@ -90,11 +85,13 @@ function FindingGroup({
 export function AlignmentWorkspacePage({
   shotId,
   data,
+  anchorContext,
   unavailable,
   onExitRole,
 }: {
   shotId: string;
   data: AlignmentWorkspaceData | null;
+  anchorContext?: AnchorContextRead | null;
   unavailable: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
@@ -103,75 +100,15 @@ export function AlignmentWorkspacePage({
   const history = data ? data.assessments.slice(1) : [];
 
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.vfx_supervisor}
-      role={ROLE_LABEL.vfx_supervisor}
+    <VfxShotWorkspaceFrame
+      item={data?.item ?? null}
+      anchorContext={anchorContext}
+      activeTab="alignment"
+      unavailable={unavailable}
       onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.vfx_supervisor}
-      currentPath="/vfx/shots"
     >
-      {unavailable || data === null ? (
+      {data && (
         <>
-          <Breadcrumbs
-            items={[
-              { label: "Shots", href: "/vfx/shots" },
-              { label: "Alignment" },
-            ]}
-          />
-          <ErrorState
-            title={
-              unavailable
-                ? "This Shot is unavailable"
-                : "This Shot could not be found"
-            }
-            description={
-              unavailable
-                ? "The ICAS service could not be reached. Try refreshing the page."
-                : "This Shot does not exist, or its identifier is invalid."
-            }
-          />
-        </>
-      ) : (
-        <>
-          <Breadcrumbs
-            items={[
-              { label: data.item.project_name, href: "/vfx/shots" },
-              { label: data.item.shot_name },
-              { label: "Alignment" },
-            ]}
-          />
-          <ProductionContextHeader item={data.item} />
-          <ContextTabs
-            activeTabId="alignment"
-            tabs={[
-              {
-                id: "overview",
-                label: "Overview",
-                href: `/vfx/shots/${shotId}`,
-              },
-              {
-                id: "intent",
-                label: "Intent",
-                href: `/vfx/shots/${shotId}/intent`,
-              },
-              {
-                id: "versions",
-                label: "Versions",
-                href: `/vfx/shots/${shotId}/versions`,
-              },
-              {
-                id: "alignment",
-                label: "Alignment",
-                href: `/vfx/shots/${shotId}/alignment`,
-              },
-              {
-                id: "activity",
-                label: "Activity",
-                href: `/vfx/shots/${shotId}/activity`,
-              },
-            ]}
-          />
-
           <div className={styles.authorityLine}>
             <AuthorityBoundary
               tone="human"
@@ -198,7 +135,28 @@ export function AlignmentWorkspacePage({
                 }
               />
             ) : (
-              <EmptyState title="No Alignment Assessment has been recorded for this Shot yet." />
+              <EmptyState
+                title="Cross-role Assessment is not ready yet"
+                description={`Prerequisites: ${data.item.core_anchor_state === "confirmed" ? "✓ Confirmed Core Anchor" : "✕ Confirmed Core Anchor missing"}; ${data.item.relevant_version_id ? "✓ Production Version recorded" : "✕ No qualifying Production Version"}. ${data.item.current_focus.explanation}`}
+                action={
+                  data.item.current_focus.target_route !==
+                  `/vfx/shots/${shotId}` ? (
+                    <Link href={data.item.current_focus.target_route}>
+                      {data.item.current_focus.primary_action_label ??
+                        "Open next step"}{" "}
+                      →
+                    </Link>
+                  ) : data.item.relevant_version_id ? (
+                    <Link href={`/vfx/shots/${shotId}/versions`}>
+                      Review production evidence →
+                    </Link>
+                  ) : (
+                    <Link href={`/vfx/shots/${shotId}/versions`}>
+                      Open Versions →
+                    </Link>
+                  )
+                }
+              />
             )
           ) : (
             <>
@@ -360,6 +318,6 @@ export function AlignmentWorkspacePage({
           )}
         </>
       )}
-    </AppShell>
+    </VfxShotWorkspaceFrame>
   );
 }

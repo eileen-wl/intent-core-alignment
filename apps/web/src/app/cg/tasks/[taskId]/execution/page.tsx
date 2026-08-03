@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { loadExecutionWorkspaceData } from "@/features/cg/execution-workspace/data";
+import { fetchCgAnchorContextOrNull } from "@/features/cg/api";
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
 import { exitRoleView } from "../../../../demo/actions";
@@ -27,14 +28,16 @@ export default async function Page({
     if (identity === null) {
       redirect("/demo");
     }
-    const data = await loadExecutionWorkspaceData(
-      taskId,
-      actorHeaders(identity),
-    );
+    const headers = actorHeaders(identity);
+    const [data, anchorContext] = await Promise.all([
+      loadExecutionWorkspaceData(taskId, headers),
+      fetchCgAnchorContextOrNull(taskId, headers),
+    ]);
     return (
       <ExecutionPage
         taskId={taskId}
         data={data}
+        anchorContext={anchorContext}
         unavailable={false}
         onExitRole={exitRoleView}
       />
@@ -44,6 +47,7 @@ export default async function Page({
       <ExecutionPage
         taskId={taskId}
         data={null}
+        anchorContext={null}
         unavailable
         onExitRole={exitRoleView}
       />

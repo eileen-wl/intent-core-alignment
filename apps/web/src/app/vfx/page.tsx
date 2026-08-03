@@ -1,9 +1,14 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import type { VfxInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextSummaryListRead,
+  VfxInboxRead,
+} from "@intent-core/contracts";
 
-import { fetchVfxInbox } from "@/features/vfx/api";
-import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
+import { actorHeaders, resolveIdentity } from "@/features/session/identity";
+import {
+  fetchVfxAnchorContextSummaries,
+  fetchVfxInbox,
+} from "@/features/vfx/api";
 import { exitRoleView } from "../demo/actions";
 import { VfxWorkspacePage } from "./VfxWorkspacePage";
 
@@ -11,17 +16,30 @@ import { VfxWorkspacePage } from "./VfxWorkspacePage";
  * guard; this check is a defense-in-depth double check, not the
  * primary gate (brief §9). */
 export default async function Page() {
-  const store = await cookies();
-  if (store.get(DEMO_ROLE_COOKIE)?.value !== "vfx_supervisor") {
+  const identity = await resolveIdentity();
+  if (identity?.role !== "vfx_supervisor") {
     redirect("/demo");
   }
 
   let inbox: VfxInboxRead | null;
+  let anchorActions: AnchorContextSummaryListRead | null = null;
   try {
-    inbox = await fetchVfxInbox();
+    [inbox, anchorActions] = await Promise.all([
+      fetchVfxInbox(),
+      fetchVfxAnchorContextSummaries(actorHeaders(identity), {
+        limit: 5,
+        scope: "triage",
+      }),
+    ]);
   } catch {
     inbox = null;
   }
 
-  return <VfxWorkspacePage inbox={inbox} onExitRole={exitRoleView} />;
+  return (
+    <VfxWorkspacePage
+      inbox={inbox}
+      anchorActions={anchorActions}
+      onExitRole={exitRoleView}
+    />
+  );
 }

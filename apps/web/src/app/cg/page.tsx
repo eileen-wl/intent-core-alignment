@@ -1,9 +1,11 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import type { CgInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextSummaryListRead,
+  CgInboxRead,
+} from "@intent-core/contracts";
 
-import { fetchCgInbox } from "@/features/cg/api";
-import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
+import { fetchCgAnchorContextSummaries, fetchCgInbox } from "@/features/cg/api";
+import { actorHeaders, resolveIdentity } from "@/features/session/identity";
 import { exitRoleView } from "../demo/actions";
 import { CgWorkspacePage } from "./CgWorkspacePage";
 
@@ -11,17 +13,30 @@ import { CgWorkspacePage } from "./CgWorkspacePage";
  * guard; this check is a defense-in-depth double check, not the
  * primary gate, matching `app/vfx/page.tsx`'s identical pattern. */
 export default async function Page() {
-  const store = await cookies();
-  if (store.get(DEMO_ROLE_COOKIE)?.value !== "cg_supervisor") {
+  const identity = await resolveIdentity();
+  if (identity?.role !== "cg_supervisor") {
     redirect("/demo");
   }
 
   let inbox: CgInboxRead | null;
+  let anchorActions: AnchorContextSummaryListRead | null = null;
   try {
-    inbox = await fetchCgInbox();
+    [inbox, anchorActions] = await Promise.all([
+      fetchCgInbox(),
+      fetchCgAnchorContextSummaries(actorHeaders(identity), {
+        limit: 5,
+        scope: "triage",
+      }),
+    ]);
   } catch {
     inbox = null;
   }
 
-  return <CgWorkspacePage inbox={inbox} onExitRole={exitRoleView} />;
+  return (
+    <CgWorkspacePage
+      inbox={inbox}
+      anchorActions={anchorActions}
+      onExitRole={exitRoleView}
+    />
+  );
 }

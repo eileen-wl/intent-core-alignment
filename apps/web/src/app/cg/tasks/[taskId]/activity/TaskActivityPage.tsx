@@ -1,17 +1,12 @@
 import Link from "next/link";
-import type { TaskActivityEventType } from "@intent-core/contracts";
+import type {
+  AnchorContextRead,
+  TaskActivityEventType,
+} from "@intent-core/contracts";
 
-import {
-  AppShell,
-  Breadcrumbs,
-  ContextTabs,
-  EmptyState,
-  ErrorState,
-} from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
+import { EmptyState } from "@/design";
 import type { TaskActivityWorkspaceData } from "@/features/cg/activity-workspace/data";
-import { TaskContextHeader } from "../TaskContextHeader";
+import { CgTaskWorkspaceFrame } from "../CgTaskWorkspaceFrame";
 import styles from "./TaskActivityPage.module.css";
 
 const EVENT_TYPE_LABEL: Record<TaskActivityEventType, string> = {
@@ -34,87 +29,27 @@ const EVENT_TYPE_LABEL: Record<TaskActivityEventType, string> = {
  * newest-first) -- mirrors `app/vfx/shots/[shotId]/activity/ActivityWorkspacePage.tsx`'s
  * layout, including the right-aligned "Open ->" action on every row. */
 export function TaskActivityPage({
-  taskId,
   data,
+  anchorContext,
   unavailable,
   onExitRole,
 }: {
   taskId: string;
   data: TaskActivityWorkspaceData | null;
+  anchorContext?: AnchorContextRead | null;
   unavailable: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.cg_supervisor}
-      role={ROLE_LABEL.cg_supervisor}
+    <CgTaskWorkspaceFrame
+      item={data?.item ?? null}
+      anchorContext={anchorContext}
+      activeTab="activity"
+      unavailable={unavailable}
       onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.cg_supervisor}
-      currentPath="/cg/tasks"
     >
-      {unavailable || data === null ? (
+      {data && (
         <>
-          <Breadcrumbs
-            items={[
-              { label: "Tasks", href: "/cg/tasks" },
-              { label: "Activity" },
-            ]}
-          />
-          <ErrorState
-            title={
-              unavailable
-                ? "This Task is unavailable"
-                : "This Task could not be found"
-            }
-            description={
-              unavailable
-                ? "The ICAS service could not be reached. Try refreshing the page."
-                : "This Task does not exist, or its identifier is invalid."
-            }
-          />
-        </>
-      ) : (
-        <>
-          <Breadcrumbs
-            items={[
-              { label: data.item.project_name, href: "/cg/tasks" },
-              { label: data.item.shot_name },
-              { label: data.item.task_name },
-              { label: "Activity" },
-            ]}
-          />
-          <TaskContextHeader item={data.item} />
-          <ContextTabs
-            activeTabId="activity"
-            tabs={[
-              {
-                id: "overview",
-                label: "Overview",
-                href: `/cg/tasks/${taskId}`,
-              },
-              {
-                id: "execution",
-                label: "Execution",
-                href: `/cg/tasks/${taskId}/execution`,
-              },
-              {
-                id: "version-review",
-                label: "Version Review",
-                href: `/cg/tasks/${taskId}/version-review`,
-              },
-              {
-                id: "dependencies",
-                label: "Dependencies",
-                href: `/cg/tasks/${taskId}/dependencies`,
-              },
-              {
-                id: "activity",
-                label: "Activity",
-                href: `/cg/tasks/${taskId}/activity`,
-              },
-            ]}
-          />
-
           {data.activity.events.length === 0 ? (
             <EmptyState title="No recorded activity exists for this Task yet." />
           ) : (
@@ -146,6 +81,6 @@ export function TaskActivityPage({
           )}
         </>
       )}
-    </AppShell>
+    </CgTaskWorkspaceFrame>
   );
 }

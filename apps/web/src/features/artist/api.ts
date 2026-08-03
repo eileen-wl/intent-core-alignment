@@ -1,4 +1,6 @@
 import type {
+  AnchorContextRead,
+  AnchorContextSummaryListRead,
   ArtistAgentGuidanceRead,
   ArtistFeedbackHistoryRead,
   ArtistGuidanceGenerateRequest,
@@ -112,6 +114,46 @@ export function fetchArtistInboxItem(
   taskId: string,
 ): Promise<ArtistInboxItemRead | null> {
   return artistFetchOrNull<ArtistInboxItemRead>(`/artist/inbox/${taskId}`);
+}
+
+/** Role-authorized, read-only Anchor Context projection for one Task. */
+export function fetchArtistAnchorContext(
+  taskId: string,
+  actorHeaders: ActorHeaders,
+): Promise<AnchorContextRead> {
+  return artistFetch<AnchorContextRead>(
+    `/artist/tasks/${taskId}/anchor-context`,
+    { headers: actorHeaders },
+  );
+}
+
+export async function fetchArtistAnchorContextOrNull(
+  taskId: string,
+  actorHeaders: ActorHeaders,
+): Promise<AnchorContextRead | null> {
+  try {
+    return await fetchArtistAnchorContext(taskId, actorHeaders);
+  } catch {
+    return null;
+  }
+}
+
+/** One bounded, role-authorized compact read for multi-Task surfaces. */
+export function fetchArtistAnchorContextSummaries(
+  actorHeaders: ActorHeaders,
+  options: {
+    limit?: number;
+    scope?: "all" | "triage" | "ready" | "waiting";
+  } = {},
+): Promise<AnchorContextSummaryListRead> {
+  const params = new URLSearchParams({
+    limit: String(options.limit ?? 200),
+    scope: options.scope ?? "all",
+  });
+  return artistFetch<AnchorContextSummaryListRead>(
+    `/artist/anchor-contexts?${params}`,
+    { headers: actorHeaders },
+  );
 }
 
 export function getTask(taskId: string): Promise<TaskRead | null> {

@@ -1,9 +1,14 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import type { VfxInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextSummaryRead,
+  VfxInboxRead,
+} from "@intent-core/contracts";
 
-import { fetchVfxInbox } from "@/features/vfx/api";
-import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
+import { actorHeaders, resolveIdentity } from "@/features/session/identity";
+import {
+  fetchVfxAnchorContextSummaries,
+  fetchVfxInbox,
+} from "@/features/vfx/api";
 import { exitRoleView } from "../../demo/actions";
 import { ReviewInboxPage } from "./ReviewInboxPage";
 
@@ -11,17 +16,31 @@ import { ReviewInboxPage } from "./ReviewInboxPage";
  * guard; this check is a defense-in-depth double check, not the
  * primary gate. */
 export default async function Page() {
-  const store = await cookies();
-  if (store.get(DEMO_ROLE_COOKIE)?.value !== "vfx_supervisor") {
+  const identity = await resolveIdentity();
+  if (identity?.role !== "vfx_supervisor") {
     redirect("/");
   }
 
   let inbox: VfxInboxRead | null;
+  let anchorContexts: Record<string, AnchorContextSummaryRead | null> = {};
   try {
-    inbox = await fetchVfxInbox();
+    const [inboxResult, summaryResult] = await Promise.all([
+      fetchVfxInbox(),
+      fetchVfxAnchorContextSummaries(actorHeaders(identity)),
+    ]);
+    inbox = inboxResult;
+    anchorContexts = Object.fromEntries(
+      summaryResult.items.map((item) => [item.shot_id, item]),
+    );
   } catch {
     inbox = null;
   }
 
-  return <ReviewInboxPage inbox={inbox} onExitRole={exitRoleView} />;
+  return (
+    <ReviewInboxPage
+      inbox={inbox}
+      anchorContexts={anchorContexts}
+      onExitRole={exitRoleView}
+    />
+  );
 }

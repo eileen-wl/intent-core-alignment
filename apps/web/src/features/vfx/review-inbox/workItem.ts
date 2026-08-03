@@ -250,20 +250,25 @@ export function adaptVersionReviewWorkItems(
     const versionId = item.latest_version_without_review_id;
     const versionName = item.latest_version_without_review_name;
     if (!versionId || !versionName) continue;
+    const coreAnchorReady = item.core_anchor_state === "confirmed";
 
     workItems.push({
       id: `version_review:${versionId}`,
       sourceType: "version_review",
       sourceId: versionId,
-      category: "Version review",
-      title: "New Production Version awaiting review",
-      explanation: `No Review Notes have been recorded yet for "${versionName}"${
-        item.latest_version_without_review_number
-          ? ` (v${item.latest_version_without_review_number})`
-          : ""
-      }.`,
+      category: coreAnchorReady ? "Version review" : "Version review blocked",
+      title: coreAnchorReady
+        ? "New Production Version awaiting review"
+        : "Core Anchor required before Version review",
+      explanation: coreAnchorReady
+        ? `No Review Notes have been recorded yet for "${versionName}"${
+            item.latest_version_without_review_number
+              ? ` (v${item.latest_version_without_review_number})`
+              : ""
+          }.`
+        : `The Production Version "${versionName}" remains available, but review is blocked until the VFX Supervisor establishes the Core Anchor.`,
       sortRank: item.sort_rank,
-      actionLabel: "Review Version",
+      actionLabel: coreAnchorReady ? "Review Version" : "Open Intent",
       project: { id: item.project_id, name: item.project_name },
       shot: {
         id: item.shot_id,
@@ -276,7 +281,9 @@ export function adaptVersionReviewWorkItems(
         number: item.latest_version_without_review_number ?? null,
       },
       coreAnchorState: item.core_anchor_state,
-      route: `/vfx/shots/${item.shot_id}/versions`,
+      route: coreAnchorReady
+        ? `/vfx/shots/${item.shot_id}/versions`
+        : `/vfx/shots/${item.shot_id}/intent`,
     });
   }
 

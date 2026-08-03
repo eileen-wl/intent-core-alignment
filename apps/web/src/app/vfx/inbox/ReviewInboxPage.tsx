@@ -1,4 +1,7 @@
-import type { VfxInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextSummaryRead,
+  VfxInboxRead,
+} from "@intent-core/contracts";
 import Link from "next/link";
 
 import {
@@ -34,9 +37,11 @@ import { WorkItemRow } from "../WorkItemRow";
  * Inbox. */
 export function ReviewInboxPage({
   inbox,
+  anchorContexts = {},
   onExitRole,
 }: {
   inbox: VfxInboxRead | null;
+  anchorContexts?: Record<string, AnchorContextSummaryRead | null>;
   onExitRole: () => void | Promise<void>;
 }) {
   const workItems = inbox
@@ -78,7 +83,12 @@ export function ReviewInboxPage({
           <div role="list">
             {workItems.map((item) => (
               <div role="listitem" key={item.id}>
-                <WorkItemRow item={item} />
+                <WorkItemRow
+                  item={item}
+                  anchorContext={
+                    item.shot ? anchorContexts[item.shot.id] : null
+                  }
+                />
               </div>
             ))}
           </div>

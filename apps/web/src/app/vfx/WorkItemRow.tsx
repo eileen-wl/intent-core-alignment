@@ -1,6 +1,7 @@
 import Link from "next/link";
+import type { AnchorContextSummaryRead } from "@intent-core/contracts";
 
-import { FtrackLinkageBadge } from "@/design";
+import { AnchorContextSummary, FtrackLinkageBadge } from "@/design";
 import type { ReviewWorkItem } from "@/features/vfx/review-inbox/workItem";
 import { coreAnchorStateLabel } from "./vfxWording";
 import styles from "./WorkItemRow.module.css";
@@ -24,14 +25,21 @@ function versionText(item: ReviewWorkItem): string {
  * context (Shot, Project, Task, Version, Core Anchor state, ftrack
  * linkage). The Shot name is deliberately part of the secondary line,
  * never the row's primary heading. */
-export function WorkItemRow({ item }: { item: ReviewWorkItem }) {
+export function WorkItemRow({
+  item,
+  anchorContext,
+}: {
+  item: ReviewWorkItem;
+  anchorContext?: AnchorContextSummaryRead | null;
+}) {
   return (
     <Link href={item.route} className={styles.row}>
       <span className={styles.main}>
         <span className={styles.category}>{item.category}</span>
         <span className={styles.title}>{item.title}</span>
         <span className={styles.explanation}>{item.explanation}</span>
-        <span className={styles.secondaryLine}>
+        <AnchorContextSummary context={anchorContext} />
+        <span className={styles.secondaryLine} aria-label="Production context">
           {item.shot && <span>{item.shot.name}</span>}
           {item.project && <span>{item.project.name}</span>}
           <span>{taskText(item)}</span>
@@ -43,7 +51,10 @@ export function WorkItemRow({ item }: { item: ReviewWorkItem }) {
         </span>
       </span>
       <span className={styles.open} aria-hidden="true">
-        Open →
+        {anchorContext?.next_action.action_label ??
+          item.actionLabel ??
+          "Review item"}{" "}
+        →
       </span>
     </Link>
   );

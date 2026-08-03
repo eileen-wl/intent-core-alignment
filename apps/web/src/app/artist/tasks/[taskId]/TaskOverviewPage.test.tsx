@@ -1,4 +1,7 @@
-import type { ArtistInboxItemRead } from "@intent-core/contracts";
+import type {
+  AnchorContextRead,
+  ArtistInboxItemRead,
+} from "@intent-core/contracts";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -61,6 +64,106 @@ function data(overrides: Partial<TaskOverviewData> = {}): TaskOverviewData {
     latestReviewNote: null,
     workingDirection: { title: "Current Working Direction", items: [] },
     ...overrides,
+  };
+}
+
+function artistAnchorContext(missing = false): AnchorContextRead {
+  return {
+    role: "artist",
+    shot_id: "s1",
+    task_id: "t1",
+    core_anchor: {
+      exists: !missing,
+      lifecycle_state: missing ? "missing" : "confirmed",
+      confirmed_revision_id: missing ? null : "ca1",
+      confirmed_revision_number: missing ? null : 1,
+      direction_summary: missing
+        ? null
+        : "Keep the confrontation restrained and internal.",
+      must_preserve: missing ? null : "Keep the response internal.",
+      allowed_variation: missing ? null : "Local exposure may vary.",
+      confirmed_by_human_role: missing ? null : "vfx_supervisor",
+      confirmed_by_actor_id: missing ? null : "vfx-1",
+      link_target: "/vfx/shots/s1/intent",
+      newer_draft_exists: false,
+      pending_human_gate_exists: false,
+      draft_revision_number: null,
+    },
+    execution_anchor: missing
+      ? {
+          exists: false,
+          department: "compositing",
+          lifecycle_state: "missing",
+          context_state: "missing",
+          confirmed_revision_id: null,
+          confirmed_revision_number: null,
+          direction_summary: null,
+          execution_boundary: null,
+          allowed_refinement: null,
+          based_on_core_anchor_revision_id: null,
+          based_on_core_anchor_revision_number: null,
+          upstream_relationship_available: false,
+          confirmed_by_human_role: null,
+          confirmed_by_actor_id: null,
+          link_target: "/cg/tasks/t1/execution",
+          draft_revision_number: null,
+          draft_source: null,
+        }
+      : {
+          exists: true,
+          department: "compositing",
+          lifecycle_state: "confirmed",
+          context_state: "current",
+          confirmed_revision_id: "ea1",
+          confirmed_revision_number: 2,
+          direction_summary:
+            "Keep the silhouette readable against the backlight.",
+          execution_boundary: "Stay within the approved contrast range.",
+          allowed_refinement: "Refine local edges only.",
+          based_on_core_anchor_revision_id: "ca1",
+          based_on_core_anchor_revision_number: 1,
+          upstream_relationship_available: true,
+          confirmed_by_human_role: "cg_supervisor",
+          confirmed_by_actor_id: "cg-1",
+          link_target: "/cg/tasks/t1/execution",
+          draft_revision_number: null,
+          draft_source: null,
+        },
+    attention: {
+      level: "not_assessed",
+      summary: null,
+      review_requirement:
+        "No current attention result is available for this Task.",
+      source_assessment_id: null,
+      source_signal_id: null,
+      assessed_at: null,
+      link_target: null,
+    },
+    current_version: {
+      version_id: "v1",
+      name: "v001",
+      version_number: 1,
+      link_target: "/artist/tasks/t1/current-version",
+    },
+    guidance_state: "missing",
+    open_vfx_escalation: false,
+    next_action: missing
+      ? {
+          title: "Core Anchor confirmation is required",
+          why_now: "The VFX Supervisor has not confirmed shared direction.",
+          downstream_effect: "CG translation follows VFX confirmation.",
+          target_route: null,
+          action_label: null,
+          executable: false,
+        }
+      : {
+          title: "Artist guidance can be generated for this Task",
+          why_now: "Confirmed direction and a Version are available.",
+          downstream_effect: "Guidance will remain advisory.",
+          target_route: "/artist/tasks/t1",
+          action_label: "Generate guidance",
+          executable: true,
+        },
   };
 }
 
@@ -157,7 +260,7 @@ describe("TaskOverviewPage", () => {
     ).toHaveAttribute("href", "/artist/tasks/t1");
   });
 
-  it("shows Core Anchor context as honestly read-only, never an edit or confirm control", async () => {
+  it("does not duplicate the complete WHY briefing below Anchor Context", () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -199,22 +302,13 @@ describe("TaskOverviewPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByText("Why: Creative Intent")).toBeInTheDocument();
-    expect(
-      screen.getByText("A restrained dusk confrontation."),
-    ).toBeInTheDocument();
-    await userEvent.click(screen.getAllByText("Detailed context")[0]);
-    expect(screen.getByText("Why: Creative Intent")).toBeVisible();
-    expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
+    expect(screen.queryByText("Why: Creative Intent")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /confirm/i }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getAllByText("Read-only for your role").length,
-    ).toBeGreaterThan(0);
   });
 
-  it("honestly states no Core Anchor when none is confirmed, present but collapsed under Detailed context", async () => {
+  it("does not add a second missing Core Anchor summary", () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -223,18 +317,13 @@ describe("TaskOverviewPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    const summary = screen.getAllByText("Detailed context")[0];
-    expect(summary.closest("details")).not.toHaveAttribute("open");
+    expect(screen.getByText("Anchor context unavailable")).toBeVisible();
     expect(
-      screen.getByText("No Core Anchor is confirmed for this Shot yet."),
-    ).toBeInTheDocument();
-    await userEvent.click(summary);
-    expect(
-      screen.getByText("No Core Anchor is confirmed for this Shot yet."),
-    ).toBeVisible();
+      screen.queryByText("No Core Anchor is confirmed for this Shot yet."),
+    ).not.toBeInTheDocument();
   });
 
-  it("honestly states no Execution Anchor when none is confirmed", async () => {
+  it("does not add a second missing Execution Anchor summary", () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -244,12 +333,8 @@ describe("TaskOverviewPage", () => {
       />,
     );
     expect(
-      screen.getByText("No Execution Anchor is confirmed for this Task yet."),
-    ).toBeInTheDocument();
-    await userEvent.click(screen.getAllByText("Detailed context")[0]);
-    expect(
-      screen.getByText("No Execution Anchor is confirmed for this Task yet."),
-    ).toBeVisible();
+      screen.queryByText("No Execution Anchor is confirmed for this Task yet."),
+    ).not.toBeInTheDocument();
   });
 
   it("honestly states no Artist guidance has been generated yet, with no fabricated content", () => {
@@ -268,7 +353,7 @@ describe("TaskOverviewPage", () => {
     ).toBeVisible();
   });
 
-  it("does not offer a Generate guidance action when there is no latest Version", () => {
+  it("shows a disabled Guidance state when there is no latest Version", () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -278,8 +363,9 @@ describe("TaskOverviewPage", () => {
       />,
     );
     expect(
-      screen.queryByRole("button", { name: /generate guidance/i }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("button", { name: /generate guidance/i }),
+    ).toBeDisabled();
+    expect(screen.getByText("A Production Version is required.")).toBeVisible();
   });
 
   it("offers a Generate guidance action when a latest Version exists and no guidance yet", () => {
@@ -289,12 +375,43 @@ describe("TaskOverviewPage", () => {
         data={data({
           item: item({ latest_version_id: "v1", latest_version_name: "v001" }),
         })}
+        anchorContext={artistAnchorContext()}
         unavailable={false}
         onExitRole={vi.fn()}
       />,
     );
     expect(
       screen.getByRole("button", { name: "Generate guidance" }),
+    ).toBeEnabled();
+  });
+
+  it("disables Guidance generation and names the owning roles when Anchors are missing", () => {
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data({
+          item: item({
+            latest_version_id: "v1",
+            latest_version_name: "v001",
+            execution_anchor_state: "none",
+          }),
+        })}
+        anchorContext={artistAnchorContext(true)}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Generate guidance" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByText(
+        "The VFX Supervisor must confirm the Core Anchor first.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText("The CG Supervisor must confirm the Execution Anchor."),
     ).toBeVisible();
   });
 
@@ -354,6 +471,7 @@ describe("TaskOverviewPage", () => {
             created_at: "2026-07-01T00:00:00Z",
           },
         })}
+        anchorContext={artistAnchorContext()}
         unavailable={false}
         onExitRole={vi.fn()}
       />,
@@ -435,7 +553,7 @@ describe("TaskOverviewPage", () => {
     expect(
       screen.getByText("No dependencies have been recorded for this Task yet."),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getAllByText("Detailed context")[1]);
+    await userEvent.click(screen.getAllByText("Detailed context")[0]);
     expect(
       screen.getByText("No dependencies have been recorded for this Task yet."),
     ).toBeVisible();
@@ -448,6 +566,7 @@ describe("TaskOverviewPage", () => {
         data={data({
           item: item({ latest_version_id: "v1", latest_version_name: "v001" }),
         })}
+        anchorContext={artistAnchorContext()}
         unavailable={false}
         onExitRole={vi.fn()}
       />,

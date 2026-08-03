@@ -1,26 +1,17 @@
 import type {
+  AnchorContextRead,
   DepartmentExecutionOverviewRead,
   VfxInboxItemRead,
 } from "@intent-core/contracts";
 import Link from "next/link";
 
-import {
-  AppShell,
-  Breadcrumbs,
-  ContextTabs,
-  DetailedContext,
-  Divider,
-  ErrorState,
-  WorkingDirectionSection,
-} from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
+import { DetailedContext, Divider, WorkingDirectionSection } from "@/design";
 import type { WorkingDirectionSection as WorkingDirectionSectionModel } from "@/lib/workingDirection";
 import { signalStateLabel } from "../../vfxWording";
 import { CurrentFocusPanel } from "../CurrentFocusPanel";
 import { NextFocusPanel } from "../NextFocusPanel";
-import { ProductionContextHeader } from "../ProductionContextHeader";
 import { DepartmentExecutionOverviewSection } from "./DepartmentExecutionOverviewSection";
+import { VfxShotWorkspaceFrame } from "./VfxShotWorkspaceFrame";
 
 const ALIGNMENT_FOCUS_TYPES = new Set([
   "alignment_not_followed_by_anchor_action",
@@ -41,14 +32,15 @@ const ALIGNMENT_FOCUS_TYPES = new Set([
  * never produces an empty heading or list. */
 export function ShotOverviewPage({
   item,
+  anchorContext,
   workingDirection,
   departmentExecutionOverview,
   onExitRole,
 }: {
   item: VfxInboxItemRead | null;
-  /** Step 9B-1: the derived, read-only Current Creative Direction
-   * summary -- optional so every pre-existing caller/test that only
-   * ever supplied `item` keeps compiling and rendering unchanged. */
+  anchorContext?: AnchorContextRead | null;
+  /** Legacy derived summary input retained for caller compatibility; the
+   * expanded Anchor Context is now the single high-level briefing. */
   workingDirection?: WorkingDirectionSectionModel;
   /** Step 9B-3: the Shot's real Tasks and their execution state --
    * optional (and rendering nothing when `null`/omitted) so every
@@ -56,70 +48,27 @@ export function ShotOverviewPage({
   departmentExecutionOverview?: DepartmentExecutionOverviewRead | null;
   onExitRole: () => void | Promise<void>;
 }) {
-  return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.vfx_supervisor}
-      role={ROLE_LABEL.vfx_supervisor}
-      onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.vfx_supervisor}
-      currentPath="/vfx/shots"
-    >
-      {item === null ? (
-        <>
-          <Breadcrumbs
-            items={[{ label: "Shots", href: "/vfx/shots" }, { label: "Shot" }]}
-          />
-          <ErrorState
-            title="This Shot is unavailable"
-            description="The ICAS service could not be reached, or this Shot does not exist. Try refreshing the page."
-          />
-        </>
-      ) : (
-        <>
-          <Breadcrumbs
-            items={[
-              { label: item.project_name, href: "/vfx/shots" },
-              { label: item.shot_name },
-              { label: "Overview" },
-            ]}
-          />
-          <ProductionContextHeader item={item} />
-          <ContextTabs
-            activeTabId="overview"
-            tabs={[
-              {
-                id: "overview",
-                label: "Overview",
-                href: `/vfx/shots/${item.shot_id}`,
-              },
-              {
-                id: "intent",
-                label: "Intent",
-                href: `/vfx/shots/${item.shot_id}/intent`,
-              },
-              {
-                id: "versions",
-                label: "Versions",
-                href: `/vfx/shots/${item.shot_id}/versions`,
-              },
-              {
-                id: "alignment",
-                label: "Alignment",
-                href: `/vfx/shots/${item.shot_id}/alignment`,
-              },
-              {
-                id: "activity",
-                label: "Activity",
-                href: `/vfx/shots/${item.shot_id}/activity`,
-              },
-            ]}
-          />
+  const showPageSpecificFocus =
+    !anchorContext ||
+    (item?.current_focus.focus_type !== "none" &&
+      item?.current_focus.title !== anchorContext.next_action.title);
 
-          <CurrentFocusPanel focus={item.current_focus} />
+  return (
+    <VfxShotWorkspaceFrame
+      item={item}
+      anchorContext={anchorContext}
+      activeTab="overview"
+      onExitRole={onExitRole}
+    >
+      {item && (
+        <>
+          {showPageSpecificFocus && (
+            <CurrentFocusPanel focus={item.current_focus} />
+          )}
 
           <NextFocusPanel items={item.next_candidates ?? []} />
 
-          {workingDirection && (
+          {!anchorContext && workingDirection && (
             <WorkingDirectionSection section={workingDirection} />
           )}
 
@@ -132,12 +81,6 @@ export function ShotOverviewPage({
 
           <DetailedContext>
             <dl>
-              <dt>Confirmed Core Anchor</dt>
-              <dd>
-                {item.active_core_anchor_summary ??
-                  "No confirmed Core Anchor yet."}
-              </dd>
-
               <dt>Latest Version</dt>
               <dd>
                 {item.relevant_version_name ? (
@@ -177,6 +120,6 @@ export function ShotOverviewPage({
           </DetailedContext>
         </>
       )}
-    </AppShell>
+    </VfxShotWorkspaceFrame>
   );
 }

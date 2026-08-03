@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { loadTaskOverviewData } from "@/features/cg/task-overview/data";
+import { fetchCgAnchorContextOrNull } from "@/features/cg/api";
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
 import { exitRoleView } from "../../../demo/actions";
@@ -27,11 +28,16 @@ export default async function Page({
     if (identity === null) {
       redirect("/demo");
     }
-    const data = await loadTaskOverviewData(taskId, actorHeaders(identity));
+    const headers = actorHeaders(identity);
+    const [data, anchorContext] = await Promise.all([
+      loadTaskOverviewData(taskId, headers),
+      fetchCgAnchorContextOrNull(taskId, headers),
+    ]);
     return (
       <TaskOverviewPage
         taskId={taskId}
         data={data}
+        anchorContext={anchorContext}
         unavailable={false}
         onExitRole={exitRoleView}
       />
@@ -41,6 +47,7 @@ export default async function Page({
       <TaskOverviewPage
         taskId={taskId}
         data={null}
+        anchorContext={null}
         unavailable
         onExitRole={exitRoleView}
       />

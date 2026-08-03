@@ -1,26 +1,19 @@
 import Link from "next/link";
+import type { AnchorContextRead } from "@intent-core/contracts";
 
 import {
-  AppShell,
-  AuthorityLabel,
-  Breadcrumbs,
-  ContextTabs,
   DetailedContext,
   Divider,
-  ErrorState,
-  MetadataRow,
   Panel,
   SectionHeader,
   StatusBadge,
   WorkingDirectionSection,
 } from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import type { TaskOverviewData } from "@/features/artist/task-overview/data";
 import { guidanceStateLabel, versionDisplayText } from "../../artistWording";
 import { GenerateArtistGuidanceButton } from "./GenerateArtistGuidanceButton";
-import { TaskContextHeader } from "./TaskContextHeader";
 import { TaskCurrentFocusPanel } from "./TaskCurrentFocusPanel";
+import { ArtistTaskWorkspaceFrame } from "./ArtistTaskWorkspaceFrame";
 
 /** `/artist/tasks/:taskId` -- the real Task Overview (Step 7C-5),
  * mirroring `app/cg/tasks/[taskId]/TaskOverviewPage.tsx`'s locked order:
@@ -33,177 +26,75 @@ import { TaskCurrentFocusPanel } from "./TaskCurrentFocusPanel";
 export function TaskOverviewPage({
   taskId,
   data,
+  anchorContext,
   unavailable,
   onExitRole,
 }: {
   taskId: string;
   data: TaskOverviewData | null;
+  anchorContext?: AnchorContextRead | null;
   unavailable: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
+  const showPageSpecificFocus =
+    !anchorContext ||
+    (data !== null &&
+      data.item.current_focus.focus_type !== "none" &&
+      data.item.current_focus.title !== anchorContext.next_action.title);
+
+  const guidancePrerequisites: string[] = [];
+  if (!data?.item.latest_version_id) {
+    guidancePrerequisites.push("A Production Version is required.");
+  }
+  if (!anchorContext) {
+    guidancePrerequisites.push(
+      "Anchor prerequisites could not be verified; refresh the Task context.",
+    );
+  } else {
+    if (anchorContext.core_anchor.lifecycle_state !== "confirmed") {
+      guidancePrerequisites.push(
+        "The VFX Supervisor must confirm the Core Anchor first.",
+      );
+    }
+    if (anchorContext.execution_anchor?.lifecycle_state !== "confirmed") {
+      guidancePrerequisites.push(
+        "The CG Supervisor must confirm the Execution Anchor.",
+      );
+    }
+  }
+
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.artist}
-      role={ROLE_LABEL.artist}
+    <ArtistTaskWorkspaceFrame
+      item={data?.item ?? null}
+      anchorContext={anchorContext}
+      activeTab="overview"
+      unavailable={unavailable}
       onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.artist}
-      currentPath="/artist/tasks"
     >
-      {unavailable || data === null ? (
+      {data && (
         <>
-          <Breadcrumbs
-            items={[
-              { label: "Tasks", href: "/artist/tasks" },
-              { label: "Task" },
-            ]}
-          />
-          <ErrorState
-            title={
-              unavailable
-                ? "This Task is unavailable"
-                : "This Task could not be found"
-            }
-            description={
-              unavailable
-                ? "The ICAS service could not be reached. Try refreshing the page."
-                : "This Task does not exist, or its identifier is invalid."
-            }
-          />
-        </>
-      ) : (
-        <>
-          <Breadcrumbs
-            items={[
-              { label: data.item.project_name, href: "/artist/tasks" },
-              { label: data.item.shot_name },
-              { label: data.item.task_name },
-              { label: "Task Overview" },
-            ]}
-          />
-          <TaskContextHeader item={data.item} />
-          <ContextTabs
-            activeTabId="overview"
-            tabs={[
-              {
-                id: "overview",
-                label: "Task Overview",
-                href: `/artist/tasks/${taskId}`,
-              },
-              {
-                id: "current-version",
-                label: "Current Version",
-                href: `/artist/tasks/${taskId}/current-version`,
-              },
-              {
-                id: "feedback-history",
-                label: "Feedback History",
-                href: `/artist/tasks/${taskId}/feedback-history`,
-              },
-            ]}
-          />
+          {showPageSpecificFocus && (
+            <TaskCurrentFocusPanel focus={data.item.current_focus} />
+          )}
 
-          <TaskCurrentFocusPanel focus={data.item.current_focus} />
-
-          <WorkingDirectionSection section={data.workingDirection} />
-
-          <Divider />
-
-          <DetailedContext>
-            <SectionHeader
-              title="Why: Creative Intent"
-              description="The confirmed Core Anchor for this Shot -- what this work is for."
-            />
-            <Panel>
-              <AuthorityLabel
-                variant="read-only"
-                detail="Confirmed by the VFX Supervisor"
-              />
-              {data.coreAnchorRevision ? (
-                <MetadataRow
-                  items={[
-                    {
-                      label: "Shot objective",
-                      value:
-                        data.coreAnchorRevision.shot_objective ??
-                        "Not recorded",
-                    },
-                    {
-                      label: "Emotional tone",
-                      value:
-                        data.coreAnchorRevision.emotional_tone ??
-                        "Not recorded",
-                    },
-                    {
-                      label: "Narrative priority",
-                      value:
-                        data.coreAnchorRevision.narrative_priority ??
-                        "Not recorded",
-                    },
-                    {
-                      label: "Core summary",
-                      value:
-                        data.coreAnchorRevision.core_summary ?? "Not recorded",
-                    },
-                  ]}
-                />
-              ) : (
-                <p>No Core Anchor is confirmed for this Shot yet.</p>
-              )}
-            </Panel>
-
-            <SectionHeader
-              title="How: Execution Approach"
-              description="The confirmed Execution Anchor for this Task -- how this work should be carried out."
-            />
-            <Panel>
-              <AuthorityLabel
-                variant="read-only"
-                detail="Confirmed by the CG Supervisor"
-              />
-              {data.executionAnchorRevision ? (
-                <MetadataRow
-                  items={[
-                    {
-                      label: "Technical boundaries",
-                      value:
-                        data.executionAnchorRevision.technical_boundaries ??
-                        "Not recorded",
-                    },
-                    {
-                      label: "Allowed refinements",
-                      value:
-                        data.executionAnchorRevision.allowed_refinements ??
-                        "Not recorded",
-                    },
-                    {
-                      label: "Escalation conditions",
-                      value:
-                        data.executionAnchorRevision.escalation_conditions ??
-                        "Not recorded",
-                    },
-                  ]}
-                />
-              ) : (
-                <p>No Execution Anchor is confirmed for this Task yet.</p>
-              )}
-            </Panel>
-          </DetailedContext>
+          {!anchorContext && (
+            <WorkingDirectionSection section={data.workingDirection} />
+          )}
 
           <SectionHeader
             title="What to do now: Artist Guidance"
             description="Advisory guidance from the Artist Agent -- never a substitute for either Anchor."
             actions={
-              data.item.latest_version_id && (
-                <GenerateArtistGuidanceButton
-                  taskId={taskId}
-                  versionId={data.item.latest_version_id}
-                  label={
-                    data.latestGuidance
-                      ? "Regenerate guidance"
-                      : "Generate guidance"
-                  }
-                />
-              )
+              <GenerateArtistGuidanceButton
+                taskId={taskId}
+                versionId={data.item.latest_version_id}
+                label={
+                  data.latestGuidance
+                    ? "Regenerate guidance"
+                    : "Generate guidance"
+                }
+                disabledReasons={guidancePrerequisites}
+              />
             }
           />
           <Panel tone="elevated">
@@ -323,6 +214,6 @@ export function TaskOverviewPage({
           </DetailedContext>
         </>
       )}
-    </AppShell>
+    </ArtistTaskWorkspaceFrame>
   );
 }

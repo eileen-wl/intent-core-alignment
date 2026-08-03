@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type {
+  AnchorContextSummaryRead,
   ArtistInboxItemRead,
   ArtistInboxRead,
 } from "@intent-core/contracts";
@@ -37,9 +38,11 @@ const GUIDANCE_STATES: ArtistInboxItemRead["guidance_state"][] = [
  * distinct from a real empty portfolio. */
 export function TasksListPage({
   inbox,
+  anchorContexts = {},
   onExitRole,
 }: {
   inbox: ArtistInboxRead | null;
+  anchorContexts?: Record<string, AnchorContextSummaryRead | null>;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
@@ -64,13 +67,19 @@ export function TasksListPage({
           description="Tasks will appear here once they exist."
         />
       ) : (
-        <TasksListContent items={inbox.items} />
+        <TasksListContent items={inbox.items} anchorContexts={anchorContexts} />
       )}
     </AppShell>
   );
 }
 
-function TasksListContent({ items }: { items: ArtistInboxItemRead[] }) {
+function TasksListContent({
+  items,
+  anchorContexts,
+}: {
+  items: ArtistInboxItemRead[];
+  anchorContexts: Record<string, AnchorContextSummaryRead | null>;
+}) {
   const [projectFilter, setProjectFilter] = useState(ALL_VALUE);
   const [departmentFilter, setDepartmentFilter] = useState(ALL_VALUE);
   const [guidanceFilter, setGuidanceFilter] = useState(ALL_VALUE);
@@ -194,7 +203,10 @@ function TasksListContent({ items }: { items: ArtistInboxItemRead[] }) {
         <div role="list">
           {filtered.map((item) => (
             <div role="listitem" key={item.task_id}>
-              <ArtistTaskListRow item={item} />
+              <ArtistTaskListRow
+                item={item}
+                anchorContext={anchorContexts[item.task_id]}
+              />
             </div>
           ))}
         </div>

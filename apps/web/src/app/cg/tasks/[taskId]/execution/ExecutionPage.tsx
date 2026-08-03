@@ -1,22 +1,16 @@
-import type { ExecutionAnchorRevisionRead } from "@intent-core/contracts";
+import type {
+  AnchorContextRead,
+  ExecutionAnchorRevisionRead,
+} from "@intent-core/contracts";
 
-import {
-  AppShell,
-  Breadcrumbs,
-  ContextTabs,
-  ErrorState,
-  EvidenceLayerSection,
-  MetadataRow,
-} from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
+import { EvidenceLayerSection, MetadataRow } from "@/design";
 import {
   decisionOutcomeStatement,
   decisionProvenanceItems,
 } from "@/lib/decisionProvenance";
 import { humanRoleLabel } from "@/lib/humanRoleLabel";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import type { ExecutionWorkspaceData } from "@/features/cg/execution-workspace/data";
-import { TaskContextHeader } from "../TaskContextHeader";
+import { CgTaskWorkspaceFrame } from "../CgTaskWorkspaceFrame";
 import { ExecutionAnchorEditor } from "./ExecutionAnchorEditor";
 import styles from "./ExecutionPage.module.css";
 
@@ -76,85 +70,26 @@ function contentFieldRows(
 export function ExecutionPage({
   taskId,
   data,
+  anchorContext,
   unavailable,
   onExitRole,
 }: {
   taskId: string;
   data: ExecutionWorkspaceData | null;
+  anchorContext?: AnchorContextRead | null;
   unavailable: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.cg_supervisor}
-      role={ROLE_LABEL.cg_supervisor}
+    <CgTaskWorkspaceFrame
+      item={data?.item ?? null}
+      anchorContext={anchorContext}
+      activeTab="execution"
+      unavailable={unavailable}
       onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.cg_supervisor}
-      currentPath="/cg/tasks"
     >
-      {unavailable || data === null ? (
+      {data && (
         <>
-          <Breadcrumbs
-            items={[
-              { label: "Tasks", href: "/cg/tasks" },
-              { label: "Execution" },
-            ]}
-          />
-          <ErrorState
-            title={
-              unavailable
-                ? "This Task is unavailable"
-                : "This Task could not be found"
-            }
-            description={
-              unavailable
-                ? "The ICAS service could not be reached. Try refreshing the page."
-                : "This Task does not exist, or its identifier is invalid."
-            }
-          />
-        </>
-      ) : (
-        <>
-          <Breadcrumbs
-            items={[
-              { label: data.item.project_name, href: "/cg/tasks" },
-              { label: data.item.shot_name },
-              { label: data.item.task_name },
-              { label: "Execution" },
-            ]}
-          />
-          <TaskContextHeader item={data.item} />
-          <ContextTabs
-            activeTabId="execution"
-            tabs={[
-              {
-                id: "overview",
-                label: "Overview",
-                href: `/cg/tasks/${taskId}`,
-              },
-              {
-                id: "execution",
-                label: "Execution",
-                href: `/cg/tasks/${taskId}/execution`,
-              },
-              {
-                id: "version-review",
-                label: "Version Review",
-                href: `/cg/tasks/${taskId}/version-review`,
-              },
-              {
-                id: "dependencies",
-                label: "Dependencies",
-                href: `/cg/tasks/${taskId}/dependencies`,
-              },
-              {
-                id: "activity",
-                label: "Activity",
-                href: `/cg/tasks/${taskId}/activity`,
-              },
-            ]}
-          />
-
           <EvidenceLayerSection kind="production-evidence">
             <section className={styles.section}>
               <h3 className={styles.sectionHeading}>
@@ -256,6 +191,6 @@ export function ExecutionPage({
           </section>
         </>
       )}
-    </AppShell>
+    </CgTaskWorkspaceFrame>
   );
 }

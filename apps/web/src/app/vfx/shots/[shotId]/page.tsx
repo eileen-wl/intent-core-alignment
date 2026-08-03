@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
+import { fetchVfxAnchorContextOrNull } from "@/features/vfx/api";
 import { loadShotOverviewData } from "@/features/vfx/shot-overview/data";
 import { selectCurrentCreativeDirection } from "@/features/vfx/shot-overview/selectCurrentCreativeDirection";
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
@@ -37,8 +38,14 @@ export default async function Page({
   }
 
   let data: Awaited<ReturnType<typeof loadShotOverviewData>>;
+  let anchorContext: Awaited<ReturnType<typeof fetchVfxAnchorContextOrNull>> =
+    null;
   try {
-    data = await loadShotOverviewData(shotId, actorHeaders(identity));
+    const headers = actorHeaders(identity);
+    [data, anchorContext] = await Promise.all([
+      loadShotOverviewData(shotId, headers),
+      fetchVfxAnchorContextOrNull(shotId, headers),
+    ]);
   } catch {
     data = null;
   }
@@ -46,6 +53,7 @@ export default async function Page({
   return (
     <ShotOverviewPage
       item={data?.item ?? null}
+      anchorContext={anchorContext}
       workingDirection={data ? selectCurrentCreativeDirection(data) : undefined}
       departmentExecutionOverview={data?.departmentExecutionOverview ?? null}
       onExitRole={exitRoleView}

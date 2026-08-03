@@ -5,6 +5,8 @@ import {
   loadIntentWorkspaceData,
   type IntentWorkspaceData,
 } from "@/features/vfx/intent-workspace/data";
+import { fetchVfxAnchorContextOrNull } from "@/features/vfx/api";
+import { actorHeaders, resolveIdentity } from "@/features/session/identity";
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
 import { exitRoleView } from "../../../../demo/actions";
 import { IntentWorkspacePage } from "./IntentWorkspacePage";
@@ -42,9 +44,16 @@ export default async function Page({
   const { justConfirmed: justConfirmedRevisionId } = await searchParams;
 
   let data: IntentWorkspaceData | null = null;
+  let anchorContext: Awaited<ReturnType<typeof fetchVfxAnchorContextOrNull>> =
+    null;
   let unavailable = false;
   try {
-    data = await loadIntentWorkspaceData(shotId);
+    const identity = await resolveIdentity();
+    if (identity === null) redirect("/demo");
+    [data, anchorContext] = await Promise.all([
+      loadIntentWorkspaceData(shotId),
+      fetchVfxAnchorContextOrNull(shotId, actorHeaders(identity)),
+    ]);
   } catch {
     unavailable = true;
   }
@@ -57,6 +66,7 @@ export default async function Page({
     <IntentWorkspacePage
       shotId={shotId}
       data={data}
+      anchorContext={anchorContext}
       unavailable={unavailable}
       justConfirmed={justConfirmed}
       onExitRole={exitRoleView}

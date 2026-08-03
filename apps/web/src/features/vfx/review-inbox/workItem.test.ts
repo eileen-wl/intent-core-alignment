@@ -228,6 +228,25 @@ describe("adaptVersionReviewWorkItems", () => {
     expect(workItems[0].route).toBe("/vfx/shots/s1/versions");
   });
 
+  it("marks Version review as blocked when the backend reports no confirmed Core Anchor", () => {
+    const workItems = adaptVersionReviewWorkItems([
+      item({
+        core_anchor_state: "none",
+        latest_version_without_review_id: "v9",
+        latest_version_without_review_name: "SH010_v002",
+        latest_version_without_review_number: 2,
+      }),
+    ]);
+
+    expect(workItems[0]).toMatchObject({
+      category: "Version review blocked",
+      title: "Core Anchor required before Version review",
+      actionLabel: "Open Intent",
+      route: "/vfx/shots/s1/intent",
+    });
+    expect(workItems[0].version?.name).toBe("SH010_v002");
+  });
+
   it("returns an honest empty collection when no Shot has an unreviewed Version", () => {
     const workItems = adaptVersionReviewWorkItems([
       item({

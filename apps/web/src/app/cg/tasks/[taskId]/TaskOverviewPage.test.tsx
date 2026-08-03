@@ -1,4 +1,7 @@
-import type { CgInboxItemRead } from "@intent-core/contracts";
+import type {
+  AnchorContextRead,
+  CgInboxItemRead,
+} from "@intent-core/contracts";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -53,6 +56,73 @@ function data(overrides: Partial<TaskOverviewData> = {}): TaskOverviewData {
     latestReviewNote: null,
     workingDirection: { title: "Current Execution Direction", items: [] },
     ...overrides,
+  };
+}
+
+function cgAnchorContext(): AnchorContextRead {
+  return {
+    role: "cg_supervisor",
+    shot_id: "s1",
+    task_id: "t1",
+    core_anchor: {
+      exists: true,
+      lifecycle_state: "confirmed",
+      confirmed_revision_id: "ca1",
+      confirmed_revision_number: 1,
+      direction_summary: "Keep the confrontation restrained.",
+      must_preserve: "Keep the response internal.",
+      allowed_variation: "Local exposure may vary.",
+      confirmed_by_human_role: "vfx_supervisor",
+      confirmed_by_actor_id: "vfx-1",
+      link_target: "/vfx/shots/s1/intent",
+      newer_draft_exists: true,
+      pending_human_gate_exists: true,
+      draft_revision_number: 2,
+    },
+    execution_anchor: {
+      exists: true,
+      department: "lighting",
+      lifecycle_state: "confirmed",
+      context_state: "current",
+      confirmed_revision_id: "ea1",
+      confirmed_revision_number: 1,
+      direction_summary: "Keep faces readable without a heroic lift.",
+      execution_boundary: "Stay within the approved exposure range.",
+      allowed_refinement: "Refine local fill only.",
+      based_on_core_anchor_revision_id: "ca1",
+      based_on_core_anchor_revision_number: 1,
+      upstream_relationship_available: true,
+      confirmed_by_human_role: "cg_supervisor",
+      confirmed_by_actor_id: "cg-1",
+      link_target: "/cg/tasks/t1/execution",
+      draft_revision_number: null,
+      draft_source: null,
+    },
+    attention: {
+      level: "high",
+      summary: "VFX review is warranted for the newer intent draft.",
+      review_requirement: "Human VFX review is required.",
+      source_assessment_id: null,
+      source_signal_id: null,
+      assessed_at: null,
+      link_target: null,
+    },
+    current_version: {
+      version_id: null,
+      name: null,
+      version_number: null,
+      link_target: "/cg/tasks/t1/version-review",
+    },
+    guidance_state: "unavailable",
+    open_vfx_escalation: false,
+    next_action: {
+      title: "No immediate CG action",
+      why_now: "No action is assigned to CG while VFX review remains pending.",
+      downstream_effect: "VFX review may update shared direction.",
+      target_route: "/cg/tasks/t1",
+      action_label: null,
+      executable: false,
+    },
   };
 }
 
@@ -157,7 +227,43 @@ describe("TaskOverviewPage", () => {
     ).toHaveAttribute("href", "/cg/tasks/t1/execution");
   });
 
-  it("shows Core Anchor context as honestly read-only, never an edit control", async () => {
+  it("separates no immediate CG action from pending upstream VFX review", () => {
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data({
+          item: item({
+            execution_anchor_state: "confirmed",
+            current_focus: {
+              focus_type: "none",
+              title: "Nothing requires your attention on this Task right now",
+              explanation:
+                "Nothing requires your attention on this Task right now.",
+              target_route: "/cg/tasks/t1",
+              primary_action_label: null,
+              actionable: false,
+            },
+          }),
+        })}
+        anchorContext={cgAnchorContext()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("No immediate CG action")).toBeVisible();
+    expect(
+      screen.getAllByText("VFX review pending for the newer Core Anchor draft.")
+        .length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.queryByText(
+        "Nothing requires your attention on this Task right now",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not duplicate Core Anchor content below the Anchor briefing", () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -167,17 +273,36 @@ describe("TaskOverviewPage", () => {
       />,
     );
     expect(
-      screen.getByText("Confirmed Core Anchor (read-only)"),
-    ).toBeInTheDocument();
-    await userEvent.click(screen.getByText("Detailed context"));
-    expect(screen.getByText("Confirmed Core Anchor (read-only)")).toBeVisible();
-    expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
+      screen.queryByText("Confirmed Core Anchor (read-only)"),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /confirm/i }),
     ).not.toBeInTheDocument();
   });
 
-  it("honestly states no Core Anchor when none is confirmed, present but collapsed under Detailed context", async () => {
+  it("keeps CG operational context below the Anchor briefing when execution is not confirmed", () => {
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data()}
+        anchorContext={cgAnchorContext()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Execution operations")).toBeVisible();
+    expect(
+      screen.getByText(
+        "No confirmed Execution Anchor production-ready criteria are recorded yet.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("link", { name: "Establish the Execution Anchor →" }),
+    ).toHaveAttribute("href", "/cg/tasks/t1/execution");
+    expect(screen.getByText("Detailed context")).toBeInTheDocument();
+  });
+
+  it("uses the Anchor layer unavailable state instead of a second missing-direction summary", () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -186,15 +311,10 @@ describe("TaskOverviewPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    const summary = screen.getByText("Detailed context");
-    expect(summary.closest("details")).not.toHaveAttribute("open");
+    expect(screen.getByText("Anchor context unavailable")).toBeVisible();
     expect(
-      screen.getByText("No Core Anchor is confirmed for this Shot yet."),
-    ).toBeInTheDocument();
-    await userEvent.click(summary);
-    expect(
-      screen.getByText("No Core Anchor is confirmed for this Shot yet."),
-    ).toBeVisible();
+      screen.queryByText("No Core Anchor is confirmed for this Shot yet."),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the Current Execution Direction section with real authority badges when workingDirection has items", () => {

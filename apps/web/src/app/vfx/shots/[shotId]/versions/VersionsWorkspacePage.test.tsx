@@ -225,9 +225,7 @@ describe("VersionsWorkspacePage", () => {
       />,
     );
     expect(
-      screen.getByText(
-        "No Production Versions have been recorded for this Shot yet.",
-      ),
+      screen.getByText("No Production Version is available"),
     ).toBeVisible();
   });
 

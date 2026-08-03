@@ -1345,6 +1345,108 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vfx/anchor-contexts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vfx Anchor Context Summaries */
+        get: operations["get_vfx_anchor_context_summaries_vfx_anchor_contexts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cg/anchor-contexts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cg Anchor Context Summaries */
+        get: operations["get_cg_anchor_context_summaries_cg_anchor_contexts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/artist/anchor-contexts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Artist Anchor Context Summaries */
+        get: operations["get_artist_anchor_context_summaries_artist_anchor_contexts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/vfx/shots/{shot_id}/anchor-context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vfx Anchor Context */
+        get: operations["get_vfx_anchor_context_vfx_shots__shot_id__anchor_context_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cg/tasks/{task_id}/anchor-context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cg Anchor Context */
+        get: operations["get_cg_anchor_context_cg_tasks__task_id__anchor_context_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/artist/tasks/{task_id}/anchor-context": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Artist Anchor Context */
+        get: operations["get_artist_anchor_context_artist_tasks__task_id__anchor_context_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cg/inbox": {
         parameters: {
             query?: never;
@@ -1728,6 +1830,26 @@ export interface components {
              */
             created_at: string;
         };
+        /** AnchorAttentionContextRead */
+        AnchorAttentionContextRead: {
+            /**
+             * Level
+             * @enum {string}
+             */
+            level: "low" | "medium" | "high" | "not_assessed";
+            /** Summary */
+            summary: string | null;
+            /** Review Requirement */
+            review_requirement: string;
+            /** Source Assessment Id */
+            source_assessment_id: string | null;
+            /** Source Signal Id */
+            source_signal_id: string | null;
+            /** Assessed At */
+            assessed_at: string | null;
+            /** Link Target */
+            link_target: string | null;
+        };
         /** AnchorConfirmRequest */
         AnchorConfirmRequest: {
             /** Rationale */
@@ -1737,6 +1859,114 @@ export interface components {
              * @default false
              */
             request_write_back: boolean;
+        };
+        /** AnchorContextRead */
+        AnchorContextRead: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "vfx_supervisor" | "cg_supervisor" | "artist";
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Task Id */
+            task_id: string | null;
+            core_anchor: components["schemas"]["CoreAnchorContextRead"];
+            execution_anchor: components["schemas"]["ExecutionAnchorContextRead"] | null;
+            attention: components["schemas"]["AnchorAttentionContextRead"];
+            current_version: components["schemas"]["AnchorVersionContextRead"];
+            /**
+             * Guidance State
+             * @enum {string}
+             */
+            guidance_state: "current" | "outdated" | "missing" | "unavailable";
+            /** Open Vfx Escalation */
+            open_vfx_escalation: boolean;
+            next_action: components["schemas"]["AnchorNextActionRead"];
+        };
+        /** AnchorContextSummaryListRead */
+        AnchorContextSummaryListRead: {
+            /** Items */
+            items: components["schemas"]["AnchorContextSummaryRead"][];
+            /** Total Count */
+            total_count: number;
+            /** Limit */
+            limit: number;
+        };
+        /**
+         * AnchorContextSummaryRead
+         * @description Compact, role-scoped projection for Home, Inbox, and catalogues.
+         */
+        AnchorContextSummaryRead: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "vfx_supervisor" | "cg_supervisor" | "artist";
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Task Id */
+            task_id: string | null;
+            /**
+             * Core Anchor State
+             * @enum {string}
+             */
+            core_anchor_state: "missing" | "draft" | "confirmed";
+            /** Core Anchor Revision Number */
+            core_anchor_revision_number: number | null;
+            /** Core Direction */
+            core_direction: string | null;
+            /** Execution Context State */
+            execution_context_state: ("missing" | "draft" | "pending" | "current" | "outdated" | "relationship_unavailable") | null;
+            /** Execution Anchor Revision Number */
+            execution_anchor_revision_number: number | null;
+            /** Execution Direction */
+            execution_direction: string | null;
+            /** Based On Core Anchor Revision Number */
+            based_on_core_anchor_revision_number: number | null;
+            /**
+             * Attention Level
+             * @enum {string}
+             */
+            attention_level: "low" | "medium" | "high" | "not_assessed";
+            /** Attention Summary */
+            attention_summary: string | null;
+            /**
+             * Guidance State
+             * @enum {string}
+             */
+            guidance_state: "current" | "outdated" | "missing" | "unavailable";
+            /**
+             * Readiness State
+             * @enum {string}
+             */
+            readiness_state: "action_required" | "ready_to_work" | "waiting_upstream" | "no_immediate_action";
+            /** Readiness Detail */
+            readiness_detail: string;
+            /** Open Vfx Escalation */
+            open_vfx_escalation: boolean;
+            next_action: components["schemas"]["AnchorNextActionRead"];
+        };
+        /** AnchorNextActionRead */
+        AnchorNextActionRead: {
+            /** Title */
+            title: string;
+            /** Why Now */
+            why_now: string;
+            /** Downstream Effect */
+            downstream_effect: string;
+            /** Target Route */
+            target_route: string | null;
+            /** Action Label */
+            action_label: string | null;
+            /** Executable */
+            executable: boolean;
         };
         /** AnchorReferenceInput */
         AnchorReferenceInput: {
@@ -1772,6 +2002,17 @@ export interface components {
         AnchorRejectRequest: {
             /** Rationale */
             rationale?: string | null;
+        };
+        /** AnchorVersionContextRead */
+        AnchorVersionContextRead: {
+            /** Version Id */
+            version_id: string | null;
+            /** Name */
+            name: string | null;
+            /** Version Number */
+            version_number: number | null;
+            /** Link Target */
+            link_target: string | null;
         };
         /** ArtistAgentGuidanceOutput */
         ArtistAgentGuidanceOutput: {
@@ -2345,6 +2586,38 @@ export interface components {
              */
             created_at: string;
         };
+        /** CoreAnchorContextRead */
+        CoreAnchorContextRead: {
+            /** Exists */
+            exists: boolean;
+            /**
+             * Lifecycle State
+             * @enum {string}
+             */
+            lifecycle_state: "missing" | "draft" | "confirmed";
+            /** Confirmed Revision Id */
+            confirmed_revision_id: string | null;
+            /** Confirmed Revision Number */
+            confirmed_revision_number: number | null;
+            /** Direction Summary */
+            direction_summary: string | null;
+            /** Must Preserve */
+            must_preserve: string | null;
+            /** Allowed Variation */
+            allowed_variation: string | null;
+            /** Confirmed By Human Role */
+            confirmed_by_human_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
+            /** Confirmed By Actor Id */
+            confirmed_by_actor_id: string | null;
+            /** Link Target */
+            link_target: string | null;
+            /** Newer Draft Exists */
+            newer_draft_exists: boolean;
+            /** Pending Human Gate Exists */
+            pending_human_gate_exists: boolean;
+            /** Draft Revision Number */
+            draft_revision_number: number | null;
+        };
         /**
          * CoreAnchorDraftFromDecompositionRequest
          * @description Deliberately empty today -- the decomposition id is already in the
@@ -2848,6 +3121,49 @@ export interface components {
             description: string;
             /** Related Version Id */
             related_version_id?: string | null;
+        };
+        /** ExecutionAnchorContextRead */
+        ExecutionAnchorContextRead: {
+            /** Exists */
+            exists: boolean;
+            /** Department */
+            department: string | null;
+            /**
+             * Lifecycle State
+             * @enum {string}
+             */
+            lifecycle_state: "missing" | "draft" | "confirmed";
+            /**
+             * Context State
+             * @enum {string}
+             */
+            context_state: "missing" | "draft" | "pending" | "current" | "outdated" | "relationship_unavailable";
+            /** Confirmed Revision Id */
+            confirmed_revision_id: string | null;
+            /** Confirmed Revision Number */
+            confirmed_revision_number: number | null;
+            /** Direction Summary */
+            direction_summary: string | null;
+            /** Execution Boundary */
+            execution_boundary: string | null;
+            /** Allowed Refinement */
+            allowed_refinement: string | null;
+            /** Based On Core Anchor Revision Id */
+            based_on_core_anchor_revision_id: string | null;
+            /** Based On Core Anchor Revision Number */
+            based_on_core_anchor_revision_number: number | null;
+            /** Upstream Relationship Available */
+            upstream_relationship_available: boolean;
+            /** Confirmed By Human Role */
+            confirmed_by_human_role: ("vfx_supervisor" | "cg_supervisor" | "artist") | null;
+            /** Confirmed By Actor Id */
+            confirmed_by_actor_id: string | null;
+            /** Link Target */
+            link_target: string | null;
+            /** Draft Revision Number */
+            draft_revision_number: number | null;
+            /** Draft Source */
+            draft_source: ("agent_proposed" | "human_created" | "copied_from_prior_revision" | "demo_fixture" | "unknown") | null;
         };
         /** ExecutionAnchorRead */
         ExecutionAnchorRead: {
@@ -6968,6 +7284,213 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ShotActivityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vfx_anchor_context_summaries_vfx_anchor_contexts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                scope?: "all" | "triage" | "ready" | "waiting";
+            };
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnchorContextSummaryListRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cg_anchor_context_summaries_cg_anchor_contexts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                scope?: "all" | "triage" | "ready" | "waiting";
+            };
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnchorContextSummaryListRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_artist_anchor_context_summaries_artist_anchor_contexts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                scope?: "all" | "triage" | "ready" | "waiting";
+            };
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnchorContextSummaryListRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vfx_anchor_context_vfx_shots__shot_id__anchor_context_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                shot_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnchorContextRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cg_anchor_context_cg_tasks__task_id__anchor_context_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnchorContextRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_artist_anchor_context_artist_tasks__task_id__anchor_context_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                task_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnchorContextRead"];
                 };
             };
             /** @description Validation Error */

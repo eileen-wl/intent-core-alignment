@@ -1,7 +1,10 @@
-import type { VfxInboxItemRead } from "@intent-core/contracts";
+import type {
+  AnchorContextSummaryRead,
+  VfxInboxItemRead,
+} from "@intent-core/contracts";
 import Link from "next/link";
 
-import { FtrackLinkageBadge } from "@/design";
+import { AnchorContextSummary, FtrackLinkageBadge } from "@/design";
 import {
   coreAnchorStateLabel,
   signalStateLabel,
@@ -17,9 +20,20 @@ import styles from "../InboxRow.module.css";
  * Reuses `InboxRow`'s row layout/CSS (same visual language, no
  * duplicated stylesheet) and the same shared wording helpers so the
  * two surfaces never describe the same Shot differently. */
-export function ShotRow({ item }: { item: VfxInboxItemRead }) {
+export function ShotRow({
+  item,
+  anchorContext,
+}: {
+  item: VfxInboxItemRead;
+  anchorContext?: AnchorContextSummaryRead | null;
+}) {
   return (
-    <Link href={`/vfx/shots/${item.shot_id}`} className={styles.row}>
+    <Link
+      href={
+        anchorContext?.next_action.target_route ?? `/vfx/shots/${item.shot_id}`
+      }
+      className={styles.row}
+    >
       <span className={styles.main}>
         <span className={styles.shotLine}>
           <span className={styles.shotName}>{item.shot_name}</span>
@@ -28,7 +42,8 @@ export function ShotRow({ item }: { item: VfxInboxItemRead }) {
         <span className={styles.focusTitle}>
           {coreAnchorStateLabel(item.core_anchor_state)}
         </span>
-        <span className={styles.secondaryLine}>
+        <AnchorContextSummary context={anchorContext} />
+        <span className={styles.secondaryLine} aria-label="Production context">
           <span>{signalStateLabel(item.latest_signal_attention_level)}</span>
           <span>{taskDisplayText(item)}</span>
           <span>{versionDisplayText(item)}</span>
@@ -36,7 +51,7 @@ export function ShotRow({ item }: { item: VfxInboxItemRead }) {
         </span>
       </span>
       <span className={styles.open} aria-hidden="true">
-        Open →
+        {anchorContext?.next_action.action_label ?? "Open Shot"} →
       </span>
     </Link>
   );

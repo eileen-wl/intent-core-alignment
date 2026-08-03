@@ -1,9 +1,14 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import type { ArtistInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextSummaryListRead,
+  ArtistInboxRead,
+} from "@intent-core/contracts";
 
-import { fetchArtistInbox } from "@/features/artist/api";
-import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
+import {
+  fetchArtistAnchorContextSummaries,
+  fetchArtistInbox,
+} from "@/features/artist/api";
+import { actorHeaders, resolveIdentity } from "@/features/session/identity";
 import { exitRoleView } from "../demo/actions";
 import { ArtistWorkspacePage } from "./ArtistWorkspacePage";
 
@@ -11,17 +16,36 @@ import { ArtistWorkspacePage } from "./ArtistWorkspacePage";
  * guard; this check is a defense-in-depth double check, not the
  * primary gate, matching `app/cg/page.tsx`'s identical pattern. */
 export default async function Page() {
-  const store = await cookies();
-  if (store.get(DEMO_ROLE_COOKIE)?.value !== "artist") {
+  const identity = await resolveIdentity();
+  if (identity?.role !== "artist") {
     redirect("/demo");
   }
 
   let inbox: ArtistInboxRead | null;
+  let readyTasks: AnchorContextSummaryListRead | null = null;
+  let waitingTasks: AnchorContextSummaryListRead | null = null;
   try {
-    inbox = await fetchArtistInbox();
+    [inbox, readyTasks, waitingTasks] = await Promise.all([
+      fetchArtistInbox(),
+      fetchArtistAnchorContextSummaries(actorHeaders(identity), {
+        limit: 5,
+        scope: "ready",
+      }),
+      fetchArtistAnchorContextSummaries(actorHeaders(identity), {
+        limit: 5,
+        scope: "waiting",
+      }),
+    ]);
   } catch {
     inbox = null;
   }
 
-  return <ArtistWorkspacePage inbox={inbox} onExitRole={exitRoleView} />;
+  return (
+    <ArtistWorkspacePage
+      inbox={inbox}
+      readyTasks={readyTasks}
+      waitingTasks={waitingTasks}
+      onExitRole={exitRoleView}
+    />
+  );
 }

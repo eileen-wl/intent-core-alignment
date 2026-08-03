@@ -1,4 +1,6 @@
 import type {
+  AnchorContextRead,
+  AnchorContextSummaryListRead,
   AnchorConfirmRequest,
   AnchorRejectRequest,
   CGSupervisorReviewRead,
@@ -117,6 +119,42 @@ export function fetchCgInboxItem(
   taskId: string,
 ): Promise<CgInboxItemRead | null> {
   return cgFetchOrNull<CgInboxItemRead>(`/cg/inbox/${taskId}`);
+}
+
+/** Role-authorized, read-only Anchor Context projection for one Task. */
+export function fetchCgAnchorContext(
+  taskId: string,
+  actorHeaders: ActorHeaders,
+): Promise<AnchorContextRead> {
+  return cgFetch<AnchorContextRead>(`/cg/tasks/${taskId}/anchor-context`, {
+    headers: actorHeaders,
+  });
+}
+
+export async function fetchCgAnchorContextOrNull(
+  taskId: string,
+  actorHeaders: ActorHeaders,
+): Promise<AnchorContextRead | null> {
+  try {
+    return await fetchCgAnchorContext(taskId, actorHeaders);
+  } catch {
+    return null;
+  }
+}
+
+/** One bounded, role-authorized compact read for multi-Task surfaces. */
+export function fetchCgAnchorContextSummaries(
+  actorHeaders: ActorHeaders,
+  options: { limit?: number; scope?: "all" | "triage" } = {},
+): Promise<AnchorContextSummaryListRead> {
+  const params = new URLSearchParams({
+    limit: String(options.limit ?? 200),
+    scope: options.scope ?? "all",
+  });
+  return cgFetch<AnchorContextSummaryListRead>(
+    `/cg/anchor-contexts?${params}`,
+    { headers: actorHeaders },
+  );
 }
 
 export function getTask(taskId: string): Promise<TaskRead | null> {

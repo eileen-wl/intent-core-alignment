@@ -1114,3 +1114,70 @@ The first task after approving this baseline is **documentation/bootstrap only**
 
 The first source-code package is Package A, after a separate product/interaction proposal is
 approved.
+
+---
+
+# 22. Package A implementation checkpoint (2026-08-03)
+
+**Status:** Package A implementation, owner visual validation, and the final full merge gate are
+complete on `feat/package-a-anchor-first-experience`; Package A is complete and merge-ready.
+
+Implemented on the current formal role-aware routes:
+
+- one derived, read-only, role-authorized Anchor Context projection at
+  `GET /vfx/shots/{shot_id}/anchor-context`, `GET /cg/tasks/{task_id}/anchor-context`, and
+  `GET /artist/tasks/{task_id}/anchor-context`;
+- shared `VfxShotWorkspaceFrame`, `CgTaskWorkspaceFrame`, and `ArtistTaskWorkspaceFrame`
+  ownership of breadcrumbs, object context header, persistent compact/expandable Anchor Context,
+  tabs, unavailable/not-found handling, spacing, and the page-content slot;
+- migration of all 13 formal Shot/Task routes to those frames without changing paths, sidebar
+  structure, tab names, or role boundaries;
+- role-specific VFX authority, CG Core-to-Execution relationship, and Artist WHY/HOW/WHAT TO DO
+  NOW presentations, including confirmed-versus-Draft distinction and truthful Execution Draft
+  source rendering;
+- only the real `low` / `medium` / `high` Intent Signal states plus `not_assessed`; missing Signal
+  data is never treated as low;
+- Anchor-aware Home, Review Inbox, and Shot/Task catalogue summaries without placing one global
+  Anchor layer on multi-object pages; formal VFX escalations are counted only from real unresolved
+  `TaskDependency(kind="escalation")` records, never inferred from high attention;
+- actionable no-Version and assessment-not-ready states that explain current prerequisites and use
+  real routes, with no fake upload or autonomous action.
+
+Current data-model constraints are represented explicitly rather than filled with synthetic copy:
+
+- a confirmed Execution revision's stored `core_anchor_revision_id` proves its upstream Core
+  revision; when that row cannot be resolved, the relationship is `relationship_unavailable`;
+- there is no persisted Demo/fixture provenance discriminator for an Execution Draft, so the UI
+  never guesses that source. It reports Agent-proposed, human-created, or copied-from-prior only
+  when stored provenance proves it, otherwise `unknown`;
+- Home, Inbox, and catalogue pages now use role-authorized, bounded compact aggregate reads at
+  `GET /vfx/anchor-contexts`, `GET /cg/anchor-contexts`, and
+  `GET /artist/anchor-contexts`; the browser no longer issues one full Anchor Context request per
+  row, and no persistence cache was introduced.
+
+The owner-validation correction strengthens the approved interaction without changing the domain:
+
+- object Overview routes default the Anchor Context to expanded, other tabs default it to compact,
+  and an explicit accessible disclosure control remembers the user's role/object choice only in
+  browser session storage;
+- VFX and CG Home lead with at most five backend-ordered Anchor actions, then scope health, then
+  browse/resume entry points; no arbitrary first object is presented as the Workspace Anchor;
+- Artist Home separates proven `ready_to_work` Tasks from `waiting_upstream` Tasks and shows the
+  large WHY/HOW/WHAT briefing only when exactly one ready Task is proven;
+- Inbox/catalogue rows separate Anchor, direction, attention/readiness, next action, and secondary
+  production context, using backend action labels and direct routes where available;
+- the old Overview Working Direction presentation is a load-failure fallback only, so a normally
+  loaded expanded Anchor briefing is not duplicated below it;
+- `No immediate review action`, missing direction, missing Guidance, and `not_assessed` attention
+  are distinct read-model states rather than contradictory copy.
+
+The correction has its own focused validation across the aggregate reads, disclosure/session
+interaction, three Homes, row hierarchy, Overview de-duplication, and affected route loaders,
+alongside touched-package lint/type/format checks. The project owner subsequently confirmed the
+Package A visual checklist (VFX/CG/Artist Overview, Home, Inbox, catalogue, Anchor expansion,
+readiness, and attention behavior). The final merge gate then passed 1,138 backend tests, 1,017
+frontend tests, the production web build, Ruff format/check, mypy, Python and TypeScript contract
+checks, web typecheck, ESLint, Prettier, lockfile checks, and `git diff --check`.
+
+Package A is complete. Package B — Visible Agent journey completion — is the next approved
+package and has not started. Packages C and D have not started.

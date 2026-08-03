@@ -18,6 +18,11 @@ const { fetchArtistInboxMock } = vi.hoisted(() => ({
 }));
 vi.mock("@/features/artist/api", () => ({
   fetchArtistInbox: fetchArtistInboxMock,
+  fetchArtistAnchorContextSummaries: vi.fn(async () => ({
+    items: [],
+    total_count: 0,
+    limit: 5,
+  })),
 }));
 
 vi.mock("../demo/actions", () => ({
