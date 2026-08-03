@@ -39,9 +39,8 @@ export function ShotOverviewPage({
 }: {
   item: VfxInboxItemRead | null;
   anchorContext?: AnchorContextRead | null;
-  /** Step 9B-1: the derived, read-only Current Creative Direction
-   * summary -- optional so every pre-existing caller/test that only
-   * ever supplied `item` keeps compiling and rendering unchanged. */
+  /** Legacy derived summary input retained for caller compatibility; the
+   * expanded Anchor Context is now the single high-level briefing. */
   workingDirection?: WorkingDirectionSectionModel;
   /** Step 9B-3: the Shot's real Tasks and their execution state --
    * optional (and rendering nothing when `null`/omitted) so every
@@ -62,7 +61,7 @@ export function ShotOverviewPage({
 
           <NextFocusPanel items={item.next_candidates ?? []} />
 
-          {workingDirection && (
+          {!anchorContext && workingDirection && (
             <WorkingDirectionSection section={workingDirection} />
           )}
 
@@ -75,12 +74,6 @@ export function ShotOverviewPage({
 
           <DetailedContext>
             <dl>
-              <dt>Confirmed Core Anchor</dt>
-              <dd>
-                {item.active_core_anchor_summary ??
-                  "No confirmed Core Anchor yet."}
-              </dd>
-
               <dt>Latest Version</dt>
               <dd>
                 {item.relevant_version_name ? (

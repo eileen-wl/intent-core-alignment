@@ -1,4 +1,7 @@
-import type { AnchorContextRead, VfxInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextSummaryRead,
+  VfxInboxRead,
+} from "@intent-core/contracts";
 import Link from "next/link";
 
 import {
@@ -38,7 +41,7 @@ export function ReviewInboxPage({
   onExitRole,
 }: {
   inbox: VfxInboxRead | null;
-  anchorContexts?: Record<string, AnchorContextRead | null>;
+  anchorContexts?: Record<string, AnchorContextSummaryRead | null>;
   onExitRole: () => void | Promise<void>;
 }) {
   const workItems = inbox

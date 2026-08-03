@@ -1,5 +1,6 @@
 import type {
   AnchorContextRead,
+  AnchorContextSummaryListRead,
   ArtistAgentGuidanceRead,
   ArtistFeedbackHistoryRead,
   ArtistGuidanceGenerateRequest,
@@ -137,24 +138,21 @@ export async function fetchArtistAnchorContextOrNull(
   }
 }
 
-/** Best-effort Anchor Context collection for multi-Task surfaces. */
-export async function fetchArtistAnchorContextMap(
-  taskIds: string[],
+/** One bounded, role-authorized compact read for multi-Task surfaces. */
+export function fetchArtistAnchorContextSummaries(
   actorHeaders: ActorHeaders,
-): Promise<Record<string, AnchorContextRead | null>> {
-  return Object.fromEntries(
-    await Promise.all(
-      taskIds.map(async (taskId) => {
-        try {
-          return [
-            taskId,
-            await fetchArtistAnchorContextOrNull(taskId, actorHeaders),
-          ] as const;
-        } catch {
-          return [taskId, null] as const;
-        }
-      }),
-    ),
+  options: {
+    limit?: number;
+    scope?: "all" | "triage" | "ready" | "waiting";
+  } = {},
+): Promise<AnchorContextSummaryListRead> {
+  const params = new URLSearchParams({
+    limit: String(options.limit ?? 200),
+    scope: options.scope ?? "all",
+  });
+  return artistFetch<AnchorContextSummaryListRead>(
+    `/artist/anchor-contexts?${params}`,
+    { headers: actorHeaders },
   );
 }
 

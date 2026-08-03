@@ -1,306 +1,171 @@
-import type { VfxInboxItemRead, VfxInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextSummaryRead,
+  VfxInboxItemRead,
+  VfxInboxRead,
+} from "@intent-core/contracts";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { VfxWorkspacePage } from "./VfxWorkspacePage";
 
-afterEach(() => {
-  cleanup();
-});
+afterEach(cleanup);
 
-function buildItem(
-  overrides: Partial<VfxInboxItemRead> = {},
+function item(
+  id: string,
+  state: VfxInboxItemRead["core_anchor_state"] = "confirmed",
 ): VfxInboxItemRead {
   return {
-    project_id: "11111111-1111-1111-1111-111111111111",
-    project_name: "D1 Demo Project",
-    shot_id: "22222222-2222-2222-2222-222222222222",
-    shot_name: "Shot 010 — Final confrontation",
+    project_id: "project-1",
+    project_name: "Demo Project",
+    shot_id: id,
+    shot_name: `Shot ${id}`,
     shot_source: "manual",
-    core_anchor_state: "confirmed",
-    active_core_anchor_revision_id: "33333333-3333-3333-3333-333333333333",
-    active_core_anchor_summary: "A restrained dusk confrontation.",
+    core_anchor_state: state,
+    active_core_anchor_revision_id: state === "confirmed" ? "revision-1" : null,
+    active_core_anchor_summary:
+      state === "confirmed" ? "Keep the confrontation restrained." : null,
     pending_human_gate_id: null,
-    relevant_task_id: "44444444-4444-4444-4444-444444444444",
-    relevant_task_name: "Compositing Review",
-    relevant_version_id: "55555555-5555-5555-5555-555555555555",
-    relevant_version_name: "D1_STEP3_VFX_REVIEW_001",
-    relevant_version_number: 1,
-    pairing_established: true,
-    latest_assessment_id: "66666666-6666-6666-6666-666666666666",
-    latest_assessment_created_at: "2026-07-30T00:00:00Z",
-    latest_signal_id: "77777777-7777-7777-7777-777777777777",
-    latest_signal_attention_level: "high",
-    latest_signal_summary: "Attention is needed on this assessment.",
+    relevant_task_id: null,
+    relevant_task_name: null,
+    relevant_version_id: null,
+    relevant_version_name: null,
+    relevant_version_number: null,
+    pairing_established: false,
+    latest_assessment_id: null,
+    latest_assessment_created_at: null,
+    latest_signal_id: null,
+    latest_signal_attention_level: null,
+    latest_signal_summary: null,
     re_anchor_proposal_present: false,
     current_focus: {
       focus_type: "core_anchor_gate_pending",
-      title: "Core Anchor draft awaiting your confirmation",
-      explanation:
-        "A proposed revision to the shared creative intent is ready for your review.",
-      target_route: "/vfx/shots/22222222-2222-2222-2222-222222222222/intent",
-      primary_action_label: "Review and confirm",
+      title: "Core Anchor draft awaiting confirmation",
+      explanation: "A draft needs human review.",
+      target_route: `/vfx/shots/${id}/intent`,
+      primary_action_label: "Review revision",
       actionable: true,
     },
     next_candidates: [],
     sort_rank: 0,
-    ...overrides,
   };
 }
 
-function inactiveItem(
-  overrides: Partial<VfxInboxItemRead> = {},
-): VfxInboxItemRead {
-  return buildItem({
-    latest_signal_attention_level: null,
-    current_focus: {
-      focus_type: "none",
-      title: "Nothing requires your attention on this Shot right now",
-      explanation: "",
-      target_route: "/vfx/shots/s",
-      primary_action_label: null,
-      actionable: false,
+function summary(id: string): AnchorContextSummaryRead {
+  return {
+    role: "vfx_supervisor",
+    shot_id: id,
+    task_id: null,
+    core_anchor_state: "confirmed",
+    core_anchor_revision_number: 1,
+    core_direction: "Keep the confrontation restrained.",
+    execution_context_state: null,
+    execution_anchor_revision_number: null,
+    execution_direction: null,
+    based_on_core_anchor_revision_number: null,
+    attention_level: "high",
+    attention_summary: "A draft needs review.",
+    guidance_state: "unavailable",
+    readiness_state: "action_required",
+    readiness_detail: "The VFX Supervisor must review this revision.",
+    open_vfx_escalation: false,
+    next_action: {
+      title: "Review Core Anchor revision",
+      why_now: "A draft needs human review.",
+      downstream_effect: "CG translation can continue after confirmation.",
+      target_route: `/vfx/shots/${id}/intent`,
+      action_label: "Review revision",
+      executable: true,
     },
-    ...overrides,
-  });
+  };
 }
 
-function buildInbox(items: VfxInboxItemRead[]): VfxInboxRead {
-  return { items, generated_at: "2026-07-30T00:00:00Z" };
+function inbox(items: VfxInboxItemRead[]): VfxInboxRead {
+  return { items, generated_at: "2026-08-03T00:00:00Z" };
 }
 
 describe("VfxWorkspacePage", () => {
-  it("renders the correct App Shell with fixed VFX Supervisor identity", () => {
-    render(
-      <VfxWorkspacePage
-        inbox={buildInbox([buildItem()])}
-        onExitRole={vi.fn()}
-      />,
+  it("renders honest error and empty states", () => {
+    const { rerender } = render(
+      <VfxWorkspacePage inbox={null} onExitRole={vi.fn()} />,
     );
-    expect(screen.getByText("Maya Chen")).toBeVisible();
-    expect(screen.getByText("VFX Supervisor")).toBeVisible();
-    expect(screen.getByText("Demo mode")).toBeVisible();
-  });
-
-  it("renders the VFX role sidebar with Workspace Home current", () => {
-    render(
-      <VfxWorkspacePage
-        inbox={buildInbox([buildItem()])}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByRole("link", { name: "Workspace Home" }),
-    ).toHaveAttribute("aria-current", "page");
-  });
-
-  it("shows an honest error state when the Inbox failed to load", () => {
-    render(<VfxWorkspacePage inbox={null} onExitRole={vi.fn()} />);
     expect(screen.getByText("Workspace Home is unavailable")).toBeVisible();
-  });
-
-  it("shows an honest empty state when there are no Shots at all", () => {
-    render(<VfxWorkspacePage inbox={buildInbox([])} onExitRole={vi.fn()} />);
+    rerender(<VfxWorkspacePage inbox={inbox([])} onExitRole={vi.fn()} />);
     expect(screen.getByText("No Shots exist yet")).toBeVisible();
   });
 
-  it("renders the Anchor overview from real Anchor and attention states", () => {
+  it("puts bounded Anchor actions before scope health without a global current Anchor", () => {
+    const items = Array.from({ length: 7 }, (_, index) => item(`s${index}`));
     render(
       <VfxWorkspacePage
-        inbox={buildInbox([
-          buildItem({ shot_id: "s1", core_anchor_state: "confirmed" }),
-          inactiveItem({ shot_id: "s2", core_anchor_state: "none" }),
-        ])}
+        inbox={inbox(items)}
+        anchorActions={{
+          items: items.slice(0, 5).map((row) => summary(row.shot_id)),
+          total_count: 7,
+          limit: 5,
+        }}
         onExitRole={vi.fn()}
       />,
     );
-    const overview = within(
-      screen.getByRole("region", { name: "Anchor overview" }),
-    );
-    expect(overview.getByText("Confirmed Core Anchors")).toBeVisible();
-    expect(overview.getByText("Draft / pending review")).toBeVisible();
-    expect(overview.getByText("No Core Anchor")).toBeVisible();
-    expect(overview.getByText("Medium attention")).toBeVisible();
-    expect(overview.getByText("High attention")).toBeVisible();
 
-    const confirmedCard = overview
-      .getByText("Confirmed Core Anchors")
-      .closest("div") as HTMLElement;
-    expect(confirmedCard).toHaveTextContent("1");
-    const noCoreAnchorCard = overview
-      .getByText("No Core Anchor")
-      .closest("div") as HTMLElement;
-    expect(noCoreAnchorCard).toHaveTextContent("1");
-  });
-
-  it("Priority actions leads with the required action, never the Shot name, and contains at most 3 items", () => {
-    const items = Array.from({ length: 5 }, (_, i) =>
-      buildItem({
-        shot_id: `s${i}`,
-        shot_name: `Shot ${i}`,
-        sort_rank: i,
-        current_focus: {
-          focus_type: "core_anchor_gate_pending",
-          title: `Required action ${i}`,
-          explanation: "explanation",
-          target_route: `/vfx/shots/s${i}/intent`,
-          primary_action_label: "Review and confirm",
-          actionable: true,
-        },
-      }),
-    );
-    render(<VfxWorkspacePage inbox={buildInbox(items)} onExitRole={vi.fn()} />);
-    const priorityActions = within(
-      screen.getByRole("region", { name: "Priority actions" }),
-    );
-    expect(priorityActions.getByText("Required action 0")).toBeVisible();
-    expect(priorityActions.getByText("Required action 1")).toBeVisible();
-    expect(priorityActions.getByText("Required action 2")).toBeVisible();
+    const actions = screen.getByRole("region", { name: "Anchor actions" });
+    expect(within(actions).getAllByRole("listitem")).toHaveLength(5);
     expect(
-      priorityActions.queryByText("Required action 3"),
-    ).not.toBeInTheDocument();
-    // Shot name is present only as supporting context, not the heading.
-    expect(priorityActions.getByText("Shot 0")).toBeVisible();
+      within(actions).getAllByText("Review Core Anchor revision").length,
+    ).toBeGreaterThan(0);
+    expect(within(actions).getAllByText("Anchor")).toHaveLength(5);
+    expect(within(actions).getAllByText("Direction")).toHaveLength(5);
+    expect(within(actions).getAllByText("Attention / state")).toHaveLength(5);
+    expect(
+      within(actions).getAllByLabelText("Production context"),
+    ).toHaveLength(5);
+    expect(screen.queryByText("Anchor overview")).not.toBeInTheDocument();
+    const health = screen.getByRole("region", { name: "Anchor health" });
+    expect(
+      actions.compareDocumentPosition(health) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
-  it("Priority actions uses the shared Review work-item model and opens Core Anchor work in Intent", () => {
+  it("keeps counts below actions and production browse secondary", () => {
     render(
       <VfxWorkspacePage
-        inbox={buildInbox([
-          buildItem({
-            shot_id: "s1",
-            current_focus: {
-              focus_type: "core_anchor_gate_pending",
-              title: "Core Anchor draft awaiting your confirmation",
-              explanation: "explanation",
-              target_route: "/vfx/shots/s1/intent",
-              primary_action_label: "Review and confirm",
-              actionable: true,
-            },
-          }),
-        ])}
+        inbox={inbox([item("confirmed"), item("missing", "none")])}
+        anchorActions={{
+          items: [summary("confirmed")],
+          total_count: 1,
+          limit: 5,
+        }}
         onExitRole={vi.fn()}
       />,
     );
-    const priorityActions = within(
-      screen.getByRole("region", { name: "Priority actions" }),
-    );
-    const link = priorityActions
-      .getByText("Core Anchor draft awaiting your confirmation")
-      .closest("a");
-    expect(link).toHaveAttribute("href", "/vfx/shots/s1/intent");
-  });
-
-  it("opens alignment-family work in the real Alignment Workspace", () => {
-    render(
-      <VfxWorkspacePage
-        inbox={buildInbox([
-          buildItem({
-            shot_id: "s1",
-            current_focus: {
-              focus_type: "alignment_not_followed_by_anchor_action",
-              title: "Cross-role assessment may need your interpretation",
-              explanation:
-                "No newer Core Anchor action has followed this assessment.",
-              target_route: "/vfx/shots/s1/alignment",
-              primary_action_label: "Review alignment",
-              actionable: true,
-            },
-          }),
-        ])}
-        onExitRole={vi.fn()}
-      />,
-    );
-    const priorityActions = within(
-      screen.getByRole("region", { name: "Priority actions" }),
-    );
-    const link = priorityActions
-      .getByText("Cross-role assessment may need your interpretation")
-      .closest("a");
-    expect(link).toHaveAttribute("href", "/vfx/shots/s1/alignment");
-  });
-
-  it("shows an honest no-priority-actions state without hiding the Anchor overview or Shots access", () => {
-    render(
-      <VfxWorkspacePage
-        inbox={buildInbox([inactiveItem({ shot_id: "s1" })])}
-        onExitRole={vi.fn()}
-      />,
+    const health = within(
+      screen.getByRole("region", { name: "Anchor health" }),
     );
     expect(
-      screen.getByText("No priority actions require your attention"),
-    ).toBeVisible();
-    expect(screen.getByText("Confirmed Core Anchors")).toBeVisible();
-    expect(screen.getByText("Anchor overview")).toBeVisible();
-    expect(
-      screen.getByRole("link", { name: "View all Shots →" }),
-    ).toBeVisible();
-  });
-
-  it("Anchor overview reflects real Core Anchor state counts", () => {
-    render(
-      <VfxWorkspacePage
-        inbox={buildInbox([
-          buildItem({ shot_id: "s1", core_anchor_state: "confirmed" }),
-          inactiveItem({ shot_id: "s2", core_anchor_state: "draft_pending" }),
-          inactiveItem({ shot_id: "s3", core_anchor_state: "none" }),
-        ])}
-        onExitRole={vi.fn()}
-      />,
-    );
-    const overview = within(
-      screen.getByRole("region", { name: "Anchor overview" }),
-    );
-    expect(
-      overview.getByText("Confirmed Core Anchors").closest("div"),
+      health.getByText("Confirmed Core Anchors").closest("div"),
     ).toHaveTextContent("1");
-    expect(
-      overview.getByText("Draft / pending review").closest("div"),
-    ).toHaveTextContent("1");
-    expect(
-      overview.getByText("No Core Anchor").closest("div"),
-    ).toHaveTextContent("1");
-  });
-
-  it("Important Shots contains at most 3 Shots and never the complete catalogue", () => {
-    const items = Array.from({ length: 6 }, (_, i) =>
-      inactiveItem({ shot_id: `s${i}`, shot_name: `Shot ${i}`, sort_rank: i }),
+    expect(health.getByText("No Core Anchor").closest("div")).toHaveTextContent(
+      "1",
     );
-    render(<VfxWorkspacePage inbox={buildInbox(items)} onExitRole={vi.fn()} />);
-    expect(screen.getByText("Important Shots")).toBeVisible();
-    expect(screen.getByText("Shot 0")).toBeVisible();
-    expect(screen.getByText("Shot 1")).toBeVisible();
-    expect(screen.getByText("Shot 2")).toBeVisible();
-    expect(screen.queryByText("Shot 5")).not.toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "View all Shots →" }),
     ).toHaveAttribute("href", "/vfx/shots");
   });
 
-  it("links Priority actions' Review Inbox action into /vfx/inbox", () => {
-    render(
-      <VfxWorkspacePage
-        inbox={buildInbox([buildItem()])}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByRole("link", { name: "Go to Review Inbox →" }),
-    ).toHaveAttribute("href", "/vfx/inbox");
-  });
-
-  it("wires Exit role view to the provided callback", async () => {
+  it("uses the backend action label and wires Exit role view", async () => {
     const onExitRole = vi.fn();
     render(
       <VfxWorkspacePage
-        inbox={buildInbox([buildItem()])}
+        inbox={inbox([item("s1")])}
+        anchorActions={{ items: [summary("s1")], total_count: 1, limit: 5 }}
         onExitRole={onExitRole}
       />,
     );
+    expect(screen.getByText("Review revision →")).toBeVisible();
     await userEvent.click(
       screen.getByRole("button", { name: "Exit role view" }),
     );
-    expect(onExitRole).toHaveBeenCalled();
+    expect(onExitRole).toHaveBeenCalledOnce();
   });
 });

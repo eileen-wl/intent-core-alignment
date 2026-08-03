@@ -7,11 +7,13 @@ Current-focus read models. It performs no writes and never runs an Agent.
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 from intent_core_contracts.api.anchor_context import (
     AnchorAttentionContextRead,
     AnchorContextRead,
+    AnchorContextSummaryListRead,
+    AnchorContextSummaryRead,
     AnchorNextActionRead,
     AnchorVersionContextRead,
     CoreAnchorContextRead,
@@ -335,6 +337,17 @@ def _version_context(item: object, target: str) -> AnchorVersionContextRead:
 
 def _focus_action(focus: Any) -> AnchorNextActionRead:
     focus_type = str(focus.focus_type)
+    if focus_type == "none":
+        return AnchorNextActionRead(
+            title="No immediate review action",
+            why_now=(
+                "No current review, confirmation, dependency, or feedback action is recorded."
+            ),
+            downstream_effect="New evidence may create a later human action.",
+            target_route=str(focus.target_route),
+            action_label=None,
+            executable=False,
+        )
     return AnchorNextActionRead(
         title=str(focus.title),
         why_now=str(focus.explanation),
@@ -347,13 +360,9 @@ def _focus_action(focus: Any) -> AnchorNextActionRead:
     )
 
 
-async def get_vfx_anchor_context(session: AsyncSession, shot_id: uuid.UUID) -> AnchorContextRead:
-    shot = await session.get(Shot, shot_id)
-    if shot is None:
-        raise NotFoundError("Shot not found")
-    item = await vfx_inbox_service.get_inbox_item_for_shot(session, shot_id)
-    if item is None:
-        raise NotFoundError("Shot not found")
+async def _build_vfx_anchor_context(
+    session: AsyncSession, shot_id: uuid.UUID, item: Any
+) -> AnchorContextRead:
     core = await _core_context(session, shot_id)
     attention = await _attention_context(
         session, role="vfx_supervisor", shot_id=shot_id, task_id=None
@@ -384,19 +393,28 @@ async def get_vfx_anchor_context(session: AsyncSession, shot_id: uuid.UUID) -> A
     )
 
 
+async def get_vfx_anchor_context(session: AsyncSession, shot_id: uuid.UUID) -> AnchorContextRead:
+    shot = await session.get(Shot, shot_id)
+    if shot is None:
+        raise NotFoundError("Shot not found")
+    item = await vfx_inbox_service.get_inbox_item_for_shot(session, shot_id)
+    if item is None:
+        raise NotFoundError("Shot not found")
+    return await _build_vfx_anchor_context(session, shot_id, item)
+
+
 async def _get_task_context(
-    session: AsyncSession, task_id: uuid.UUID, *, role: str
+    session: AsyncSession, task_id: uuid.UUID, *, role: str, item: Any | None = None
 ) -> AnchorContextRead:
     task = await session.get(Task, task_id)
     if task is None:
         raise NotFoundError("Task not found")
-    item: Any
     if role == "cg_supervisor":
-        item = await cg_inbox_service.get_inbox_item_for_task(session, task_id)
+        item = item or await cg_inbox_service.get_inbox_item_for_task(session, task_id)
         version_route = f"/cg/tasks/{task_id}/version-review"
         guidance_state = "unavailable"
     else:
-        item = await artist_inbox_service.get_inbox_item_for_task(session, task_id)
+        item = item or await artist_inbox_service.get_inbox_item_for_task(session, task_id)
         version_route = f"/artist/tasks/{task_id}/current-version"
         guidance_state = (
             ("missing" if item and item.guidance_state == "none" else item.guidance_state)
@@ -446,17 +464,63 @@ async def _get_task_context(
             action_label="Open Execution",
             executable=True,
         )
-    elif role == "artist" and execution.lifecycle_state != "confirmed":
+    elif role == "cg_supervisor" and execution.context_state == "outdated":
+        action = AnchorNextActionRead(
+            title="Review the outdated Execution Anchor",
+            why_now="The confirmed department translation is based on an older Core Anchor.",
+            downstream_effect=(
+                "A CG-confirmed revision will restore current direction for Artists."
+            ),
+            target_route=f"/cg/tasks/{task_id}/execution",
+            action_label="Review Execution Anchor",
+            executable=True,
+        )
+    elif role == "artist" and core.lifecycle_state != "confirmed":
+        action = AnchorNextActionRead(
+            title="Core Anchor confirmation is required",
+            why_now="The VFX Supervisor has not confirmed shared creative direction.",
+            downstream_effect=(
+                "CG can translate the direction only after VFX confirms the Core Anchor."
+            ),
+            target_route=None,
+            action_label=None,
+            executable=False,
+        )
+    elif role == "artist" and (
+        execution.lifecycle_state != "confirmed" or execution.context_state != "current"
+    ):
         action = AnchorNextActionRead(
             title="Request CG clarification",
-            why_now="No confirmed Execution Anchor is available for this Task.",
+            why_now=("A current, confirmed Execution Anchor is not available for this Task."),
             downstream_effect=(
                 "A CG-confirmed execution translation is required before authoritative "
                 "work direction is available."
             ),
-            target_route=f"/artist/tasks/{task_id}",
-            action_label="Review Task context",
+            target_route=None,
+            action_label=None,
+            executable=False,
+        )
+    elif role == "artist" and guidance_state == "current":
+        action = AnchorNextActionRead(
+            title="Continue within current Guidance",
+            why_now="Confirmed direction and current Guidance are available for this Task.",
+            downstream_effect=(
+                "The next Version can remain traceable to the confirmed execution direction."
+            ),
+            target_route=f"/artist/tasks/{task_id}/current-version",
+            action_label="Open Current Version",
             executable=True,
+        )
+    elif role == "artist" and guidance_state == "missing" and item.latest_version_id is None:
+        action = AnchorNextActionRead(
+            title="Guidance is not ready",
+            why_now="A Production Version is required before Artist Guidance can be generated.",
+            downstream_effect=(
+                "Once a Version exists, the Artist can generate advisory iteration Guidance."
+            ),
+            target_route=f"/artist/tasks/{task_id}/current-version",
+            action_label=None,
+            executable=False,
         )
     return AnchorContextRead(
         role=role,  # type: ignore[arg-type]
@@ -478,3 +542,118 @@ async def get_cg_anchor_context(session: AsyncSession, task_id: uuid.UUID) -> An
 
 async def get_artist_anchor_context(session: AsyncSession, task_id: uuid.UUID) -> AnchorContextRead:
     return await _get_task_context(session, task_id, role="artist")
+
+
+def _summary_readiness(context: AnchorContextRead, item: Any) -> tuple[str, str]:
+    if context.role == "vfx_supervisor":
+        if context.next_action.executable:
+            return "action_required", context.next_action.why_now
+        return "no_immediate_action", "No immediate VFX review action is recorded."
+
+    execution = context.execution_anchor
+    if context.core_anchor.lifecycle_state != "confirmed":
+        return (
+            "waiting_upstream",
+            "Core Anchor confirmation is required from the VFX Supervisor.",
+        )
+    if context.role == "cg_supervisor":
+        if execution is None or execution.context_state in {
+            "missing",
+            "draft",
+            "pending",
+            "outdated",
+            "relationship_unavailable",
+        }:
+            return "action_required", context.next_action.why_now
+        if context.next_action.executable or getattr(item, "open_dependency_count", 0) > 0:
+            return "action_required", context.next_action.why_now
+        return "no_immediate_action", "No immediate CG review action is recorded."
+
+    if getattr(item, "open_dependency_count", 0) > 0:
+        return (
+            "waiting_upstream",
+            "A blocking Dependency requires supervisor resolution before work continues.",
+        )
+    if execution is None or execution.context_state != "current":
+        return (
+            "waiting_upstream",
+            "Current Execution direction is required from the CG Supervisor.",
+        )
+    if context.guidance_state == "current" or context.next_action.executable:
+        return "ready_to_work", context.next_action.why_now
+    if context.guidance_state in {"missing", "outdated"}:
+        return "waiting_upstream", context.next_action.why_now
+    return "no_immediate_action", "No immediate Artist action is recorded."
+
+
+def _compact_summary(context: AnchorContextRead, item: Any) -> AnchorContextSummaryRead:
+    readiness_state, readiness_detail = _summary_readiness(context, item)
+    execution = context.execution_anchor
+    return AnchorContextSummaryRead(
+        role=context.role,
+        shot_id=context.shot_id,
+        task_id=context.task_id,
+        core_anchor_state=context.core_anchor.lifecycle_state,
+        core_anchor_revision_number=context.core_anchor.confirmed_revision_number,
+        core_direction=context.core_anchor.direction_summary,
+        execution_context_state=execution.context_state if execution else None,
+        execution_anchor_revision_number=(
+            execution.confirmed_revision_number if execution else None
+        ),
+        execution_direction=execution.direction_summary if execution else None,
+        based_on_core_anchor_revision_number=(
+            execution.based_on_core_anchor_revision_number if execution else None
+        ),
+        attention_level=context.attention.level,
+        attention_summary=context.attention.summary,
+        guidance_state=context.guidance_state,
+        readiness_state=readiness_state,  # type: ignore[arg-type]
+        readiness_detail=readiness_detail,
+        open_vfx_escalation=context.open_vfx_escalation,
+        next_action=context.next_action,
+    )
+
+
+def _matches_scope(summary: AnchorContextSummaryRead, scope: str) -> bool:
+    if scope == "all":
+        return True
+    if scope == "triage":
+        return summary.readiness_state in {"action_required", "waiting_upstream"}
+    if scope == "ready":
+        return summary.readiness_state == "ready_to_work"
+    return summary.readiness_state == "waiting_upstream"
+
+
+async def list_anchor_context_summaries(
+    session: AsyncSession,
+    *,
+    role: Literal["vfx_supervisor", "cg_supervisor", "artist"],
+    limit: int,
+    scope: Literal["all", "triage", "ready", "waiting"],
+) -> AnchorContextSummaryListRead:
+    """Return a bounded compact projection in the role Inbox's backend order."""
+
+    if role == "vfx_supervisor":
+        source_items = (await vfx_inbox_service.list_inbox_items(session)).items
+        summaries = [
+            _compact_summary(await _build_vfx_anchor_context(session, item.shot_id, item), item)
+            for item in source_items
+        ]
+    else:
+        inbox = (
+            await cg_inbox_service.list_inbox_items(session)
+            if role == "cg_supervisor"
+            else await artist_inbox_service.list_inbox_items(session)
+        )
+        summaries = [
+            _compact_summary(
+                await _get_task_context(session, item.task_id, role=role, item=item),
+                item,
+            )
+            for item in inbox.items
+        ]
+
+    matching = [summary for summary in summaries if _matches_scope(summary, scope)]
+    return AnchorContextSummaryListRead(
+        items=matching[:limit], total_count=len(matching), limit=limit
+    )

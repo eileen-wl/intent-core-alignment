@@ -1,4 +1,6 @@
-import type { AnchorContextRead } from "@intent-core/contracts";
+import type { AnchorContextSummaryRead } from "@intent-core/contracts";
+
+import styles from "./AnchorContextSummary.module.css";
 
 function revisionLabel(revision: number | null): string {
   return revision === null ? "not confirmed" : `R${revision}`;
@@ -12,31 +14,48 @@ function stateLabel(state: string): string {
 export function AnchorContextSummary({
   context,
 }: {
-  context?: AnchorContextRead | null;
+  context?: AnchorContextSummaryRead | null;
 }) {
   if (!context) {
-    return <span>Anchor context unavailable</span>;
+    return (
+      <span className={styles.unavailable}>Anchor context unavailable</span>
+    );
   }
 
-  const execution = context.execution_anchor;
-  const direction =
-    execution?.direction_summary ?? context.core_anchor.direction_summary;
+  const direction = context.execution_direction ?? context.core_direction;
 
   return (
-    <>
-      <span>
-        Core Anchor{" "}
-        {revisionLabel(context.core_anchor.confirmed_revision_number)}
+    <span className={styles.summary}>
+      <span className={styles.group}>
+        <span className={styles.label}>Anchor</span>
+        <strong>
+          Core Anchor {revisionLabel(context.core_anchor_revision_number)} ·{" "}
+          {stateLabel(context.core_anchor_state)}
+        </strong>
+        {context.execution_context_state && (
+          <span>
+            Execution Anchor{" "}
+            {revisionLabel(context.execution_anchor_revision_number)} ·{" "}
+            {stateLabel(context.execution_context_state)}
+          </span>
+        )}
       </span>
-      {execution && (
-        <span>
-          Execution Anchor {revisionLabel(execution.confirmed_revision_number)}{" "}
-          · {stateLabel(execution.context_state)}
-        </span>
-      )}
-      <span>Direction: {direction ?? "not confirmed yet"}</span>
-      <span>Attention: {stateLabel(context.attention.level)}</span>
-      <span>Next: {context.next_action.title}</span>
-    </>
+      <span className={styles.group}>
+        <span className={styles.label}>Direction</span>
+        <span>{direction ?? "No confirmed direction is available yet."}</span>
+      </span>
+      <span className={styles.group}>
+        <span className={styles.label}>Attention / state</span>
+        <strong>
+          {stateLabel(context.attention_level)} ·{" "}
+          {stateLabel(context.readiness_state)}
+        </strong>
+        <span>{context.readiness_detail}</span>
+      </span>
+      <span className={styles.group}>
+        <span className={styles.label}>Next</span>
+        <strong>{context.next_action.title}</strong>
+      </span>
+    </span>
   );
 }

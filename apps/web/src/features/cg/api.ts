@@ -1,5 +1,6 @@
 import type {
   AnchorContextRead,
+  AnchorContextSummaryListRead,
   AnchorConfirmRequest,
   AnchorRejectRequest,
   CGSupervisorReviewRead,
@@ -141,24 +142,18 @@ export async function fetchCgAnchorContextOrNull(
   }
 }
 
-/** Best-effort Anchor Context collection for multi-Task surfaces. */
-export async function fetchCgAnchorContextMap(
-  taskIds: string[],
+/** One bounded, role-authorized compact read for multi-Task surfaces. */
+export function fetchCgAnchorContextSummaries(
   actorHeaders: ActorHeaders,
-): Promise<Record<string, AnchorContextRead | null>> {
-  return Object.fromEntries(
-    await Promise.all(
-      taskIds.map(async (taskId) => {
-        try {
-          return [
-            taskId,
-            await fetchCgAnchorContextOrNull(taskId, actorHeaders),
-          ] as const;
-        } catch {
-          return [taskId, null] as const;
-        }
-      }),
-    ),
+  options: { limit?: number; scope?: "all" | "triage" } = {},
+): Promise<AnchorContextSummaryListRead> {
+  const params = new URLSearchParams({
+    limit: String(options.limit ?? 200),
+    scope: options.scope ?? "all",
+  });
+  return cgFetch<AnchorContextSummaryListRead>(
+    `/cg/anchor-contexts?${params}`,
+    { headers: actorHeaders },
   );
 }
 

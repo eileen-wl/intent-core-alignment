@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type {
-  AnchorContextRead,
+  AnchorContextSummaryRead,
   VfxInboxItemRead,
   VfxInboxRead,
 } from "@intent-core/contracts";
@@ -42,7 +42,7 @@ export function ShotsListPage({
   onExitRole,
 }: {
   inbox: VfxInboxRead | null;
-  anchorContexts?: Record<string, AnchorContextRead | null>;
+  anchorContexts?: Record<string, AnchorContextSummaryRead | null>;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
@@ -78,7 +78,7 @@ function ShotsListContent({
   anchorContexts,
 }: {
   items: VfxInboxItemRead[];
-  anchorContexts: Record<string, AnchorContextRead | null>;
+  anchorContexts: Record<string, AnchorContextSummaryRead | null>;
 }) {
   const [projectFilter, setProjectFilter] = useState(ALL_VALUE);
   const [stateFilter, setStateFilter] = useState(ALL_VALUE);

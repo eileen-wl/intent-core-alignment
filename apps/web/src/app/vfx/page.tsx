@@ -1,8 +1,14 @@
 import { redirect } from "next/navigation";
-import type { AnchorContextRead, VfxInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextSummaryListRead,
+  VfxInboxRead,
+} from "@intent-core/contracts";
 
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
-import { fetchVfxAnchorContextMap, fetchVfxInbox } from "@/features/vfx/api";
+import {
+  fetchVfxAnchorContextSummaries,
+  fetchVfxInbox,
+} from "@/features/vfx/api";
 import { exitRoleView } from "../demo/actions";
 import { VfxWorkspacePage } from "./VfxWorkspacePage";
 
@@ -16,13 +22,15 @@ export default async function Page() {
   }
 
   let inbox: VfxInboxRead | null;
-  let anchorContexts: Record<string, AnchorContextRead | null> = {};
+  let anchorActions: AnchorContextSummaryListRead | null = null;
   try {
-    inbox = await fetchVfxInbox();
-    anchorContexts = await fetchVfxAnchorContextMap(
-      inbox.items.map((item) => item.shot_id),
-      actorHeaders(identity),
-    );
+    [inbox, anchorActions] = await Promise.all([
+      fetchVfxInbox(),
+      fetchVfxAnchorContextSummaries(actorHeaders(identity), {
+        limit: 5,
+        scope: "triage",
+      }),
+    ]);
   } catch {
     inbox = null;
   }
@@ -30,7 +38,7 @@ export default async function Page() {
   return (
     <VfxWorkspacePage
       inbox={inbox}
-      anchorContexts={anchorContexts}
+      anchorActions={anchorActions}
       onExitRole={exitRoleView}
     />
   );

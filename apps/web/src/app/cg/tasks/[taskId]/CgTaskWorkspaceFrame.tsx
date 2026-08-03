@@ -77,7 +77,11 @@ export function CgTaskWorkspaceFrame({
             ]}
           />
           <TaskContextHeader item={item} />
-          <AnchorContextLayer context={anchorContext ?? null} />
+          <AnchorContextLayer
+            context={anchorContext ?? null}
+            defaultExpanded={activeTab === "overview"}
+            storageKey={`icas:anchor-context:cg:${item.task_id}`}
+          />
           <ContextTabs
             activeTabId={activeTab}
             tabs={[

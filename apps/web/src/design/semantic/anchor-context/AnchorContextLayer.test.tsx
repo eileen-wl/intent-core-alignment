@@ -1,5 +1,14 @@
-import type { AnchorContextRead } from "@intent-core/contracts";
-import { cleanup, render, screen } from "@testing-library/react";
+import type {
+  AnchorContextRead,
+  AnchorContextSummaryRead,
+} from "@intent-core/contracts";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { AnchorContextLayer } from "./AnchorContextLayer";
@@ -7,6 +16,7 @@ import { AnchorContextSummary } from "./AnchorContextSummary";
 
 afterEach(() => {
   cleanup();
+  window.sessionStorage.clear();
 });
 
 function contextFor(role: AnchorContextRead["role"]): AnchorContextRead {
@@ -81,9 +91,85 @@ function contextFor(role: AnchorContextRead["role"]): AnchorContextRead {
   };
 }
 
+function summaryFor(role: AnchorContextRead["role"]): AnchorContextSummaryRead {
+  const context = contextFor(role);
+  return {
+    role,
+    shot_id: context.shot_id,
+    task_id: context.task_id,
+    core_anchor_state: context.core_anchor.lifecycle_state,
+    core_anchor_revision_number: context.core_anchor.confirmed_revision_number,
+    core_direction: context.core_anchor.direction_summary,
+    execution_context_state: context.execution_anchor?.context_state ?? null,
+    execution_anchor_revision_number:
+      context.execution_anchor?.confirmed_revision_number ?? null,
+    execution_direction: context.execution_anchor?.direction_summary ?? null,
+    based_on_core_anchor_revision_number:
+      context.execution_anchor?.based_on_core_anchor_revision_number ?? null,
+    attention_level: context.attention.level,
+    attention_summary: context.attention.summary,
+    guidance_state: context.guidance_state,
+    readiness_state: "waiting_upstream",
+    readiness_detail: "CG clarification is required before work continues.",
+    open_vfx_escalation: false,
+    next_action: context.next_action,
+  };
+}
+
 describe("AnchorContextLayer", () => {
-  it("presents the authoritative Core Anchor and draft distinction to VFX", () => {
+  it("uses an explicit accessible disclosure control", () => {
     render(<AnchorContextLayer context={contextFor("vfx_supervisor")} />);
+
+    const button = screen.getByRole("button", {
+      name: "Expand anchor context",
+    });
+    expect(button).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByText(/remains authoritative/)).not.toBeInTheDocument();
+
+    fireEvent.click(button);
+    expect(
+      screen.getByRole("button", { name: "Collapse anchor context" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByText(/remains authoritative/)).toBeInTheDocument();
+  });
+
+  it("defaults Overview context to expanded and remembers a session choice", async () => {
+    const { unmount } = render(
+      <AnchorContextLayer
+        context={contextFor("vfx_supervisor")}
+        defaultExpanded
+        storageKey="icas:test:shot"
+      />,
+    );
+
+    const collapse = screen.getByRole("button", {
+      name: "Collapse anchor context",
+    });
+    fireEvent.click(collapse);
+    expect(window.sessionStorage.getItem("icas:test:shot")).toBe("collapsed");
+    unmount();
+
+    render(
+      <AnchorContextLayer
+        context={contextFor("vfx_supervisor")}
+        defaultExpanded
+        storageKey="icas:test:shot"
+      />,
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Expand anchor context" }),
+      ).toHaveAttribute("aria-expanded", "false"),
+    );
+  });
+
+  it("presents the authoritative Core Anchor and draft distinction to VFX", () => {
+    render(
+      <AnchorContextLayer
+        context={contextFor("vfx_supervisor")}
+        defaultExpanded
+      />,
+    );
 
     expect(screen.getAllByText(/Core Anchor R2/).length).toBeGreaterThan(0);
     expect(screen.getByText(/remains authoritative/)).toBeInTheDocument();
@@ -91,7 +177,12 @@ describe("AnchorContextLayer", () => {
   });
 
   it("shows the Core-to-Execution relationship and stale state to CG", () => {
-    render(<AnchorContextLayer context={contextFor("cg_supervisor")} />);
+    render(
+      <AnchorContextLayer
+        context={contextFor("cg_supervisor")}
+        defaultExpanded
+      />,
+    );
 
     expect(screen.getByText("Based on Core Anchor R1")).toBeInTheDocument();
     expect(screen.getByText("outdated")).toBeInTheDocument();
@@ -99,7 +190,9 @@ describe("AnchorContextLayer", () => {
   });
 
   it("uses WHY / HOW / WHAT TO DO NOW and guidance state for Artists", () => {
-    render(<AnchorContextLayer context={contextFor("artist")} />);
+    render(
+      <AnchorContextLayer context={contextFor("artist")} defaultExpanded />,
+    );
 
     expect(screen.getByText("Why")).toBeInTheDocument();
     expect(screen.getByText("How")).toBeInTheDocument();
@@ -111,11 +204,9 @@ describe("AnchorContextLayer", () => {
     const { rerender } = render(<AnchorContextLayer context={null} />);
     expect(screen.getByText("Anchor context unavailable")).toBeInTheDocument();
 
-    rerender(<AnchorContextSummary context={contextFor("artist")} />);
-    expect(screen.getByText("Core Anchor R2")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Direction: Preserve the readable turn/),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Attention: high")).toBeInTheDocument();
+    rerender(<AnchorContextSummary context={summaryFor("artist")} />);
+    expect(screen.getByText(/Core Anchor R2/)).toBeInTheDocument();
+    expect(screen.getByText(/Preserve the readable turn/)).toBeInTheDocument();
+    expect(screen.getByText(/high · waiting upstream/)).toBeInTheDocument();
   });
 });

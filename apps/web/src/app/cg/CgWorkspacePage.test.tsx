@@ -1,231 +1,159 @@
-import type { CgInboxItemRead, CgInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextSummaryRead,
+  CgInboxItemRead,
+  CgInboxRead,
+} from "@intent-core/contracts";
 import { cleanup, render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { CgWorkspacePage } from "./CgWorkspacePage";
 
-afterEach(() => {
-  cleanup();
-});
+afterEach(cleanup);
 
-function buildItem(overrides: Partial<CgInboxItemRead> = {}): CgInboxItemRead {
+function item(
+  id: string,
+  state: CgInboxItemRead["execution_anchor_state"] = "none",
+): CgInboxItemRead {
   return {
-    task_id: "44444444-4444-4444-4444-444444444444",
-    task_name: "Lighting Pass",
+    task_id: id,
+    task_name: `Lighting ${id}`,
     department: "lighting",
     task_source: "manual",
-    shot_id: "22222222-2222-2222-2222-222222222222",
-    shot_name: "Shot 010 — Final confrontation",
-    project_id: "11111111-1111-1111-1111-111111111111",
-    project_name: "D1 Demo Project",
-    execution_anchor_state: "draft_pending",
+    shot_id: `shot-${id}`,
+    shot_name: `Shot ${id}`,
+    project_id: "project-1",
+    project_name: "Demo Project",
+    execution_anchor_state: state,
     active_execution_anchor_revision_id: null,
     active_execution_anchor_summary: null,
-    pending_human_gate_id: "33333333-3333-3333-3333-333333333333",
+    pending_human_gate_id: null,
     latest_version_id: null,
     latest_version_name: null,
     latest_version_number: null,
     open_dependency_count: 0,
     current_focus: {
-      focus_type: "execution_anchor_gate_pending",
-      title: "Execution Anchor draft awaiting your confirmation",
-      explanation:
-        "A proposed department execution translation is ready for your review.",
-      target_route: "/cg/tasks/44444444-4444-4444-4444-444444444444/execution",
-      primary_action_label: "Review and confirm",
-      actionable: true,
-    },
-    sort_rank: 0,
-    ...overrides,
-  };
-}
-
-function inactiveItem(
-  overrides: Partial<CgInboxItemRead> = {},
-): CgInboxItemRead {
-  return buildItem({
-    execution_anchor_state: "none",
-    pending_human_gate_id: null,
-    current_focus: {
       focus_type: "none",
       title: "Nothing requires your attention on this Task right now",
-      explanation: "Nothing requires your attention on this Task right now.",
-      target_route: "/cg/tasks/t",
+      explanation: "No current focus.",
+      target_route: `/cg/tasks/${id}`,
       primary_action_label: null,
       actionable: false,
     },
-    ...overrides,
-  });
+    sort_rank: 0,
+  };
 }
 
-function buildInbox(items: CgInboxItemRead[]): CgInboxRead {
-  return { items, generated_at: "2026-07-30T00:00:00Z" };
+function summary(id: string): AnchorContextSummaryRead {
+  return {
+    role: "cg_supervisor",
+    shot_id: `shot-${id}`,
+    task_id: id,
+    core_anchor_state: "confirmed",
+    core_anchor_revision_number: 1,
+    core_direction: "Keep the confrontation restrained.",
+    execution_context_state: "missing",
+    execution_anchor_revision_number: null,
+    execution_direction: null,
+    based_on_core_anchor_revision_number: null,
+    attention_level: "not_assessed",
+    attention_summary: null,
+    guidance_state: "unavailable",
+    readiness_state: "action_required",
+    readiness_detail: "The department translation is missing.",
+    open_vfx_escalation: false,
+    next_action: {
+      title: "Create the Execution Anchor",
+      why_now: "Confirmed Core direction needs a department translation.",
+      downstream_effect: "Artists will receive confirmed execution direction.",
+      target_route: `/cg/tasks/${id}/execution`,
+      action_label: "Open Execution",
+      executable: true,
+    },
+  };
+}
+
+function inbox(items: CgInboxItemRead[]): CgInboxRead {
+  return { items, generated_at: "2026-08-03T00:00:00Z" };
 }
 
 describe("CgWorkspacePage", () => {
-  it("renders the correct App Shell with fixed CG Supervisor identity", () => {
-    render(
-      <CgWorkspacePage
-        inbox={buildInbox([buildItem()])}
-        onExitRole={vi.fn()}
-      />,
+  it("renders honest error and empty states", () => {
+    const { rerender } = render(
+      <CgWorkspacePage inbox={null} onExitRole={vi.fn()} />,
     );
-    expect(screen.getByText("Daniel Ross")).toBeVisible();
-    expect(screen.getByText("CG Supervisor")).toBeVisible();
-  });
-
-  it("renders the CG role sidebar with Workspace Home current", () => {
-    render(
-      <CgWorkspacePage
-        inbox={buildInbox([buildItem()])}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByRole("link", { name: "Workspace Home" }),
-    ).toHaveAttribute("aria-current", "page");
-  });
-
-  it("shows an honest error state when the Inbox failed to load", () => {
-    render(<CgWorkspacePage inbox={null} onExitRole={vi.fn()} />);
     expect(screen.getByText("Workspace Home is unavailable")).toBeVisible();
-  });
-
-  it("shows an honest empty state when there are no Tasks at all", () => {
-    render(<CgWorkspacePage inbox={buildInbox([])} onExitRole={vi.fn()} />);
+    rerender(<CgWorkspacePage inbox={inbox([])} onExitRole={vi.fn()} />);
     expect(screen.getByText("No Tasks exist yet")).toBeVisible();
   });
 
-  it("renders department Anchor readiness from the loaded Tasks", () => {
+  it("puts bounded Execution Anchor actions before readiness counts", () => {
+    const items = Array.from({ length: 7 }, (_, index) => item(`t${index}`));
     render(
       <CgWorkspacePage
-        inbox={buildInbox([
-          buildItem({ task_id: "t1" }),
-          inactiveItem({ task_id: "t2" }),
-        ])}
+        inbox={inbox(items)}
+        anchorActions={{
+          items: items.slice(0, 5).map((row) => summary(row.task_id)),
+          total_count: 7,
+          limit: 5,
+        }}
         onExitRole={vi.fn()}
       />,
     );
-    const overview = within(
-      screen.getByRole("region", { name: "Department anchor readiness" }),
-    );
+    const actions = screen.getByRole("region", {
+      name: "Execution Anchor actions",
+    });
+    expect(within(actions).getAllByRole("listitem")).toHaveLength(5);
     expect(
-      overview.getByText("Awaiting Execution Anchor action"),
-    ).toBeVisible();
-    expect(overview.getByText("Missing Execution Anchors")).toBeVisible();
-    expect(overview.getByText("Outdated Execution Anchors")).toBeVisible();
-    expect(overview.getByText("Ready for Version review")).toBeVisible();
-    expect(overview.getByText("Open VFX escalations")).toBeVisible();
-
-    const awaitingCard = overview
-      .getByText("Awaiting Execution Anchor action")
-      .closest("div") as HTMLElement;
-    expect(awaitingCard).toHaveTextContent("1");
+      within(actions).getAllByText(/Core Anchor R1/).length,
+    ).toBeGreaterThan(0);
+    expect(
+      within(actions).getAllByText(/Execution Anchor not confirmed/).length,
+    ).toBeGreaterThan(0);
+    expect(
+      within(actions).getAllByLabelText("Production context"),
+    ).toHaveLength(5);
+    const readiness = screen.getByRole("region", {
+      name: "Department anchor readiness",
+    });
+    expect(
+      actions.compareDocumentPosition(readiness) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
-  it("Priority actions leads with the required action, never the Task name, and contains at most 3 items", () => {
-    const items = Array.from({ length: 5 }, (_, i) =>
-      buildItem({
-        task_id: `t${i}`,
-        task_name: `Task ${i}`,
-        sort_rank: i,
-        current_focus: {
-          focus_type: "execution_anchor_gate_pending",
-          title: `Required action ${i}`,
-          explanation: "explanation",
-          target_route: `/cg/tasks/t${i}/execution`,
-          primary_action_label: "Review and confirm",
-          actionable: true,
-        },
-      }),
+  it("uses readiness language instead of the stale none-focus message", () => {
+    render(
+      <CgWorkspacePage
+        inbox={inbox([item("t1")])}
+        anchorActions={{ items: [summary("t1")], total_count: 1, limit: 5 }}
+        onExitRole={vi.fn()}
+      />,
     );
-    render(<CgWorkspacePage inbox={buildInbox(items)} onExitRole={vi.fn()} />);
-    const priorityActions = within(
-      screen.getByRole("region", { name: "Priority actions" }),
-    );
-    expect(priorityActions.getByText("Required action 0")).toBeVisible();
-    expect(priorityActions.getByText("Required action 1")).toBeVisible();
-    expect(priorityActions.getByText("Required action 2")).toBeVisible();
     expect(
-      priorityActions.queryByText("Required action 3"),
+      screen.getAllByText("Create the Execution Anchor").length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.queryByText(
+        "Nothing requires your attention on this Task right now",
+      ),
     ).not.toBeInTheDocument();
-    expect(priorityActions.getByText("Task 0")).toBeVisible();
+    expect(screen.getByText("Open Execution →")).toBeVisible();
   });
 
-  it("Priority actions opens Execution work in the real Execution route", () => {
+  it("does not describe high attention as a formal escalation", () => {
+    const high = {
+      ...summary("t1"),
+      attention_level: "high" as const,
+      open_vfx_escalation: false,
+    };
     render(
       <CgWorkspacePage
-        inbox={buildInbox([buildItem({ task_id: "t1" })])}
+        inbox={inbox([item("t1")])}
+        anchorActions={{ items: [high], total_count: 1, limit: 5 }}
         onExitRole={vi.fn()}
       />,
     );
-    const priorityActions = within(
-      screen.getByRole("region", { name: "Priority actions" }),
-    );
-    const link = priorityActions
-      .getByText("Execution Anchor draft awaiting your confirmation")
-      .closest("a");
-    expect(link).toHaveAttribute(
-      "href",
-      "/cg/tasks/44444444-4444-4444-4444-444444444444/execution",
-    );
-  });
-
-  it("shows an honest no-priority-actions state without hiding overview or Tasks access", () => {
-    render(
-      <CgWorkspacePage
-        inbox={buildInbox([inactiveItem({ task_id: "t1" })])}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByText("No priority actions require your attention"),
-    ).toBeVisible();
-    expect(screen.getByText("Awaiting Execution Anchor action")).toBeVisible();
-    expect(
-      screen.getByRole("link", { name: "View all Tasks →" }),
-    ).toBeVisible();
-  });
-
-  it("Important Tasks contains at most 3 Tasks and never the complete catalogue", () => {
-    const items = Array.from({ length: 6 }, (_, i) =>
-      inactiveItem({ task_id: `t${i}`, task_name: `Task ${i}`, sort_rank: i }),
-    );
-    render(<CgWorkspacePage inbox={buildInbox(items)} onExitRole={vi.fn()} />);
-    expect(screen.getByText("Important Tasks")).toBeVisible();
-    expect(screen.getByText("Task 0")).toBeVisible();
-    expect(screen.getByText("Task 1")).toBeVisible();
-    expect(screen.getByText("Task 2")).toBeVisible();
-    expect(screen.queryByText("Task 5")).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: "View all Tasks →" }),
-    ).toHaveAttribute("href", "/cg/tasks");
-  });
-
-  it("links Priority actions' Review Inbox action into /cg/inbox", () => {
-    render(
-      <CgWorkspacePage
-        inbox={buildInbox([buildItem()])}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByRole("link", { name: "Go to Review Inbox →" }),
-    ).toHaveAttribute("href", "/cg/inbox");
-  });
-
-  it("wires Exit role view to the provided callback", async () => {
-    const onExitRole = vi.fn();
-    render(
-      <CgWorkspacePage
-        inbox={buildInbox([buildItem()])}
-        onExitRole={onExitRole}
-      />,
-    );
-    await userEvent.click(
-      screen.getByRole("button", { name: "Exit role view" }),
-    );
-    expect(onExitRole).toHaveBeenCalled();
+    expect(screen.getByText(/high · action required/)).toBeVisible();
+    expect(screen.queryByText(/formal escalation/i)).not.toBeInTheDocument();
   });
 });

@@ -157,7 +157,7 @@ describe("TaskOverviewPage", () => {
     ).toHaveAttribute("href", "/cg/tasks/t1/execution");
   });
 
-  it("shows Core Anchor context as honestly read-only, never an edit control", async () => {
+  it("does not duplicate Core Anchor content below the Anchor briefing", () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -167,17 +167,14 @@ describe("TaskOverviewPage", () => {
       />,
     );
     expect(
-      screen.getByText("Confirmed Core Anchor (read-only)"),
-    ).toBeInTheDocument();
-    await userEvent.click(screen.getByText("Detailed context"));
-    expect(screen.getByText("Confirmed Core Anchor (read-only)")).toBeVisible();
-    expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
+      screen.queryByText("Confirmed Core Anchor (read-only)"),
+    ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /confirm/i }),
     ).not.toBeInTheDocument();
   });
 
-  it("honestly states no Core Anchor when none is confirmed, present but collapsed under Detailed context", async () => {
+  it("uses the Anchor layer unavailable state instead of a second missing-direction summary", () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -186,15 +183,10 @@ describe("TaskOverviewPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    const summary = screen.getByText("Detailed context");
-    expect(summary.closest("details")).not.toHaveAttribute("open");
+    expect(screen.getByText("Anchor context unavailable")).toBeVisible();
     expect(
-      screen.getByText("No Core Anchor is confirmed for this Shot yet."),
-    ).toBeInTheDocument();
-    await userEvent.click(summary);
-    expect(
-      screen.getByText("No Core Anchor is confirmed for this Shot yet."),
-    ).toBeVisible();
+      screen.queryByText("No Core Anchor is confirmed for this Shot yet."),
+    ).not.toBeInTheDocument();
   });
 
   it("renders the Current Execution Direction section with real authority badges when workingDirection has items", () => {

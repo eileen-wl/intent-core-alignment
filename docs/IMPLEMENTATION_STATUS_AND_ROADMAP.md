@@ -511,21 +511,32 @@ forward-looking surface-polish sequence with the approved four-package product-i
 
 | Package | Scope | Current status |
 |---|---|---|
-| **Package A — Anchor-first experience** | Persistent, role-appropriate Anchor context and Intent Signal orientation across the current role-aware journey | **Implementation complete on feature branch; owner visual validation and final full regression pending** |
+| **Package A — Anchor-first experience** | Persistent, role-appropriate Anchor context and Intent Signal orientation across the current role-aware journey | **Implementation and owner-validation correction complete on feature branch; repeat owner visual validation and final full regression pending** |
 | **Package B — Visible Agent journey completion** | Discoverable Agent input → output → human-authority chains on current role-aware routes | **Not started** |
 | **Package C — Coherent Golden Demo scenario** | Resettable/loadable three-department journey with separated Demo, live ftrack, and development-fixture data worlds | **Not started** |
 | **Package D — UX and visual convergence** | Journey, terminology, navigation, hierarchy, usability, and visual convergence after the product structure is coherent | **Not started** |
 
-Package A now has a complete implementation checkpoint on
+Package A now has an implementation and owner-correction checkpoint on
 `feat/package-a-anchor-first-experience`. Three role-scoped read-only Anchor Context endpoints,
 three shared object Workspace Frames, all 13 formal object-route migrations, Anchor-aware
-Home/Inbox/catalogue rows, and actionable current-route empty states are implemented. The
-projection reuses existing Anchor, HumanGate, Intent Signal, Current-focus, Version, Guidance, and
+Home/Inbox/catalogue rows, and actionable current-route empty states are implemented. The owner
+correction adds explicit session-memory disclosure controls; Overview-expanded/non-Overview-compact
+defaults; action-first VFX/CG Homes; truthful Artist ready/waiting groups; semantically grouped
+multi-object rows; and role-authorized bounded compact reads that replace the browser's prior
+per-row full-context request fan-out. The projection reuses existing Anchor, HumanGate, Intent
+Signal, Current-focus, Version, Guidance, and
 Dependency records; it adds no table, authoritative state, Agent execution, Demo-seed behavior, or
 ftrack call/write. Stored Execution-to-Core revision references are shown only when provable, and a
 Draft is labelled Demo/fixture only if future persisted provenance can prove that source (today an
 unprovable source is `unknown`). Focused validation passed: 7 backend API/service tests, 52 Python
 contract-schema tests, 329 frontend tests, touched Python lint/type checks, generated-contract
 typecheck, web typecheck, and touched-file format/lint checks. Package A remains **in progress**, not
-complete: owner visual validation and the final full repository regression are still required
-before merge. Package B has not started.
+complete: repeat owner visual validation and the final full repository regression are still
+required before merge. Package B has not started; Packages C and D remain deferred.
+
+Owner-correction focused validation passed separately: 10 Anchor Context backend API/service tests;
+53 Python contract-schema tests; 370 unique frontend tests across 47 affected semantic, Home,
+Inbox/catalogue, route-loader, and object-workspace test files; Ruff format/check for touched Python;
+mypy for the contracts and API packages; generated-contract and web TypeScript checks; touched-file
+ESLint/Prettier; and `git diff --check`. The complete repository pytest/Vitest regression and
+production build were intentionally not run and remain part of the post-owner-visual merge gate.

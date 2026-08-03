@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import type {
-  AnchorContextRead,
+  AnchorContextSummaryRead,
   ArtistInboxRead,
 } from "@intent-core/contracts";
 
 import {
-  fetchArtistAnchorContextMap,
+  fetchArtistAnchorContextSummaries,
   fetchArtistInbox,
 } from "@/features/artist/api";
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
@@ -19,12 +19,15 @@ export default async function Page() {
   }
 
   let inbox: ArtistInboxRead | null;
-  let anchorContexts: Record<string, AnchorContextRead | null> = {};
+  let anchorContexts: Record<string, AnchorContextSummaryRead | null> = {};
   try {
-    inbox = await fetchArtistInbox();
-    anchorContexts = await fetchArtistAnchorContextMap(
-      inbox.items.map((item) => item.task_id),
-      actorHeaders(identity),
+    const [inboxResult, summaryResult] = await Promise.all([
+      fetchArtistInbox(),
+      fetchArtistAnchorContextSummaries(actorHeaders(identity)),
+    ]);
+    inbox = inboxResult;
+    anchorContexts = Object.fromEntries(
+      summaryResult.items.map((item) => [item.task_id ?? "", item]),
     );
   } catch {
     inbox = null;

@@ -1,5 +1,5 @@
 import type {
-  AnchorContextRead,
+  AnchorContextSummaryRead,
   ArtistInboxRead,
 } from "@intent-core/contracts";
 import Link from "next/link";
@@ -30,7 +30,7 @@ export function ArtistReviewInboxPage({
   onExitRole,
 }: {
   inbox: ArtistInboxRead | null;
-  anchorContexts?: Record<string, AnchorContextRead | null>;
+  anchorContexts?: Record<string, AnchorContextSummaryRead | null>;
   onExitRole: () => void | Promise<void>;
 }) {
   const workItems = inbox

@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type {
-  AnchorContextRead,
+  AnchorContextSummaryRead,
   ArtistInboxItemRead,
   ArtistInboxRead,
 } from "@intent-core/contracts";
@@ -42,7 +42,7 @@ export function TasksListPage({
   onExitRole,
 }: {
   inbox: ArtistInboxRead | null;
-  anchorContexts?: Record<string, AnchorContextRead | null>;
+  anchorContexts?: Record<string, AnchorContextSummaryRead | null>;
   onExitRole: () => void | Promise<void>;
 }) {
   return (
@@ -78,7 +78,7 @@ function TasksListContent({
   anchorContexts,
 }: {
   items: ArtistInboxItemRead[];
-  anchorContexts: Record<string, AnchorContextRead | null>;
+  anchorContexts: Record<string, AnchorContextSummaryRead | null>;
 }) {
   const [projectFilter, setProjectFilter] = useState(ALL_VALUE);
   const [departmentFilter, setDepartmentFilter] = useState(ALL_VALUE);

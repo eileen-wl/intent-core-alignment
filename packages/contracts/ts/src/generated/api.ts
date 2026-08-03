@@ -1345,6 +1345,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vfx/anchor-contexts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vfx Anchor Context Summaries */
+        get: operations["get_vfx_anchor_context_summaries_vfx_anchor_contexts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cg/anchor-contexts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cg Anchor Context Summaries */
+        get: operations["get_cg_anchor_context_summaries_cg_anchor_contexts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/artist/anchor-contexts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Artist Anchor Context Summaries */
+        get: operations["get_artist_anchor_context_summaries_artist_anchor_contexts_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/vfx/shots/{shot_id}/anchor-context": {
         parameters: {
             query?: never;
@@ -1832,6 +1883,72 @@ export interface components {
              * @enum {string}
              */
             guidance_state: "current" | "outdated" | "missing" | "unavailable";
+            /** Open Vfx Escalation */
+            open_vfx_escalation: boolean;
+            next_action: components["schemas"]["AnchorNextActionRead"];
+        };
+        /** AnchorContextSummaryListRead */
+        AnchorContextSummaryListRead: {
+            /** Items */
+            items: components["schemas"]["AnchorContextSummaryRead"][];
+            /** Total Count */
+            total_count: number;
+            /** Limit */
+            limit: number;
+        };
+        /**
+         * AnchorContextSummaryRead
+         * @description Compact, role-scoped projection for Home, Inbox, and catalogues.
+         */
+        AnchorContextSummaryRead: {
+            /**
+             * Role
+             * @enum {string}
+             */
+            role: "vfx_supervisor" | "cg_supervisor" | "artist";
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Task Id */
+            task_id: string | null;
+            /**
+             * Core Anchor State
+             * @enum {string}
+             */
+            core_anchor_state: "missing" | "draft" | "confirmed";
+            /** Core Anchor Revision Number */
+            core_anchor_revision_number: number | null;
+            /** Core Direction */
+            core_direction: string | null;
+            /** Execution Context State */
+            execution_context_state: ("missing" | "draft" | "pending" | "current" | "outdated" | "relationship_unavailable") | null;
+            /** Execution Anchor Revision Number */
+            execution_anchor_revision_number: number | null;
+            /** Execution Direction */
+            execution_direction: string | null;
+            /** Based On Core Anchor Revision Number */
+            based_on_core_anchor_revision_number: number | null;
+            /**
+             * Attention Level
+             * @enum {string}
+             */
+            attention_level: "low" | "medium" | "high" | "not_assessed";
+            /** Attention Summary */
+            attention_summary: string | null;
+            /**
+             * Guidance State
+             * @enum {string}
+             */
+            guidance_state: "current" | "outdated" | "missing" | "unavailable";
+            /**
+             * Readiness State
+             * @enum {string}
+             */
+            readiness_state: "action_required" | "ready_to_work" | "waiting_upstream" | "no_immediate_action";
+            /** Readiness Detail */
+            readiness_detail: string;
             /** Open Vfx Escalation */
             open_vfx_escalation: boolean;
             next_action: components["schemas"]["AnchorNextActionRead"];
@@ -7167,6 +7284,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ShotActivityRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vfx_anchor_context_summaries_vfx_anchor_contexts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                scope?: "all" | "triage" | "ready" | "waiting";
+            };
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnchorContextSummaryListRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cg_anchor_context_summaries_cg_anchor_contexts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                scope?: "all" | "triage" | "ready" | "waiting";
+            };
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnchorContextSummaryListRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_artist_anchor_context_summaries_artist_anchor_contexts_get: {
+        parameters: {
+            query?: {
+                limit?: number;
+                scope?: "all" | "triage" | "ready" | "waiting";
+            };
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AnchorContextSummaryListRead"];
                 };
             };
             /** @description Validation Error */

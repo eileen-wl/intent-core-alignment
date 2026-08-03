@@ -2,10 +2,8 @@ import Link from "next/link";
 import type { AnchorContextRead } from "@intent-core/contracts";
 
 import {
-  AuthorityLabel,
   DetailedContext,
   Divider,
-  MetadataRow,
   Panel,
   SectionHeader,
   StatusBadge,
@@ -50,90 +48,9 @@ export function TaskOverviewPage({
         <>
           <TaskCurrentFocusPanel focus={data.item.current_focus} />
 
-          <WorkingDirectionSection section={data.workingDirection} />
-
-          <Divider />
-
-          <DetailedContext>
-            <SectionHeader
-              title="Why: Creative Intent"
-              description="The confirmed Core Anchor for this Shot -- what this work is for."
-            />
-            <Panel>
-              <AuthorityLabel
-                variant="read-only"
-                detail="Confirmed by the VFX Supervisor"
-              />
-              {data.coreAnchorRevision ? (
-                <MetadataRow
-                  items={[
-                    {
-                      label: "Shot objective",
-                      value:
-                        data.coreAnchorRevision.shot_objective ??
-                        "Not recorded",
-                    },
-                    {
-                      label: "Emotional tone",
-                      value:
-                        data.coreAnchorRevision.emotional_tone ??
-                        "Not recorded",
-                    },
-                    {
-                      label: "Narrative priority",
-                      value:
-                        data.coreAnchorRevision.narrative_priority ??
-                        "Not recorded",
-                    },
-                    {
-                      label: "Core summary",
-                      value:
-                        data.coreAnchorRevision.core_summary ?? "Not recorded",
-                    },
-                  ]}
-                />
-              ) : (
-                <p>No Core Anchor is confirmed for this Shot yet.</p>
-              )}
-            </Panel>
-
-            <SectionHeader
-              title="How: Execution Approach"
-              description="The confirmed Execution Anchor for this Task -- how this work should be carried out."
-            />
-            <Panel>
-              <AuthorityLabel
-                variant="read-only"
-                detail="Confirmed by the CG Supervisor"
-              />
-              {data.executionAnchorRevision ? (
-                <MetadataRow
-                  items={[
-                    {
-                      label: "Technical boundaries",
-                      value:
-                        data.executionAnchorRevision.technical_boundaries ??
-                        "Not recorded",
-                    },
-                    {
-                      label: "Allowed refinements",
-                      value:
-                        data.executionAnchorRevision.allowed_refinements ??
-                        "Not recorded",
-                    },
-                    {
-                      label: "Escalation conditions",
-                      value:
-                        data.executionAnchorRevision.escalation_conditions ??
-                        "Not recorded",
-                    },
-                  ]}
-                />
-              ) : (
-                <p>No Execution Anchor is confirmed for this Task yet.</p>
-              )}
-            </Panel>
-          </DetailedContext>
+          {!anchorContext && (
+            <WorkingDirectionSection section={data.workingDirection} />
+          )}
 
           <SectionHeader
             title="What to do now: Artist Guidance"

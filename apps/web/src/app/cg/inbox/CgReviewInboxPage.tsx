@@ -1,4 +1,7 @@
-import type { AnchorContextRead, CgInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextSummaryRead,
+  CgInboxRead,
+} from "@intent-core/contracts";
 import Link from "next/link";
 
 import {
@@ -27,7 +30,7 @@ export function CgReviewInboxPage({
   onExitRole,
 }: {
   inbox: CgInboxRead | null;
-  anchorContexts?: Record<string, AnchorContextRead | null>;
+  anchorContexts?: Record<string, AnchorContextSummaryRead | null>;
   onExitRole: () => void | Promise<void>;
 }) {
   const workItems = inbox ? adaptCgCurrentFocusToWorkItems(inbox.items) : null;

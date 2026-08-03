@@ -34,6 +34,12 @@ AnchorDraftSource = Literal[
 ]
 AnchorAttentionLevel = Literal["low", "medium", "high", "not_assessed"]
 AnchorGuidanceState = Literal["current", "outdated", "missing", "unavailable"]
+AnchorReadinessState = Literal[
+    "action_required",
+    "ready_to_work",
+    "waiting_upstream",
+    "no_immediate_action",
+]
 
 
 class CoreAnchorContextRead(BaseModel):
@@ -111,3 +117,35 @@ class AnchorContextRead(BaseModel):
     guidance_state: AnchorGuidanceState
     open_vfx_escalation: bool
     next_action: AnchorNextActionRead
+
+
+class AnchorContextSummaryRead(BaseModel):
+    """Compact, role-scoped projection for Home, Inbox, and catalogues."""
+
+    model_config = ConfigDict(from_attributes=False)
+
+    role: AnchorContextRole
+    shot_id: UUID
+    task_id: UUID | None
+    core_anchor_state: AnchorLifecycleState
+    core_anchor_revision_number: int | None
+    core_direction: str | None
+    execution_context_state: ExecutionContextState | None
+    execution_anchor_revision_number: int | None
+    execution_direction: str | None
+    based_on_core_anchor_revision_number: int | None
+    attention_level: AnchorAttentionLevel
+    attention_summary: str | None
+    guidance_state: AnchorGuidanceState
+    readiness_state: AnchorReadinessState
+    readiness_detail: str
+    open_vfx_escalation: bool
+    next_action: AnchorNextActionRead
+
+
+class AnchorContextSummaryListRead(BaseModel):
+    model_config = ConfigDict(from_attributes=False)
+
+    items: list[AnchorContextSummaryRead]
+    total_count: int
+    limit: int

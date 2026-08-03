@@ -42,26 +42,14 @@ export function TaskOverviewPage({
         <>
           <TaskCurrentFocusPanel focus={data.item.current_focus} />
 
-          <WorkingDirectionSection section={data.workingDirection} />
+          {!anchorContext && (
+            <WorkingDirectionSection section={data.workingDirection} />
+          )}
 
           <Divider />
 
           <DetailedContext>
             <dl>
-              <dt>Confirmed Core Anchor (read-only)</dt>
-              <dd>
-                {data.coreAnchorSummary ??
-                  "No Core Anchor is confirmed for this Shot yet."}
-              </dd>
-
-              <dt>Execution Anchor</dt>
-              <dd>
-                <Link href={`/cg/tasks/${taskId}/execution`}>
-                  {data.item.active_execution_anchor_summary ??
-                    "No Execution Anchor is confirmed for this Task yet."}
-                </Link>
-              </dd>
-
               <dt>Latest Production Version</dt>
               <dd>
                 {data.item.latest_version_name ? (

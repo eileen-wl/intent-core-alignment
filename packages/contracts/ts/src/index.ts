@@ -113,6 +113,9 @@ export type AnchorAttentionContextRead = Schemas["AnchorAttentionContextRead"];
 export type AnchorVersionContextRead = Schemas["AnchorVersionContextRead"];
 export type AnchorNextActionRead = Schemas["AnchorNextActionRead"];
 export type AnchorContextRead = Schemas["AnchorContextRead"];
+export type AnchorContextSummaryRead = Schemas["AnchorContextSummaryRead"];
+export type AnchorContextSummaryListRead =
+  Schemas["AnchorContextSummaryListRead"];
 
 export type SyncCursorRead = Schemas["SyncCursorRead"];
 export type SyncCursorUpsert = Schemas["SyncCursorUpsert"];

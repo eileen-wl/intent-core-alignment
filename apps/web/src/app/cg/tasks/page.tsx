@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
-import type { AnchorContextRead, CgInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextSummaryRead,
+  CgInboxRead,
+} from "@intent-core/contracts";
 
-import { fetchCgAnchorContextMap, fetchCgInbox } from "@/features/cg/api";
+import { fetchCgAnchorContextSummaries, fetchCgInbox } from "@/features/cg/api";
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
 import { exitRoleView } from "../../demo/actions";
 import { TasksListPage } from "./TasksListPage";
@@ -13,12 +16,15 @@ export default async function Page() {
   }
 
   let inbox: CgInboxRead | null;
-  let anchorContexts: Record<string, AnchorContextRead | null> = {};
+  let anchorContexts: Record<string, AnchorContextSummaryRead | null> = {};
   try {
-    inbox = await fetchCgInbox();
-    anchorContexts = await fetchCgAnchorContextMap(
-      inbox.items.map((item) => item.task_id),
-      actorHeaders(identity),
+    const [inboxResult, summaryResult] = await Promise.all([
+      fetchCgInbox(),
+      fetchCgAnchorContextSummaries(actorHeaders(identity)),
+    ]);
+    inbox = inboxResult;
+    anchorContexts = Object.fromEntries(
+      summaryResult.items.map((item) => [item.task_id ?? "", item]),
     );
   } catch {
     inbox = null;

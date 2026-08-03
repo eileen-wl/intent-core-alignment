@@ -13,11 +13,7 @@ ARTIST = {"X-Actor-Role": "artist", "X-Actor-Id": "artist-1"}
 
 async def _project_shot_task(client: AsyncClient) -> tuple[str, str]:
     project = (await client.post("/projects", json={"name": "Anchor context"})).json()
-    shot = (
-        await client.post(
-            "/shots", json={"project_id": project["id"], "name": "SH010"}
-        )
-    ).json()
+    shot = (await client.post("/shots", json={"project_id": project["id"], "name": "SH010"})).json()
     task = (
         await client.post(
             "/tasks",
@@ -70,18 +66,14 @@ async def _confirm_execution(client: AsyncClient, task_id: str) -> dict:
 async def test_role_scoped_endpoints_reject_wrong_roles(client: AsyncClient) -> None:
     shot_id, task_id = await _project_shot_task(client)
 
-    assert (
-        await client.get(f"/vfx/shots/{shot_id}/anchor-context", headers=CG)
-    ).status_code == 403
+    assert (await client.get(f"/vfx/shots/{shot_id}/anchor-context", headers=CG)).status_code == 403
     assert (
         await client.get(f"/cg/tasks/{task_id}/anchor-context", headers=ARTIST)
     ).status_code == 403
     assert (
         await client.get(f"/artist/tasks/{task_id}/anchor-context", headers=VFX)
     ).status_code == 403
-    assert (
-        await client.get(f"/vfx/shots/{shot_id}/anchor-context")
-    ).status_code == 401
+    assert (await client.get(f"/vfx/shots/{shot_id}/anchor-context")).status_code == 401
 
 
 async def test_vfx_missing_anchor_and_signal_are_honest(client: AsyncClient) -> None:
@@ -105,9 +97,7 @@ async def test_confirmed_authority_remains_current_when_newer_draft_exists(
     shot_id, _task_id = await _project_shot_task(client)
     confirmed = await _confirm_core(client, shot_id)
     draft = (
-        await client.post(
-            f"/intent/shots/{shot_id}/core-anchor/drafts/from-confirmed", headers=VFX
-        )
+        await client.post(f"/intent/shots/{shot_id}/core-anchor/drafts/from-confirmed", headers=VFX)
     ).json()
 
     response = await client.get(f"/vfx/shots/{shot_id}/anchor-context", headers=VFX)
@@ -149,9 +139,7 @@ async def test_artist_context_marks_old_execution_after_core_revision(client: As
     await _confirm_core(client, shot_id)
     await _confirm_execution(client, task_id)
     revision_two = (
-        await client.post(
-            f"/intent/shots/{shot_id}/core-anchor/drafts/from-confirmed", headers=VFX
-        )
+        await client.post(f"/intent/shots/{shot_id}/core-anchor/drafts/from-confirmed", headers=VFX)
     ).json()
     await client.post(
         f"/intent/core-anchor-revisions/{revision_two['id']}/confirm",
@@ -159,9 +147,7 @@ async def test_artist_context_marks_old_execution_after_core_revision(client: As
         headers=VFX,
     )
 
-    response = await client.get(
-        f"/artist/tasks/{task_id}/anchor-context", headers=ARTIST
-    )
+    response = await client.get(f"/artist/tasks/{task_id}/anchor-context", headers=ARTIST)
 
     assert response.status_code == 200
     body = response.json()
@@ -194,6 +180,48 @@ async def test_missing_objects_return_not_found(client: AsyncClient) -> None:
     assert (
         await client.get(f"/vfx/shots/{missing}/anchor-context", headers=VFX)
     ).status_code == 404
-    assert (
-        await client.get(f"/cg/tasks/{missing}/anchor-context", headers=CG)
-    ).status_code == 404
+    assert (await client.get(f"/cg/tasks/{missing}/anchor-context", headers=CG)).status_code == 404
+
+
+async def test_compact_summary_is_bounded_and_preserves_backend_order(
+    client: AsyncClient,
+) -> None:
+    await _project_shot_task(client)
+    await _project_shot_task(client)
+    await _project_shot_task(client)
+    inbox = (await client.get("/vfx/inbox")).json()["items"]
+
+    response = await client.get("/vfx/anchor-contexts?limit=2&scope=all", headers=VFX)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["limit"] == 2
+    assert body["total_count"] == 3
+    assert len(body["items"]) == 2
+    assert [item["shot_id"] for item in body["items"]] == [item["shot_id"] for item in inbox[:2]]
+    assert "must_preserve" not in body["items"][0]
+
+
+async def test_compact_summary_endpoints_enforce_role_scope(client: AsyncClient) -> None:
+    await _project_shot_task(client)
+
+    assert (await client.get("/vfx/anchor-contexts", headers=CG)).status_code == 403
+    assert (await client.get("/cg/anchor-contexts", headers=ARTIST)).status_code == 403
+    assert (await client.get("/artist/anchor-contexts", headers=VFX)).status_code == 403
+    assert (await client.get("/artist/anchor-contexts")).status_code == 401
+
+
+async def test_artist_summary_separates_waiting_from_attention(
+    client: AsyncClient,
+) -> None:
+    _shot_id, task_id = await _project_shot_task(client)
+
+    response = await client.get("/artist/anchor-contexts?limit=5&scope=waiting", headers=ARTIST)
+
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["task_id"] == task_id
+    assert item["attention_level"] == "not_assessed"
+    assert item["readiness_state"] == "waiting_upstream"
+    assert item["next_action"]["title"] == "Core Anchor confirmation is required"
+    assert "Nothing requires your attention" not in item["readiness_detail"]

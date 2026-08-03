@@ -1,5 +1,8 @@
+"use client";
+
 import type { AnchorContextRead } from "@intent-core/contracts";
 import Link from "next/link";
+import { useEffect, useId, useState } from "react";
 
 import { StatusBadge } from "../../components";
 import styles from "./AnchorContextLayer.module.css";
@@ -111,9 +114,35 @@ function AuthorityChain({ context }: { context: AnchorContextRead }) {
 /** Persistent, derived orientation layer shared by every formal object route. */
 export function AnchorContextLayer({
   context,
+  defaultExpanded = false,
+  storageKey,
 }: {
   context: AnchorContextRead | null;
+  defaultExpanded?: boolean;
+  storageKey?: string;
 }) {
+  const contentId = useId();
+  const [expanded, setExpanded] = useState(defaultExpanded);
+
+  useEffect(() => {
+    if (!storageKey) return;
+    const stored = window.sessionStorage.getItem(storageKey);
+    if (stored !== null) setExpanded(stored === "expanded");
+  }, [storageKey]);
+
+  function toggleExpanded() {
+    setExpanded((current) => {
+      const next = !current;
+      if (storageKey) {
+        window.sessionStorage.setItem(
+          storageKey,
+          next ? "expanded" : "collapsed",
+        );
+      }
+      return next;
+    });
+  }
+
   if (context === null) {
     return (
       <section className={styles.layer} aria-label="Anchor context">
@@ -132,9 +161,13 @@ export function AnchorContextLayer({
   const direction = execution?.direction_summary ?? core.direction_summary;
 
   return (
-    <section className={styles.layer} aria-label="Anchor context">
-      <details className={styles.disclosure}>
-        <summary className={styles.summary}>
+    <section
+      className={styles.layer}
+      aria-label="Anchor context"
+      data-expanded={expanded}
+    >
+      <div className={styles.disclosure}>
+        <div className={styles.summary}>
           <AuthorityChain context={context} />
           <div className={styles.direction}>
             <span className={styles.eyebrow}>Current direction</span>
@@ -172,70 +205,118 @@ export function AnchorContextLayer({
               />
             )}
           </div>
-          <span className={styles.expandHint}>Details</span>
-        </summary>
+          <button
+            type="button"
+            className={styles.disclosureButton}
+            aria-expanded={expanded}
+            aria-controls={contentId}
+            onClick={toggleExpanded}
+          >
+            <span>
+              {expanded ? "Collapse anchor context" : "Expand anchor context"}
+            </span>
+            <span className={styles.chevron} aria-hidden="true">
+              ⌄
+            </span>
+          </button>
+        </div>
 
-        <div className={styles.expanded}>
-          <div>
-            <span className={styles.eyebrow}>Must preserve</span>
-            <p>
-              {core.must_preserve ??
-                "No concise must-preserve item is recorded."}
-            </p>
-          </div>
-          <div>
-            <span className={styles.eyebrow}>Allowed to vary</span>
-            <p>
-              {execution?.allowed_refinement ??
-                core.allowed_variation ??
-                "No concise variation boundary is recorded."}
-            </p>
-          </div>
-          <div>
-            <span className={styles.eyebrow}>Intent attention</span>
-            <p>
-              {context.attention.summary ??
-                context.attention.review_requirement}
-            </p>
-            <small>{context.attention.review_requirement}</small>
-          </div>
-          <div className={styles.nextAction}>
-            <span className={styles.eyebrow}>Next action</span>
-            <strong>{context.next_action.title}</strong>
-            <p>{context.next_action.why_now}</p>
-            <small>{context.next_action.downstream_effect}</small>
-            {context.next_action.executable &&
-              context.next_action.target_route &&
-              context.next_action.action_label && (
-                <Link href={context.next_action.target_route}>
-                  {context.next_action.action_label} →
+        {expanded && (
+          <div className={styles.expanded} id={contentId}>
+            <div>
+              <span className={styles.eyebrow}>Must preserve</span>
+              <p>
+                {core.must_preserve ??
+                  "No concise must-preserve item is recorded."}
+              </p>
+            </div>
+            <div>
+              <span className={styles.eyebrow}>Allowed to vary</span>
+              <p>
+                {execution?.allowed_refinement ??
+                  core.allowed_variation ??
+                  "No concise variation boundary is recorded."}
+              </p>
+            </div>
+            {execution?.execution_boundary && (
+              <div>
+                <span className={styles.eyebrow}>Execution boundary</span>
+                <p>{execution.execution_boundary}</p>
+              </div>
+            )}
+            <div>
+              <span className={styles.eyebrow}>Intent attention</span>
+              <p>
+                {context.attention.summary ??
+                  context.attention.review_requirement}
+              </p>
+              <small>{context.attention.review_requirement}</small>
+            </div>
+            <div className={styles.nextAction}>
+              <span className={styles.eyebrow}>Next action</span>
+              <strong>{context.next_action.title}</strong>
+              <p>{context.next_action.why_now}</p>
+              <small>{context.next_action.downstream_effect}</small>
+              {context.next_action.executable &&
+                context.next_action.target_route &&
+                context.next_action.action_label && (
+                  <Link href={context.next_action.target_route}>
+                    {context.next_action.action_label} →
+                  </Link>
+                )}
+            </div>
+            {(core.newer_draft_exists || core.pending_human_gate_exists) && (
+              <div className={styles.authorityNotice}>
+                <span className={styles.eyebrow}>Draft distinction</span>
+                <p>
+                  Core Anchor R{core.confirmed_revision_number ?? "—"} remains
+                  authoritative.
+                  {core.draft_revision_number
+                    ? ` Draft R${core.draft_revision_number} is awaiting human action.`
+                    : ""}
+                </p>
+              </div>
+            )}
+            {execution?.draft_revision_number && (
+              <div>
+                <span className={styles.eyebrow}>Current draft source</span>
+                <p>
+                  {execution.draft_source
+                    ? contextStateLabel(execution.draft_source)
+                    : "Unknown"}
+                </p>
+              </div>
+            )}
+            <div>
+              <span className={styles.eyebrow}>Current production context</span>
+              <p>
+                {context.current_version.name
+                  ? `${context.current_version.name}${context.current_version.version_number ? ` · v${context.current_version.version_number}` : ""}`
+                  : "No current Production Version is recorded."}
+              </p>
+              {context.role === "artist" && (
+                <small>
+                  Guidance: {GUIDANCE_LABEL[context.guidance_state]}
+                </small>
+              )}
+            </div>
+            <div className={styles.contextLinks}>
+              <span className={styles.eyebrow}>Related context</span>
+              {core.link_target && context.role === "vfx_supervisor" && (
+                <Link href={core.link_target}>Open Intent →</Link>
+              )}
+              {context.attention.link_target && (
+                <Link href={context.attention.link_target}>
+                  Open Alignment →
                 </Link>
               )}
+              {execution?.link_target && context.role === "cg_supervisor" && (
+                <Link href={execution.link_target}>Open Execution →</Link>
+              )}
+            </div>
           </div>
-          {(core.newer_draft_exists || core.pending_human_gate_exists) && (
-            <div className={styles.authorityNotice}>
-              <span className={styles.eyebrow}>Draft distinction</span>
-              <p>
-                Core Anchor R{core.confirmed_revision_number ?? "—"} remains
-                authoritative.
-                {core.draft_revision_number
-                  ? ` Draft R${core.draft_revision_number} is awaiting human action.`
-                  : ""}
-              </p>
-            </div>
-          )}
-          {execution?.draft_revision_number && (
-            <div>
-              <span className={styles.eyebrow}>Current draft source</span>
-              <p>
-                {execution.draft_source
-                  ? contextStateLabel(execution.draft_source)
-                  : "Unknown"}
-              </p>
-            </div>
-          )}
-        </div>
-      </details>
+        )}
+      </div>
     </section>
   );
 }

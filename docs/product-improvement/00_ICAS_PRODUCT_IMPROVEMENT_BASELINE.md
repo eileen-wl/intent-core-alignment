@@ -1119,9 +1119,9 @@ approved.
 
 # 22. Package A implementation checkpoint (2026-08-03)
 
-**Status:** implementation complete on `feat/package-a-anchor-first-experience`; owner visual
-validation and the final full repository regression are still pending. Package A is therefore not
-yet complete or merge-ready.
+**Status:** implementation plus the owner-validation correction are complete on
+`feat/package-a-anchor-first-experience`; repeat owner visual validation and the final full
+repository regression are still pending. Package A is therefore not yet complete or merge-ready.
 
 Implemented on the current formal role-aware routes:
 
@@ -1151,13 +1151,29 @@ Current data-model constraints are represented explicitly rather than filled wit
 - there is no persisted Demo/fixture provenance discriminator for an Execution Draft, so the UI
   never guesses that source. It reports Agent-proposed, human-created, or copied-from-prior only
   when stored provenance proves it, otherwise `unknown`;
-- the multi-object pages currently collect the narrow per-object role endpoints concurrently; no
-  new batch endpoint or persistence cache was introduced in this package.
+- Home, Inbox, and catalogue pages now use role-authorized, bounded compact aggregate reads at
+  `GET /vfx/anchor-contexts`, `GET /cg/anchor-contexts`, and
+  `GET /artist/anchor-contexts`; the browser no longer issues one full Anchor Context request per
+  row, and no persistence cache was introduced.
 
-Focused implementation validation passed: 7 backend API/service tests across all three roles,
-including wrong-role rejection and real escalation derivation; 52 Python contract-schema tests;
-329 focused frontend tests across the semantic layer, all 13 object pages and route loaders, and all
-three roles' Home/Inbox/catalogue surfaces; touched Python Ruff and mypy checks; TypeScript contract
-generation/typecheck; web typecheck and touched-file ESLint/Prettier checks. Owner visual validation
-and the one final full backend/frontend regression remain deliberately pending for the package
-gates.
+The owner-validation correction strengthens the approved interaction without changing the domain:
+
+- object Overview routes default the Anchor Context to expanded, other tabs default it to compact,
+  and an explicit accessible disclosure control remembers the user's role/object choice only in
+  browser session storage;
+- VFX and CG Home lead with at most five backend-ordered Anchor actions, then scope health, then
+  browse/resume entry points; no arbitrary first object is presented as the Workspace Anchor;
+- Artist Home separates proven `ready_to_work` Tasks from `waiting_upstream` Tasks and shows the
+  large WHY/HOW/WHAT briefing only when exactly one ready Task is proven;
+- Inbox/catalogue rows separate Anchor, direction, attention/readiness, next action, and secondary
+  production context, using backend action labels and direct routes where available;
+- the old Overview Working Direction presentation is a load-failure fallback only, so a normally
+  loaded expanded Anchor briefing is not duplicated below it;
+- `No immediate review action`, missing direction, missing Guidance, and `not_assessed` attention
+  are distinct read-model states rather than contradictory copy.
+
+The correction has its own focused validation across the aggregate reads, disclosure/session
+interaction, three Homes, row hierarchy, Overview de-duplication, and affected route loaders,
+alongside touched-package lint/type/format checks. Exact command counts are recorded in the main
+roadmap. Repeat owner visual validation and the one final full backend/frontend regression remain
+deliberately pending for the package gates.

@@ -255,15 +255,17 @@ describe("ShotOverviewPage", () => {
     expect(screen.getByText("Latest assessment")).toBeVisible();
   });
 
-  it("shows an honest confirmed Core Anchor summary, present but collapsed by default under Detailed context", async () => {
+  it("does not duplicate the confirmed Core Anchor inside Detailed context", async () => {
     render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
     const summary = screen.getByText("Detailed context");
     expect(summary.closest("details")).not.toHaveAttribute("open");
     expect(
-      screen.getByText("A restrained dusk confrontation."),
-    ).toBeInTheDocument();
+      screen.queryByText("A restrained dusk confrontation."),
+    ).not.toBeInTheDocument();
     await userEvent.click(summary);
-    expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
+    expect(
+      screen.queryByText("A restrained dusk confrontation."),
+    ).not.toBeInTheDocument();
   });
 
   it("does not show full Evidence, three role perspectives, or integration metadata", () => {

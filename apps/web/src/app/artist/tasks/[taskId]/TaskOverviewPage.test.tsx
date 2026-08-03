@@ -157,7 +157,7 @@ describe("TaskOverviewPage", () => {
     ).toHaveAttribute("href", "/artist/tasks/t1");
   });
 
-  it("shows Core Anchor context as honestly read-only, never an edit or confirm control", async () => {
+  it("does not duplicate the complete WHY briefing below Anchor Context", () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -199,22 +199,13 @@ describe("TaskOverviewPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByText("Why: Creative Intent")).toBeInTheDocument();
-    expect(
-      screen.getByText("A restrained dusk confrontation."),
-    ).toBeInTheDocument();
-    await userEvent.click(screen.getAllByText("Detailed context")[0]);
-    expect(screen.getByText("Why: Creative Intent")).toBeVisible();
-    expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
+    expect(screen.queryByText("Why: Creative Intent")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /confirm/i }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getAllByText("Read-only for your role").length,
-    ).toBeGreaterThan(0);
   });
 
-  it("honestly states no Core Anchor when none is confirmed, present but collapsed under Detailed context", async () => {
+  it("does not add a second missing Core Anchor summary", () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -223,18 +214,13 @@ describe("TaskOverviewPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    const summary = screen.getAllByText("Detailed context")[0];
-    expect(summary.closest("details")).not.toHaveAttribute("open");
+    expect(screen.getByText("Anchor context unavailable")).toBeVisible();
     expect(
-      screen.getByText("No Core Anchor is confirmed for this Shot yet."),
-    ).toBeInTheDocument();
-    await userEvent.click(summary);
-    expect(
-      screen.getByText("No Core Anchor is confirmed for this Shot yet."),
-    ).toBeVisible();
+      screen.queryByText("No Core Anchor is confirmed for this Shot yet."),
+    ).not.toBeInTheDocument();
   });
 
-  it("honestly states no Execution Anchor when none is confirmed", async () => {
+  it("does not add a second missing Execution Anchor summary", () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -244,12 +230,8 @@ describe("TaskOverviewPage", () => {
       />,
     );
     expect(
-      screen.getByText("No Execution Anchor is confirmed for this Task yet."),
-    ).toBeInTheDocument();
-    await userEvent.click(screen.getAllByText("Detailed context")[0]);
-    expect(
-      screen.getByText("No Execution Anchor is confirmed for this Task yet."),
-    ).toBeVisible();
+      screen.queryByText("No Execution Anchor is confirmed for this Task yet."),
+    ).not.toBeInTheDocument();
   });
 
   it("honestly states no Artist guidance has been generated yet, with no fabricated content", () => {
@@ -435,7 +417,7 @@ describe("TaskOverviewPage", () => {
     expect(
       screen.getByText("No dependencies have been recorded for this Task yet."),
     ).toBeInTheDocument();
-    await userEvent.click(screen.getAllByText("Detailed context")[1]);
+    await userEvent.click(screen.getAllByText("Detailed context")[0]);
     expect(
       screen.getByText("No dependencies have been recorded for this Task yet."),
     ).toBeVisible();

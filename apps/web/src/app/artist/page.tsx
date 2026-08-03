@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import type {
-  AnchorContextRead,
+  AnchorContextSummaryListRead,
   ArtistInboxRead,
 } from "@intent-core/contracts";
 
 import {
-  fetchArtistAnchorContextMap,
+  fetchArtistAnchorContextSummaries,
   fetchArtistInbox,
 } from "@/features/artist/api";
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
@@ -22,13 +22,20 @@ export default async function Page() {
   }
 
   let inbox: ArtistInboxRead | null;
-  let anchorContexts: Record<string, AnchorContextRead | null> = {};
+  let readyTasks: AnchorContextSummaryListRead | null = null;
+  let waitingTasks: AnchorContextSummaryListRead | null = null;
   try {
-    inbox = await fetchArtistInbox();
-    anchorContexts = await fetchArtistAnchorContextMap(
-      inbox.items.map((item) => item.task_id),
-      actorHeaders(identity),
-    );
+    [inbox, readyTasks, waitingTasks] = await Promise.all([
+      fetchArtistInbox(),
+      fetchArtistAnchorContextSummaries(actorHeaders(identity), {
+        limit: 5,
+        scope: "ready",
+      }),
+      fetchArtistAnchorContextSummaries(actorHeaders(identity), {
+        limit: 5,
+        scope: "waiting",
+      }),
+    ]);
   } catch {
     inbox = null;
   }
@@ -36,7 +43,8 @@ export default async function Page() {
   return (
     <ArtistWorkspacePage
       inbox={inbox}
-      anchorContexts={anchorContexts}
+      readyTasks={readyTasks}
+      waitingTasks={waitingTasks}
       onExitRole={exitRoleView}
     />
   );

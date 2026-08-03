@@ -1,5 +1,6 @@
 import type {
   AnchorContextRead,
+  AnchorContextSummaryListRead,
   AgentRunRead,
   AnchorConfirmRequest,
   AnchorRejectRequest,
@@ -338,24 +339,18 @@ export async function fetchVfxAnchorContextOrNull(
   }
 }
 
-/** Best-effort Anchor Context collection for multi-Shot surfaces. */
-export async function fetchVfxAnchorContextMap(
-  shotIds: string[],
+/** One bounded, role-authorized compact read for multi-Shot surfaces. */
+export function fetchVfxAnchorContextSummaries(
   actorHeaders: ActorHeaders,
-): Promise<Record<string, AnchorContextRead | null>> {
-  return Object.fromEntries(
-    await Promise.all(
-      shotIds.map(async (shotId) => {
-        try {
-          return [
-            shotId,
-            await fetchVfxAnchorContextOrNull(shotId, actorHeaders),
-          ] as const;
-        } catch {
-          return [shotId, null] as const;
-        }
-      }),
-    ),
+  options: { limit?: number; scope?: "all" | "triage" } = {},
+): Promise<AnchorContextSummaryListRead> {
+  const params = new URLSearchParams({
+    limit: String(options.limit ?? 200),
+    scope: options.scope ?? "all",
+  });
+  return vfxFetch<AnchorContextSummaryListRead>(
+    `/vfx/anchor-contexts?${params}`,
+    { headers: actorHeaders },
   );
 }
 

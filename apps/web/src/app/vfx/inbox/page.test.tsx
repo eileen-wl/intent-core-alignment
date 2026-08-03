@@ -18,7 +18,11 @@ const { fetchVfxInboxMock } = vi.hoisted(() => ({
 }));
 vi.mock("@/features/vfx/api", () => ({
   fetchVfxInbox: fetchVfxInboxMock,
-  fetchVfxAnchorContextMap: vi.fn(async () => ({})),
+  fetchVfxAnchorContextSummaries: vi.fn(async () => ({
+    items: [],
+    total_count: 0,
+    limit: 200,
+  })),
 }));
 
 vi.mock("../../demo/actions", () => ({

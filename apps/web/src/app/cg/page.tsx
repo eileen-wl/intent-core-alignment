@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
-import type { AnchorContextRead, CgInboxRead } from "@intent-core/contracts";
+import type {
+  AnchorContextSummaryListRead,
+  CgInboxRead,
+} from "@intent-core/contracts";
 
-import { fetchCgAnchorContextMap, fetchCgInbox } from "@/features/cg/api";
+import { fetchCgAnchorContextSummaries, fetchCgInbox } from "@/features/cg/api";
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
 import { exitRoleView } from "../demo/actions";
 import { CgWorkspacePage } from "./CgWorkspacePage";
@@ -16,13 +19,15 @@ export default async function Page() {
   }
 
   let inbox: CgInboxRead | null;
-  let anchorContexts: Record<string, AnchorContextRead | null> = {};
+  let anchorActions: AnchorContextSummaryListRead | null = null;
   try {
-    inbox = await fetchCgInbox();
-    anchorContexts = await fetchCgAnchorContextMap(
-      inbox.items.map((item) => item.task_id),
-      actorHeaders(identity),
-    );
+    [inbox, anchorActions] = await Promise.all([
+      fetchCgInbox(),
+      fetchCgAnchorContextSummaries(actorHeaders(identity), {
+        limit: 5,
+        scope: "triage",
+      }),
+    ]);
   } catch {
     inbox = null;
   }
@@ -30,7 +35,7 @@ export default async function Page() {
   return (
     <CgWorkspacePage
       inbox={inbox}
-      anchorContexts={anchorContexts}
+      anchorActions={anchorActions}
       onExitRole={exitRoleView}
     />
   );

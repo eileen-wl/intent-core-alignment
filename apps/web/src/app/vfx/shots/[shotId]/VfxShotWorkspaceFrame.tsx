@@ -73,7 +73,11 @@ export function VfxShotWorkspaceFrame({
             ]}
           />
           <ProductionContextHeader item={item} />
-          <AnchorContextLayer context={anchorContext ?? null} />
+          <AnchorContextLayer
+            context={anchorContext ?? null}
+            defaultExpanded={activeTab === "overview"}
+            storageKey={`icas:anchor-context:vfx:${item.shot_id}`}
+          />
           <ContextTabs
             activeTabId={activeTab}
             tabs={[
