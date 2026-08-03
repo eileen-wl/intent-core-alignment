@@ -335,13 +335,22 @@ def _version_context(item: object, target: str) -> AnchorVersionContextRead:
     )
 
 
-def _focus_action(focus: Any) -> AnchorNextActionRead:
+_ROLE_ACTION_LABEL = {
+    "vfx_supervisor": "VFX",
+    "cg_supervisor": "CG",
+    "artist": "Artist",
+}
+
+
+def _focus_action(focus: Any, *, role: str) -> AnchorNextActionRead:
     focus_type = str(focus.focus_type)
     if focus_type == "none":
+        role_label = _ROLE_ACTION_LABEL[role]
         return AnchorNextActionRead(
-            title="No immediate review action",
+            title=f"No immediate {role_label} action",
             why_now=(
-                "No current review, confirmation, dependency, or feedback action is recorded."
+                f"No current review, confirmation, dependency, or feedback action is "
+                f"assigned to the {role_label} role. Upstream attention may still remain."
             ),
             downstream_effect="New evidence may create a later human action.",
             target_route=str(focus.target_route),
@@ -367,7 +376,7 @@ async def _build_vfx_anchor_context(
     attention = await _attention_context(
         session, role="vfx_supervisor", shot_id=shot_id, task_id=None
     )
-    action = _focus_action(item.current_focus)
+    action = _focus_action(item.current_focus, role="vfx_supervisor")
     if core.lifecycle_state == "missing":
         action = AnchorNextActionRead(
             title="Create the Core Anchor",
@@ -437,7 +446,7 @@ async def _get_task_context(
         )
         is not None
     )
-    action = _focus_action(item.current_focus)
+    action = _focus_action(item.current_focus, role=role)
     if role == "cg_supervisor" and core.lifecycle_state != "confirmed":
         action = AnchorNextActionRead(
             title="Core Anchor confirmation required",
@@ -500,7 +509,32 @@ async def _get_task_context(
             action_label=None,
             executable=False,
         )
-    elif role == "artist" and guidance_state == "current":
+    elif (
+        role == "artist"
+        and attention.level == "high"
+        and "pause" in attention.review_requirement.lower()
+    ):
+        attention_detail = attention.summary or attention.review_requirement
+        action = AnchorNextActionRead(
+            title="Pause and request CG clarification",
+            why_now=(
+                f"{attention_detail} {attention.review_requirement}"
+                if attention.summary
+                else attention.review_requirement
+            ),
+            downstream_effect=(
+                "The CG Supervisor must clarify whether the current Execution direction "
+                "remains safe before production continues."
+            ),
+            target_route=None,
+            action_label=None,
+            executable=False,
+        )
+    elif (
+        role == "artist"
+        and guidance_state == "current"
+        and str(item.current_focus.focus_type) == "none"
+    ):
         action = AnchorNextActionRead(
             title="Continue within current Guidance",
             why_now="Confirmed direction and current Guidance are available for this Task.",
@@ -567,6 +601,11 @@ def _summary_readiness(context: AnchorContextRead, item: Any) -> tuple[str, str]
             return "action_required", context.next_action.why_now
         if context.next_action.executable or getattr(item, "open_dependency_count", 0) > 0:
             return "action_required", context.next_action.why_now
+        if context.core_anchor.newer_draft_exists or context.core_anchor.pending_human_gate_exists:
+            return (
+                "waiting_upstream",
+                "No immediate CG action. VFX review of the newer Core Anchor draft is pending.",
+            )
         return "no_immediate_action", "No immediate CG review action is recorded."
 
     if getattr(item, "open_dependency_count", 0) > 0:
@@ -578,6 +617,14 @@ def _summary_readiness(context: AnchorContextRead, item: Any) -> tuple[str, str]
         return (
             "waiting_upstream",
             "Current Execution direction is required from the CG Supervisor.",
+        )
+    if (
+        context.attention.level == "high"
+        and "pause" in context.attention.review_requirement.lower()
+    ):
+        return (
+            "waiting_upstream",
+            "High attention requires CG clarification before production continues.",
         )
     if context.guidance_state == "current" or context.next_action.executable:
         return "ready_to_work", context.next_action.why_now

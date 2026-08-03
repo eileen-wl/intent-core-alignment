@@ -27,9 +27,10 @@ advisory evidence only.
 ``versions_and_feedback.models.Version``'s own module docstring -- a
 Shot may have several Tasks and several Versions with no join between
 them), so the caller supplies ``task_id`` explicitly at generation time
-rather than this service guessing it. Generation requires that Task's
-confirmed ``ExecutionAnchorRevision`` to already exist; a draft or
-rejected revision is never silently used.
+rather than this service guessing it. Generation requires the Shot's
+confirmed ``CoreAnchorRevision`` and that Task's confirmed
+``ExecutionAnchorRevision`` to already exist; a draft or rejected
+revision is never silently used.
 
 This repository does not inspect footage, frames, renders, scene/DCC
 files, or numeric production parameters -- every structured conclusion
@@ -1063,6 +1064,28 @@ async def generate_artist_agent_guidance(
     if project is None:
         raise InternalConsistencyError(
             f"Shot {shot.id} references missing Project {shot.project_id}"
+        )
+
+    core_anchor = await core_anchor_service.get_core_anchor_for_shot(session, shot.id)
+    all_core_revisions = (
+        await core_anchor_service.list_revisions_for_shot(session, shot.id)
+        if core_anchor is not None
+        else []
+    )
+    confirmed_core_revision = next(
+        (
+            revision
+            for revision in all_core_revisions
+            if core_anchor is not None
+            and revision.id == core_anchor.active_revision_id
+            and revision.status == "confirmed"
+        ),
+        None,
+    )
+    if confirmed_core_revision is None:
+        raise ConflictError(
+            "Artist Agent guidance requires a confirmed Core Anchor revision for this "
+            "Shot; the VFX Supervisor must confirm shared direction first"
         )
 
     execution_anchor = await get_execution_anchor_for_task(session, task_id)

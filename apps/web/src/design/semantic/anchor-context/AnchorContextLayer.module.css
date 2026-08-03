@@ -18,10 +18,7 @@
 }
 .summary {
   display: grid;
-  grid-template-columns: minmax(14rem, 1.2fr) minmax(14rem, 1fr) auto minmax(
-      10rem,
-      auto
-    );
+  grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) auto minmax(0, auto);
   gap: var(--space-4);
   align-items: center;
   padding: var(--space-3) var(--space-4);
@@ -31,6 +28,12 @@
 .nextAction {
   display: grid;
   gap: var(--space-1);
+}
+.authorityGroup,
+.direction,
+.artistChain > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .authorityGroup small,
 .expanded small {
@@ -53,6 +56,11 @@
 .artistChain > div {
   display: grid;
   gap: var(--space-1);
+}
+.artistChain {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: 0;
 }
 .chainArrow {
   color: var(--text-muted);
@@ -116,18 +124,22 @@
   border-left: 3px solid var(--state-attention);
   padding-left: var(--space-3);
 }
+.upstreamState {
+  border-left: 3px solid var(--state-attention);
+  padding-left: var(--space-3);
+}
 .contextLinks {
   display: grid;
   align-content: start;
   gap: var(--space-2);
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1200px) {
   .layer[data-expanded="false"] {
     position: static;
   }
   .summary {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   }
   .statuses {
     justify-content: flex-start;
@@ -140,8 +152,17 @@
     align-items: flex-start;
     flex-direction: column;
   }
+  .artistChain {
+    grid-template-columns: 1fr;
+  }
   .chainArrow {
     display: none;
+  }
+}
+
+@media (max-width: 760px) {
+  .summary {
+    grid-template-columns: 1fr;
   }
 }
 

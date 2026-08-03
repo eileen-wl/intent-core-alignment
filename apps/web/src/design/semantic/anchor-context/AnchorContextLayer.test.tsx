@@ -187,9 +187,13 @@ describe("AnchorContextLayer", () => {
     expect(screen.getByText("Based on Core Anchor R1")).toBeInTheDocument();
     expect(screen.getByText("outdated")).toBeInTheDocument();
     expect(screen.getByText("copied from prior revision")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("VFX review pending for the newer Core Anchor draft.")
+        .length,
+    ).toBeGreaterThan(0);
   });
 
-  it("uses WHY / HOW / WHAT TO DO NOW and guidance state for Artists", () => {
+  it("uses content-first WHY / HOW / WHAT TO DO NOW and secondary Anchor metadata for Artists", () => {
     render(
       <AnchorContextLayer context={contextFor("artist")} defaultExpanded />,
     );
@@ -198,15 +202,57 @@ describe("AnchorContextLayer", () => {
     expect(screen.getByText("How")).toBeInTheDocument();
     expect(screen.getByText("What to do now")).toBeInTheDocument();
     expect(screen.getByText("Guidance outdated")).toBeInTheDocument();
+    expect(
+      screen.getByText("Keep the hero silhouette readable."),
+    ).toBeVisible();
+    expect(
+      screen.getAllByText("Preserve the readable turn in blocking.").length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText(/Core Anchor R2.*confirmed/)).toBeVisible();
+    expect(screen.getByText(/Execution Anchor R1.*outdated/)).toBeVisible();
   });
 
-  it("renders an explicit unavailable state and a compact row summary", () => {
+  it("renders attention and readiness as separate compact-row meanings", () => {
     const { rerender } = render(<AnchorContextLayer context={null} />);
     expect(screen.getByText("Anchor context unavailable")).toBeInTheDocument();
 
     rerender(<AnchorContextSummary context={summaryFor("artist")} />);
     expect(screen.getByText(/Core Anchor R2/)).toBeInTheDocument();
     expect(screen.getByText(/Preserve the readable turn/)).toBeInTheDocument();
-    expect(screen.getByText(/high · waiting upstream/)).toBeInTheDocument();
+    expect(screen.getByText("Attention")).toBeInTheDocument();
+    expect(screen.getByText("high")).toBeInTheDocument();
+    expect(screen.getByText("Readiness")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Review the outdated execution direction").length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.queryByText(/high.*waiting upstream/i),
+    ).not.toBeInTheDocument();
+  });
+
+  it("treats a one-character direction placeholder as unavailable", () => {
+    const summary = summaryFor("cg_supervisor");
+    render(
+      <AnchorContextSummary
+        context={{ ...summary, execution_direction: "x" }}
+      />,
+    );
+
+    expect(
+      screen.getByText("No concise direction is available yet."),
+    ).toBeVisible();
+    expect(screen.queryByText("x")).not.toBeInTheDocument();
+  });
+
+  it("keeps the Artist header groups and disclosure control as distinct wrapping regions", () => {
+    render(<AnchorContextLayer context={contextFor("artist")} />);
+
+    const section = screen.getByRole("region", { name: "Anchor context" });
+    for (const label of ["Why", "How", "What to do now", "Current direction"]) {
+      expect(section).toHaveTextContent(label);
+    }
+    expect(
+      screen.getByRole("button", { name: "Expand anchor context" }),
+    ).toBeVisible();
   });
 });

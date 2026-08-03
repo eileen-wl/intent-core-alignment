@@ -40,7 +40,9 @@ export function TaskOverviewPage({
     >
       {data && (
         <>
-          <TaskCurrentFocusPanel focus={data.item.current_focus} />
+          {!anchorContext && (
+            <TaskCurrentFocusPanel focus={data.item.current_focus} />
+          )}
 
           {!anchorContext && (
             <WorkingDirectionSection section={data.workingDirection} />

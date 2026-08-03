@@ -51,7 +51,10 @@ export function WorkItemRow({
         </span>
       </span>
       <span className={styles.open} aria-hidden="true">
-        {anchorContext?.next_action.action_label ?? "Review item"} →
+        {anchorContext?.next_action.action_label ??
+          item.actionLabel ??
+          "Review item"}{" "}
+        →
       </span>
     </Link>
   );

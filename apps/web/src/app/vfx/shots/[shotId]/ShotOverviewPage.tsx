@@ -57,7 +57,7 @@ export function ShotOverviewPage({
     >
       {item && (
         <>
-          <CurrentFocusPanel focus={item.current_focus} />
+          {!anchorContext && <CurrentFocusPanel focus={item.current_focus} />}
 
           <NextFocusPanel items={item.next_candidates ?? []} />
 

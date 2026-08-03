@@ -36,6 +36,27 @@ export function TaskOverviewPage({
   unavailable: boolean;
   onExitRole: () => void | Promise<void>;
 }) {
+  const guidancePrerequisites: string[] = [];
+  if (!data?.item.latest_version_id) {
+    guidancePrerequisites.push("A Production Version is required.");
+  }
+  if (!anchorContext) {
+    guidancePrerequisites.push(
+      "Anchor prerequisites could not be verified; refresh the Task context.",
+    );
+  } else {
+    if (anchorContext.core_anchor.lifecycle_state !== "confirmed") {
+      guidancePrerequisites.push(
+        "The VFX Supervisor must confirm the Core Anchor first.",
+      );
+    }
+    if (anchorContext.execution_anchor?.lifecycle_state !== "confirmed") {
+      guidancePrerequisites.push(
+        "The CG Supervisor must confirm the Execution Anchor.",
+      );
+    }
+  }
+
   return (
     <ArtistTaskWorkspaceFrame
       item={data?.item ?? null}
@@ -46,7 +67,9 @@ export function TaskOverviewPage({
     >
       {data && (
         <>
-          <TaskCurrentFocusPanel focus={data.item.current_focus} />
+          {!anchorContext && (
+            <TaskCurrentFocusPanel focus={data.item.current_focus} />
+          )}
 
           {!anchorContext && (
             <WorkingDirectionSection section={data.workingDirection} />
@@ -56,17 +79,16 @@ export function TaskOverviewPage({
             title="What to do now: Artist Guidance"
             description="Advisory guidance from the Artist Agent -- never a substitute for either Anchor."
             actions={
-              data.item.latest_version_id && (
-                <GenerateArtistGuidanceButton
-                  taskId={taskId}
-                  versionId={data.item.latest_version_id}
-                  label={
-                    data.latestGuidance
-                      ? "Regenerate guidance"
-                      : "Generate guidance"
-                  }
-                />
-              )
+              <GenerateArtistGuidanceButton
+                taskId={taskId}
+                versionId={data.item.latest_version_id}
+                label={
+                  data.latestGuidance
+                    ? "Regenerate guidance"
+                    : "Generate guidance"
+                }
+                disabledReasons={guidancePrerequisites}
+              />
             }
           />
           <Panel tone="elevated">

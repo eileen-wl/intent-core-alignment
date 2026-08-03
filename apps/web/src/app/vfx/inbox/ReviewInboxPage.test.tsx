@@ -257,6 +257,38 @@ describe("ReviewInboxPage", () => {
     ).toHaveAttribute("href", "/vfx/shots/s1/versions");
   });
 
+  it("labels a Version review as blocked when Core Anchor readiness is missing", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([
+          inactiveItem({
+            core_anchor_state: "none",
+            latest_version_without_review_id: "v9",
+            latest_version_without_review_name: "SH010_v002",
+            latest_version_without_review_number: 2,
+          }),
+        ])}
+        onExitRole={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByText("Version review blocked")).toBeVisible();
+    expect(
+      screen.getByText("Core Anchor required before Version review"),
+    ).toBeVisible();
+    expect(
+      screen
+        .getByText("Core Anchor required before Version review")
+        .closest("a"),
+    ).toHaveAttribute("href", "/vfx/shots/s1/intent");
+    expect(
+      screen
+        .getByText("Core Anchor required before Version review")
+        .closest("a"),
+    ).toHaveTextContent("Open Intent");
+    expect(screen.getAllByText(/SH010_v002/).length).toBeGreaterThan(0);
+  });
+
   it("never surfaces a Version-review item for a Shot the backend did not flag (not every Version is actionable)", () => {
     render(
       <ReviewInboxPage

@@ -246,6 +246,20 @@ def test_prompt_registry_entry_is_registered() -> None:
 # --- confirmed Execution Anchor requirement ---
 
 
+async def test_generate_returns_409_with_vfx_owned_core_prerequisite_when_anchors_missing(
+    client: AsyncClient,
+) -> None:
+    shot_id = await _create_shot(client)
+    task_id = await _create_task(client, shot_id)
+    version_id = await _create_version(client, shot_id)
+
+    response = await _generate(client, version_id, task_id)
+
+    assert response.status_code == 409
+    assert "confirmed Core Anchor" in response.json()["detail"]
+    assert "VFX Supervisor" in response.json()["detail"]
+
+
 async def test_generate_returns_409_when_no_execution_anchor_exists(client: AsyncClient) -> None:
     shot_id = await _create_shot(client)
     await _create_brief(client, shot_id)

@@ -19,22 +19,26 @@ export function GenerateArtistGuidanceButton({
   taskId,
   versionId,
   label,
+  disabledReasons = [],
 }: {
   taskId: string;
-  versionId: string;
+  versionId: string | null;
   label: string;
+  disabledReasons?: string[];
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const unavailable = disabledReasons.length > 0 || versionId === null;
 
   return (
     <div className={styles.wrapper}>
       <button
         type="button"
         className={styles.button}
-        disabled={isPending}
+        disabled={isPending || unavailable}
         onClick={() => {
+          if (unavailable || versionId === null) return;
           setError(null);
           startTransition(() => {
             generateArtistGuidanceAction(taskId, versionId).then((result) => {
@@ -49,6 +53,16 @@ export function GenerateArtistGuidanceButton({
       >
         {isPending ? "Generating guidance…" : label}
       </button>
+      {disabledReasons.length > 0 && (
+        <div className={styles.unavailable} role="status">
+          <strong>Guidance generation unavailable</strong>
+          <ul>
+            {disabledReasons.map((reason) => (
+              <li key={reason}>{reason}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       {error && (
         <p className={styles.error} role="alert">
           {error}

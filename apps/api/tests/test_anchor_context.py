@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import uuid
+from types import SimpleNamespace
 
 from httpx import AsyncClient
+from intent_core_api.anchor_context import service as anchor_context_service
+from intent_core_contracts.api.anchor_context import AnchorAttentionContextRead
 
 VFX = {"X-Actor-Role": "vfx_supervisor", "X-Actor-Id": "vfx-1"}
 CG = {"X-Actor-Role": "cg_supervisor", "X-Actor-Id": "cg-1"}
@@ -132,6 +135,80 @@ async def test_cg_context_proves_execution_upstream_revision(client: AsyncClient
     assert execution["context_state"] == "current"
     assert execution["execution_boundary"] == "Exposure remains inside the approved range."
     assert body["attention"]["level"] == "not_assessed"
+
+
+async def test_cg_separates_no_role_action_from_pending_vfx_review(
+    client: AsyncClient,
+) -> None:
+    shot_id, task_id = await _project_shot_task(client)
+    await _confirm_core(client, shot_id)
+    await _confirm_execution(client, task_id)
+    await client.post(f"/intent/shots/{shot_id}/core-anchor/drafts/from-confirmed", headers=VFX)
+
+    response = await client.get(f"/cg/tasks/{task_id}/anchor-context", headers=CG)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["next_action"]["title"] == "No immediate CG action"
+    assert body["next_action"]["executable"] is False
+    assert body["core_anchor"]["pending_human_gate_exists"] is True
+
+    summaries = (await client.get("/cg/anchor-contexts?scope=waiting&limit=5", headers=CG)).json()
+    summary = next(item for item in summaries["items"] if item["task_id"] == task_id)
+    assert summary["readiness_state"] == "waiting_upstream"
+    assert "VFX review" in summary["readiness_detail"]
+
+
+async def test_artist_high_attention_pause_overrides_continue_action(
+    client: AsyncClient, monkeypatch
+) -> None:
+    shot_id, task_id = await _project_shot_task(client)
+    await _confirm_core(client, shot_id)
+    await _confirm_execution(client, task_id)
+
+    async def high_attention(*_args, **_kwargs) -> AnchorAttentionContextRead:
+        return AnchorAttentionContextRead(
+            level="high",
+            summary="The current pass may break the restrained intent.",
+            review_requirement="Pause this direction and request supervisor clarification.",
+            source_assessment_id=None,
+            source_signal_id=None,
+            assessed_at=None,
+            link_target=None,
+        )
+
+    async def current_guidance_item(*_args, **_kwargs):
+        return SimpleNamespace(
+            task_id=uuid.UUID(task_id),
+            guidance_state="current",
+            latest_version_id=None,
+            latest_version_name=None,
+            latest_version_number=None,
+            current_focus=SimpleNamespace(
+                focus_type="none",
+                title="Nothing requires your attention on this Task right now",
+                explanation="Nothing requires your attention on this Task right now.",
+                target_route=f"/artist/tasks/{task_id}",
+                primary_action_label=None,
+                actionable=False,
+            ),
+        )
+
+    monkeypatch.setattr(anchor_context_service, "_attention_context", high_attention)
+    monkeypatch.setattr(
+        anchor_context_service.artist_inbox_service,
+        "get_inbox_item_for_task",
+        current_guidance_item,
+    )
+
+    response = await client.get(f"/artist/tasks/{task_id}/anchor-context", headers=ARTIST)
+
+    assert response.status_code == 200
+    action = response.json()["next_action"]
+    assert action["title"] == "Pause and request CG clarification"
+    assert action["executable"] is False
+    assert "break the restrained intent" in action["why_now"]
+    assert "Continue" not in action["title"]
 
 
 async def test_artist_context_marks_old_execution_after_core_revision(client: AsyncClient) -> None:

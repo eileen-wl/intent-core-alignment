@@ -6,6 +6,7 @@ import { useEffect, useId, useState } from "react";
 
 import { StatusBadge } from "../../components";
 import styles from "./AnchorContextLayer.module.css";
+import { conciseDirection, upstreamState } from "./presentation";
 
 const ATTENTION_LABEL = {
   low: "Low attention",
@@ -93,15 +94,25 @@ function AuthorityChain({ context }: { context: AnchorContextRead }) {
       <div>
         <span className={styles.eyebrow}>Why</span>
         <strong>
-          Core Anchor {revisionLabel(core.confirmed_revision_number)}
+          {conciseDirection(core.direction_summary) ??
+            "Core Anchor direction is unavailable."}
         </strong>
+        <small>
+          Core Anchor {revisionLabel(core.confirmed_revision_number)} ·{" "}
+          {contextStateLabel(core.lifecycle_state)}
+        </small>
       </div>
       <div>
         <span className={styles.eyebrow}>How</span>
         <strong>
-          {execution?.department ?? "Task"} Execution{" "}
-          {revisionLabel(execution?.confirmed_revision_number ?? null)}
+          {conciseDirection(execution?.direction_summary) ??
+            "Execution direction is unavailable."}
         </strong>
+        <small>
+          Execution Anchor{" "}
+          {revisionLabel(execution?.confirmed_revision_number ?? null)} ·{" "}
+          {contextStateLabel(execution?.context_state ?? "missing")}
+        </small>
       </div>
       <div>
         <span className={styles.eyebrow}>What to do now</span>
@@ -158,7 +169,10 @@ export function AnchorContextLayer({
   }
   const core = context.core_anchor;
   const execution = context.execution_anchor;
-  const direction = execution?.direction_summary ?? core.direction_summary;
+  const direction = conciseDirection(
+    execution?.direction_summary ?? core.direction_summary,
+  );
+  const upstream = upstreamState(context);
 
   return (
     <section
@@ -171,9 +185,7 @@ export function AnchorContextLayer({
           <AuthorityChain context={context} />
           <div className={styles.direction}>
             <span className={styles.eyebrow}>Current direction</span>
-            <span>
-              {direction ?? "No confirmed direction is available yet."}
-            </span>
+            <span>{direction ?? "No concise direction is available yet."}</span>
           </div>
           <div className={styles.statuses}>
             {execution && (
@@ -204,6 +216,7 @@ export function AnchorContextLayer({
                 label={GUIDANCE_LABEL[context.guidance_state]}
               />
             )}
+            {upstream && <StatusBadge status="attention" label={upstream} />}
           </div>
           <button
             type="button"
@@ -253,7 +266,11 @@ export function AnchorContextLayer({
               <small>{context.attention.review_requirement}</small>
             </div>
             <div className={styles.nextAction}>
-              <span className={styles.eyebrow}>Next action</span>
+              <span className={styles.eyebrow}>
+                {context.next_action.title.startsWith("No immediate")
+                  ? "Role action"
+                  : "Readiness / next action"}
+              </span>
               <strong>{context.next_action.title}</strong>
               <p>{context.next_action.why_now}</p>
               <small>{context.next_action.downstream_effect}</small>
@@ -265,6 +282,12 @@ export function AnchorContextLayer({
                   </Link>
                 )}
             </div>
+            {upstream && (
+              <div className={styles.upstreamState}>
+                <span className={styles.eyebrow}>Upstream state</span>
+                <strong>{upstream}</strong>
+              </div>
+            )}
             {(core.newer_draft_exists || core.pending_human_gate_exists) && (
               <div className={styles.authorityNotice}>
                 <span className={styles.eyebrow}>Draft distinction</span>
