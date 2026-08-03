@@ -4,10 +4,24 @@ import type {
   VersionRead,
   VfxInboxItemRead,
 } from "@intent-core/contracts";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("@/features/vfx/versions-workspace/actions", () => ({
+  resolveVersionMediaAction: vi.fn().mockResolvedValue({
+    ok: false,
+    message: "No media resolved in this test.",
+  }),
+}));
+
 import type { VersionsWorkspaceData } from "@/features/vfx/versions-workspace/data";
+import { resolveVersionMediaAction } from "@/features/vfx/versions-workspace/actions";
 import { VersionsWorkspacePage } from "./VersionsWorkspacePage";
 
 afterEach(() => {
@@ -360,5 +374,69 @@ describe("VersionsWorkspacePage", () => {
     expect(
       screen.queryByRole("link", { name: "Review in Alignment →" }),
     ).not.toBeInTheDocument();
+  });
+
+  describe("Step 9B-4 real media context", () => {
+    it("resolves and renders real media for the selected Version via the Shot-scoped Server Action", async () => {
+      vi.mocked(resolveVersionMediaAction).mockResolvedValueOnce({
+        ok: true,
+        media: {
+          version_id: "v1",
+          source: "ftrack",
+          ftrack_linked: true,
+          media_state: "playable",
+          thumbnail_url: "https://ftrack.example/thumb",
+          playable_url: "https://ftrack.example/video",
+          playable_media_type: "video/mp4",
+          playable_component_name: "ftrackreview-mp4",
+          external_web_url: null,
+          resolved_at: "2026-08-01T00:00:00Z",
+          url_expires_at: null,
+          unavailable_reason: null,
+        },
+      });
+
+      render(
+        <VersionsWorkspacePage
+          shotId="s1"
+          data={data()}
+          unavailable={false}
+          onExitRole={vi.fn()}
+        />,
+      );
+
+      expect(resolveVersionMediaAction).toHaveBeenCalledWith("s1", "v1");
+      await waitFor(() => {
+        expect(document.querySelector("video")).toBeTruthy();
+      });
+    });
+
+    it("does not remove Version/Review Note content when media resolution fails", async () => {
+      vi.mocked(resolveVersionMediaAction).mockResolvedValueOnce({
+        ok: false,
+        message: "The ICAS service is unavailable.",
+      });
+
+      render(
+        <VersionsWorkspacePage
+          shotId="s1"
+          data={data()}
+          unavailable={false}
+          onExitRole={vi.fn()}
+        />,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("alert")).toHaveTextContent(
+          "The ICAS service is unavailable.",
+        );
+      });
+      expect(
+        screen.getByText("Tighten the timing on the push-in."),
+      ).toBeVisible();
+      expect(
+        screen.getByRole("button", { name: /SH010_v001 \(v1\)/ }),
+      ).toBeVisible();
+    });
   });
 });

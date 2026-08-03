@@ -9,6 +9,7 @@ import {
   EvidenceLayerSection,
   FtrackLinkageBadge,
   MetadataRow,
+  VersionMediaPanel,
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
@@ -153,6 +154,7 @@ export function CurrentVersionPage({
                           : ""}
                       </h3>
                       <EvidenceLayerSection kind="production-evidence">
+                        <VersionMediaPanel media={data.media} />
                         <MetadataRow
                           items={[
                             {

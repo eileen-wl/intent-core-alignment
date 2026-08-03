@@ -144,6 +144,9 @@ export type ShotActivityEventType =
 export type ShotActivityEventRead = Schemas["ShotActivityEventRead"];
 export type ShotActivityRead = Schemas["ShotActivityRead"];
 
+export type VersionMediaState = Schemas["VersionMediaRead"]["media_state"];
+export type VersionMediaRead = Schemas["VersionMediaRead"];
+
 export type CgCurrentFocusType =
   Schemas["CgInboxCurrentFocusRead"]["focus_type"];
 export type ExecutionAnchorState =

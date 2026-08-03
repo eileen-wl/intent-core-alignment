@@ -13,6 +13,7 @@ import type {
   ReviewNoteRead,
   TaskDependencyRead,
   TaskRead,
+  VersionMediaRead,
   VersionRead,
 } from "@intent-core/contracts";
 
@@ -234,4 +235,31 @@ export function getTaskFeedbackHistory(
   return artistFetch<ArtistFeedbackHistoryRead>(
     `/tasks/${taskId}/feedback-history`,
   );
+}
+
+// --- Version media (Step 9B-4) -----------------------------------------------
+
+/** `GET /artist/tasks/{task_id}/versions/{version_id}/media` -- transient,
+ * read-only ftrack media resolution for one Production Version,
+ * Task-scoped (preserves the Step 8C-6/8C-7 nullable-`task_id`
+ * compatibility rule). Role-gated server-side (Artist only), so this
+ * call requires trusted, server-resolved Actor headers. `artistFetch`
+ * already sends `cache: "no-store"`. Returns `null` on a real 404 (Task
+ * or Version not found/not in this Task's scope). */
+export async function fetchVersionMedia(
+  taskId: string,
+  versionId: string,
+  actorHeaders: ActorHeaders,
+): Promise<VersionMediaRead | null> {
+  try {
+    return await artistFetch<VersionMediaRead>(
+      `/artist/tasks/${taskId}/versions/${versionId}/media`,
+      { headers: actorHeaders },
+    );
+  } catch (error) {
+    if (error instanceof ArtistApiError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
 }

@@ -15,6 +15,7 @@ import type {
   IntentDecompositionRead,
   ReviewNoteRead,
   ShotActivityRead,
+  VersionMediaRead,
   VersionRead,
   VfxInboxItemRead,
   VfxInboxRead,
@@ -330,6 +331,33 @@ export async function fetchDepartmentExecutionOverview(
   try {
     return await vfxFetch<DepartmentExecutionOverviewRead>(
       `/vfx/shots/${shotId}/department-execution-overview`,
+      { headers: actorHeaders },
+    );
+  } catch (error) {
+    if (error instanceof VfxApiError && error.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+/** `GET /vfx/shots/{shot_id}/versions/{version_id}/media` (Step 9B-4) --
+ * transient, read-only ftrack media resolution for one Production
+ * Version, Shot-scoped. Role-gated server-side (VFX Supervisor only),
+ * so this call requires trusted, server-resolved Actor headers -- never
+ * client-supplied. The underlying `vfxFetch` already sends `cache:
+ * "no-store"` (no persistent caching of the resolved, transient/signed
+ * URLs). Returns `null` on a real 404 (Shot or Version not found/not in
+ * this Shot), distinguished from a thrown `VfxApiError` for any other
+ * failure. */
+export async function fetchVersionMedia(
+  shotId: string,
+  versionId: string,
+  actorHeaders: ActorHeaders,
+): Promise<VersionMediaRead | null> {
+  try {
+    return await vfxFetch<VersionMediaRead>(
+      `/vfx/shots/${shotId}/versions/${versionId}/media`,
       { headers: actorHeaders },
     );
   } catch (error) {

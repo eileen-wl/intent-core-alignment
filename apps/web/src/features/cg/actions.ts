@@ -7,6 +7,7 @@ import type {
   ExecutionAnchorRevisionUpdate,
   ReviewNoteRead,
   TaskDependencyRead,
+  VersionMediaRead,
 } from "@intent-core/contracts";
 
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
@@ -19,6 +20,7 @@ import {
   createExecutionAnchorDraftFromConfirmed,
   createReviewNote,
   escalateTask,
+  fetchVersionMedia,
   generateCgSupervisorReview,
   generateExecutionAnchorDraft,
   getExecutionAnchorRevisionHumanGate,
@@ -396,6 +398,50 @@ export async function resolveDependencyAction(
     return { ok: true, dependency };
   } catch (error) {
     return { ok: false, error: mapThrownError(error) };
+  }
+}
+
+/** Step 9B-4: read-only Server Action the CG Version Review page uses to
+ * resolve transient ftrack media for the currently-selected Version
+ * (client-side selection, `VersionReviewPage.tsx`) -- no mutation, no
+ * `revalidatePath`. Identity is resolved server-side on every call. */
+export type VersionMediaFetchResult =
+  { ok: true; media: VersionMediaRead } | { ok: false; message: string };
+
+const MEDIA_FORBIDDEN_MESSAGE =
+  "Media context is only available to a CG Supervisor session.";
+const MEDIA_UNAVAILABLE_MESSAGE = "The ICAS service is unavailable.";
+const MEDIA_NOT_FOUND_MESSAGE =
+  "This Production Version could not be found for this Task.";
+
+export async function resolveVersionMediaAction(
+  taskId: string,
+  versionId: string,
+): Promise<VersionMediaFetchResult> {
+  const identity = await resolveIdentity();
+  if (identity === null || identity.role !== "cg_supervisor") {
+    return { ok: false, message: MEDIA_FORBIDDEN_MESSAGE };
+  }
+
+  try {
+    const media = await fetchVersionMedia(
+      taskId,
+      versionId,
+      actorHeaders(identity),
+    );
+    if (media === null) {
+      return { ok: false, message: MEDIA_NOT_FOUND_MESSAGE };
+    }
+    return { ok: true, media };
+  } catch (error) {
+    if (error instanceof CgApiError) {
+      if (error.status === 403)
+        return { ok: false, message: MEDIA_FORBIDDEN_MESSAGE };
+      if (error.status === 0)
+        return { ok: false, message: MEDIA_UNAVAILABLE_MESSAGE };
+      return { ok: false, message: error.detail || MEDIA_UNAVAILABLE_MESSAGE };
+    }
+    return { ok: false, message: MEDIA_UNAVAILABLE_MESSAGE };
   }
 }
 

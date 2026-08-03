@@ -1567,6 +1567,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/vfx/shots/{shot_id}/versions/{version_id}/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Vfx Version Media */
+        get: operations["get_vfx_version_media_vfx_shots__shot_id__versions__version_id__media_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/cg/tasks/{task_id}/versions/{version_id}/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Cg Version Media */
+        get: operations["get_cg_version_media_cg_tasks__task_id__versions__version_id__media_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/artist/tasks/{task_id}/versions/{version_id}/media": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Artist Version Media */
+        get: operations["get_artist_version_media_artist_tasks__task_id__versions__version_id__media_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/health": {
         parameters: {
             query?: never;
@@ -3902,6 +3953,45 @@ export interface components {
             version_number?: number | null;
             /** Description */
             description: string;
+        };
+        /** VersionMediaRead */
+        VersionMediaRead: {
+            /**
+             * Version Id
+             * Format: uuid
+             */
+            version_id: string;
+            /**
+             * Source
+             * @enum {string}
+             */
+            source: "manual" | "ftrack";
+            /** Ftrack Linked */
+            ftrack_linked: boolean;
+            /**
+             * Media State
+             * @enum {string}
+             */
+            media_state: "playable" | "thumbnail_only" | "external_context_only" | "unavailable";
+            /** Thumbnail Url */
+            thumbnail_url: string | null;
+            /** Playable Url */
+            playable_url: string | null;
+            /** Playable Media Type */
+            playable_media_type: string | null;
+            /** Playable Component Name */
+            playable_component_name: string | null;
+            /** External Web Url */
+            external_web_url: string | null;
+            /**
+             * Resolved At
+             * Format: date-time
+             */
+            resolved_at: string;
+            /** Url Expires At */
+            url_expires_at: string | null;
+            /** Unavailable Reason */
+            unavailable_reason: string | null;
         };
         /**
          * VersionNoteSyncItemResult
@@ -7320,6 +7410,111 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["VersionNoteSyncItemResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_vfx_version_media_vfx_shots__shot_id__versions__version_id__media_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                shot_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionMediaRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_cg_version_media_cg_tasks__task_id__versions__version_id__media_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                task_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionMediaRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_artist_version_media_artist_tasks__task_id__versions__version_id__media_get: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-Actor-Role"?: string | null;
+                "X-Actor-Id"?: string | null;
+            };
+            path: {
+                task_id: string;
+                version_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VersionMediaRead"];
                 };
             };
             /** @description Validation Error */

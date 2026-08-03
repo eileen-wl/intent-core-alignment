@@ -35,6 +35,8 @@ beforeEach(() => {
 const params = Promise.resolve({ taskId: "t1" });
 const searchParams = Promise.resolve({});
 
+const ACTOR_HEADERS = { "X-Actor-Role": "artist", "X-Actor-Id": "artist-1" };
+
 describe("/artist/tasks/:taskId/current-version page", () => {
   it("redirects to /demo when the demo role cookie is not artist", async () => {
     cookieStore.get.mockReturnValue(undefined);
@@ -55,6 +57,7 @@ describe("/artist/tasks/:taskId/current-version page", () => {
       executionAnchorRevision: null,
       cgSupervisorReviews: [],
       crossRoleAssessments: [],
+      media: null,
     };
     loadCurrentVersionDataMock.mockResolvedValue(data);
 
@@ -66,7 +69,7 @@ describe("/artist/tasks/:taskId/current-version page", () => {
     expect(result.props.unavailable).toBe(false);
   });
 
-  it("passes the ?version= query param through to loadCurrentVersionData", async () => {
+  it("passes the ?version= query param and trusted actor headers through to loadCurrentVersionData", async () => {
     loadCurrentVersionDataMock.mockResolvedValue({
       item: { task_id: "t1" },
       versions: [],
@@ -77,11 +80,16 @@ describe("/artist/tasks/:taskId/current-version page", () => {
       executionAnchorRevision: null,
       cgSupervisorReviews: [],
       crossRoleAssessments: [],
+      media: null,
     });
 
     await Page({ params, searchParams: Promise.resolve({ version: "v2" }) });
 
-    expect(loadCurrentVersionDataMock).toHaveBeenCalledWith("t1", "v2");
+    expect(loadCurrentVersionDataMock).toHaveBeenCalledWith(
+      "t1",
+      ACTOR_HEADERS,
+      "v2",
+    );
   });
 
   it("marks the page unavailable, rather than throwing, when the API call fails", async () => {

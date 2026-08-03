@@ -12,11 +12,13 @@ import {
   FtrackLinkageBadge,
   MetadataRow,
   SectionHeader,
+  VersionMediaResolver,
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import { getAuthorDisplayText } from "@/lib/authorProvenance";
 import type { VersionReviewWorkspaceData } from "@/features/cg/version-review-workspace/data";
+import { resolveVersionMediaAction } from "@/features/cg/actions";
 import { TaskContextHeader } from "../TaskContextHeader";
 import { VersionReviewActions } from "./VersionReviewActions";
 import styles from "./VersionReviewPage.module.css";
@@ -176,6 +178,13 @@ export function VersionReviewPage({
                           : ""}
                       </h3>
                       <EvidenceLayerSection kind="production-evidence">
+                        <VersionMediaResolver
+                          key={selected.version.id}
+                          versionId={selected.version.id}
+                          resolve={(versionId) =>
+                            resolveVersionMediaAction(taskId, versionId)
+                          }
+                        />
                         <MetadataRow
                           items={[
                             {

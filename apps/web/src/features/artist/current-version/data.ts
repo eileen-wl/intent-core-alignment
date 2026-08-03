@@ -6,11 +6,13 @@ import type {
   CrossRoleAssessmentRead,
   ExecutionAnchorRevisionRead,
   ReviewNoteRead,
+  VersionMediaRead,
   VersionRead,
 } from "@intent-core/contracts";
 
 import {
   fetchArtistInboxItem,
+  fetchVersionMedia,
   getCoreAnchor,
   getExecutionAnchor,
   listArtistGuidancesForVersion,
@@ -52,10 +54,16 @@ export interface CurrentVersionData {
   executionAnchorRevision: ExecutionAnchorRevisionRead | null;
   cgSupervisorReviews: CGSupervisorReviewRead[];
   crossRoleAssessments: CrossRoleAssessmentRead[];
+  /** Step 9B-4: transient, read-only ftrack media context for
+   * `selectedVersion` only -- `null` when there is no selected Version,
+   * or when the role-gated media call itself failed (a media-resolution
+   * failure never blocks the rest of this Task page). */
+  media: VersionMediaRead | null;
 }
 
 export async function loadCurrentVersionData(
   taskId: string,
+  actorHeaders: Record<string, string>,
   selectedVersionId?: string,
 ): Promise<CurrentVersionData | null> {
   const item = await fetchArtistInboxItem(taskId);
@@ -128,6 +136,12 @@ export async function loadCurrentVersionData(
     }
   }
 
+  const media = selectedVersion
+    ? await fetchVersionMedia(taskId, selectedVersion.id, actorHeaders).catch(
+        () => null,
+      )
+    : null;
+
   return {
     item,
     versions: sortedVersions,
@@ -138,5 +152,6 @@ export async function loadCurrentVersionData(
     executionAnchorRevision,
     cgSupervisorReviews,
     crossRoleAssessments,
+    media,
   };
 }
