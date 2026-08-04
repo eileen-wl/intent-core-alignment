@@ -424,6 +424,7 @@ describe("VersionReviewPage", () => {
       shot_id: "s1",
       task_id: "t1",
       execution_anchor_revision_id: "r1",
+      version_id: "v1",
       context_snapshot_id: "cs1",
       agent_run_id: "run1",
       review_output: {

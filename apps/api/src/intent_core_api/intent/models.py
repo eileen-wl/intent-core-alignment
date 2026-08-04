@@ -531,6 +531,7 @@ class CGSupervisorReview(Base):
             "ix_cg_supervisor_reviews_execution_anchor_revision_id",
             "execution_anchor_revision_id",
         ),
+        Index("ix_cg_supervisor_reviews_version_id", "version_id"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
@@ -540,6 +541,7 @@ class CGSupervisorReview(Base):
     execution_anchor_revision_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("execution_anchor_revisions.id")
     )
+    version_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("versions.id"), nullable=True)
     context_snapshot_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("context_snapshots.id"))
     agent_run_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("agent_runs.id"), unique=True)
     review_output: Mapped[dict[str, Any]] = mapped_column(JSON)

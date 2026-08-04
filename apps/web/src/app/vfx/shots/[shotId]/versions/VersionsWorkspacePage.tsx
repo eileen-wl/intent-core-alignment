@@ -16,6 +16,7 @@ import type { VersionsWorkspaceData } from "@/features/vfx/versions-workspace/da
 import { resolveVersionMediaAction } from "@/features/vfx/versions-workspace/actions";
 import { VfxShotWorkspaceFrame } from "../VfxShotWorkspaceFrame";
 import styles from "./VersionsWorkspacePage.module.css";
+import { GenerateCreativeReviewButton } from "./GenerateCreativeReviewButton";
 
 /** `/vfx/shots/:shotId/versions` (Step 7C-3) -- the Shot's production-
  * version and review-note workspace, deliberately not Core Anchor
@@ -174,28 +175,77 @@ export function VersionsWorkspacePage({
                         <AgentContributionPanel
                           agent="VFX Supervisor Agent"
                           capability="Creative Review"
-                          state={selectedVfxReviews.length ? "completed" : data.item.active_core_anchor_summary ? "ready" : "not_ready"}
+                          state={
+                            selectedVfxReviews.length
+                              ? "completed"
+                              : data.item.active_core_anchor_summary
+                                ? "ready"
+                                : "not_ready"
+                          }
                           generatedAt={selectedVfxReviews[0]?.created_at}
                           inputs={[
                             `Version ${selected.version.name}`,
-                            data.item.active_core_anchor_summary ? "Confirmed Core Anchor" : "Core Anchor missing",
+                            data.item.active_core_anchor_summary
+                              ? "Confirmed Core Anchor"
+                              : "Core Anchor missing",
                             `${selected.reviewNotes.length} Review Notes`,
                           ]}
                           readiness={[
-                            { label: "Selected Production Version", available: true },
-                            { label: "Confirmed Core Anchor", available: Boolean(data.item.active_core_anchor_summary) },
+                            {
+                              label: "Selected Production Version",
+                              available: true,
+                            },
+                            {
+                              label: "Confirmed Core Anchor",
+                              available: Boolean(
+                                data.item.active_core_anchor_summary,
+                              ),
+                            },
                           ]}
                           output={
                             selectedVfxReviews[0] ? (
                               <>
-                                <p>{selectedVfxReviews[0].review_output.executive_summary}</p>
-                                <p>Creative concerns: {selectedVfxReviews[0].review_output.creative_concerns.length}</p>
-                                <p>Review priorities: {selectedVfxReviews[0].review_output.review_priorities.length}</p>
+                                <p>
+                                  {
+                                    selectedVfxReviews[0].review_output
+                                      .executive_summary
+                                  }
+                                </p>
+                                <p>
+                                  Creative concerns:{" "}
+                                  {
+                                    selectedVfxReviews[0].review_output
+                                      .creative_concerns.length
+                                  }
+                                </p>
+                                <p>
+                                  Review priorities:{" "}
+                                  {
+                                    selectedVfxReviews[0].review_output
+                                      .review_priorities.length
+                                  }
+                                </p>
                               </>
-                            ) : <p>No Creative Review has been generated for this selected Version yet.</p>
+                            ) : (
+                              <p>
+                                No Creative Review has been generated for this
+                                selected Version yet.
+                              </p>
+                            )
                           }
                           authority="Advisory creative interpretation; it does not approve the Version or create a Human Decision."
-                          nextAction="Review the interpretation, then record or open a human Review Note or Alignment action."
+                          nextAction={
+                            selectedVfxReviews.length ? (
+                              "Inspect the review, then record or open a human Review Note or Alignment action."
+                            ) : data.item.active_core_anchor_summary ? (
+                              <GenerateCreativeReviewButton
+                                shotId={shotId}
+                                versionId={selected.version.id}
+                              />
+                            ) : (
+                              "Confirm a Core Anchor before generating a Creative Review."
+                            )
+                          }
                         />
                         <h3 className={styles.sectionHeading}>
                           Active Core Anchor

@@ -10,6 +10,8 @@ import {
 } from "@/design";
 import {
   createCoreAnchorDraftFromConfirmedAction,
+  createCoreAnchorDraftFromDecompositionAction,
+  generateCoreAnchorDraftAction,
   startBlankCoreAnchorDraftAction,
 } from "@/features/vfx/intent-workspace/actions";
 import { VfxShotWorkspaceFrame } from "../VfxShotWorkspaceFrame";
@@ -81,7 +83,9 @@ export function IntentWorkspacePage({
               state={
                 data.evidenceData?.decompositions.length
                   ? "completed"
-                  : "not_ready"
+                  : data.evidenceData
+                    ? "ready"
+                    : "not_ready"
               }
               generatedAt={data.evidenceData?.decompositions[0]?.created_at}
               inputs={["Intent Brief and Shot context"]}
@@ -124,6 +128,7 @@ export function IntentWorkspacePage({
                 ) : (
                   <GenerateIntentCapabilityButton
                     label="Generate decomposition"
+                    disabled={!data.evidenceData}
                     action={generateIntentDecompositionAction.bind(
                       null,
                       shotId,
@@ -138,7 +143,9 @@ export function IntentWorkspacePage({
               state={
                 data.evidenceData?.reconstructions.length
                   ? "completed"
-                  : "not_ready"
+                  : data.evidenceData
+                    ? "ready"
+                    : "not_ready"
               }
               generatedAt={data.evidenceData?.reconstructions[0]?.created_at}
               inputs={["Historical and current Shot context"]}
@@ -164,11 +171,72 @@ export function IntentWorkspacePage({
                 ) : (
                   <GenerateIntentCapabilityButton
                     label="Generate context reconstruction"
+                    disabled={!data.evidenceData}
                     action={generateContextReconstructionAction.bind(
                       null,
                       shotId,
                     )}
                   />
+                )
+              }
+            />
+            <AgentContributionPanel
+              agent="Core Agent"
+              capability="Core Anchor Draft"
+              state={
+                data.draftRevision
+                  ? "completed"
+                  : data.evidenceData
+                    ? "ready"
+                    : "not_ready"
+              }
+              generatedAt={data.draftRevision?.created_at}
+              inputs={[
+                "Intent evidence",
+                data.item.shot_name,
+                data.draftRevision
+                  ? `Draft R${data.draftRevision.revision_number}`
+                  : "No active Draft",
+              ]}
+              readiness={[
+                {
+                  label: "Intent evidence available",
+                  available: Boolean(data.evidenceData),
+                },
+              ]}
+              output={
+                data.draftRevision ? (
+                  <p>
+                    An editable Core Anchor Draft R
+                    {data.draftRevision.revision_number} is active. Source
+                    provenance is shown only when recorded.
+                  </p>
+                ) : (
+                  <p>No Core Anchor Draft has been generated yet.</p>
+                )
+              }
+              authority="Advisory proposal only; the Human VFX Supervisor reviews, edits, and confirms the Draft."
+              nextAction={
+                data.draftRevision ? (
+                  "Review or edit the active Core Anchor Draft."
+                ) : data.evidenceData ? (
+                  <>
+                    <GenerateIntentCapabilityButton
+                      label="Generate Core Anchor draft"
+                      action={generateCoreAnchorDraftAction.bind(null, shotId)}
+                    />
+                    {data.evidenceData.decompositions[0] && (
+                      <GenerateIntentCapabilityButton
+                        label="Use decomposition to create Draft"
+                        action={createCoreAnchorDraftFromDecompositionAction.bind(
+                          null,
+                          data.evidenceData.decompositions[0].id,
+                        )}
+                      />
+                    )}
+                  </>
+                ) : (
+                  "Provide Intent evidence before generating a Core Anchor Draft."
                 )
               }
             />

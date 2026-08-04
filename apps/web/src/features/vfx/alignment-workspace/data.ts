@@ -1,5 +1,7 @@
 import type {
   CoreAnchorRevisionRead,
+  AgentRunRead,
+  ContextSnapshotRead,
   CrossRoleAssessmentRead,
   VersionRead,
   VfxInboxItemRead,
@@ -10,6 +12,8 @@ import {
   listCoreAnchorRevisions,
   listCrossRoleAssessmentsForShot,
   listVersionsForShot,
+  getAgentRun,
+  getContextSnapshot,
 } from "@/features/vfx/api";
 
 /** `/vfx/shots/:shotId/alignment` (Step 7C-3) -- whether the reviewed
@@ -37,6 +41,8 @@ export interface AlignmentWorkspaceData {
    * `assessment.core_anchor_revision_id`, so the page can show the real
    * revision number/summary that was active when the assessment ran. */
   revisionsById: Map<string, CoreAnchorRevisionRead>;
+  currentRun?: AgentRunRead | null;
+  currentSnapshot?: ContextSnapshotRead | null;
 }
 
 /** Returns `null` only when the Shot itself does not exist -- any other
@@ -55,6 +61,13 @@ export async function loadAlignmentWorkspaceData(
     listCoreAnchorRevisions(shotId),
   ]);
 
+  const currentRun = assessments[0]?.agent_run_id
+    ? await getAgentRun(assessments[0].agent_run_id)
+    : null;
+  const currentSnapshot = assessments[0]?.context_snapshot_id
+    ? await getContextSnapshot(assessments[0].context_snapshot_id)
+    : null;
+
   return {
     item,
     assessments,
@@ -62,5 +75,7 @@ export async function loadAlignmentWorkspaceData(
     revisionsById: new Map(
       revisions.map((revision) => [revision.id, revision]),
     ),
+    currentRun,
+    currentSnapshot,
   };
 }

@@ -181,7 +181,16 @@ class CGSupervisorReviewRead(BaseModel):
     shot_id: UUID
     task_id: UUID
     execution_anchor_revision_id: UUID
+    # Nullable for immutable legacy rows created before selected-Version
+    # association was part of this capability's persistence contract.
+    version_id: UUID | None = None
     context_snapshot_id: UUID
     agent_run_id: UUID
     review_output: CGSupervisorReviewOutput
     created_at: datetime
+
+
+class CGSupervisorReviewGenerateRequest(BaseModel):
+    """Optional selected Production Version for a new CG review."""
+
+    version_id: UUID | None = None

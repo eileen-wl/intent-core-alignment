@@ -2329,6 +2329,14 @@ export interface components {
             /** Evidence */
             evidence: components["schemas"]["CGReviewEvidenceReference"][];
         };
+        /**
+         * CGSupervisorReviewGenerateRequest
+         * @description Optional selected Production Version for a new CG review.
+         */
+        CGSupervisorReviewGenerateRequest: {
+            /** Version Id */
+            version_id?: string | null;
+        };
         /** CGSupervisorReviewOutput */
         CGSupervisorReviewOutput: {
             /** Executive Summary */
@@ -2376,6 +2384,8 @@ export interface components {
              * Format: uuid
              */
             execution_anchor_revision_id: string;
+            /** Version Id */
+            version_id?: string | null;
             /**
              * Context Snapshot Id
              * Format: uuid
@@ -6303,7 +6313,11 @@ export interface operations {
             };
             cookie?: never;
         };
-        requestBody?: never;
+        requestBody?: {
+            content: {
+                "application/json": components["schemas"]["CGSupervisorReviewGenerateRequest"] | null;
+            };
+        };
         responses: {
             /** @description Successful Response */
             201: {

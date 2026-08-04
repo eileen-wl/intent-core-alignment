@@ -18,6 +18,8 @@ import {
   updateCoreAnchorDraft,
   generateIntentDecomposition,
   generateContextReconstruction,
+  generateCoreAnchorDraft,
+  createCoreAnchorDraftFromDecomposition,
 } from "@/features/vfx/api";
 
 /** Server-authoritative Core Anchor mutations for the VFX Intent
@@ -51,8 +53,7 @@ export type IntentActionResult =
   | { ok: false; error: IntentActionError };
 
 export type AgentGenerationResult =
-  | { ok: true }
-  | { ok: false; error: IntentActionError };
+  { ok: true } | { ok: false; error: IntentActionError };
 
 const FORBIDDEN_ERROR: IntentActionError = {
   kind: "forbidden",
@@ -130,6 +131,36 @@ export async function generateContextReconstructionAction(
   try {
     await generateContextReconstruction(shotId, actorHeaders(identity));
     revalidatePath(`/vfx/shots/${shotId}/intent`);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: mapThrownError(error) };
+  }
+}
+
+export async function generateCoreAnchorDraftAction(
+  shotId: string,
+): Promise<AgentGenerationResult> {
+  const identity = await requireVfxIdentity();
+  if ("error" in identity) return { ok: false, error: identity.error };
+  try {
+    await generateCoreAnchorDraft(shotId);
+    revalidateIntentAndOverview(shotId, true);
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: mapThrownError(error) };
+  }
+}
+
+export async function createCoreAnchorDraftFromDecompositionAction(
+  decompositionId: string,
+): Promise<AgentGenerationResult> {
+  const identity = await requireVfxIdentity();
+  if ("error" in identity) return { ok: false, error: identity.error };
+  try {
+    await createCoreAnchorDraftFromDecomposition(
+      decompositionId,
+      actorHeaders(identity),
+    );
     return { ok: true };
   } catch (error) {
     return { ok: false, error: mapThrownError(error) };

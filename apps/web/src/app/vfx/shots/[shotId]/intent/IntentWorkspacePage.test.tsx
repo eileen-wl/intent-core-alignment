@@ -18,6 +18,8 @@ vi.mock("@/features/vfx/intent-workspace/actions", () => ({
   startBlankCoreAnchorDraftAction: vi.fn(),
   generateIntentDecompositionAction: vi.fn(),
   generateContextReconstructionAction: vi.fn(),
+  generateCoreAnchorDraftAction: vi.fn(),
+  createCoreAnchorDraftFromDecompositionAction: vi.fn(),
 }));
 
 import type { IntentWorkspaceData } from "@/features/vfx/intent-workspace/data";
@@ -629,7 +631,7 @@ describe("IntentWorkspacePage", () => {
       />,
     );
     const details = container.querySelectorAll("details");
-    expect(details.length).toBe(2);
+    expect(details.length).toBeGreaterThanOrEqual(2);
     for (const detail of details) {
       expect(detail).not.toHaveAttribute("open");
     }

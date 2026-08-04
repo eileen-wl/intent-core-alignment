@@ -10,7 +10,10 @@ from intent_core_contracts.api.artist_agent_guidance import (
     ArtistAgentGuidanceRead,
     ArtistGuidanceGenerateRequest,
 )
-from intent_core_contracts.api.cg_supervisor_review import CGSupervisorReviewRead
+from intent_core_contracts.api.cg_supervisor_review import (
+    CGSupervisorReviewGenerateRequest,
+    CGSupervisorReviewRead,
+)
 from intent_core_contracts.api.context_reconstruction import ContextReconstructionRead
 from intent_core_contracts.api.cross_role_assessment import (
     CrossRoleAssessmentGenerateRequest,
@@ -608,11 +611,12 @@ async def list_vfx_supervisor_reviews(
 )
 async def generate_cg_supervisor_review(
     revision_id: uuid.UUID,
+    payload: CGSupervisorReviewGenerateRequest | None = None,
     actor: ActorContext = Depends(get_current_actor),
     session: AsyncSession = Depends(get_session),
 ) -> CGSupervisorReview:
     return await cg_supervisor_review_service.generate_cg_supervisor_review(
-        session, actor, revision_id
+        session, actor, revision_id, version_id=payload.version_id if payload else None
     )
 
 

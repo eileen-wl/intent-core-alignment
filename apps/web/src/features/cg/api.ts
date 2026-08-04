@@ -316,11 +316,16 @@ export function listCgSupervisorReviews(
 
 export function generateCgSupervisorReview(
   revisionId: string,
+  versionId: string,
   actorHeaders: ActorHeaders,
 ): Promise<CGSupervisorReviewRead> {
   return cgFetch<CGSupervisorReviewRead>(
     `/intent/execution-anchor-revisions/${revisionId}/cg-supervisor-reviews/generate`,
-    { method: "POST", headers: actorHeaders },
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...actorHeaders },
+      body: JSON.stringify({ version_id: versionId }),
+    },
   );
 }
 

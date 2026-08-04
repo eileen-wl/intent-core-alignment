@@ -505,6 +505,13 @@ shared Agent Contribution semantic layer and first formal-route wiring pass are 
 focused frontend validation has passed and owner visual validation is pending. Package B is not
 complete; Packages C and D have not started.
 
+The 2026-08-04 owner-validation correction pass repaired contradictory readiness/action states,
+added formal Core Anchor Draft and VFX Creative Review controls, persisted CG Review selected-
+Version association, and wired captured Cross-role Assessment provenance where available. The
+focused CG Review backend suite passed 61 tests; the six formal frontend page suites passed 97
+tests; generated TypeScript contracts and web typecheck passed. Owner re-validation and the
+remaining package/merge gate are still pending. Package B remains in progress.
+
 This additive section preserves the Step 0–9 record above as history while replacing its
 forward-looking surface-polish sequence with the approved four-package product-improvement phase.
 

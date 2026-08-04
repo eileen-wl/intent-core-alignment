@@ -954,6 +954,15 @@ iteration guidance, and cross-role assessment capabilities without adding roles,
 Demo seed data, or ftrack writes. Focused frontend tests (96 tests), web typecheck, touched ESLint,
 and `git diff --check` pass; owner visual validation is pending. Package B is not complete.
 
+### Package B owner-validation correction checkpoint (2026-08-04)
+
+The correction pass keeps Package B in progress and adds truthful readiness/action handling on
+the six formal routes, formal Core Anchor Draft and VFX Creative Review actions, selected-Version
+CG Review persistence, and captured Cross-role Assessment provenance where available. The focused
+CG Review backend suite (61 tests), six formal frontend page suites (97 tests), regenerated
+TypeScript contracts, and web typecheck pass. Owner re-validation remains pending; Package B is
+not complete. Packages C and D have not started.
+
 ## Package C — Coherent Golden Demo scenario
 
 Goal:

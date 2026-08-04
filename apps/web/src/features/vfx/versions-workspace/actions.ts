@@ -3,7 +3,13 @@
 import type { VersionMediaRead } from "@intent-core/contracts";
 
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
-import { VfxApiError, fetchVersionMedia } from "@/features/vfx/api";
+import {
+  VfxApiError,
+  fetchVersionMedia,
+  generateVfxSupervisorReview,
+} from "@/features/vfx/api";
+import type { VFXSupervisorReviewRead } from "@intent-core/contracts";
+import { revalidatePath } from "next/cache";
 
 /** Step 9B-4: the one read-only Server Action the VFX Versions Workspace
  * uses to resolve transient ftrack media for the currently-selected
@@ -51,5 +57,36 @@ export async function resolveVersionMediaAction(
       return { ok: false, message: error.detail || UNAVAILABLE_MESSAGE };
     }
     return { ok: false, message: UNAVAILABLE_MESSAGE };
+  }
+}
+
+export async function generateVfxCreativeReviewAction(
+  shotId: string,
+  versionId: string,
+): Promise<
+  { ok: true; review: VFXSupervisorReviewRead } | { ok: false; message: string }
+> {
+  const identity = await resolveIdentity();
+  if (identity === null || identity.role !== "vfx_supervisor") {
+    return {
+      ok: false,
+      message: "Creative Review generation is owned by the VFX Supervisor.",
+    };
+  }
+  try {
+    const review = await generateVfxSupervisorReview(
+      versionId,
+      actorHeaders(identity),
+    );
+    revalidatePath(`/vfx/shots/${shotId}/versions`);
+    return { ok: true, review };
+  } catch (error) {
+    return {
+      ok: false,
+      message:
+        error instanceof VfxApiError
+          ? error.detail
+          : "The ICAS service is unavailable.",
+    };
   }
 }

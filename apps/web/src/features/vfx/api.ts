@@ -187,6 +187,25 @@ export function generateContextReconstruction(
   );
 }
 
+export function generateCoreAnchorDraft(
+  shotId: string,
+): Promise<CoreAnchorRevisionRead> {
+  return vfxFetch<CoreAnchorRevisionRead>(
+    `/intent/shots/${shotId}/core-anchor/generate`,
+    { method: "POST" },
+  );
+}
+
+export function createCoreAnchorDraftFromDecomposition(
+  decompositionId: string,
+  actorHeaders: ActorHeaders,
+): Promise<CoreAnchorRevisionRead> {
+  return vfxFetch<CoreAnchorRevisionRead>(
+    `/intent/intent-decompositions/${decompositionId}/core-anchor-draft`,
+    mutationInit("POST", {}, actorHeaders),
+  );
+}
+
 /** Technical provenance for the Evidence/Provenance disclosure -- only
  * fetched when the revision actually carries the corresponding id
  * (human-authored drafts have neither). */
@@ -284,6 +303,16 @@ export function listVfxSupervisorReviews(
 ): Promise<VFXSupervisorReviewRead[]> {
   return vfxFetch<VFXSupervisorReviewRead[]>(
     `/intent/versions/${versionId}/vfx-supervisor-reviews`,
+  );
+}
+
+export function generateVfxSupervisorReview(
+  versionId: string,
+  actorHeaders: ActorHeaders,
+): Promise<VFXSupervisorReviewRead> {
+  return vfxFetch<VFXSupervisorReviewRead>(
+    `/intent/versions/${versionId}/vfx-supervisor-reviews/generate`,
+    { method: "POST", headers: actorHeaders },
   );
 }
 
