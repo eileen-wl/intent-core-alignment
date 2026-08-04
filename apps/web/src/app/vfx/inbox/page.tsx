@@ -25,10 +25,8 @@ export default async function Page() {
   let anchorContexts: Record<string, AnchorContextSummaryRead | null> = {};
   try {
     const [inboxResult, summaryResult] = await Promise.all([
-      fetchVfxInbox("icas-demo:golden"),
-      fetchVfxAnchorContextSummaries(actorHeaders(identity), {
-        projectExternalId: "icas-demo:golden",
-      }),
+      fetchVfxInbox(),
+      fetchVfxAnchorContextSummaries(actorHeaders(identity)),
     ]);
     inbox = inboxResult;
     anchorContexts = Object.fromEntries(

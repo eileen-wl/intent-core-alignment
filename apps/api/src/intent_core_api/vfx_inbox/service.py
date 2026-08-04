@@ -28,7 +28,6 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.cross_department.models import TaskDependency
-from intent_core_api.integrations.models import ExternalEntityLink
 from intent_core_api.intent.models import (
     CGSupervisorReview,
     CoreAnchor,
@@ -513,24 +512,13 @@ async def build_inbox_item(
     )
 
 
-async def list_inbox_items(
-    session: AsyncSession, *, project_external_id: str | None = None
-) -> VfxInboxRead:
+async def list_inbox_items(session: AsyncSession) -> VfxInboxRead:
     # Step 7C-1: every real Shot is listed here, unfiltered -- there is no
     # more Guided/Explore split, so no Shot needs excluding by identity.
     # The generic development seed's second, deliberately-unconfirmed Shot
     # (`demo_seed.d1_scenario._ensure_uninitialized_shot`) appears here like
     # any other Shot.
     query = select(Shot).order_by(Shot.created_at)
-    if project_external_id is not None:
-        query = query.join(
-            ExternalEntityLink,
-            (ExternalEntityLink.entity_type == "project")
-            & (ExternalEntityLink.entity_id == Shot.project_id),
-        ).where(
-            ExternalEntityLink.source == "demo",
-            ExternalEntityLink.external_id == project_external_id,
-        )
     shots = list((await session.execute(query)).scalars().all())
     project_ids = {shot.project_id for shot in shots}
     projects: dict[uuid.UUID, str] = {}

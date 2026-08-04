@@ -352,13 +352,8 @@ export function getShotActivity(shotId: string): Promise<ShotActivityRead> {
 
 /** `GET /vfx/inbox` -- the full Alignment Inbox, real Shots only,
  * honest empty `items` array when none exist. */
-export async function fetchVfxInbox(
-  projectExternalId?: string,
-): Promise<VfxInboxRead> {
-  const suffix = projectExternalId
-    ? `?project_external_id=${encodeURIComponent(projectExternalId)}`
-    : "";
-  return vfxFetch<VfxInboxRead>(`/vfx/inbox${suffix}`);
+export async function fetchVfxInbox(): Promise<VfxInboxRead> {
+  return vfxFetch<VfxInboxRead>("/vfx/inbox");
 }
 
 /** `GET /vfx/inbox/{shot_id}` -- one Shot's derived Inbox row, reusing
@@ -408,16 +403,12 @@ export function fetchVfxAnchorContextSummaries(
   options: {
     limit?: number;
     scope?: "all" | "triage";
-    projectExternalId?: string;
   } = {},
 ): Promise<AnchorContextSummaryListRead> {
   const params = new URLSearchParams({
     limit: String(options.limit ?? 200),
     scope: options.scope ?? "all",
   });
-  if (options.projectExternalId) {
-    params.set("project_external_id", options.projectExternalId);
-  }
   return vfxFetch<AnchorContextSummaryListRead>(
     `/vfx/anchor-contexts?${params}`,
     { headers: actorHeaders },

@@ -25,11 +25,10 @@ export default async function Page() {
   let anchorActions: AnchorContextSummaryListRead | null = null;
   try {
     [inbox, anchorActions] = await Promise.all([
-      fetchVfxInbox("icas-demo:golden"),
+      fetchVfxInbox(),
       fetchVfxAnchorContextSummaries(actorHeaders(identity), {
         limit: 5,
         scope: "triage",
-        projectExternalId: "icas-demo:golden",
       }),
     ]);
   } catch {

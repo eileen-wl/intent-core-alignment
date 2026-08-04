@@ -26,16 +26,14 @@ export default async function Page() {
   let waitingTasks: AnchorContextSummaryListRead | null = null;
   try {
     [inbox, readyTasks, waitingTasks] = await Promise.all([
-      fetchArtistInbox("icas-demo:golden"),
+      fetchArtistInbox(),
       fetchArtistAnchorContextSummaries(actorHeaders(identity), {
         limit: 5,
         scope: "ready",
-        projectExternalId: "icas-demo:golden",
       }),
       fetchArtistAnchorContextSummaries(actorHeaders(identity), {
         limit: 5,
         scope: "waiting",
-        projectExternalId: "icas-demo:golden",
       }),
     ]);
   } catch {

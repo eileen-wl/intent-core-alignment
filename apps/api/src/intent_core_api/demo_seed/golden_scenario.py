@@ -752,3 +752,12 @@ async def inspect_golden_journey(session: AsyncSession) -> GoldenScenarioResult 
     )
     snapshot = "completed" if len(versions) == 6 else "reset"
     return await _result(session, snapshot, project, shot, tasks, versions)
+
+
+async def cleanup_obsolete_golden_rows(session: AsyncSession) -> bool:
+    """Remove only the retired exact Golden namespace, when it exists.
+
+    This is deliberately not called by application startup or role entry.
+    """
+    project_id, _, _ = await _delete_golden_records(session)
+    return project_id is not None

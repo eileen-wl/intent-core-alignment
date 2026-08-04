@@ -22,11 +22,10 @@ export default async function Page() {
   let anchorActions: AnchorContextSummaryListRead | null = null;
   try {
     [inbox, anchorActions] = await Promise.all([
-      fetchCgInbox("icas-demo:golden"),
+      fetchCgInbox(),
       fetchCgAnchorContextSummaries(actorHeaders(identity), {
         limit: 5,
         scope: "triage",
-        projectExternalId: "icas-demo:golden",
       }),
     ]);
   } catch {

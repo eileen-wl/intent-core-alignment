@@ -108,11 +108,8 @@ function mutationInit(
 
 /** `GET /cg/inbox` -- the full CG Review Inbox source data, real Tasks
  * only, honest empty `items` array when none exist. */
-export function fetchCgInbox(projectExternalId?: string): Promise<CgInboxRead> {
-  const suffix = projectExternalId
-    ? `?project_external_id=${encodeURIComponent(projectExternalId)}`
-    : "";
-  return cgFetch<CgInboxRead>(`/cg/inbox${suffix}`);
+export function fetchCgInbox(): Promise<CgInboxRead> {
+  return cgFetch<CgInboxRead>("/cg/inbox");
 }
 
 /** `GET /cg/inbox/{task_id}` -- one Task's derived Inbox row, reused as
@@ -151,16 +148,12 @@ export function fetchCgAnchorContextSummaries(
   options: {
     limit?: number;
     scope?: "all" | "triage";
-    projectExternalId?: string;
   } = {},
 ): Promise<AnchorContextSummaryListRead> {
   const params = new URLSearchParams({
     limit: String(options.limit ?? 200),
     scope: options.scope ?? "all",
   });
-  if (options.projectExternalId) {
-    params.set("project_external_id", options.projectExternalId);
-  }
   return cgFetch<AnchorContextSummaryListRead>(
     `/cg/anchor-contexts?${params}`,
     { headers: actorHeaders },

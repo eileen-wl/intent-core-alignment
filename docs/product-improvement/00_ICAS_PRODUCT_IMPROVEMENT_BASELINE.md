@@ -1148,28 +1148,22 @@ approved.
 
 ---
 
-# 23. Package C Gate 2 checkpoint (2026-08-04)
+# 23. Package C direction-correction checkpoint (2026-08-04)
 
-Package C Gate 2 implementation is in progress on
-`feat/package-c-golden-demo-journey`. Gate 1's accepted Option B boundary is implemented:
-the canonical Demo namespace is `icas-demo:golden`, separate from all D1 identities and
-ftrack-linked records. The implementation adds one Golden Project, one Shot, and exactly three
-department Tasks (Animation, Lighting, and Compositing), with deterministic Reset and Completed
-snapshots, Demo-only controls, and exact Golden Project filtering for role Inbox/catalogue data.
+Package C remains in progress on `feat/package-c-golden-demo-journey`, but its complete journey now
+lives on the existing `icas-demo:d1` Project and `icas-demo:d1:shot-010` inside normal role-aware
+workflows. The canonical Shot contains Animation, Lighting, and Compositing Tasks; there is no
+separate user-facing Golden channel, session, role-entry flow, or filtered catalogue.
 
-Reset creates confirmed Core Anchor R1, three confirmed Execution Anchor R1 revisions, three
-bounded conflict Versions, real Review Notes, role-agent outputs with AgentRun/ContextSnapshot
-provenance, and no Cross-role Assessment so the capability is Ready. Load Completed creates R1/R2
-anchor history, conflict/resolved Versions, historical/current assessments, and regenerated review
-and guidance outputs. Existing D1 records, legacy fixtures, live/ftrack records, and unknown-origin
-records remain protected and are not deleted or rewritten.
+Deterministic `Reset D1 Journey` and `Load Completed D1 Journey` remain internal developer tools.
+They create the R1/R2, conflict/resolved Version, provenance, assessment, and advisory proposal
+states through the existing D1 identities. Exact backend ownership predicates preserve Shot 020,
+legacy fixtures outside the canonical task subtree, live/ftrack data, and unknown-origin records.
+The retired `icas-demo:golden` namespace has an explicit developer-only cleanup boundary and is
+never created by normal role entry or D1 snapshot operations.
 
-Focused validation currently passed: 4 isolated Golden backend tests, 25 focused Demo/frontend
-tests, 24 formal role-list page tests, Python import/compile checks, Ruff format/check, mypy for
-touched Golden Python, web TypeScript typecheck, touched-file ESLint/Prettier, `git diff --check`,
-and the production web build generating 18 pages. Owner journey validation is still pending.
-Package C remains in progress; legacy cleanup is deferred until after Golden validation. Package D
-has not started.
+Owner journey validation is still pending. Package C is not complete; legacy cleanup remains
+deferred and Package D has not started.
 
 ---
 

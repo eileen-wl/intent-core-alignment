@@ -11,12 +11,7 @@ import {
   isSafeReturnToPath,
   roleForPathname,
 } from "@/lib/demoIdentity";
-import { resolveGoldenDemoShotId } from "@/features/session/goldenScenario";
-import {
-  loadCompletedGoldenScenario,
-  resetGoldenScenario,
-  type GoldenScenarioResult,
-} from "@/features/session/goldenScenario";
+import { resolveD1DemoShotId } from "@/features/session/demoScenario";
 
 /** Server Action called directly from the Role-selection Home's VFX
  * Supervisor card (a Client Component) -- Step 7C-1's only role-entry
@@ -65,7 +60,7 @@ export async function enterDemoRole(
     role === "artist"
   ) {
     try {
-      await resolveGoldenDemoShotId();
+      await resolveD1DemoShotId();
     } catch {
       // Best-effort only -- see doc comment above.
     }
@@ -76,14 +71,6 @@ export async function enterDemoRole(
   }
 
   redirect(ROLE_HOME_PATH[role]);
-}
-
-export async function resetGoldenJourney(): Promise<GoldenScenarioResult> {
-  return resetGoldenScenario();
-}
-
-export async function loadCompletedJourney(): Promise<GoldenScenarioResult> {
-  return loadCompletedGoldenScenario();
 }
 
 /** Explicit role-workspace exit: clears the role session and returns to

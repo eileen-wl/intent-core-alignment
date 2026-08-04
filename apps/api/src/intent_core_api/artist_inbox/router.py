@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends
 from intent_core_contracts.api.artist_inbox import ArtistInboxItemRead, ArtistInboxRead
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,10 +15,9 @@ router = APIRouter(prefix="/artist", tags=["artist_inbox"])
 
 @router.get("/inbox", response_model=ArtistInboxRead)
 async def get_artist_inbox(
-    project_external_id: str | None = Query(default=None),
     session: AsyncSession = Depends(get_session),
 ) -> ArtistInboxRead:
-    return await service.list_inbox_items(session, project_external_id=project_external_id)
+    return await service.list_inbox_items(session)
 
 
 @router.get("/inbox/{task_id}", response_model=ArtistInboxItemRead)

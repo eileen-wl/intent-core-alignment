@@ -17,13 +17,12 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-const { resolveGoldenDemoShotIdMock } = vi.hoisted(() => ({
-  resolveGoldenDemoShotIdMock: vi.fn(),
+const { resolveD1DemoShotIdMock } = vi.hoisted(() => ({
+  resolveD1DemoShotIdMock: vi.fn(),
 }));
-vi.mock("@/features/session/goldenScenario", () => ({
-  resolveGoldenDemoShotId: resolveGoldenDemoShotIdMock,
-  resetGoldenScenario: vi.fn(),
-  loadCompletedGoldenScenario: vi.fn(),
+const resolveGoldenDemoShotIdMock = resolveD1DemoShotIdMock;
+vi.mock("@/features/session/demoScenario", () => ({
+  resolveD1DemoShotId: resolveD1DemoShotIdMock,
 }));
 
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";

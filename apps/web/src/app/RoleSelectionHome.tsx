@@ -1,7 +1,6 @@
 import { roleForPathname } from "@/lib/demoIdentity";
 import { ROLE_CARDS } from "./demo/roleCards";
 import { RoleEntryButton } from "./demo/RoleEntryButton";
-import { GoldenDemoControls } from "./demo/GoldenDemoControls";
 import styles from "./RoleSelectionHome.module.css";
 
 /** Step 7C-1 locked IA: the Role-selection Home. Deliberately renders
@@ -52,7 +51,6 @@ export function RoleSelectionHome({
           );
         })}
       </div>
-      <GoldenDemoControls />
     </div>
   );
 }

@@ -64,10 +64,10 @@ async def test_empty_database_creates_full_baseline(session: AsyncSession) -> No
     # in a third Task (the CG demo Task, deliberately draft) under the
     # rich Shot, and its own draft ExecutionAnchorRevision.
     assert await _count(session, Project) == 1
-    assert await _count(session, Shot) == 2
+    assert await _count(session, Shot) == 3
     assert await _count(session, Task) == 3
     assert await _count(session, Version) == 2
-    assert await _count(session, CoreAnchorRevision) == 1
+    assert await _count(session, CoreAnchorRevision) == 2
     assert await _count(session, ExecutionAnchorRevision) == 2
     assert await _count(session, VFXSupervisorReview) == 1
     assert await _count(session, CGSupervisorReview) == 1
@@ -81,7 +81,7 @@ async def test_empty_database_creates_full_baseline(session: AsyncSession) -> No
     assert await _count(session, IntentSignal) == 1
     # The uninitialized Shot never gets a CoreAnchor row at all -- the
     # single CoreAnchorRevision above belongs entirely to the rich Shot.
-    assert await _count(session, CoreAnchor) == 1
+    assert await _count(session, CoreAnchor) == 2
 
     revision = await session.get(CoreAnchorRevision, result.core_anchor_revision_id)
     assert revision is not None
@@ -128,10 +128,10 @@ async def test_already_complete_seed_is_a_no_op(session: AsyncSession) -> None:
     assert first.cg_demo_dependency_id == second.cg_demo_dependency_id
 
     assert await _count(session, Project) == 1
-    assert await _count(session, Shot) == 2
+    assert await _count(session, Shot) == 3
     assert await _count(session, Task) == 3
     assert await _count(session, Version) == 2
-    assert await _count(session, CoreAnchorRevision) == 1
+    assert await _count(session, CoreAnchorRevision) == 2
     assert await _count(session, ExecutionAnchorRevision) == 2
     assert await _count(session, VFXSupervisorReview) == 1
     assert await _count(session, CGSupervisorReview) == 1
@@ -173,10 +173,10 @@ async def test_partial_seed_resumes_without_duplicating(session: AsyncSession) -
     # ExecutionAnchor were not recreated, and the recovery does not
     # duplicate the Assessment or Signal.
     assert await _count(session, Project) == 1
-    assert await _count(session, Shot) == 2
+    assert await _count(session, Shot) == 3
     assert await _count(session, Task) == 3
     assert await _count(session, Version) == 2
-    assert await _count(session, CoreAnchorRevision) == 1
+    assert await _count(session, CoreAnchorRevision) == 2
     assert await _count(session, ExecutionAnchorRevision) == 2
     assert await _count(session, VFXSupervisorReview) == 1
     assert await _count(session, CGSupervisorReview) == 1
@@ -623,7 +623,7 @@ async def test_uninitialized_shot_seed_is_deterministic_and_idempotent(
     results = [await ensure_d1_scenario(session) for _ in range(3)]
     uninitialized_ids = {result.uninitialized_shot_id for result in results}
     assert len(uninitialized_ids) == 1
-    assert await _count(session, Shot) == 2
+    assert await _count(session, Shot) == 3
 
 
 async def test_rich_scenario_is_unaffected_by_uninitialized_shot(session: AsyncSession) -> None:
@@ -639,7 +639,7 @@ async def test_rich_scenario_is_unaffected_by_uninitialized_shot(session: AsyncS
 
     # Exactly one confirmed Core Anchor overall -- the rich Shot's --
     # the uninitialized Shot contributed zero.
-    assert await _count(session, CoreAnchorRevision) == 1
+    assert await _count(session, CoreAnchorRevision) == 2
 
 
 async def test_uninitialized_shot_appears_normally_in_the_alignment_inbox(
@@ -758,7 +758,7 @@ async def test_reset_never_touches_the_rich_shot_or_other_shots(session: AsyncSe
     rich_revision = await session.get(CoreAnchorRevision, result.core_anchor_revision_id)
     assert rich_revision is not None
     assert rich_revision.status == "confirmed"
-    assert await _count(session, Shot) == 2
+    assert await _count(session, Shot) == 3
 
 
 async def test_reset_endpoint_returns_the_shot_id_and_its_exact_intent_url(
@@ -900,7 +900,7 @@ async def test_cg_demo_reset_never_touches_other_tasks_or_shots(session: AsyncSe
     main_revision = await session.get(ExecutionAnchorRevision, result.execution_anchor_revision_id)
     assert main_revision is not None
     assert main_revision.status == "confirmed"
-    assert await _count(session, Shot) == 2
+    assert await _count(session, Shot) == 3
     assert await _count(session, Task) == 3
 
 

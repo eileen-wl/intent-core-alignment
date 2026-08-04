@@ -154,14 +154,12 @@ _UNINITIALIZED_VERSION_DESCRIPTION: Final = (
     "seed data, deliberately left unconfirmed."
 )
 
-# Step 7C-4: a second Task under the same rich D1 Shot -- its confirmed
-# Core Anchor already exists, but this Task's Execution Anchor is
-# deliberately left at DRAFT (a real pending HumanGate), so the CG
-# Review Inbox has at least one genuinely actionable work item out of
-# the box, and its Dependencies page has one real open dependency to
-# show. Never the same row as `D1_TASK_EXTERNAL_ID`'s fully-confirmed
-# Task -- distinct external identity, distinct department.
-CG_DEMO_TASK_EXTERNAL_ID: Final = "icas-demo:d1:shot-010:lighting-pass"
+# Development-only Execution Anchor lifecycle fixture. It must never
+# occupy the canonical D1 Shot 010 Lighting Task used by Package C's
+# complete three-department journey.
+CG_DEMO_SHOT_EXTERNAL_ID: Final = "icas-demo:d1:shot-030:execution-draft"
+CG_DEMO_TASK_EXTERNAL_ID: Final = "icas-demo:d1:shot-030:lighting-pass"
+_CG_DEMO_SHOT_NAME: Final = "Shot 030 — Execution draft fixture"
 _CG_DEMO_TASK_NAME: Final = "Lighting Pass"
 _CG_DEMO_EXECUTION_DRAFT_CONTENT: Final[dict[str, object]] = {
     "technical_boundaries": (
@@ -523,7 +521,9 @@ async def _ensure_confirmed_execution_anchor(
     )
 
 
-async def _ensure_cg_demo_task(session: AsyncSession, shot: Shot) -> tuple[Task, TaskDependency]:
+async def _ensure_cg_demo_task(
+    session: AsyncSession, project: Project
+) -> tuple[Task, TaskDependency]:
     """Step 7C-4: a second, real Task under the rich D1 Shot whose
     Execution Anchor is deliberately left at draft (never confirmed),
     plus one real open `TaskDependency` recorded against it -- so the CG
@@ -535,6 +535,13 @@ async def _ensure_cg_demo_task(session: AsyncSession, shot: Shot) -> tuple[Task,
     `_ensure_review_note` uses for Version, since `TaskDependency` --
     like `ReviewNote` -- has no `ExternalEntityLink` support).
     """
+    shot = await _resolve_or_create_shot(
+        session,
+        project,
+        external_id=CG_DEMO_SHOT_EXTERNAL_ID,
+        name=_CG_DEMO_SHOT_NAME,
+    )
+    await _ensure_confirmed_core_anchor(session, shot)
     task = await _resolve_or_create_task(
         session,
         shot,
@@ -880,7 +887,12 @@ async def reset_cg_demo_task_execution_anchor_state(session: AsyncSession) -> uu
     and recreates an equivalent one.
     """
     project = await _resolve_or_create_project(session)
-    shot = await _resolve_or_create_shot(session, project)
+    shot = await _resolve_or_create_shot(
+        session,
+        project,
+        external_id=CG_DEMO_SHOT_EXTERNAL_ID,
+        name=_CG_DEMO_SHOT_NAME,
+    )
     task = await _resolve_or_create_task(
         session,
         shot,
@@ -1000,7 +1012,7 @@ async def ensure_d1_scenario(session: AsyncSession) -> D1ScenarioResult:
     assessment = await _ensure_cross_role_assessment(session, shot, version, task)
 
     uninitialized_shot = await _ensure_uninitialized_shot(session, project)
-    cg_demo_task, cg_demo_dependency = await _ensure_cg_demo_task(session, shot)
+    cg_demo_task, cg_demo_dependency = await _ensure_cg_demo_task(session, project)
 
     return D1ScenarioResult(
         project_id=project.id,

@@ -19,18 +19,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.config import get_settings
 from intent_core_api.db import get_session
+from intent_core_api.demo_seed.d1_journey import (
+    D1JourneyResult,
+    inspect_d1_journey,
+    load_completed_d1_journey,
+    reset_d1_journey,
+)
 from intent_core_api.demo_seed.d1_scenario import (
+    D1_PROJECT_EXTERNAL_ID,
     ensure_d1_scenario,
     reset_cg_demo_task_execution_anchor_state,
     reset_uninitialized_shot_core_anchor_state,
 )
-from intent_core_api.demo_seed.golden_scenario import (
-    GOLDEN_PROJECT_EXTERNAL_ID,
-    GoldenScenarioResult,
-    inspect_golden_journey,
-    load_completed_golden_journey,
-    reset_golden_journey,
-)
+from intent_core_api.demo_seed.golden_scenario import cleanup_obsolete_golden_rows
 
 router = APIRouter(prefix="/internal/demo", tags=["demo_seed"])
 
@@ -111,7 +112,7 @@ async def reset_cg_demo_task_endpoint(
     )
 
 
-class GoldenScenarioResultRead(BaseModel):
+class D1JourneyResultRead(BaseModel):
     snapshot: str
     project_id: UUID
     shot_id: UUID
@@ -119,11 +120,11 @@ class GoldenScenarioResultRead(BaseModel):
     version_ids: list[UUID]
     counts: dict[str, int]
     completed_at: str
-    project_external_id: str = GOLDEN_PROJECT_EXTERNAL_ID
+    project_external_id: str = D1_PROJECT_EXTERNAL_ID
 
 
-def _golden_result(result: GoldenScenarioResult) -> GoldenScenarioResultRead:
-    return GoldenScenarioResultRead(
+def _d1_journey_result(result: D1JourneyResult) -> D1JourneyResultRead:
+    return D1JourneyResultRead(
         snapshot=result.snapshot,
         project_id=result.project_id,
         shot_id=result.shot_id,
@@ -134,33 +135,46 @@ def _golden_result(result: GoldenScenarioResult) -> GoldenScenarioResultRead:
     )
 
 
-def _require_golden_demo_enabled() -> None:
+def _require_d1_journey_tools_enabled() -> None:
     if get_settings().app_env.lower() in {"production", "prod"}:
         raise HTTPException(
-            status_code=404, detail="Golden Demo is unavailable in this environment"
+            status_code=404, detail="D1 Journey tools are unavailable in this environment"
         )
 
 
-@router.post("/golden/reset", response_model=GoldenScenarioResultRead)
-async def reset_golden_journey_endpoint(
+@router.post("/d1/reset-journey", response_model=D1JourneyResultRead)
+async def reset_d1_journey_endpoint(
     session: AsyncSession = Depends(get_session),
-) -> GoldenScenarioResultRead:
-    _require_golden_demo_enabled()
-    return _golden_result(await reset_golden_journey(session))
+) -> D1JourneyResultRead:
+    _require_d1_journey_tools_enabled()
+    return _d1_journey_result(await reset_d1_journey(session))
 
 
-@router.post("/golden/load-completed", response_model=GoldenScenarioResultRead)
-async def load_completed_golden_journey_endpoint(
+@router.post("/d1/load-completed-journey", response_model=D1JourneyResultRead)
+async def load_completed_d1_journey_endpoint(
     session: AsyncSession = Depends(get_session),
-) -> GoldenScenarioResultRead:
-    _require_golden_demo_enabled()
-    return _golden_result(await load_completed_golden_journey(session))
+) -> D1JourneyResultRead:
+    _require_d1_journey_tools_enabled()
+    return _d1_journey_result(await load_completed_d1_journey(session))
 
 
-@router.get("/golden/status", response_model=GoldenScenarioResultRead | None)
-async def golden_journey_status_endpoint(
+@router.get("/d1/journey-status", response_model=D1JourneyResultRead | None)
+async def d1_journey_status_endpoint(
     session: AsyncSession = Depends(get_session),
-) -> GoldenScenarioResultRead | None:
-    _require_golden_demo_enabled()
-    result = await inspect_golden_journey(session)
-    return _golden_result(result) if result is not None else None
+) -> D1JourneyResultRead | None:
+    _require_d1_journey_tools_enabled()
+    result = await inspect_d1_journey(session)
+    return _d1_journey_result(result) if result is not None else None
+
+
+class ObsoleteGoldenCleanupRead(BaseModel):
+    removed: bool
+
+
+@router.post("/obsolete-golden/cleanup", response_model=ObsoleteGoldenCleanupRead)
+async def cleanup_obsolete_golden_endpoint(
+    session: AsyncSession = Depends(get_session),
+) -> ObsoleteGoldenCleanupRead:
+    """Developer-only cleanup for the abandoned exact Golden namespace."""
+    _require_d1_journey_tools_enabled()
+    return ObsoleteGoldenCleanupRead(removed=await cleanup_obsolete_golden_rows(session))
