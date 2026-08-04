@@ -563,6 +563,26 @@ mypy for the contracts and API packages; generated-contract and web TypeScript c
 ESLint/Prettier; and `git diff --check`. The complete repository pytest/Vitest regression and
  production build were intentionally not run and remained part of the post-owner-visual merge gate.
 
+### Package C Gate 2 implementation checkpoint (2026-08-04)
+
+Package C Gate 2 is in progress on `feat/package-c-golden-demo-journey`. The implementation uses
+the isolated Golden namespace `icas-demo:golden` and keeps the current D1 project, uninitialized
+fixture, legacy route fixtures, and ftrack-linked records intact. It provides deterministic
+`Reset Golden Journey` and `Load Completed Journey` controls through the existing Demo entry
+boundary, with dedicated internal Demo endpoints and exact external-identity protection.
+
+The Golden journey contains one Shot with Animation, Lighting, and Compositing Tasks. Reset
+provides confirmed R1 anchors, conflict Versions, real agent provenance, and Cross-role Assessment
+Ready state. Completed provides bounded R1/R2 anchor history, conflict/resolved Versions, and
+historical/current assessments. Role Inbox/catalogue loaders accept the exact Golden Project
+external identity so Golden-mode lists do not mix D1 or live data.
+
+Gate 2 focused validation passed: 4 isolated backend tests, 25 focused Demo/frontend tests, 24
+formal role-list page tests, web TypeScript typecheck, touched-file ESLint/Prettier, Ruff
+format/check, mypy for touched Golden Python, `git diff --check`, and the production web build
+generating 18 pages. Owner journey validation remains pending. Legacy cleanup is deferred.
+Package C is not complete and Package D has not started.
+
 ### Package A final merge gate (2026-08-03)
 
 Package A owner visual validation passed. The complete repository regression then passed: 53

@@ -108,8 +108,11 @@ function mutationInit(
 
 /** `GET /cg/inbox` -- the full CG Review Inbox source data, real Tasks
  * only, honest empty `items` array when none exist. */
-export function fetchCgInbox(): Promise<CgInboxRead> {
-  return cgFetch<CgInboxRead>("/cg/inbox");
+export function fetchCgInbox(projectExternalId?: string): Promise<CgInboxRead> {
+  const suffix = projectExternalId
+    ? `?project_external_id=${encodeURIComponent(projectExternalId)}`
+    : "";
+  return cgFetch<CgInboxRead>(`/cg/inbox${suffix}`);
 }
 
 /** `GET /cg/inbox/{task_id}` -- one Task's derived Inbox row, reused as
@@ -145,12 +148,19 @@ export async function fetchCgAnchorContextOrNull(
 /** One bounded, role-authorized compact read for multi-Task surfaces. */
 export function fetchCgAnchorContextSummaries(
   actorHeaders: ActorHeaders,
-  options: { limit?: number; scope?: "all" | "triage" } = {},
+  options: {
+    limit?: number;
+    scope?: "all" | "triage";
+    projectExternalId?: string;
+  } = {},
 ): Promise<AnchorContextSummaryListRead> {
   const params = new URLSearchParams({
     limit: String(options.limit ?? 200),
     scope: options.scope ?? "all",
   });
+  if (options.projectExternalId) {
+    params.set("project_external_id", options.projectExternalId);
+  }
   return cgFetch<AnchorContextSummaryListRead>(
     `/cg/anchor-contexts?${params}`,
     { headers: actorHeaders },

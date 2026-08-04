@@ -13,15 +13,23 @@ from __future__ import annotations
 
 from uuid import UUID
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from intent_core_api.config import get_settings
 from intent_core_api.db import get_session
 from intent_core_api.demo_seed.d1_scenario import (
     ensure_d1_scenario,
     reset_cg_demo_task_execution_anchor_state,
     reset_uninitialized_shot_core_anchor_state,
+)
+from intent_core_api.demo_seed.golden_scenario import (
+    GOLDEN_PROJECT_EXTERNAL_ID,
+    GoldenScenarioResult,
+    inspect_golden_journey,
+    load_completed_golden_journey,
+    reset_golden_journey,
 )
 
 router = APIRouter(prefix="/internal/demo", tags=["demo_seed"])
@@ -101,3 +109,58 @@ async def reset_cg_demo_task_endpoint(
     return ResetCgDemoTaskResultRead(
         task_id=task_id, execution_url=f"/cg/tasks/{task_id}/execution"
     )
+
+
+class GoldenScenarioResultRead(BaseModel):
+    snapshot: str
+    project_id: UUID
+    shot_id: UUID
+    task_ids: list[UUID]
+    version_ids: list[UUID]
+    counts: dict[str, int]
+    completed_at: str
+    project_external_id: str = GOLDEN_PROJECT_EXTERNAL_ID
+
+
+def _golden_result(result: GoldenScenarioResult) -> GoldenScenarioResultRead:
+    return GoldenScenarioResultRead(
+        snapshot=result.snapshot,
+        project_id=result.project_id,
+        shot_id=result.shot_id,
+        task_ids=list(result.task_ids),
+        version_ids=list(result.version_ids),
+        counts=result.counts,
+        completed_at=result.completed_at.isoformat(),
+    )
+
+
+def _require_golden_demo_enabled() -> None:
+    if get_settings().app_env.lower() in {"production", "prod"}:
+        raise HTTPException(
+            status_code=404, detail="Golden Demo is unavailable in this environment"
+        )
+
+
+@router.post("/golden/reset", response_model=GoldenScenarioResultRead)
+async def reset_golden_journey_endpoint(
+    session: AsyncSession = Depends(get_session),
+) -> GoldenScenarioResultRead:
+    _require_golden_demo_enabled()
+    return _golden_result(await reset_golden_journey(session))
+
+
+@router.post("/golden/load-completed", response_model=GoldenScenarioResultRead)
+async def load_completed_golden_journey_endpoint(
+    session: AsyncSession = Depends(get_session),
+) -> GoldenScenarioResultRead:
+    _require_golden_demo_enabled()
+    return _golden_result(await load_completed_golden_journey(session))
+
+
+@router.get("/golden/status", response_model=GoldenScenarioResultRead | None)
+async def golden_journey_status_endpoint(
+    session: AsyncSession = Depends(get_session),
+) -> GoldenScenarioResultRead | None:
+    _require_golden_demo_enabled()
+    result = await inspect_golden_journey(session)
+    return _golden_result(result) if result is not None else None

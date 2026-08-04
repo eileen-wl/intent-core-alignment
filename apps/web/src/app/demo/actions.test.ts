@@ -17,11 +17,13 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-const { resolveD1DemoShotIdMock } = vi.hoisted(() => ({
-  resolveD1DemoShotIdMock: vi.fn(),
+const { resolveGoldenDemoShotIdMock } = vi.hoisted(() => ({
+  resolveGoldenDemoShotIdMock: vi.fn(),
 }));
-vi.mock("@/features/session/demoScenario", () => ({
-  resolveD1DemoShotId: resolveD1DemoShotIdMock,
+vi.mock("@/features/session/goldenScenario", () => ({
+  resolveGoldenDemoShotId: resolveGoldenDemoShotIdMock,
+  resetGoldenScenario: vi.fn(),
+  loadCompletedGoldenScenario: vi.fn(),
 }));
 
 import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
@@ -29,7 +31,7 @@ import { enterDemoRole, exitRoleView } from "./actions";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  resolveD1DemoShotIdMock.mockResolvedValue(
+  resolveGoldenDemoShotIdMock.mockResolvedValue(
     "11111111-1111-1111-1111-111111111111",
   );
 });
@@ -63,7 +65,7 @@ describe("enterDemoRole", () => {
     const firstCall = cookieStore.set.mock.calls[0];
 
     vi.clearAllMocks();
-    resolveD1DemoShotIdMock.mockResolvedValue(
+    resolveGoldenDemoShotIdMock.mockResolvedValue(
       "11111111-1111-1111-1111-111111111111",
     );
 
@@ -75,37 +77,37 @@ describe("enterDemoRole", () => {
 
   it("ensures the generic development seed data before landing on the VFX Workspace (Step 7C-1)", async () => {
     await expect(enterDemoRole("vfx_supervisor")).rejects.toThrow();
-    expect(resolveD1DemoShotIdMock).toHaveBeenCalled();
+    expect(resolveGoldenDemoShotIdMock).toHaveBeenCalled();
     // Destination is unchanged -- still the Workspace, never a resolved shot.
     expect(redirectSpy).toHaveBeenCalledWith("/vfx");
   });
 
   it("still reaches /vfx even when ensuring the seed data fails (best-effort, destination unchanged)", async () => {
-    resolveD1DemoShotIdMock.mockRejectedValue(new Error("unavailable"));
+    resolveGoldenDemoShotIdMock.mockRejectedValue(new Error("unavailable"));
     await expect(enterDemoRole("vfx_supervisor")).rejects.toThrow();
     expect(redirectSpy).toHaveBeenCalledWith("/vfx");
   });
 
   it("also ensures the generic development seed data before landing on the CG Workspace (Step 7C-4)", async () => {
     await expect(enterDemoRole("cg_supervisor")).rejects.toThrow();
-    expect(resolveD1DemoShotIdMock).toHaveBeenCalled();
+    expect(resolveGoldenDemoShotIdMock).toHaveBeenCalled();
     expect(redirectSpy).toHaveBeenCalledWith("/cg");
   });
 
   it("still reaches /cg even when ensuring the seed data fails (best-effort, destination unchanged)", async () => {
-    resolveD1DemoShotIdMock.mockRejectedValue(new Error("unavailable"));
+    resolveGoldenDemoShotIdMock.mockRejectedValue(new Error("unavailable"));
     await expect(enterDemoRole("cg_supervisor")).rejects.toThrow();
     expect(redirectSpy).toHaveBeenCalledWith("/cg");
   });
 
   it("also ensures the generic development seed data before landing on the Artist Workspace (Step 7C-5)", async () => {
     await expect(enterDemoRole("artist")).rejects.toThrow();
-    expect(resolveD1DemoShotIdMock).toHaveBeenCalled();
+    expect(resolveGoldenDemoShotIdMock).toHaveBeenCalled();
     expect(redirectSpy).toHaveBeenCalledWith("/artist");
   });
 
   it("still reaches /artist even when ensuring the seed data fails (best-effort, destination unchanged)", async () => {
-    resolveD1DemoShotIdMock.mockRejectedValue(new Error("unavailable"));
+    resolveGoldenDemoShotIdMock.mockRejectedValue(new Error("unavailable"));
     await expect(enterDemoRole("artist")).rejects.toThrow();
     expect(redirectSpy).toHaveBeenCalledWith("/artist");
   });

@@ -1148,6 +1148,31 @@ approved.
 
 ---
 
+# 23. Package C Gate 2 checkpoint (2026-08-04)
+
+Package C Gate 2 implementation is in progress on
+`feat/package-c-golden-demo-journey`. Gate 1's accepted Option B boundary is implemented:
+the canonical Demo namespace is `icas-demo:golden`, separate from all D1 identities and
+ftrack-linked records. The implementation adds one Golden Project, one Shot, and exactly three
+department Tasks (Animation, Lighting, and Compositing), with deterministic Reset and Completed
+snapshots, Demo-only controls, and exact Golden Project filtering for role Inbox/catalogue data.
+
+Reset creates confirmed Core Anchor R1, three confirmed Execution Anchor R1 revisions, three
+bounded conflict Versions, real Review Notes, role-agent outputs with AgentRun/ContextSnapshot
+provenance, and no Cross-role Assessment so the capability is Ready. Load Completed creates R1/R2
+anchor history, conflict/resolved Versions, historical/current assessments, and regenerated review
+and guidance outputs. Existing D1 records, legacy fixtures, live/ftrack records, and unknown-origin
+records remain protected and are not deleted or rewritten.
+
+Focused validation currently passed: 4 isolated Golden backend tests, 25 focused Demo/frontend
+tests, 24 formal role-list page tests, Python import/compile checks, Ruff format/check, mypy for
+touched Golden Python, web TypeScript typecheck, touched-file ESLint/Prettier, `git diff --check`,
+and the production web build generating 18 pages. Owner journey validation is still pending.
+Package C remains in progress; legacy cleanup is deferred until after Golden validation. Package D
+has not started.
+
+---
+
 # 22. Package A implementation checkpoint (2026-08-03)
 
 **Status:** Package A implementation, owner visual validation, and the final full merge gate are

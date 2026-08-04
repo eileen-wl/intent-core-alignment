@@ -1,0 +1,32 @@
+.panel {
+  max-width: 760px;
+  margin: 2rem auto 0;
+  padding: 1.25rem;
+  border: 1px solid var(--border-subtle, #d6d9df);
+  border-radius: 12px;
+  background: var(--surface-raised, #fff);
+}
+
+.panel p {
+  color: var(--text-muted, #596273);
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.actions button {
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border-strong, #9aa2b1);
+  border-radius: 8px;
+  background: var(--surface, #f8f9fb);
+  color: inherit;
+  cursor: pointer;
+}
+
+.actions button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}

@@ -677,20 +677,29 @@ async def list_anchor_context_summaries(
     role: Literal["vfx_supervisor", "cg_supervisor", "artist"],
     limit: int,
     scope: Literal["all", "triage", "ready", "waiting"],
+    project_external_id: str | None = None,
 ) -> AnchorContextSummaryListRead:
     """Return a bounded compact projection in the role Inbox's backend order."""
 
     if role == "vfx_supervisor":
-        source_items = (await vfx_inbox_service.list_inbox_items(session)).items
+        source_items = (
+            await vfx_inbox_service.list_inbox_items(
+                session, project_external_id=project_external_id
+            )
+        ).items
         summaries = [
             _compact_summary(await _build_vfx_anchor_context(session, item.shot_id, item), item)
             for item in source_items
         ]
     else:
         inbox = (
-            await cg_inbox_service.list_inbox_items(session)
+            await cg_inbox_service.list_inbox_items(
+                session, project_external_id=project_external_id
+            )
             if role == "cg_supervisor"
-            else await artist_inbox_service.list_inbox_items(session)
+            else await artist_inbox_service.list_inbox_items(
+                session, project_external_id=project_external_id
+            )
         )
         summaries = [
             _compact_summary(

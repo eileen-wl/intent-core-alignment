@@ -103,8 +103,13 @@ function mutationInit(
 
 /** `GET /artist/inbox` -- the full Artist Review Inbox source data, real
  * Tasks only, honest empty `items` array when none exist. */
-export function fetchArtistInbox(): Promise<ArtistInboxRead> {
-  return artistFetch<ArtistInboxRead>("/artist/inbox");
+export function fetchArtistInbox(
+  projectExternalId?: string,
+): Promise<ArtistInboxRead> {
+  const suffix = projectExternalId
+    ? `?project_external_id=${encodeURIComponent(projectExternalId)}`
+    : "";
+  return artistFetch<ArtistInboxRead>(`/artist/inbox${suffix}`);
 }
 
 /** `GET /artist/inbox/{task_id}` -- one Task's derived Inbox row, reused
@@ -144,12 +149,16 @@ export function fetchArtistAnchorContextSummaries(
   options: {
     limit?: number;
     scope?: "all" | "triage" | "ready" | "waiting";
+    projectExternalId?: string;
   } = {},
 ): Promise<AnchorContextSummaryListRead> {
   const params = new URLSearchParams({
     limit: String(options.limit ?? 200),
     scope: options.scope ?? "all",
   });
+  if (options.projectExternalId) {
+    params.set("project_external_id", options.projectExternalId);
+  }
   return artistFetch<AnchorContextSummaryListRead>(
     `/artist/anchor-contexts?${params}`,
     { headers: actorHeaders },

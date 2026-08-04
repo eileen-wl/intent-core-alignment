@@ -24,6 +24,7 @@ from intent_core_api.cg_inbox.current_focus import (
     sort_rank_for_focus_type,
 )
 from intent_core_api.cross_department.models import TaskDependency
+from intent_core_api.integrations.models import ExternalEntityLink
 from intent_core_api.intent.models import (
     CGSupervisorReview,
     ExecutionAnchor,
@@ -203,8 +204,23 @@ async def build_task_inbox_item(
     )
 
 
-async def list_inbox_items(session: AsyncSession) -> CgInboxRead:
+async def list_inbox_items(
+    session: AsyncSession, *, project_external_id: str | None = None
+) -> CgInboxRead:
     query = select(Task).order_by(Task.created_at)
+    if project_external_id is not None:
+        query = (
+            query.join(Shot, Shot.id == Task.shot_id)
+            .join(
+                ExternalEntityLink,
+                (ExternalEntityLink.entity_type == "project")
+                & (ExternalEntityLink.entity_id == Shot.project_id),
+            )
+            .where(
+                ExternalEntityLink.source == "demo",
+                ExternalEntityLink.external_id == project_external_id,
+            )
+        )
     tasks = list((await session.execute(query)).scalars().all())
 
     shot_ids = {task.shot_id for task in tasks}

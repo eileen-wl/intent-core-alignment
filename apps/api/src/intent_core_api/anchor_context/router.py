@@ -23,12 +23,17 @@ SummaryScope = Literal["all", "triage", "ready", "waiting"]
 async def get_vfx_anchor_context_summaries(
     limit: int = Query(default=50, ge=1, le=200),
     scope: SummaryScope = Query(default="all"),
+    project_external_id: str | None = Query(default=None),
     session: AsyncSession = Depends(get_session),
     actor: ActorContext = Depends(get_current_actor),
 ) -> AnchorContextSummaryListRead:
     require_human_role(actor, frozenset({"vfx_supervisor"}))
     return await service.list_anchor_context_summaries(
-        session, role="vfx_supervisor", limit=limit, scope=scope
+        session,
+        role="vfx_supervisor",
+        limit=limit,
+        scope=scope,
+        project_external_id=project_external_id,
     )
 
 
@@ -36,12 +41,17 @@ async def get_vfx_anchor_context_summaries(
 async def get_cg_anchor_context_summaries(
     limit: int = Query(default=50, ge=1, le=200),
     scope: SummaryScope = Query(default="all"),
+    project_external_id: str | None = Query(default=None),
     session: AsyncSession = Depends(get_session),
     actor: ActorContext = Depends(get_current_actor),
 ) -> AnchorContextSummaryListRead:
     require_human_role(actor, frozenset({"cg_supervisor"}))
     return await service.list_anchor_context_summaries(
-        session, role="cg_supervisor", limit=limit, scope=scope
+        session,
+        role="cg_supervisor",
+        limit=limit,
+        scope=scope,
+        project_external_id=project_external_id,
     )
 
 
@@ -49,12 +59,17 @@ async def get_cg_anchor_context_summaries(
 async def get_artist_anchor_context_summaries(
     limit: int = Query(default=50, ge=1, le=200),
     scope: SummaryScope = Query(default="all"),
+    project_external_id: str | None = Query(default=None),
     session: AsyncSession = Depends(get_session),
     actor: ActorContext = Depends(get_current_actor),
 ) -> AnchorContextSummaryListRead:
     require_human_role(actor, frozenset({"artist"}))
     return await service.list_anchor_context_summaries(
-        session, role="artist", limit=limit, scope=scope
+        session,
+        role="artist",
+        limit=limit,
+        scope=scope,
+        project_external_id=project_external_id,
     )
 
 
