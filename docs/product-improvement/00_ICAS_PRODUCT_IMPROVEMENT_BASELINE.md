@@ -963,6 +963,18 @@ CG Review backend suite (61 tests), six formal frontend page suites (97 tests), 
 TypeScript contracts, and web typecheck pass. Owner re-validation remains pending; Package B is
 not complete. Packages C and D have not started.
 
+### Package B final merge-gate closeout (2026-08-04)
+
+Owner visual validation passed. The complete merge gate passed: 1,138 backend/infra tests
+(contracts 53, API 966, worker 36, Connector 81, infra 2), 1,018 frontend tests across 129
+test files, migration upgrade/downgrade validation including the CG Supervisor Review
+`version_id` migration, clean production build with 18 static pages generated, full Ruff and
+mypy checks, regenerated Python/OpenAPI/TypeScript contracts, Web TypeScript, ESLint, Prettier,
+`uv lock --check`, frozen pnpm lockfile installation, and `git diff --check`. Existing seeded
+Agent outputs may truthfully show unavailable provenance when no historical AgentRun or
+ContextSnapshot was recorded; newly generated outputs retain real provenance. Package B is
+complete. Package C is the next approved package and has not started; Package D has not started.
+
 ## Package C — Coherent Golden Demo scenario
 
 Goal:

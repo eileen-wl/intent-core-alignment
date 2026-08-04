@@ -1,7 +1,4 @@
-import type {
-  AgentRunRead,
-  ContextSnapshotRead,
-} from "@intent-core/contracts";
+import type { AgentRunRead, ContextSnapshotRead } from "@intent-core/contracts";
 import type { ReactNode } from "react";
 
 import { AgentRunReference } from "../evidence/AgentRunReference";
@@ -74,7 +71,9 @@ export function AgentContributionPanel({
         <h4>Inputs</h4>
         {inputs.length ? (
           <ul className={styles.list}>
-            {inputs.map((input) => <li key={input}>{input}</li>)}
+            {inputs.map((input) => (
+              <li key={input}>{input}</li>
+            ))}
           </ul>
         ) : (
           <p className={styles.muted}>No recorded inputs.</p>
@@ -85,8 +84,12 @@ export function AgentContributionPanel({
           <h4>Prerequisites</h4>
           <ul className={styles.list}>
             {readiness.map((item) => (
-              <li key={item.label} className={item.available ? styles.available : styles.missing}>
-                <span aria-hidden="true">{item.available ? "✓" : "○"}</span> {item.label}
+              <li
+                key={item.label}
+                className={item.available ? styles.available : styles.missing}
+              >
+                <span aria-hidden="true">{item.available ? "✓" : "○"}</span>{" "}
+                {item.label}
               </li>
             ))}
           </ul>
@@ -105,12 +108,18 @@ export function AgentContributionPanel({
         {nextAction}
       </div>
       {(run || snapshot || evidence.length > 0) && (
-        <EvidenceProvenanceDrawer evidence={evidence} run={run ?? null} snapshot={snapshot ?? null} />
+        <EvidenceProvenanceDrawer
+          evidence={evidence}
+          run={run ?? null}
+          snapshot={snapshot ?? null}
+        />
       )}
       {!run && !snapshot && evidence.length === 0 && state !== "not_ready" && (
         <details className={styles.provenance}>
           <summary>Provenance</summary>
-          <p className={styles.muted}>Detailed Agent provenance is unavailable for this output.</p>
+          <p className={styles.muted}>
+            Detailed Agent provenance is unavailable for this output.
+          </p>
           {run === null && <AgentRunReference run={null} />}
           {snapshot === null && <ContextSnapshotReference snapshot={null} />}
         </details>
