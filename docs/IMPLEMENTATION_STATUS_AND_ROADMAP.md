@@ -500,6 +500,28 @@ Real read-only acceptance against the live workspace (post-fix, re-confirmed pos
 
 ## M. Approved Product-Improvement Phase (dated 2026-08-03)
 
+Package B implementation is now in progress on `feat/package-b-agent-journey-completion`. The
+shared Agent Contribution semantic layer and first formal-route wiring pass are implemented;
+focused frontend validation has passed and owner visual validation is pending. Package B is not
+complete; Packages C and D have not started.
+
+The 2026-08-04 owner-validation correction pass repaired contradictory readiness/action states,
+added formal Core Anchor Draft and VFX Creative Review controls, persisted CG Review selected-
+Version association, and wired captured Cross-role Assessment provenance where available. The
+focused CG Review backend suite passed 61 tests; the six formal frontend page suites passed 97
+tests; generated TypeScript contracts and web typecheck passed. Owner re-validation and the
+remaining package/merge gate are still pending. Package B remains in progress.
+
+Owner visual validation passed on 2026-08-04. The final merge gate passed with 1,138 backend/infra
+tests (contracts 53, API 966, worker 36, Connector 81, infra 2), 1,018 frontend tests across
+129 test files, migration upgrade/downgrade validation including CG Supervisor Review
+`version_id`, a clean production build generating 18 static pages, full Ruff and mypy, generated
+and checked Python/OpenAPI/TypeScript contracts, Web TypeScript, ESLint, Prettier, `uv lock
+--check`, frozen pnpm lockfile installation, and `git diff --check`. Existing seeded Agent
+outputs may truthfully show unavailable provenance when no historical AgentRun or
+ContextSnapshot was recorded; newly generated outputs retain real provenance. Package B is
+complete. Package C is the next approved package and has not started; Package D has not started.
+
 This additive section preserves the Step 0–9 record above as history while replacing its
 forward-looking surface-polish sequence with the approved four-package product-improvement phase.
 

@@ -524,6 +524,7 @@ async def _build_context_snapshot_payload(
     task: Task,
     shot: Shot,
     project: Project,
+    selected_version: Version | None = None,
 ) -> dict[str, Any]:
     """Only locally persisted facts relevant to reviewing this one
     Execution Anchor revision -- no binary media, no scene/project files,
@@ -631,7 +632,10 @@ async def _build_context_snapshot_payload(
     # that was the previous snapshot's largest source of unnecessary
     # bulk (an unrelated Version's own full description/notes contribute
     # nothing to an Execution Anchor review).
-    if newest_vfx_review is not None:
+    relevant_version: Version | None
+    if selected_version is not None:
+        relevant_version = selected_version
+    elif newest_vfx_review is not None:
         relevant_version = next((v for v in versions if v.id == newest_vfx_review.version_id), None)
     else:
         relevant_version = versions[0] if versions else None
@@ -924,6 +928,7 @@ async def generate_cg_supervisor_review(
     actor: ActorContext,
     execution_anchor_revision_id: uuid.UUID,
     *,
+    version_id: uuid.UUID | None = None,
     generator: CGSupervisorReviewGenerator | None = None,
 ) -> CGSupervisorReview:
     # Authoritative check: enforced here regardless of what the router
@@ -959,6 +964,12 @@ async def generate_cg_supervisor_review(
             f"Shot {shot.id} references missing Project {shot.project_id}"
         )
 
+    selected_version = None
+    if version_id is not None:
+        selected_version = await session.get(Version, version_id)
+        if selected_version is None or selected_version.shot_id != shot.id:
+            raise NotFoundError("Selected Version not found for this Shot")
+
     payload = await _build_context_snapshot_payload(
         session,
         execution_revision=execution_revision,
@@ -966,6 +977,7 @@ async def generate_cg_supervisor_review(
         task=task,
         shot=shot,
         project=project,
+        selected_version=selected_version,
     )
 
     async def _persist(
@@ -981,6 +993,7 @@ async def generate_cg_supervisor_review(
             shot_id=shot.id,
             task_id=task.id,
             execution_anchor_revision_id=execution_revision.id,
+            version_id=selected_version.id if selected_version is not None else None,
             context_snapshot_id=snapshot.id,
             agent_run_id=run.id,
             review_output=output.model_dump(mode="json"),

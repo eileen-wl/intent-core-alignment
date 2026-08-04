@@ -944,6 +944,37 @@ Goal:
 - strengthen Artist Guidance/submission preparation;
 - make cross-role/cross-department Assessment prerequisites actionable.
 
+### Package B implementation checkpoint (2026-08-03)
+
+Package B is in progress on `feat/package-b-agent-journey-completion`. The first implementation
+pass adds a shared `AgentContributionPanel` to formal VFX, CG, and Artist routes, presenting Inputs,
+Agent contribution, Human authority, Next human action, lifecycle, and collapsed provenance. It
+wires existing decomposition, reconstruction, drafting, creative review, execution review,
+iteration guidance, and cross-role assessment capabilities without adding roles, routes, persistence,
+Demo seed data, or ftrack writes. Focused frontend tests (96 tests), web typecheck, touched ESLint,
+and `git diff --check` pass; owner visual validation is pending. Package B is not complete.
+
+### Package B owner-validation correction checkpoint (2026-08-04)
+
+The correction pass keeps Package B in progress and adds truthful readiness/action handling on
+the six formal routes, formal Core Anchor Draft and VFX Creative Review actions, selected-Version
+CG Review persistence, and captured Cross-role Assessment provenance where available. The focused
+CG Review backend suite (61 tests), six formal frontend page suites (97 tests), regenerated
+TypeScript contracts, and web typecheck pass. Owner re-validation remains pending; Package B is
+not complete. Packages C and D have not started.
+
+### Package B final merge-gate closeout (2026-08-04)
+
+Owner visual validation passed. The complete merge gate passed: 1,138 backend/infra tests
+(contracts 53, API 966, worker 36, Connector 81, infra 2), 1,018 frontend tests across 129
+test files, migration upgrade/downgrade validation including the CG Supervisor Review
+`version_id` migration, clean production build with 18 static pages generated, full Ruff and
+mypy checks, regenerated Python/OpenAPI/TypeScript contracts, Web TypeScript, ESLint, Prettier,
+`uv lock --check`, frozen pnpm lockfile installation, and `git diff --check`. Existing seeded
+Agent outputs may truthfully show unavailable provenance when no historical AgentRun or
+ContextSnapshot was recorded; newly generated outputs retain real provenance. Package B is
+complete. Package C is the next approved package and has not started; Package D has not started.
+
 ## Package C — Coherent Golden Demo scenario
 
 Goal:

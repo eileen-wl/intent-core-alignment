@@ -3,7 +3,11 @@ import type {
   ExecutionAnchorRevisionRead,
 } from "@intent-core/contracts";
 
-import { EvidenceLayerSection, MetadataRow } from "@/design";
+import {
+  AgentContributionPanel,
+  EvidenceLayerSection,
+  MetadataRow,
+} from "@/design";
 import {
   decisionOutcomeStatement,
   decisionProvenanceItems,
@@ -121,6 +125,53 @@ export function ExecutionPage({
               </section>
             )}
           </EvidenceLayerSection>
+
+          <AgentContributionPanel
+            agent="CG Supervisor Agent"
+            capability="Execution Anchor Draft"
+            state={
+              data.draftRevision
+                ? "completed"
+                : data.coreAnchorConfirmed
+                  ? "ready"
+                  : "not_ready"
+            }
+            generatedAt={data.draftRevision?.created_at}
+            inputs={[
+              "Confirmed Core Anchor",
+              `${data.item.task_name} task context`,
+            ]}
+            readiness={[
+              {
+                label: "Confirmed Core Anchor",
+                available: data.coreAnchorConfirmed,
+              },
+            ]}
+            output={
+              data.draftRevision ? (
+                <>
+                  <p>
+                    Agent-proposed technical translation is available in the
+                    editable Draft below.
+                  </p>
+                  <p>
+                    Technical boundaries:{" "}
+                    {data.draftRevision.technical_boundaries || "Not recorded"}
+                  </p>
+                </>
+              ) : (
+                <p>No Agent Execution Anchor proposal is available yet.</p>
+              )
+            }
+            authority="Advisory only; the human CG Supervisor edits and confirms the Execution Anchor through the Human Gate."
+            nextAction={
+              data.draftRevision
+                ? "Review and edit the proposal, then submit it through the Human Gate."
+                : data.coreAnchorConfirmed
+                  ? "Generate an Execution Anchor proposal."
+                  : "Open the VFX Intent route and confirm the Core Anchor first."
+            }
+          />
 
           {data.confirmedRevision && (
             <EvidenceLayerSection kind="human-decision">

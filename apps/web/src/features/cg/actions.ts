@@ -296,6 +296,7 @@ export async function rejectExecutionAnchorRevisionAction(
 export async function generateCgSupervisorReviewAction(
   taskId: string,
   revisionId: string,
+  versionId: string,
 ): Promise<CgSupervisorReviewActionResult> {
   const identity = await requireCgIdentity();
   if ("error" in identity) return { ok: false, error: identity.error };
@@ -303,6 +304,7 @@ export async function generateCgSupervisorReviewAction(
   try {
     const review = await generateCgSupervisorReview(
       revisionId,
+      versionId,
       actorHeaders(identity),
     );
     revalidateTaskRoutes(taskId, "version-review");

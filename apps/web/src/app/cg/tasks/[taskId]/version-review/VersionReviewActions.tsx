@@ -77,6 +77,7 @@ export function VersionReviewActions({
                 generateCgSupervisorReviewAction(
                   taskId,
                   activeExecutionRevisionId,
+                  versionId,
                 ).then((result) => {
                   if (result.ok) {
                     router.refresh();

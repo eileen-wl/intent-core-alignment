@@ -26,3 +26,8 @@
 .activityLink a {
   color: var(--text-secondary);
 }
+.agentPreparation {
+  display: grid;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}

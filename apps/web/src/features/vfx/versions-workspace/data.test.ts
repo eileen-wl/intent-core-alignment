@@ -44,7 +44,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
-  vi.clearAllMocks();
+  vi.resetAllMocks();
 });
 
 describe("loadVersionsWorkspaceData", () => {
@@ -80,7 +80,9 @@ describe("loadVersionsWorkspaceData", () => {
           },
         ]),
       ) // review notes for v2 (newest, fetched first)
-      .mockResolvedValueOnce(jsonResponse(200, [])); // review notes for v1
+      .mockResolvedValueOnce(jsonResponse(200, [])) // v2 Creative Reviews
+      .mockResolvedValueOnce(jsonResponse(200, [])) // review notes for v1
+      .mockResolvedValueOnce(jsonResponse(200, [])); // v1 Creative Reviews
 
     const result = await loadVersionsWorkspaceData("s1");
     expect(result?.versions.map((entry) => entry.version.id)).toEqual([
@@ -95,7 +97,8 @@ describe("loadVersionsWorkspaceData", () => {
     fetchMock
       .mockResolvedValueOnce(jsonResponse(200, ITEM))
       .mockResolvedValueOnce(jsonResponse(200, []))
-      .mockResolvedValueOnce(jsonResponse(200, []));
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, [])); // v1 Creative Reviews
 
     const result = await loadVersionsWorkspaceData("s1");
     expect(result?.versions).toEqual([]);
@@ -111,6 +114,8 @@ describe("loadVersionsWorkspaceData", () => {
           { id: "a2", version_id: "v1", shot_id: "s1" },
         ]),
       )
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, []))
       .mockResolvedValueOnce(jsonResponse(200, []));
 
     const result = await loadVersionsWorkspaceData("s1");
@@ -132,6 +137,10 @@ describe("loadVersionsWorkspaceData", () => {
       .mockResolvedValueOnce(
         jsonResponse(200, [versionTaskA, versionTaskB, versionNoTask]),
       )
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, []))
       .mockResolvedValueOnce(jsonResponse(200, []))
       .mockResolvedValueOnce(jsonResponse(200, []))
       .mockResolvedValueOnce(jsonResponse(200, []))
@@ -192,7 +201,9 @@ describe("loadVersionsWorkspaceData", () => {
       .mockResolvedValueOnce(
         jsonResponse(200, [noteLateSource, noteEarlySource]),
       ) // v2's notes, fetched first (newest version first)
-      .mockResolvedValueOnce(jsonResponse(200, [])); // v1's notes
+      .mockResolvedValueOnce(jsonResponse(200, [])) // v2 Creative Reviews
+      .mockResolvedValueOnce(jsonResponse(200, [])) // v1's notes
+      .mockResolvedValueOnce(jsonResponse(200, [])); // v1 Creative Reviews
 
     const result = await loadVersionsWorkspaceData("s1");
     expect(result?.versions.map((entry) => entry.version.id)).toEqual([

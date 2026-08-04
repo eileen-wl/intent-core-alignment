@@ -11,12 +11,14 @@ import type {
 import {
   AuthorityBoundary,
   AuthorityLabel,
+  AgentContributionPanel,
   EmptyState,
   EvidenceLayerSection,
   MetadataRow,
 } from "@/design";
 import { humanRoleLabel } from "@/lib/humanRoleLabel";
 import type { AlignmentWorkspaceData } from "@/features/vfx/alignment-workspace/data";
+import type { EvidenceReferenceLike } from "@/design";
 import { VfxShotWorkspaceFrame } from "../VfxShotWorkspaceFrame";
 import { GenerateAssessmentButton } from "./GenerateAssessmentButton";
 import styles from "./AlignmentWorkspacePage.module.css";
@@ -117,6 +119,89 @@ export function AlignmentWorkspacePage({
               statement="owns interpretation and confirmation of alignment findings. The Core Agent's cross-role assessment is advisory only."
             />
           </div>
+
+          <AgentContributionPanel
+            agent="Core Agent"
+            capability="Cross-role Assessment"
+            state={
+              current
+                ? "completed"
+                : data.item.generation_ready_task_id &&
+                    data.item.generation_ready_version_id
+                  ? "ready"
+                  : "not_ready"
+            }
+            generatedAt={current?.created_at}
+            inputs={
+              current
+                ? [
+                    versionLabel(data.versionsById.get(current.version_id)),
+                    "Confirmed Core Anchor context",
+                  ]
+                : [
+                    "Confirmed Anchor and role outputs",
+                    "Production Version and review evidence",
+                  ]
+            }
+            readiness={
+              current
+                ? [
+                    {
+                      label: "Captured run inputs",
+                      available: Boolean(data.currentSnapshot),
+                    },
+                    {
+                      label: "Captured AgentRun",
+                      available: Boolean(data.currentRun),
+                    },
+                  ]
+                : [
+                    {
+                      label: "Confirmed Core Anchor",
+                      available: data.item.core_anchor_state === "confirmed",
+                    },
+                    {
+                      label: "Qualifying Production Version",
+                      available: Boolean(data.item.relevant_version_id),
+                    },
+                    {
+                      label: "Role review/guidance evidence",
+                      available: Boolean(data.item.generation_ready_task_id),
+                    },
+                  ]
+            }
+            run={data.currentRun}
+            snapshot={data.currentSnapshot}
+            evidence={
+              current
+                ? current.assessment_output.shared_intent_read.evidence.map(
+                    (evidence, index): EvidenceReferenceLike => ({
+                      source_type: evidence.source_type,
+                      source_id: evidence.source_id,
+                      label: `Assessment evidence ${index + 1}`,
+                    }),
+                  )
+                : []
+            }
+            output={
+              <p>
+                {current
+                  ? "Cross-role findings and an Intent Signal are available below."
+                  : "No Cross-role Assessment has been generated for this Shot yet."}
+              </p>
+            }
+            authority="Advisory interpretation only; the VFX Supervisor decides whether to create or revise a Core Anchor."
+            nextAction={
+              current?.re_anchor_proposal
+                ? "Review the Re-anchor Proposal in Intent."
+                : current
+                  ? "Inspect the completed assessment and coordinate any human follow-up."
+                  : data.item.generation_ready_task_id &&
+                      data.item.generation_ready_version_id
+                    ? "Generate the assessment, then review the findings."
+                    : "Complete the current prerequisites before generating a new assessment."
+            }
+          />
 
           {current === null ? (
             data.item.generation_ready_task_id &&

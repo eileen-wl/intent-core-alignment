@@ -16,6 +16,10 @@ vi.mock("@/features/vfx/intent-workspace/actions", () => ({
   saveCoreAnchorDraftAction: vi.fn(),
   createCoreAnchorDraftFromConfirmedAction: vi.fn(),
   startBlankCoreAnchorDraftAction: vi.fn(),
+  generateIntentDecompositionAction: vi.fn(),
+  generateContextReconstructionAction: vi.fn(),
+  generateCoreAnchorDraftAction: vi.fn(),
+  createCoreAnchorDraftFromDecompositionAction: vi.fn(),
 }));
 
 import type { IntentWorkspaceData } from "@/features/vfx/intent-workspace/data";
@@ -110,6 +114,40 @@ describe("IntentWorkspacePage", () => {
       />,
     );
     expect(screen.getByText("This Shot is unavailable")).toBeVisible();
+  });
+
+  it("keeps Agent generation actions inside the dedicated Client button boundary", () => {
+    const data: IntentWorkspaceData = {
+      item: item(),
+      confirmedRevision: revision(),
+      draftRevision: null,
+      draftHumanGate: null,
+      evidenceData: {
+        evidence: [],
+        run: null,
+        snapshot: null,
+        decompositions: [],
+        reconstructions: [],
+      },
+      previousConfirmedRevision: null,
+      confirmedDecisionRationale: null,
+    };
+
+    render(
+      <IntentWorkspacePage
+        shotId="s1"
+        data={data}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Generate decomposition" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Generate context reconstruction" }),
+    ).toBeVisible();
   });
 
   it("shows an honest not-found state, distinct from unavailable, for a real 404", () => {
@@ -593,7 +631,7 @@ describe("IntentWorkspacePage", () => {
       />,
     );
     const details = container.querySelectorAll("details");
-    expect(details.length).toBe(2);
+    expect(details.length).toBeGreaterThanOrEqual(2);
     for (const detail of details) {
       expect(detail).not.toHaveAttribute("open");
     }

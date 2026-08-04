@@ -21,6 +21,7 @@ import type {
   VersionRead,
   VfxInboxItemRead,
   VfxInboxRead,
+  VFXSupervisorReviewRead,
 } from "@intent-core/contracts";
 
 /** Server-only API boundary for the new VFX role workspace (Step 7C-1;
@@ -166,6 +167,45 @@ export function listContextReconstructionsForShot(
   );
 }
 
+export function generateIntentDecomposition(
+  shotId: string,
+  actorHeaders: ActorHeaders,
+): Promise<IntentDecompositionRead> {
+  return vfxFetch<IntentDecompositionRead>(
+    `/intent/shots/${shotId}/intent-decompositions/generate`,
+    { method: "POST", headers: actorHeaders },
+  );
+}
+
+export function generateContextReconstruction(
+  shotId: string,
+  actorHeaders: ActorHeaders,
+): Promise<ContextReconstructionRead> {
+  return vfxFetch<ContextReconstructionRead>(
+    `/intent/shots/${shotId}/context-reconstructions/generate`,
+    { method: "POST", headers: actorHeaders },
+  );
+}
+
+export function generateCoreAnchorDraft(
+  shotId: string,
+): Promise<CoreAnchorRevisionRead> {
+  return vfxFetch<CoreAnchorRevisionRead>(
+    `/intent/shots/${shotId}/core-anchor/generate`,
+    { method: "POST" },
+  );
+}
+
+export function createCoreAnchorDraftFromDecomposition(
+  decompositionId: string,
+  actorHeaders: ActorHeaders,
+): Promise<CoreAnchorRevisionRead> {
+  return vfxFetch<CoreAnchorRevisionRead>(
+    `/intent/intent-decompositions/${decompositionId}/core-anchor-draft`,
+    mutationInit("POST", {}, actorHeaders),
+  );
+}
+
 /** Technical provenance for the Evidence/Provenance disclosure -- only
  * fetched when the revision actually carries the corresponding id
  * (human-authored drafts have neither). */
@@ -256,6 +296,24 @@ export function listReviewNotesForVersion(
   versionId: string,
 ): Promise<ReviewNoteRead[]> {
   return vfxFetch<ReviewNoteRead[]>(`/versions/${versionId}/review-notes`);
+}
+
+export function listVfxSupervisorReviews(
+  versionId: string,
+): Promise<VFXSupervisorReviewRead[]> {
+  return vfxFetch<VFXSupervisorReviewRead[]>(
+    `/intent/versions/${versionId}/vfx-supervisor-reviews`,
+  );
+}
+
+export function generateVfxSupervisorReview(
+  versionId: string,
+  actorHeaders: ActorHeaders,
+): Promise<VFXSupervisorReviewRead> {
+  return vfxFetch<VFXSupervisorReviewRead>(
+    `/intent/versions/${versionId}/vfx-supervisor-reviews/generate`,
+    { method: "POST", headers: actorHeaders },
+  );
 }
 
 /** This Shot's full Cross-role Assessment history, newest first --
