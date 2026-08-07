@@ -573,6 +573,40 @@ endpoints. They use exact D1 Shot/Task ownership predicates, retain real provena
 020 and other fixtures, and do not touch live/ftrack or unknown-origin records. Owner validation is
 pending; Package C is not complete, legacy cleanup is deferred, and Package D has not started.
 
+### Package C journey state-machine rebase (2026-08-07)
+
+Package C remains in progress on `feat/package-c-golden-demo-journey`. `ICAS_PACKAGE_C_AUDIT_
+REPORT.md` traced an owner-observed defect to two causes: role entry's Server Action silently
+calling the pre-Package-C `ensure_d1_scenario` seed pipeline (which still targeted the same
+canonical Shot 010/Compositing Task the Journey owns), and `journey-status` scoping its
+"assessments" count by a Version-description marker while scoping "proposals"/"guidance" by Task
+id. Role entry no longer calls any seed/ensure endpoint. `ensure_d1_scenario`'s rich generation is
+retargeted to a separate, noncanonical Shot so it can no longer collide with the canonical Journey
+Shot. `demo_seed.d1_journey` now resolves its canonical Project/Shot root through a minimal,
+non-journey-state structural bootstrap, and one canonical graph selector — scoped consistently by
+the three canonical Task ids everywhere — backs Reset, Load-Completed, and `journey-status` alike.
+`journey-status` now reports the full J0–J4 classification (`journey_state`: `reset`,
+`assessment_complete`, `reanchor_draft`, `r2_confirmed`, `completed`, `mixed`) alongside the
+existing three-way `snapshot` field, plus assessment/proposal ids and attention levels as
+diagnostic facts. A read-purity regression covers every normal VFX/CG/Artist GET path against a
+canonical semantic snapshot; explicit transition tests exercise the real J0→J1→J2→J3 domain
+actions and confirm downstream R1 outputs are never silently replaced.
+
+One pre-existing product-behaviour gap was found while building the J0→J1 transition test (not
+introduced by this rebase): the real "Generate Cross-role Assessment" action, under the
+`deterministic` model provider every local/dev/test environment defaults to, can never reach "high"
+attention or propose a re-anchor against the canonical J0 evidence, because
+`DeterministicCrossRoleAssessmentGenerator` is documented to deliberately cap every finding at low/
+medium priority. `journey-status` honestly reports this as `mixed`. Reaching the locked J1
+narrative through the real action requires a live model provider or the D1-Demo-only generator
+Reset/Load-Completed already use. This is flagged for an explicit product decision, not silently
+patched.
+
+Focused validation: full backend suite (980 tests) and full frontend suite (1,009 tests) pass,
+Ruff format/check and mypy pass on touched files, web TypeScript typecheck and ESLint pass. Owner
+re-validation of the Reset → role-entry → journey-status sequence is still pending. Package C
+remains in progress; Package D has not started.
+
 ### Package A final merge gate (2026-08-03)
 
 Package A owner visual validation passed. The complete repository regression then passed: 53

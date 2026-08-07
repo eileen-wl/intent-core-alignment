@@ -113,12 +113,21 @@ async def reset_cg_demo_task_endpoint(
 
 
 class D1JourneyResultRead(BaseModel):
+    # Legacy three-way compatibility field (reset/completed/mixed).
+    # `journey_state` is the full J0-J4 state-machine classification new
+    # code should read instead (ICAS_PACKAGE_C_JOURNEY_REBASE_CLAUDE_
+    # HANDOFF.md §13).
     snapshot: str
+    journey_state: str
     project_id: UUID
     shot_id: UUID
     task_ids: list[UUID]
     version_ids: list[UUID]
     counts: dict[str, int]
+    assessment_ids: list[UUID]
+    proposal_ids: list[UUID]
+    proposal_assessment_ids: dict[str, UUID]
+    attention_levels: list[str]
     completed_at: str
     project_external_id: str = D1_PROJECT_EXTERNAL_ID
 
@@ -126,11 +135,19 @@ class D1JourneyResultRead(BaseModel):
 def _d1_journey_result(result: D1JourneyResult) -> D1JourneyResultRead:
     return D1JourneyResultRead(
         snapshot=result.snapshot,
+        journey_state=result.journey_state,
         project_id=result.project_id,
         shot_id=result.shot_id,
         task_ids=list(result.task_ids),
         version_ids=list(result.version_ids),
         counts=result.counts,
+        assessment_ids=list(result.assessment_ids),
+        proposal_ids=list(result.proposal_ids),
+        proposal_assessment_ids={
+            str(proposal_id): assessment_id
+            for proposal_id, assessment_id in result.proposal_assessment_ids.items()
+        },
+        attention_levels=list(result.attention_levels),
         completed_at=result.completed_at.isoformat(),
     )
 

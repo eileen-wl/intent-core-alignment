@@ -5,15 +5,16 @@ from intent_core_api.demo_seed import d1_journey
 from intent_core_api.demo_seed.d1_journey import (
     ANIMATION_TASK_EXTERNAL_ID,
     CANONICAL_TASK_EXTERNAL_IDS,
+    D1_SHOT_EXTERNAL_ID,
     inspect_d1_journey,
     load_completed_d1_journey,
     reset_d1_journey,
 )
 from intent_core_api.demo_seed.d1_scenario import (
     D1_PROJECT_EXTERNAL_ID,
-    D1_SHOT_EXTERNAL_ID,
     UNINITIALIZED_SHOT_EXTERNAL_ID,
     ensure_d1_scenario,
+    resolve_or_create_canonical_root,
 )
 from intent_core_api.integrations.external_link_service import (
     find_linked_entity_id,
@@ -30,12 +31,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 async def test_reset_reuses_d1_shot_and_creates_three_department_journey(
     session: AsyncSession,
 ) -> None:
-    baseline = await ensure_d1_scenario(session)
+    baseline_project, baseline_shot = await resolve_or_create_canonical_root(session)
     result = await reset_d1_journey(session)
 
     assert result.snapshot == "reset"
-    assert result.project_id == baseline.project_id
-    assert result.shot_id == baseline.shot_id
+    assert result.project_id == baseline_project.id
+    assert result.shot_id == baseline_shot.id
     assert result.counts["tasks"] == 3
     assert result.counts["versions"] == 3
     assert result.counts["core_anchor_revisions"] == 1
@@ -71,31 +72,37 @@ async def test_completed_is_bounded_and_idempotent(session: AsyncSession) -> Non
 
 
 async def test_reset_completed_reset_preserves_other_d1_fixture(session: AsyncSession) -> None:
-    baseline = await ensure_d1_scenario(session)
-    await reset_d1_journey(session)
+    # `ensure_d1_scenario` here only stands in for "some other, unrelated
+    # D1 fixture exists" (Step 7C-1's uninitialized Shot 020) -- it no
+    # longer touches the canonical Journey Shot at all (Package C journey
+    # rebase), so its own `shot_id`/`project_id` are deliberately never
+    # compared against the Journey's own below.
+    fixture = await ensure_d1_scenario(session)
+    first = await reset_d1_journey(session)
     await load_completed_d1_journey(session)
     final = await reset_d1_journey(session)
 
-    assert final.shot_id == baseline.shot_id
+    assert final.shot_id == first.shot_id
     uninitialized_id = await find_linked_entity_id(
         session,
         entity_type="shot",
         source="demo",
         external_id=UNINITIALIZED_SHOT_EXTERNAL_ID,
     )
-    assert uninitialized_id == baseline.uninitialized_shot_id
+    assert uninitialized_id == fixture.uninitialized_shot_id
     assert await session.get(Shot, uninitialized_id) is not None
     assert (
         await find_linked_entity_id(
             session, entity_type="project", source="demo", external_id=D1_PROJECT_EXTERNAL_ID
         )
-        == baseline.project_id
+        == fixture.project_id
+        == final.project_id
     )
     assert (
         await find_linked_entity_id(
             session, entity_type="shot", source="demo", external_id=D1_SHOT_EXTERNAL_ID
         )
-        == baseline.shot_id
+        == final.shot_id
     )
 
 

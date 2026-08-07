@@ -9,8 +9,8 @@ from httpx import AsyncClient
 from intent_core_api.cross_department.models import TaskDependency
 from intent_core_api.demo_seed.d1_scenario import (
     _CG_DEMO_EXECUTION_DRAFT_CONTENT,
+    D1_LEGACY_SHOT_EXTERNAL_ID,
     D1_MARKER,
-    D1_SHOT_EXTERNAL_ID,
     UNINITIALIZED_SHOT_EXTERNAL_ID,
     UNINITIALIZED_TASK_EXTERNAL_ID,
     DeterministicD1CrossRoleAssessmentGenerator,
@@ -190,7 +190,7 @@ async def test_partial_seed_resumes_without_duplicating(session: AsyncSession) -
 async def test_orphaned_demo_link_fails_loudly(session: AsyncSession) -> None:
     await ensure_d1_scenario(session)
     shot_id = await find_linked_entity_id(
-        session, entity_type="shot", source="demo", external_id=D1_SHOT_EXTERNAL_ID
+        session, entity_type="shot", source="demo", external_id=D1_LEGACY_SHOT_EXTERNAL_ID
     )
     assert shot_id is not None
 
@@ -603,7 +603,7 @@ async def test_uninitialized_and_rich_shot_ids_are_distinct_and_linked(
     assert result.uninitialized_shot_id != result.shot_id
 
     rich_link = await find_linked_entity_id(
-        session, entity_type="shot", source="demo", external_id=D1_SHOT_EXTERNAL_ID
+        session, entity_type="shot", source="demo", external_id=D1_LEGACY_SHOT_EXTERNAL_ID
     )
     uninitialized_link = await find_linked_entity_id(
         session, entity_type="shot", source="demo", external_id=UNINITIALIZED_SHOT_EXTERNAL_ID

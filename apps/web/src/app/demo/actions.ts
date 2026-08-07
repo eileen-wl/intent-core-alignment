@@ -11,7 +11,6 @@ import {
   isSafeReturnToPath,
   roleForPathname,
 } from "@/lib/demoIdentity";
-import { resolveD1DemoShotId } from "@/features/session/demoScenario";
 
 /** Server Action called directly from the Role-selection Home's VFX
  * Supervisor card (a Client Component) -- Step 7C-1's only role-entry
@@ -20,15 +19,13 @@ import { resolveD1DemoShotId } from "@/features/session/demoScenario";
  * role's fixed workspace home. Never stores anything beyond the role
  * literal -- no credentials, no personal data.
  *
- * For `vfx_supervisor`, `cg_supervisor`, and `artist` (Step 7C-4/7C-5),
- * this also best-effort ensures the real, persisted generic development
- * seed data exists (the rich confirmed Shot, its CG demo Task/dependency,
- * and the normal uninitialized Shot, all folded into the same seed
- * process) before landing on that role's Workspace -- on a clean
- * database, nothing else guarantees that baseline is seeded before
- * `/vfx`, `/cg`, or `/artist` is ever reached. A failure here never
- * blocks entry to the workspace itself; every page already renders an
- * honest state from whatever Shots/Tasks do exist.
+ * Package C journey rebase: role entry is a pure read/redirect. It must
+ * never ensure, seed, or otherwise mutate any D1 Journey or demo-fixture
+ * data -- see `ICAS_PACKAGE_C_JOURNEY_REBASE_CLAUDE_HANDOFF.md` §6/§7.
+ * If a required Demo fixture is missing, each Workspace page renders an
+ * honest state from whatever Shots/Tasks actually exist; establishing
+ * that baseline is exclusively the job of the explicit developer Reset/
+ * Load-Completed D1 Journey actions, never role entry.
  *
  * `returnTo` (Step 7C-4 completion): the deep-link route `middleware.ts`
  * redirected away from before a role session existed for it. Re-validated
@@ -53,18 +50,6 @@ export async function enterDemoRole(
     sameSite: "lax",
     path: "/",
   });
-
-  if (
-    role === "vfx_supervisor" ||
-    role === "cg_supervisor" ||
-    role === "artist"
-  ) {
-    try {
-      await resolveD1DemoShotId();
-    } catch {
-      // Best-effort only -- see doc comment above.
-    }
-  }
 
   if (isSafeReturnToPath(returnTo) && roleForPathname(returnTo) === role) {
     redirect(returnTo);

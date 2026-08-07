@@ -120,8 +120,30 @@ from intent_core_api.workflow.models import Decision
 
 _DEMO_SOURCE: Final = "demo"
 D1_PROJECT_EXTERNAL_ID: Final = "icas-demo:d1"
-D1_SHOT_EXTERNAL_ID: Final = "icas-demo:d1:shot-010"
-D1_TASK_EXTERNAL_ID: Final = "icas-demo:d1:shot-010:compositing-review"
+# Package C journey rebase (ICAS_PACKAGE_C_AUDIT_REPORT.md): this rich
+# scenario used to target `icas-demo:d1:shot-010` -- the exact same Shot
+# identity the Package C D1 Journey state machine (`demo_seed.d1_journey`)
+# now owns. Because both pipelines wrote real Version/Review/Guidance/
+# Assessment rows onto that one shared Shot, calling this generic dev
+# seed (directly, or transitively through anything reachable from the
+# product) after a D1 Journey Reset silently re-created a
+# CrossRoleAssessment + ReAnchorProposal + 4th ArtistAgentGuidance the
+# Journey never asked for. Retargeted to its own Shot (below), following
+# the same isolated-fixture pattern already used for the "uninitialized"
+# Shot 020 and the CG demo Shot 030, so this pipeline can never again
+# mutate the canonical D1 Journey graph no matter what calls it.
+D1_LEGACY_SHOT_EXTERNAL_ID: Final = "icas-demo:d1:legacy-baseline-shot"
+D1_LEGACY_TASK_EXTERNAL_ID: Final = "icas-demo:d1:legacy-baseline-shot:compositing-review"
+
+# The canonical Package C D1 Journey identity (ICAS_PACKAGE_C_JOURNEY_
+# REBASE_CLAUDE_HANDOFF.md §2) -- declared here as the single source of
+# truth for the string, but the *only* sanctioned way to resolve/create
+# these two rows is `resolve_or_create_canonical_root` below, which
+# creates nothing beyond the Project/Shot pair itself. `demo_seed.
+# d1_journey` owns everything downstream of this root (Tasks, Versions,
+# Anchors, and every journey-state record).
+CANONICAL_D1_SHOT_EXTERNAL_ID: Final = "icas-demo:d1:shot-010"
+_CANONICAL_D1_SHOT_NAME: Final = "Shot 010 — Final confrontation"
 # Stable, parseable marker (docs/step-7/16_STEP_7C0D_...md §2.3) --
 # Version has no ExternalEntityLink support, so this prefix on the free-
 # text `description`/`raw_text`/`content` field is the seed-owned key,
@@ -129,14 +151,14 @@ D1_TASK_EXTERNAL_ID: Final = "icas-demo:d1:shot-010:compositing-review"
 D1_MARKER: Final = "[ICAS Demo — D1]"
 
 _D1_PROJECT_NAME: Final = "D1 Demo Project"
-_D1_SHOT_NAME: Final = "Shot 010 — Final confrontation"
+_D1_SHOT_NAME: Final = "Shot 040 — Legacy ensure-scenario baseline"
 _D1_TASK_NAME: Final = "Compositing Review"
 _D1_VERSION_NAME: Final = "D1_STEP3_VFX_REVIEW_001"
 
 # Step 7C-1: a second, deterministic Shot under the same seed-owned
 # Project, with its own fixed `ExternalEntityLink(source="demo")`
 # identity -- never the same row as the fully-seeded
-# `D1_SHOT_EXTERNAL_ID` Shot above. Its whole purpose is to be a
+# `D1_LEGACY_SHOT_EXTERNAL_ID` Shot above. Its whole purpose is to be a
 # normal, neutrally-named Shot that starts the Core Anchor lifecycle at
 # INITIAL EMPTY (see `_ensure_uninitialized_shot` below), so every
 # downstream anchor/gate/decision/review helper this module already has
@@ -258,7 +280,7 @@ async def _resolve_or_create_shot(
     session: AsyncSession,
     project: Project,
     *,
-    external_id: str = D1_SHOT_EXTERNAL_ID,
+    external_id: str = D1_LEGACY_SHOT_EXTERNAL_ID,
     name: str = _D1_SHOT_NAME,
 ) -> Shot:
     existing_id = await find_linked_entity_id(
@@ -291,7 +313,7 @@ async def _resolve_or_create_task(
     session: AsyncSession,
     shot: Shot,
     *,
-    external_id: str = D1_TASK_EXTERNAL_ID,
+    external_id: str = D1_LEGACY_TASK_EXTERNAL_ID,
     name: str = _D1_TASK_NAME,
     department: str = "comp",
 ) -> Task:
@@ -753,7 +775,7 @@ async def _ensure_uninitialized_shot(session: AsyncSession, project: Project) ->
     and `ExternalEntityLink(source="demo")` identity mechanism the rich
     Shot uses, but under the separate, fixed
     `UNINITIALIZED_SHOT_EXTERNAL_ID` identity -- never the same row as
-    `ensure_d1_scenario`'s rich `D1_SHOT_EXTERNAL_ID` Shot.
+    `ensure_d1_scenario`'s rich `D1_LEGACY_SHOT_EXTERNAL_ID` Shot.
 
     Deliberately never calls `_ensure_confirmed_core_anchor`,
     `_ensure_confirmed_execution_anchor`, or any downstream review/
@@ -973,6 +995,36 @@ async def reset_cg_demo_task_execution_anchor_state(session: AsyncSession) -> uu
         session, _SEED_ACTOR_CG, task.id, dict(_CG_DEMO_EXECUTION_DRAFT_CONTENT)
     )
     return task.id
+
+
+async def resolve_or_create_canonical_root(session: AsyncSession) -> tuple[Project, Shot]:
+    """Minimal, non-journey-state structural bootstrap for the Package C
+    canonical D1 Journey root (`demo_seed.d1_journey`). Resolves-or-
+    creates only the canonical D1 Project and the canonical Shot 010 row,
+    through the same `ExternalEntityLink(source="demo")` identity
+    mechanism every other seeded row in this module uses.
+
+    Deliberately creates nothing else -- no Task, Version, Core/Execution
+    Anchor, Review, Guidance, Assessment, Proposal, or Signal. Those are
+    exclusively owned by `d1_journey`'s own explicit Reset / Load-
+    Completed actions, never by this function. This is the only sanction-
+    ed way to resolve the canonical root from outside `d1_journey`
+    itself; `ensure_d1_scenario`'s rich generation deliberately targets a
+    separate, noncanonical Shot (see `D1_LEGACY_SHOT_EXTERNAL_ID` above)
+    and must never be used for this purpose.
+
+    Idempotent and safe to call repeatedly, including from an explicit
+    developer action (Reset/Load-Completed D1 Journey) -- never from a
+    normal product read path.
+    """
+    project = await _resolve_or_create_project(session)
+    shot = await _resolve_or_create_shot(
+        session,
+        project,
+        external_id=CANONICAL_D1_SHOT_EXTERNAL_ID,
+        name=_CANONICAL_D1_SHOT_NAME,
+    )
+    return project, shot
 
 
 async def ensure_d1_scenario(session: AsyncSession) -> D1ScenarioResult:

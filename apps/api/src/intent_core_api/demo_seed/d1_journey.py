@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any, Final
 
@@ -36,12 +36,11 @@ from intent_core_api.agents.vfx_supervisor_review_service import (
 from intent_core_api.cross_department import service as dependency_service
 from intent_core_api.cross_department.models import TaskDependency
 from intent_core_api.demo_seed.d1_scenario import (
+    CANONICAL_D1_SHOT_EXTERNAL_ID,
     D1_MARKER,
     D1_PROJECT_EXTERNAL_ID,
-    D1_SHOT_EXTERNAL_ID,
-    D1_TASK_EXTERNAL_ID,
     DeterministicD1CrossRoleAssessmentGenerator,
-    ensure_d1_scenario,
+    resolve_or_create_canonical_root,
 )
 from intent_core_api.integrations.external_link_service import (
     find_linked_entity_id,
@@ -81,12 +80,20 @@ from intent_core_api.workflow.actors import ActorContext
 from intent_core_api.workflow.models import Decision, WorkflowTransition
 
 D1_JOURNEY_MARKER: Final = "[ICAS Demo — D1 Journey]"
+# Canonical Package C identities (ICAS_PACKAGE_C_JOURNEY_REBASE_CLAUDE_
+# HANDOFF.md §2). This module is the sole owner of the canonical Shot
+# 010 journey graph -- `D1_SHOT_EXTERNAL_ID` re-exported here is the same
+# string `demo_seed.d1_scenario.CANONICAL_D1_SHOT_EXTERNAL_ID` declares,
+# kept as one name so the rest of this module (and callers) never need
+# to know two different names exist for it.
+D1_SHOT_EXTERNAL_ID: Final = CANONICAL_D1_SHOT_EXTERNAL_ID
 ANIMATION_TASK_EXTERNAL_ID: Final = "icas-demo:d1:shot-010:animation-pass"
 LIGHTING_TASK_EXTERNAL_ID: Final = "icas-demo:d1:shot-010:lighting-pass"
+COMPOSITING_TASK_EXTERNAL_ID: Final = "icas-demo:d1:shot-010:compositing-review"
 CANONICAL_TASK_EXTERNAL_IDS: Final = {
     "animation": ANIMATION_TASK_EXTERNAL_ID,
     "lighting": LIGHTING_TASK_EXTERNAL_ID,
-    "comp": D1_TASK_EXTERNAL_ID,
+    "comp": COMPOSITING_TASK_EXTERNAL_ID,
 }
 _TASK_NAMES: Final = {
     "animation": "Animation Pass",
@@ -100,12 +107,21 @@ _SEED_ARTIST = ActorContext(actor_kind="human", actor_id="d1-journey-artist", hu
 
 @dataclass(frozen=True)
 class D1JourneyResult:
+    # Legacy three-way compatibility field (reset/completed/mixed) --
+    # kept so existing callers/tests never break. `journey_state` below
+    # is the full J0-J4 state-machine classification and is the field
+    # new code should read.
     snapshot: str
+    journey_state: str
     project_id: uuid.UUID
     shot_id: uuid.UUID
     task_ids: tuple[uuid.UUID, ...]
     version_ids: tuple[uuid.UUID, ...]
     counts: dict[str, int]
+    assessment_ids: tuple[uuid.UUID, ...]
+    proposal_ids: tuple[uuid.UUID, ...]
+    proposal_assessment_ids: dict[uuid.UUID, uuid.UUID]
+    attention_levels: tuple[str, ...]
     completed_at: datetime
 
 
@@ -181,10 +197,14 @@ def _execution_content(department: str, revision: str) -> dict[str, str]:
 
 
 async def _canonical_root(session: AsyncSession) -> tuple[Project, Shot]:
-    seed = await ensure_d1_scenario(session)
-    project = await session.get(Project, seed.project_id)
-    shot = await session.get(Shot, seed.shot_id)
-    if project is None or shot is None or project.source == "ftrack" or shot.source == "ftrack":
+    # Package C journey rebase: resolves the canonical Project/Shot 010
+    # through a minimal structural bootstrap that creates nothing beyond
+    # those two rows -- never the legacy `ensure_d1_scenario` pipeline,
+    # which now deliberately targets a separate, noncanonical Shot (see
+    # `d1_scenario.D1_LEGACY_SHOT_EXTERNAL_ID`) and must never be reached
+    # from here again (ICAS_PACKAGE_C_AUDIT_REPORT.md).
+    project, shot = await resolve_or_create_canonical_root(session)
+    if project.source == "ftrack" or shot.source == "ftrack":
         raise RuntimeError("D1 Journey root is missing or protected")
     return project, shot
 
@@ -593,64 +613,281 @@ async def _evidence(
         )
 
 
-async def _result(
+# Package C journey rebase (ICAS_PACKAGE_C_AUDIT_REPORT.md Task 4): the
+# downstream facts that must stay exactly at their J0 baseline through
+# J0, J1 (assessment_complete), J2 (reanchor_draft), and J3
+# (r2_confirmed) -- nothing downstream of the Core Anchor is
+# auto-regenerated until the explicit J4 Completed shortcut/manual CG
+# retranslation happens. Core Anchor facts (revision/draft counts,
+# assessment/proposal/attention) are checked separately per state since
+# those are exactly what differs between J0-J3.
+def _downstream_stable_through_j0_j3(counts: dict[str, int]) -> bool:
+    return (
+        counts["tasks"] == 3
+        and counts["versions"] == 3
+        and counts["execution_anchor_revisions"] == 3
+        and counts["execution_anchor_confirmed_revisions"] == 3
+        and counts["execution_drafts"] == 0
+        and counts["guidance"] == 3
+        and counts["cg_reviews"] == 3
+        and counts["vfx_reviews"] == 1
+        and counts["dependencies"] == 2
+    )
+
+
+def _classify_journey_state(counts: dict[str, int], attention_levels: tuple[str, ...]) -> str:
+    """One canonical classifier over the graph `_load_canonical_graph`
+    returns -- the single place J0-J4 exact invariants
+    (ICAS_PACKAGE_C_JOURNEY_REBASE_CLAUDE_HANDOFF.md §8) are checked.
+    Anything that does not exactly match a locked state is honestly
+    reported as "mixed" -- never guessed at the closest snapshot.
+    """
+    downstream_stable = _downstream_stable_through_j0_j3(counts)
+    single_confirmed_core = (
+        counts["core_anchor_confirmed_revisions"] == 1 and counts["core_drafts"] == 0
+    )
+
+    if (
+        downstream_stable
+        and single_confirmed_core
+        and counts["core_anchor_revisions"] == 1
+        and counts["assessments"] == 0
+        and counts["proposals"] == 0
+    ):
+        return "reset"
+
+    if (
+        downstream_stable
+        and single_confirmed_core
+        and counts["core_anchor_revisions"] == 1
+        and counts["assessments"] == 1
+        and counts["proposals"] in (0, 1)
+        and attention_levels == ("high",)
+    ):
+        return "assessment_complete"
+
+    if (
+        downstream_stable
+        and counts["core_anchor_revisions"] == 2  # R1 confirmed + R2 draft
+        and counts["core_anchor_confirmed_revisions"] == 1
+        and counts["core_drafts"] == 1
+        and counts["assessments"] == 1
+        and counts["proposals"] in (0, 1)
+        and attention_levels == ("high",)
+    ):
+        return "reanchor_draft"
+
+    if (
+        downstream_stable
+        and counts["core_anchor_revisions"] == 2
+        and single_confirmed_core
+        and counts["assessments"] == 1
+        and counts["proposals"] in (0, 1)
+    ):
+        return "r2_confirmed"
+
+    if (
+        counts["tasks"] == 3
+        and counts["versions"] == 6
+        and counts["core_anchor_revisions"] == 2
+        and single_confirmed_core
+        and counts["execution_anchor_revisions"] == 6
+        and counts["execution_anchor_confirmed_revisions"] == 3
+        and counts["execution_drafts"] == 0
+        and counts["assessments"] == 2
+        and counts["proposals"] >= 1
+        and counts["dependencies"] == 4
+        and counts["vfx_reviews"] == 2
+        and counts["cg_reviews"] == 6
+        and counts["guidance"] == 6
+    ):
+        return "completed"
+
+    return "mixed"
+
+
+def _legacy_snapshot_label(journey_state: str) -> str:
+    """Back-compat projection onto the original three-way `snapshot`
+    enum (reset/completed/mixed) that existing callers already read --
+    every intermediate J1/J2/J3 state reports as "mixed" under this
+    field, same as any other non-exact state. New code should read
+    `journey_state` instead."""
+    return journey_state if journey_state in ("reset", "completed") else "mixed"
+
+
+async def _load_canonical_graph(
     session: AsyncSession,
-    snapshot: str,
     project: Project,
     shot: Shot,
     tasks: list[Task],
     versions: list[Version],
 ) -> D1JourneyResult:
-    task_ids, version_ids = [task.id for task in tasks], [version.id for version in versions]
+    """The single canonical D1 Journey graph selector (Package C journey
+    rebase Task 4). Every count and id is scoped consistently by the
+    three canonical Task ids (or the canonical Shot, for Shot-level
+    facts) -- never a Version-description marker for some facts and a
+    Task id for others, which is exactly the inconsistency
+    ICAS_PACKAGE_C_AUDIT_REPORT.md traced the owner-reported
+    "assessments=0, proposals=1" paradox to. `reset_d1_journey`,
+    `load_completed_d1_journey`, and `inspect_d1_journey` all resolve
+    their graph through this one function, so "current" can never be
+    independently (and inconsistently) redefined by a caller again.
+    """
+    task_ids = [task.id for task in tasks]
+    version_ids = [version.id for version in versions]
+
+    core_anchor_id = await session.scalar(
+        select(CoreAnchor.id).where(CoreAnchor.shot_id == shot.id)
+    )
+    core_revision_rows = (
+        list(
+            (
+                await session.scalars(
+                    select(CoreAnchorRevision).where(
+                        CoreAnchorRevision.core_anchor_id == core_anchor_id
+                    )
+                )
+            ).all()
+        )
+        if core_anchor_id is not None
+        else []
+    )
+    core_confirmed_ids = [row.id for row in core_revision_rows if row.status == "confirmed"]
+    core_draft_ids = [row.id for row in core_revision_rows if row.status == "draft"]
+
+    execution_anchor_ids = list(
+        (
+            await session.scalars(
+                select(ExecutionAnchor.id).where(ExecutionAnchor.task_id.in_(task_ids))
+            )
+        ).all()
+    )
+    execution_revision_rows = (
+        list(
+            (
+                await session.scalars(
+                    select(ExecutionAnchorRevision).where(
+                        ExecutionAnchorRevision.execution_anchor_id.in_(execution_anchor_ids)
+                    )
+                )
+            ).all()
+        )
+        if execution_anchor_ids
+        else []
+    )
+    execution_confirmed_ids = [
+        row.id for row in execution_revision_rows if row.status == "confirmed"
+    ]
+    execution_draft_ids = [row.id for row in execution_revision_rows if row.status == "draft"]
+
+    assessment_ids = list(
+        (
+            await session.scalars(
+                select(CrossRoleAssessment.id).where(CrossRoleAssessment.task_id.in_(task_ids))
+            )
+        ).all()
+    )
+
+    proposal_rows = (
+        list(
+            (
+                await session.scalars(
+                    select(ReAnchorProposal).where(
+                        ReAnchorProposal.cross_role_assessment_id.in_(assessment_ids)
+                    )
+                )
+            ).all()
+        )
+        if assessment_ids
+        else []
+    )
+    proposal_ids = [row.id for row in proposal_rows]
+    proposal_assessment_ids = {row.id: row.cross_role_assessment_id for row in proposal_rows}
+
+    signal_rows = (
+        list(
+            (
+                await session.scalars(
+                    select(IntentSignal).where(
+                        IntentSignal.cross_role_assessment_id.in_(assessment_ids)
+                    )
+                )
+            ).all()
+        )
+        if assessment_ids
+        else []
+    )
+    attention_levels = tuple(sorted(row.attention_level for row in signal_rows))
+
+    vfx_review_count = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(VFXSupervisorReview)
+            .where(VFXSupervisorReview.version_id.in_(version_ids))
+        )
+    )
+    cg_review_count = (
+        int(
+            await session.scalar(
+                select(func.count())
+                .select_from(CGSupervisorReview)
+                .where(
+                    CGSupervisorReview.execution_anchor_revision_id.in_(
+                        [row.id for row in execution_revision_rows]
+                    )
+                )
+            )
+        )
+        if execution_revision_rows
+        else 0
+    )
+    guidance_count = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(ArtistAgentGuidance)
+            .where(ArtistAgentGuidance.task_id.in_(task_ids))
+        )
+    )
+    dependency_count = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(TaskDependency)
+            .where(TaskDependency.task_id == tasks[2].id)
+        )
+    )
+
     counts = {
         "projects": 1,
         "shots": 1,
         "tasks": len(tasks),
         "versions": len(versions),
-        "core_anchor_revisions": int(
-            await session.scalar(
-                select(func.count())
-                .select_from(CoreAnchorRevision)
-                .where(
-                    CoreAnchorRevision.core_anchor_id.in_(
-                        select(CoreAnchor.id).where(CoreAnchor.shot_id == shot.id)
-                    )
-                )
-            )
-        ),
-        "execution_anchor_revisions": int(
-            await session.scalar(
-                select(func.count())
-                .select_from(ExecutionAnchorRevision)
-                .where(
-                    ExecutionAnchorRevision.execution_anchor_id.in_(
-                        select(ExecutionAnchor.id).where(ExecutionAnchor.task_id.in_(task_ids))
-                    )
-                )
-            )
-        ),
-        "assessments": int(
-            await session.scalar(
-                select(func.count())
-                .select_from(CrossRoleAssessment)
-                .where(CrossRoleAssessment.version_id.in_(version_ids))
-            )
-        ),
-        "dependencies": int(
-            await session.scalar(
-                select(func.count())
-                .select_from(TaskDependency)
-                .where(TaskDependency.task_id == tasks[2].id)
-            )
-        ),
+        "core_anchor_revisions": len(core_revision_rows),
+        "core_anchor_confirmed_revisions": len(core_confirmed_ids),
+        "core_drafts": len(core_draft_ids),
+        "execution_anchor_revisions": len(execution_revision_rows),
+        "execution_anchor_confirmed_revisions": len(execution_confirmed_ids),
+        "execution_drafts": len(execution_draft_ids),
+        "assessments": len(assessment_ids),
+        "proposals": len(proposal_ids),
+        "vfx_reviews": vfx_review_count,
+        "cg_reviews": cg_review_count,
+        "guidance": guidance_count,
+        "dependencies": dependency_count,
     }
+    journey_state = _classify_journey_state(counts, attention_levels)
+
     return D1JourneyResult(
-        snapshot=snapshot,
+        snapshot=_legacy_snapshot_label(journey_state),
+        journey_state=journey_state,
         project_id=project.id,
         shot_id=shot.id,
         task_ids=tuple(task_ids),
         version_ids=tuple(version_ids),
         counts=counts,
+        assessment_ids=tuple(assessment_ids),
+        proposal_ids=tuple(proposal_ids),
+        proposal_assessment_ids=proposal_assessment_ids,
+        attention_levels=attention_levels,
         completed_at=datetime.now(UTC),
     )
 
@@ -672,7 +909,7 @@ async def _build_reset_d1_journey(session: AsyncSession) -> D1JourneyResult:
         for name, task in zip(("Animation", "Lighting", "Compositing"), tasks, strict=True)
     ]
     await _evidence(session, shot, tasks, versions, execution)
-    return await _result(session, "reset", project, shot, tasks, versions)
+    return await _load_canonical_graph(session, project, shot, tasks, versions)
 
 
 async def reset_d1_journey(session: AsyncSession) -> D1JourneyResult:
@@ -748,8 +985,8 @@ async def load_completed_d1_journey(session: AsyncSession) -> D1JourneyResult:
             resolved_tasks[2].id,
             generator=DeterministicD1CrossRoleAssessmentGenerator(),
         )
-        return await _result(
-            session, "completed", project, shot, resolved_tasks, [*conflict_versions, *resolved]
+        return await _load_canonical_graph(
+            session, project, shot, resolved_tasks, [*conflict_versions, *resolved]
         )
 
 
@@ -777,120 +1014,16 @@ async def inspect_d1_journey(session: AsyncSession) -> D1JourneyResult | None:
     if any(task is None or task.shot_id != shot.id for task in tasks):
         return None
     resolved_tasks: list[Task] = [task for task in tasks if task is not None]
+    task_ids = [task.id for task in resolved_tasks]
+    # Package C journey rebase: scoped by the canonical Task ids
+    # themselves (real FK association), never a Version-description
+    # marker -- a stray/legacy Version can no longer silently count as
+    # journey-owned just because it happens to carry the marker text.
     versions = list(
         (
             await session.scalars(
-                select(Version)
-                .where(
-                    Version.shot_id == shot.id, Version.description.like(f"{D1_JOURNEY_MARKER}%")
-                )
-                .order_by(Version.created_at)
+                select(Version).where(Version.task_id.in_(task_ids)).order_by(Version.created_at)
             )
         ).all()
     )
-    result = await _result(session, "mixed", project, shot, resolved_tasks, versions)
-    task_ids = [task.id for task in resolved_tasks]
-    assessment_ids = [
-        row.id
-        for row in (
-            await session.scalars(
-                select(CrossRoleAssessment).where(CrossRoleAssessment.task_id.in_(task_ids))
-            )
-        ).all()
-    ]
-    proposal_count = int(
-        await session.scalar(
-            select(func.count())
-            .select_from(ReAnchorProposal)
-            .where(ReAnchorProposal.cross_role_assessment_id.in_(assessment_ids))
-        )
-    )
-    vfx_review_count = int(
-        await session.scalar(
-            select(func.count())
-            .select_from(VFXSupervisorReview)
-            .where(VFXSupervisorReview.version_id.in_([version.id for version in versions]))
-        )
-    )
-    execution_ids = select(ExecutionAnchorRevision.id).where(
-        ExecutionAnchorRevision.execution_anchor_id.in_(
-            select(ExecutionAnchor.id).where(ExecutionAnchor.task_id.in_(task_ids))
-        )
-    )
-    cg_review_count = int(
-        await session.scalar(
-            select(func.count())
-            .select_from(CGSupervisorReview)
-            .where(CGSupervisorReview.execution_anchor_revision_id.in_(execution_ids))
-        )
-    )
-    guidance_count = int(
-        await session.scalar(
-            select(func.count())
-            .select_from(ArtistAgentGuidance)
-            .where(ArtistAgentGuidance.task_id.in_(task_ids))
-        )
-    )
-    core_draft_count = int(
-        await session.scalar(
-            select(func.count())
-            .select_from(CoreAnchorRevision)
-            .where(
-                CoreAnchorRevision.core_anchor_id.in_(
-                    select(CoreAnchor.id).where(CoreAnchor.shot_id == shot.id)
-                ),
-                CoreAnchorRevision.status == "draft",
-            )
-        )
-    )
-    execution_draft_count = int(
-        await session.scalar(
-            select(func.count())
-            .select_from(ExecutionAnchorRevision)
-            .where(
-                ExecutionAnchorRevision.id.in_(execution_ids),
-                ExecutionAnchorRevision.status == "draft",
-            )
-        )
-    )
-    counts = {
-        **result.counts,
-        "proposals": proposal_count,
-        "vfx_reviews": vfx_review_count,
-        "cg_reviews": cg_review_count,
-        "guidance": guidance_count,
-        "core_drafts": core_draft_count,
-        "execution_drafts": execution_draft_count,
-        "canonical_tasks_present": len(resolved_tasks),
-    }
-    reset = (
-        counts["tasks"] == 3
-        and counts["versions"] == 3
-        and counts["core_anchor_revisions"] == 1
-        and counts["execution_anchor_revisions"] == 3
-        and counts["assessments"] == 0
-        and counts["proposals"] == 0
-        and counts["dependencies"] == 2
-        and counts["vfx_reviews"] == 1
-        and counts["cg_reviews"] == 3
-        and counts["guidance"] == 3
-        and counts["core_drafts"] == 0
-        and counts["execution_drafts"] == 0
-    )
-    completed = (
-        counts["tasks"] == 3
-        and counts["versions"] == 6
-        and counts["core_anchor_revisions"] == 2
-        and counts["execution_anchor_revisions"] == 6
-        and counts["assessments"] == 2
-        and counts["proposals"] >= 1
-        and counts["dependencies"] == 4
-        and counts["vfx_reviews"] == 2
-        and counts["cg_reviews"] == 6
-        and counts["guidance"] == 6
-        and counts["core_drafts"] == 0
-        and counts["execution_drafts"] == 0
-    )
-    return replace(
-        result, snapshot="reset" if reset else "completed" if completed else "mixed", counts=counts
-    )
+    return await _load_canonical_graph(session, project, shot, resolved_tasks, versions)

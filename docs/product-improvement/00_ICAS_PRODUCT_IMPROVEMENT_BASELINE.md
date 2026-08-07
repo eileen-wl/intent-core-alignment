@@ -1167,6 +1167,63 @@ deferred and Package D has not started.
 
 ---
 
+# 24. Package C journey state-machine rebase checkpoint (2026-08-07)
+
+`ICAS_PACKAGE_C_AUDIT_REPORT.md` traced an owner-observed defect: after an explicit `Reset D1
+Journey`, simply entering a role and browsing normal VFX pages silently produced a Cross-role
+Assessment, a Re-anchor Proposal, and a fourth Artist Guidance the owner never asked for. The root
+cause was role entry's Server Action (`enterDemoRole`) calling the pre-Package-C
+`ensure_d1_scenario` seed pipeline, which still targeted the same canonical `icas-demo:d1:shot-010`
+Shot and its Compositing Task the Package C Journey now owns; `journey-status` also scoped
+"assessments" by a Version-description marker while scoping "proposals"/"guidance" by Task id,
+producing the paradoxical `assessments=0, proposals=1` the owner reported.
+
+This checkpoint rebases Package C around the explicit J0–J4 journey state machine
+(`ICAS_PACKAGE_C_JOURNEY_REBASE_CLAUDE_HANDOFF.md`) and closes both causes:
+
+- role entry (`apps/web/src/app/demo/actions.ts`) no longer ensures, seeds, or otherwise mutates
+  any D1 Journey or demo-fixture data — it only sets the role cookie and redirects;
+- `demo_seed.d1_journey._canonical_root` resolves the canonical Project/Shot 010 through a new,
+  non-journey-state structural bootstrap (`d1_scenario.resolve_or_create_canonical_root`) instead
+  of the rich `ensure_d1_scenario` pipeline; `ensure_d1_scenario`'s own rich Version/Review/
+  Guidance/Assessment generation is retargeted to a separate, noncanonical Shot
+  (`D1_LEGACY_SHOT_EXTERNAL_ID`) so it can no longer collide with the canonical Journey Shot from
+  any call site, present or future;
+- one canonical graph selector (`demo_seed.d1_journey._load_canonical_graph`), scoped consistently
+  by the three canonical Task ids everywhere, now backs `reset_d1_journey`,
+  `load_completed_d1_journey`, and `journey-status` alike, replacing the inconsistent
+  marker-vs-Task-id scoping;
+- `journey-status` reports the full J0–J4 classification (`reset`, `assessment_complete`,
+  `reanchor_draft`, `r2_confirmed`, `completed`, `mixed`) in a new `journey_state` field alongside
+  the existing three-way `snapshot` field kept for compatibility, plus assessment/proposal ids,
+  proposal-to-assessment parent links, and attention levels as diagnostic facts;
+- a read-purity regression exercises every normal VFX/CG/Artist Home/Inbox/Shot/Task/Anchor-Context/
+  journey-status GET path against a canonical semantic snapshot and asserts it is unchanged;
+  explicit J0→J1→J2→J3 transition tests exercise the real domain actions (`Generate Cross-role
+  Assessment`, `create Core Anchor Draft from confirmed`, `confirm Core Anchor revision`) and
+  confirm downstream R1 outputs are never silently replaced.
+
+One pre-existing product-behaviour gap was discovered, not introduced, while building the J0→J1
+transition test: the real `Generate Cross-role Assessment` action, using the generic
+`DeterministicCrossRoleAssessmentGenerator` that `MODEL_PROVIDER=deterministic` (the default in
+every local/dev/test environment) resolves to, can structurally never reach "high" attention or
+propose a re-anchor against the canonical J0 evidence — that generator's own module docstring
+documents it as deliberately keeping every finding at low/medium priority and never proposing a
+re-anchor. `journey-status` honestly reports this as `mixed` rather than misclassifying it as J1.
+Reaching the locked J1 "high attention + Proposal" narrative through the real per-Version action
+requires either a live model provider (`MODEL_PROVIDER=deepseek`) or the D1-Demo-only
+`DeterministicD1CrossRoleAssessmentGenerator` Reset/Load-Completed already use internally. Neither
+the real Agent generation contract nor the demo-only generator was changed to paper over this; it
+is flagged here for an explicit product decision rather than silently fixed.
+
+Focused validation: the full backend suite (980 tests) and full frontend suite (1,009 tests) pass,
+including the new `test_d1_journey_state_machine.py` read-purity/referential-invariant/transition
+tests; Ruff format/check and mypy pass on touched backend files; web TypeScript typecheck and
+ESLint pass. Owner re-validation of the Reset → role-entry → journey-status sequence is still
+pending. Package C remains in progress; Package D has not started.
+
+---
+
 # 22. Package A implementation checkpoint (2026-08-03)
 
 **Status:** Package A implementation, owner visual validation, and the final full merge gate are
