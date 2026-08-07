@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import pytest
+from intent_core_api.demo_seed import d1_journey
 from intent_core_api.demo_seed.d1_journey import (
     ANIMATION_TASK_EXTERNAL_ID,
     CANONICAL_TASK_EXTERNAL_IDS,
+    inspect_d1_journey,
     load_completed_d1_journey,
     reset_d1_journey,
 )
@@ -12,10 +15,15 @@ from intent_core_api.demo_seed.d1_scenario import (
     UNINITIALIZED_SHOT_EXTERNAL_ID,
     ensure_d1_scenario,
 )
-from intent_core_api.integrations.external_link_service import find_linked_entity_id
+from intent_core_api.integrations.external_link_service import (
+    find_linked_entity_id,
+    record_external_link,
+)
 from intent_core_api.integrations.models import ExternalEntityLink
+from intent_core_api.intent.models import Constraint
 from intent_core_api.production_context.models import Shot
-from sqlalchemy import select
+from intent_core_api.versions_and_feedback.models import Version
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -103,3 +111,86 @@ async def test_d1_journey_internal_endpoints(client) -> None:
     completed = await client.post("/internal/demo/d1/load-completed-journey")
     assert completed.status_code == 200
     assert completed.json()["snapshot"] == "completed"
+
+
+async def test_reset_removes_normalized_revision_children_from_existing_data(
+    session: AsyncSession,
+) -> None:
+    await load_completed_d1_journey(session)
+    assert await session.scalar(select(func.count()).select_from(Constraint)) > 0
+
+    result = await reset_d1_journey(session)
+
+    assert result.snapshot == "reset"
+    status = await inspect_d1_journey(session)
+    assert status is not None
+    assert status.snapshot == "reset"
+    assert status.counts["core_drafts"] == status.counts["execution_drafts"] == 0
+
+
+async def test_status_marks_mixed_data_and_exact_completed_truthfully(
+    session: AsyncSession,
+) -> None:
+    reset = await reset_d1_journey(session)
+    session.add(
+        Version(
+            shot_id=reset.shot_id,
+            task_id=reset.task_ids[0],
+            name="Injected mixed Version",
+            version_number=99,
+            description=f"{d1_journey.D1_JOURNEY_MARKER} injected mixed state",
+            source="manual",
+            created_by_actor_kind="human",
+            created_by_actor_id="test",
+            created_by_human_role="vfx_supervisor",
+        )
+    )
+    await session.commit()
+
+    mixed = await inspect_d1_journey(session)
+    assert mixed is not None
+    assert mixed.snapshot == "mixed"
+    assert mixed.counts["versions"] == 4
+
+    await load_completed_d1_journey(session)
+    completed = await inspect_d1_journey(session)
+    assert completed is not None
+    assert completed.snapshot == "completed"
+
+
+async def test_forced_mid_reset_failure_rolls_back_existing_completed_state(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await load_completed_d1_journey(session)
+
+    async def fail_after_delete(*args, **kwargs):
+        raise RuntimeError("forced snapshot failure")
+
+    monkeypatch.setattr(d1_journey, "_anchors", fail_after_delete)
+    with pytest.raises(RuntimeError, match="forced snapshot failure"):
+        await reset_d1_journey(session)
+
+    status = await inspect_d1_journey(session)
+    assert status is not None
+    assert status.snapshot == "completed"
+
+
+async def test_protected_ftrack_link_aborts_without_mutating_reset_state(
+    session: AsyncSession,
+) -> None:
+    reset = await reset_d1_journey(session)
+    await record_external_link(
+        session,
+        entity_type="task",
+        entity_id=reset.task_ids[0],
+        source="ftrack",
+        external_id="ftrack-protected-d1-animation",
+    )
+    await session.commit()
+
+    with pytest.raises(RuntimeError, match="ftrack-linked"):
+        await reset_d1_journey(session)
+
+    status = await inspect_d1_journey(session)
+    assert status is not None
+    assert status.snapshot == "reset"

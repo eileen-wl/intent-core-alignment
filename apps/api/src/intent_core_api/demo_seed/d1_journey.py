@@ -10,7 +10,9 @@ records proven to belong to the three canonical D1 Journey Tasks.
 from __future__ import annotations
 
 import uuid
-from dataclasses import dataclass
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from typing import Any, Final
 
@@ -26,10 +28,7 @@ from intent_core_api.agents.artist_guidance_service import DeterministicArtistGu
 from intent_core_api.agents.cg_supervisor_review_service import (
     DeterministicCGSupervisorReviewGenerator,
 )
-from intent_core_api.agents.cross_role_assessment_service import (
-    DeterministicCrossRoleAssessmentGenerator,
-    generate_cross_role_assessment,
-)
+from intent_core_api.agents.cross_role_assessment_service import generate_cross_role_assessment
 from intent_core_api.agents.models import AgentRun, ContextSnapshot
 from intent_core_api.agents.vfx_supervisor_review_service import (
     DeterministicVFXSupervisorReviewGenerator,
@@ -41,6 +40,7 @@ from intent_core_api.demo_seed.d1_scenario import (
     D1_PROJECT_EXTERNAL_ID,
     D1_SHOT_EXTERNAL_ID,
     D1_TASK_EXTERNAL_ID,
+    DeterministicD1CrossRoleAssessmentGenerator,
     ensure_d1_scenario,
 )
 from intent_core_api.integrations.external_link_service import (
@@ -50,17 +50,25 @@ from intent_core_api.integrations.external_link_service import (
 from intent_core_api.integrations.models import ExternalEntityLink
 from intent_core_api.intent import core_anchor_service, execution_anchor_service
 from intent_core_api.intent.models import (
+    AnchorReference,
     CGSupervisorReview,
+    Constraint,
+    ContextReconstruction,
     CoreAnchor,
     CoreAnchorRevision,
+    DriftRisk,
     ExecutionAnchor,
     ExecutionAnchorRevision,
     HumanGate,
     IntentBrief,
+    IntentDecomposition,
+    OpenQuestion,
+    VariationZone,
 )
 from intent_core_api.production_context.models import Project, Shot, Task
 from intent_core_api.versions_and_feedback import service as version_service
 from intent_core_api.versions_and_feedback.models import (
+    AlignmentAssessment,
     ArtistAgentGuidance,
     CrossRoleAssessment,
     IntentSignal,
@@ -99,6 +107,26 @@ class D1JourneyResult:
     version_ids: tuple[uuid.UUID, ...]
     counts: dict[str, int]
     completed_at: datetime
+
+
+@asynccontextmanager
+async def _atomic_snapshot(session: AsyncSession) -> AsyncIterator[None]:
+    """Turn service-local commits into flushes until the snapshot is complete."""
+
+    original_commit = session.commit
+
+    async def flush() -> None:
+        await session.flush()
+
+    session.commit = flush  # type: ignore[method-assign]
+    try:
+        yield
+        session.commit = original_commit  # type: ignore[method-assign]
+        await original_commit()
+    except Exception:
+        session.commit = original_commit  # type: ignore[method-assign]
+        await session.rollback()
+        raise
 
 
 def _core_content(revision: str) -> dict[str, Any]:
@@ -275,6 +303,13 @@ async def _delete_journey_records(
         else []
     )
     assessment_ids = [row.id for row in assessments]
+    entity_ids = [*core_ids, *execution_ids]
+    decision_ids = [
+        row
+        for row in (
+            await session.scalars(select(Decision.id).where(Decision.entity_id.in_(entity_ids)))
+        ).all()
+    ]
     vfx = (
         list(
             (
@@ -308,17 +343,61 @@ async def _delete_journey_records(
             )
         ).all()
     )
+    decompositions = list(
+        (
+            await session.scalars(
+                select(IntentDecomposition).where(IntentDecomposition.shot_id == shot.id)
+            )
+        ).all()
+    )
+    reconstructions = list(
+        (
+            await session.scalars(
+                select(ContextReconstruction).where(ContextReconstruction.shot_id == shot.id)
+            )
+        ).all()
+    )
+    alignment_assessments = list(
+        (
+            await session.scalars(
+                select(AlignmentAssessment).where(
+                    or_(
+                        AlignmentAssessment.version_id.in_(version_ids),
+                        AlignmentAssessment.core_anchor_revision_id.in_(core_ids),
+                    )
+                )
+            )
+        ).all()
+    )
     run_ids = (
         [row.agent_run_id for row in vfx]
         + [row.agent_run_id for row in cg]
         + [row.agent_run_id for row in guidance]
         + [row.agent_run_id for row in assessments]
+        + [row.agent_run_id for row in decompositions]
+        + [row.agent_run_id for row in reconstructions]
+        + [row.agent_run_id for row in alignment_assessments]
     )
     context_ids = (
         [row.context_snapshot_id for row in vfx]
         + [row.context_snapshot_id for row in cg]
         + [row.context_snapshot_id for row in guidance]
         + [row.context_snapshot_id for row in assessments]
+        + [row.context_snapshot_id for row in decompositions]
+        + [row.context_snapshot_id for row in reconstructions]
+        + [row.context_snapshot_id for row in alignment_assessments]
+    )
+    context_ids.extend(
+        row
+        for row in (
+            await session.scalars(
+                select(CoreAnchorRevision.context_snapshot_id).where(
+                    CoreAnchorRevision.id.in_(core_ids),
+                    CoreAnchorRevision.context_snapshot_id.is_not(None),
+                )
+            )
+        ).all()
+        if row is not None
     )
     await session.execute(
         delete(ReAnchorProposal).where(
@@ -331,6 +410,11 @@ async def _delete_journey_records(
     await session.execute(
         delete(CrossRoleAssessment).where(CrossRoleAssessment.id.in_(assessment_ids))
     )
+    await session.execute(
+        delete(AlignmentAssessment).where(
+            AlignmentAssessment.id.in_([row.id for row in alignment_assessments])
+        )
+    )
     await session.execute(delete(TaskDependency).where(TaskDependency.task_id.in_(task_ids)))
     await session.execute(delete(ReviewNote).where(ReviewNote.version_id.in_(version_ids)))
     await session.execute(
@@ -342,8 +426,9 @@ async def _delete_journey_records(
     await session.execute(
         delete(ArtistAgentGuidance).where(ArtistAgentGuidance.id.in_([row.id for row in guidance]))
     )
-    await session.execute(delete(AgentRun).where(AgentRun.id.in_(run_ids)))
-    await session.execute(delete(ContextSnapshot).where(ContextSnapshot.id.in_(context_ids)))
+    await session.execute(
+        delete(WorkflowTransition).where(WorkflowTransition.entity_id.in_(entity_ids))
+    )
     await session.execute(
         delete(HumanGate).where(
             or_(
@@ -352,11 +437,12 @@ async def _delete_journey_records(
             )
         )
     )
-    entity_ids = [*core_ids, *execution_ids]
-    await session.execute(delete(Decision).where(Decision.entity_id.in_(entity_ids)))
     await session.execute(
-        delete(WorkflowTransition).where(WorkflowTransition.entity_id.in_(entity_ids))
+        update(Decision)
+        .where(Decision.supersedes_decision_id.in_(decision_ids))
+        .values(supersedes_decision_id=None)
     )
+    await session.execute(delete(Decision).where(Decision.entity_id.in_(entity_ids)))
     await session.execute(
         update(ExecutionAnchor)
         .where(ExecutionAnchor.id.in_([anchor.id for anchor in execution_anchors]))
@@ -368,6 +454,19 @@ async def _delete_journey_records(
         )
     await session.flush()
     await session.execute(
+        delete(Constraint).where(Constraint.core_anchor_revision_id.in_(core_ids))
+    )
+    await session.execute(
+        delete(VariationZone).where(VariationZone.core_anchor_revision_id.in_(core_ids))
+    )
+    await session.execute(delete(DriftRisk).where(DriftRisk.core_anchor_revision_id.in_(core_ids)))
+    await session.execute(
+        delete(AnchorReference).where(AnchorReference.core_anchor_revision_id.in_(core_ids))
+    )
+    await session.execute(
+        delete(OpenQuestion).where(OpenQuestion.core_anchor_revision_id.in_(core_ids))
+    )
+    await session.execute(
         delete(ExecutionAnchorRevision).where(ExecutionAnchorRevision.id.in_(execution_ids))
     )
     await session.execute(delete(CoreAnchorRevision).where(CoreAnchorRevision.id.in_(core_ids)))
@@ -378,6 +477,18 @@ async def _delete_journey_records(
     )
     if core is not None:
         await session.execute(delete(CoreAnchor).where(CoreAnchor.id == core.id))
+    await session.execute(
+        delete(IntentDecomposition).where(
+            IntentDecomposition.id.in_([row.id for row in decompositions])
+        )
+    )
+    await session.execute(
+        delete(ContextReconstruction).where(
+            ContextReconstruction.id.in_([row.id for row in reconstructions])
+        )
+    )
+    await session.execute(delete(AgentRun).where(AgentRun.id.in_(run_ids)))
+    await session.execute(delete(ContextSnapshot).where(ContextSnapshot.id.in_(context_ids)))
     await session.execute(delete(Version).where(Version.id.in_(version_ids)))
     await session.execute(
         delete(IntentBrief).where(
@@ -544,7 +655,7 @@ async def _result(
     )
 
 
-async def reset_d1_journey(session: AsyncSession) -> D1JourneyResult:
+async def _build_reset_d1_journey(session: AsyncSession) -> D1JourneyResult:
     project, shot = await _canonical_root(session)
     tasks = await _canonical_tasks(session, shot)
     await _delete_journey_records(session, project, shot, tasks)
@@ -564,69 +675,82 @@ async def reset_d1_journey(session: AsyncSession) -> D1JourneyResult:
     return await _result(session, "reset", project, shot, tasks, versions)
 
 
+async def reset_d1_journey(session: AsyncSession) -> D1JourneyResult:
+    async with _atomic_snapshot(session):
+        return await _build_reset_d1_journey(session)
+
+
 async def load_completed_d1_journey(session: AsyncSession) -> D1JourneyResult:
-    await reset_d1_journey(session)
-    project, shot = await _canonical_root(session)
-    tasks = await _canonical_tasks(session, shot)
-    conflict_versions = list(
-        (
-            await session.scalars(
-                select(Version)
-                .where(
-                    Version.shot_id == shot.id, Version.description.like(f"{D1_JOURNEY_MARKER}%")
+    async with _atomic_snapshot(session):
+        reset = await _build_reset_d1_journey(session)
+        project = await session.get(Project, reset.project_id)
+        shot = await session.get(Shot, reset.shot_id)
+        tasks = [await session.get(Task, task_id) for task_id in reset.task_ids]
+        if project is None or shot is None or any(task is None for task in tasks):
+            raise RuntimeError("D1 Journey reset did not produce its canonical records")
+        resolved_tasks: list[Task] = [task for task in tasks if task is not None]
+        conflict_versions = list(
+            (
+                await session.scalars(
+                    select(Version)
+                    .where(
+                        Version.shot_id == shot.id,
+                        Version.description.like(f"{D1_JOURNEY_MARKER}%"),
+                    )
+                    .order_by(Version.created_at)
                 )
-                .order_by(Version.created_at)
-            )
-        ).all()
-    )
-    await generate_cross_role_assessment(
-        session,
-        _SEED_VFX,
-        conflict_versions[2].id,
-        tasks[2].id,
-        generator=DeterministicCrossRoleAssessmentGenerator(),
-    )
-    core = await core_anchor_service.create_draft_revision(
-        session, _SEED_VFX, shot.id, _core_content("R2")
-    )
-    await core_anchor_service.confirm_revision(
-        session, _SEED_VFX, core.id, f"{D1_JOURNEY_MARKER} Human VFX confirmed Core Anchor R2."
-    )
-    execution = []
-    for task in tasks:
-        draft = await execution_anchor_service.create_draft_revision(
-            session, _SEED_CG, task.id, _execution_content(task.department or "comp", "R2")
+            ).all()
         )
-        execution.append(
-            await execution_anchor_service.confirm_revision(
-                session,
-                _SEED_CG,
-                draft.id,
-                f"{D1_JOURNEY_MARKER} Human CG confirmed {task.department} Execution Anchor R2.",
-            )
-        )
-    resolved = [
-        await _version(
+        await generate_cross_role_assessment(
             session,
-            shot,
-            task,
-            f"{name} Resolved V2",
-            2,
-            f"{D1_JOURNEY_MARKER} {name} resolved version applying Core Anchor R2 combined-intensity constraints.",
+            _SEED_VFX,
+            conflict_versions[2].id,
+            resolved_tasks[2].id,
+            generator=DeterministicD1CrossRoleAssessmentGenerator(),
         )
-        for name, task in zip(("Animation", "Lighting", "Compositing"), tasks, strict=True)
-    ]
-    await _evidence(session, shot, tasks, resolved, execution)
-    await generate_cross_role_assessment(
-        session,
-        _SEED_VFX,
-        resolved[2].id,
-        tasks[2].id,
-        generator=DeterministicCrossRoleAssessmentGenerator(),
-    )
-    return await _result(
-        session, "completed", project, shot, tasks, [*conflict_versions, *resolved]
-    )
+        core = await core_anchor_service.create_draft_revision(
+            session, _SEED_VFX, shot.id, _core_content("R2")
+        )
+        await core_anchor_service.confirm_revision(
+            session, _SEED_VFX, core.id, f"{D1_JOURNEY_MARKER} Human VFX confirmed Core Anchor R2."
+        )
+        execution = []
+        for task in resolved_tasks:
+            draft = await execution_anchor_service.create_draft_revision(
+                session, _SEED_CG, task.id, _execution_content(task.department or "comp", "R2")
+            )
+            execution.append(
+                await execution_anchor_service.confirm_revision(
+                    session,
+                    _SEED_CG,
+                    draft.id,
+                    f"{D1_JOURNEY_MARKER} Human CG confirmed {task.department} Execution Anchor R2.",
+                )
+            )
+        resolved = [
+            await _version(
+                session,
+                shot,
+                task,
+                f"{name} Resolved V2",
+                2,
+                f"{D1_JOURNEY_MARKER} {name} resolved version applying Core Anchor R2 combined-intensity constraints.",
+            )
+            for name, task in zip(
+                ("Animation", "Lighting", "Compositing"), resolved_tasks, strict=True
+            )
+        ]
+        await _evidence(session, shot, resolved_tasks, resolved, execution)
+        await generate_cross_role_assessment(
+            session,
+            _SEED_VFX,
+            resolved[2].id,
+            resolved_tasks[2].id,
+            generator=DeterministicD1CrossRoleAssessmentGenerator(),
+        )
+        return await _result(
+            session, "completed", project, shot, resolved_tasks, [*conflict_versions, *resolved]
+        )
 
 
 async def inspect_d1_journey(session: AsyncSession) -> D1JourneyResult | None:
@@ -664,11 +788,109 @@ async def inspect_d1_journey(session: AsyncSession) -> D1JourneyResult | None:
             )
         ).all()
     )
-    return await _result(
-        session,
-        "completed" if len(versions) == 6 else "reset",
-        project,
-        shot,
-        resolved_tasks,
-        versions,
+    result = await _result(session, "mixed", project, shot, resolved_tasks, versions)
+    task_ids = [task.id for task in resolved_tasks]
+    assessment_ids = [
+        row.id
+        for row in (
+            await session.scalars(
+                select(CrossRoleAssessment).where(CrossRoleAssessment.task_id.in_(task_ids))
+            )
+        ).all()
+    ]
+    proposal_count = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(ReAnchorProposal)
+            .where(ReAnchorProposal.cross_role_assessment_id.in_(assessment_ids))
+        )
+    )
+    vfx_review_count = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(VFXSupervisorReview)
+            .where(VFXSupervisorReview.version_id.in_([version.id for version in versions]))
+        )
+    )
+    execution_ids = select(ExecutionAnchorRevision.id).where(
+        ExecutionAnchorRevision.execution_anchor_id.in_(
+            select(ExecutionAnchor.id).where(ExecutionAnchor.task_id.in_(task_ids))
+        )
+    )
+    cg_review_count = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(CGSupervisorReview)
+            .where(CGSupervisorReview.execution_anchor_revision_id.in_(execution_ids))
+        )
+    )
+    guidance_count = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(ArtistAgentGuidance)
+            .where(ArtistAgentGuidance.task_id.in_(task_ids))
+        )
+    )
+    core_draft_count = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(CoreAnchorRevision)
+            .where(
+                CoreAnchorRevision.core_anchor_id.in_(
+                    select(CoreAnchor.id).where(CoreAnchor.shot_id == shot.id)
+                ),
+                CoreAnchorRevision.status == "draft",
+            )
+        )
+    )
+    execution_draft_count = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(ExecutionAnchorRevision)
+            .where(
+                ExecutionAnchorRevision.id.in_(execution_ids),
+                ExecutionAnchorRevision.status == "draft",
+            )
+        )
+    )
+    counts = {
+        **result.counts,
+        "proposals": proposal_count,
+        "vfx_reviews": vfx_review_count,
+        "cg_reviews": cg_review_count,
+        "guidance": guidance_count,
+        "core_drafts": core_draft_count,
+        "execution_drafts": execution_draft_count,
+        "canonical_tasks_present": len(resolved_tasks),
+    }
+    reset = (
+        counts["tasks"] == 3
+        and counts["versions"] == 3
+        and counts["core_anchor_revisions"] == 1
+        and counts["execution_anchor_revisions"] == 3
+        and counts["assessments"] == 0
+        and counts["proposals"] == 0
+        and counts["dependencies"] == 2
+        and counts["vfx_reviews"] == 1
+        and counts["cg_reviews"] == 3
+        and counts["guidance"] == 3
+        and counts["core_drafts"] == 0
+        and counts["execution_drafts"] == 0
+    )
+    completed = (
+        counts["tasks"] == 3
+        and counts["versions"] == 6
+        and counts["core_anchor_revisions"] == 2
+        and counts["execution_anchor_revisions"] == 6
+        and counts["assessments"] == 2
+        and counts["proposals"] >= 1
+        and counts["dependencies"] == 4
+        and counts["vfx_reviews"] == 2
+        and counts["cg_reviews"] == 6
+        and counts["guidance"] == 6
+        and counts["core_drafts"] == 0
+        and counts["execution_drafts"] == 0
+    )
+    return replace(
+        result, snapshot="reset" if reset else "completed" if completed else "mixed", counts=counts
     )
