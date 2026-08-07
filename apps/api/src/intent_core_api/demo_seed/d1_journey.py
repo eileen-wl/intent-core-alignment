@@ -634,6 +634,8 @@ async def _evidence(
     tasks: list[Task],
     versions: list[Version],
     execution: list[ExecutionAnchorRevision],
+    *,
+    dependency_resolved: bool = False,
 ) -> None:
     session.add(
         IntentBrief(
@@ -672,13 +674,28 @@ async def _evidence(
             task.id,
             generator=DeterministicArtistGuidanceGenerator(),
         )
+    # Package C follow-up (dependency history across re-anchor): before Core
+    # Anchor R2 is confirmed, no "shared/combined intensity ceiling" exists
+    # yet -- that concept is introduced by the Re-anchor Proposal and first
+    # becomes authoritative in Core Anchor R2. R1-era evidence (the call
+    # from `_build_reset_d1_journey`, live through J0-J3) may only describe
+    # the real cross-department dependency and the shared need for
+    # controlled, restrained, readable local content -- never the ceiling
+    # itself. Only the resolved/R2-era call (from `load_completed_d1_journey`,
+    # after R2 has actually been confirmed and propagated downstream) may
+    # reference the ceiling.
+    dependency_description = (
+        "preserving the shared intensity ceiling"
+        if dependency_resolved
+        else "staying within its own confirmed local range while preserving controlled, restrained, readable threat"
+    )
     for _task, label in zip(tasks[:2], ("Animation", "Lighting"), strict=True):
         await dependency_service.create_dependency(
             session,
             _SEED_CG,
             tasks[2].id,
             kind="dependency",
-            description=f"{D1_JOURNEY_MARKER} Compositing integration depends on {label} preserving the shared intensity ceiling.",
+            description=f"{D1_JOURNEY_MARKER} Compositing integration depends on {label} {dependency_description}.",
             severity="high",
             related_version_id=versions[2].id,
         )
@@ -1048,7 +1065,9 @@ async def load_completed_d1_journey(session: AsyncSession) -> D1JourneyResult:
                 ("Animation", "Lighting", "Compositing"), resolved_tasks, strict=True
             )
         ]
-        await _evidence(session, shot, resolved_tasks, resolved, execution)
+        await _evidence(
+            session, shot, resolved_tasks, resolved, execution, dependency_resolved=True
+        )
         await generate_cross_role_assessment(
             session,
             _SEED_VFX,

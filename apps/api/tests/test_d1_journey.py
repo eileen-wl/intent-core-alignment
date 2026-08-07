@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import pytest
+from intent_core_api.cross_department.models import TaskDependency
 from intent_core_api.demo_seed import d1_journey
 from intent_core_api.demo_seed.d1_journey import (
     ANIMATION_TASK_EXTERNAL_ID,
@@ -69,6 +70,33 @@ async def test_completed_is_bounded_and_idempotent(session: AsyncSession) -> Non
     assert first.counts["core_anchor_revisions"] == 2
     assert first.counts["execution_anchor_revisions"] == 6
     assert first.counts["assessments"] == 2
+
+
+async def test_completed_resolved_dependency_evidence_may_reference_ceiling_only_after_completion(
+    session: AsyncSession,
+) -> None:
+    """Requirement 3 (dependency history across re-anchor follow-up):
+    once Core Anchor R2 has actually been confirmed and propagated
+    downstream (`load_completed_d1_journey`'s J4 completed state), the
+    resulting TaskDependency evidence holds both eras side by side --
+    the R1-era rows remain exactly what Reset produces (ceiling-free,
+    local-range wording), and only the newer resolved/R2-era rows may
+    reference the combined-intensity ceiling.
+    """
+    completed = await load_completed_d1_journey(session)
+    comp_task_id = completed.task_ids[2]
+
+    rows = (
+        await session.scalars(select(TaskDependency).where(TaskDependency.task_id == comp_task_id))
+    ).all()
+    assert len(rows) == 4
+
+    with_ceiling = [row for row in rows if "intensity ceiling" in row.description.lower()]
+    without_ceiling = [row for row in rows if "intensity ceiling" not in row.description.lower()]
+    assert len(with_ceiling) == 2
+    assert len(without_ceiling) == 2
+    for row in without_ceiling:
+        assert "confirmed local range" in row.description.lower()
 
 
 async def test_reset_completed_reset_preserves_other_d1_fixture(session: AsyncSession) -> None:

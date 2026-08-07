@@ -20,6 +20,7 @@ from intent_core_api.agents.cross_role_assessment_service import (
     DeterministicCrossRoleAssessmentGenerator,
     generate_cross_role_assessment,
 )
+from intent_core_api.cross_department.models import TaskDependency
 from intent_core_api.demo_seed.d1_journey import (
     D1JourneyResult,
     inspect_d1_journey,
@@ -594,6 +595,18 @@ def _assert_no_future_r2_leakage(content_by_task: dict[uuid.UUID, dict[str, Any]
             )
 
 
+async def _dependency_descriptions(
+    session: AsyncSession, task_id: uuid.UUID
+) -> dict[uuid.UUID, str]:
+    """Every TaskDependency row's own id -> description text targeting
+    one Task -- for D1, always Compositing, the Task the cross-
+    department dependency evidence points into."""
+    rows = (
+        await session.scalars(select(TaskDependency).where(TaskDependency.task_id == task_id))
+    ).all()
+    return {row.id: row.description for row in rows}
+
+
 async def test_reset_execution_r1_has_no_future_r2_leakage(session: AsyncSession) -> None:
     """Requirement 1 + 7: immediately after Reset (J0), Animation,
     Lighting, and Compositing's confirmed Execution Anchor R1 each
@@ -617,6 +630,25 @@ async def test_reset_execution_r1_has_no_future_r2_leakage(session: AsyncSession
     ).lower()
     for phrase in ("lunge", "warm rim", "bloom"):
         assert phrase in all_text
+
+
+async def test_reset_task_dependency_has_no_future_r2_leakage(session: AsyncSession) -> None:
+    """Requirement 1 (dependency history across re-anchor follow-up):
+    immediately after Reset (J0), the cross-department TaskDependency
+    evidence into Compositing (from Animation and from Lighting)
+    describes only the real R1-era dependency and the shared need for
+    controlled, restrained, readable local content -- never the
+    combined-intensity ceiling, which does not exist until the
+    Re-anchor Proposal and Core Anchor R2.
+    """
+    reset = await reset_d1_journey(session)
+    comp_task_id = reset.task_ids[2]
+    descriptions = await _dependency_descriptions(session, comp_task_id)
+    assert len(descriptions) == 2
+    for description in descriptions.values():
+        lowered = description.lower()
+        assert "intensity ceiling" not in lowered
+        assert "confirmed local range" in lowered
 
 
 # ---------------------------------------------------------------------------
@@ -781,6 +813,13 @@ async def test_j2_to_j3_confirm_r2_downstream_not_auto_replaced(
     # after the re-anchor, and still carries no future-R2 leakage.
     r1_content_before = await _confirmed_execution_content_by_task(session, reset.task_ids)
     _assert_no_future_r2_leakage(r1_content_before)
+    # Requirement 2 (dependency history follow-up): the R1-era
+    # TaskDependency evidence is also still ceiling-free before the
+    # re-anchor.
+    dependency_descriptions_before = await _dependency_descriptions(session, comp_task_id)
+    assert len(dependency_descriptions_before) == 2
+    for description in dependency_descriptions_before.values():
+        assert "intensity ceiling" not in description.lower()
     r1_guidance_ids = {
         row.id
         for row in (
@@ -863,6 +902,12 @@ async def test_j2_to_j3_confirm_r2_downstream_not_auto_replaced(
     # Requirement 1 + 7 again, post-J3: still no future-R2 leakage.
     _assert_no_future_r2_leakage(r1_content_after)
 
+    # Requirement 2 (dependency history follow-up): confirming Core R2
+    # does not mutate the historical R1-era TaskDependency evidence into
+    # R2-aware wording -- same rows, same ceiling-free descriptions.
+    dependency_descriptions_after = await _dependency_descriptions(session, comp_task_id)
+    assert dependency_descriptions_after == dependency_descriptions_before
+
     # Requirement 3 + 6: R1 is marked outdated purely because its own
     # `based_on_core_anchor_revision_number` (1) no longer matches the
     # Shot's current confirmed Core Anchor revision (2) -- never because
@@ -887,9 +932,14 @@ async def test_j2_to_j3_confirm_r2_downstream_not_auto_replaced(
             assert review_response.status_code == 200
             execution_response = await client.get(f"/intent/tasks/{task_id}/execution-anchor")
             assert execution_response.status_code == 200
+            # Requirement 4 (dependency history follow-up): repeatedly
+            # reading a Task's dependency evidence is itself read-only.
+            dependencies_response = await client.get(f"/tasks/{task_id}/dependencies")
+            assert dependencies_response.status_code == 200
     after_review = await inspect_d1_journey(session)
     assert after_review is not None
     assert _semantic_snapshot(before_review) == _semantic_snapshot(after_review)
     assert (
         await _confirmed_execution_content_by_task(session, reset.task_ids)
     ) == r1_content_before
+    assert (await _dependency_descriptions(session, comp_task_id)) == dependency_descriptions_before
