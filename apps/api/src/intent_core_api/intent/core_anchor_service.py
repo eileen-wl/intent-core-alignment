@@ -66,6 +66,7 @@ from intent_core_api.intent.models import (
     VariationZone,
 )
 from intent_core_api.production_context.models import Shot
+from intent_core_api.versions_and_feedback.models import CrossRoleAssessment, ReAnchorProposal
 from intent_core_api.workflow import decision_service, transition_service
 from intent_core_api.workflow.actors import (
     ActorContext,
@@ -352,6 +353,94 @@ def _revision_content_for_draft(revision: CoreAnchorRevision) -> dict[str, Any]:
     return content
 
 
+# The one scalar Core Anchor field a Re-anchor Proposal may target
+# (`ReAnchorField` also allows the four list-type semantic collections
+# below) -- see `intent_core_contracts.api.cross_role_assessment.
+# ReAnchorField`.
+_PROPOSAL_SCALAR_FIELDS = frozenset({"core_summary"})
+# The corresponding semantic-collection item key for each list-type
+# `ReAnchorField` -- a subset of `_SEMANTIC_COLLECTIONS` above (a
+# Proposal never targets "references", which is not a valid
+# `ReAnchorField`).
+_PROPOSAL_LIST_FIELD_ITEM_KEYS: dict[str, str] = {
+    "constraints": "content",
+    "variation_zones": "content",
+    "drift_risks": "description",
+    "open_questions": "question",
+}
+
+
+async def _find_current_reanchor_proposal(
+    session: AsyncSession, shot_id: uuid.UUID, confirmed_revision_id: uuid.UUID
+) -> ReAnchorProposal | None:
+    """The Shot's current Re-anchor Proposal, if one exists: the newest
+    CrossRoleAssessment for this Shot, but only when it was generated
+    against exactly the confirmed revision a new Draft is about to be
+    cloned from, and only when it carries a Proposal. This is the same
+    "current" definition the Intent Workspace's own Proposal-review
+    section already uses to decide whether to show "Create Core Anchor
+    R{n+1} draft from proposal" in the first place (`features/vfx/
+    intent-workspace/data.ts`'s `currentReanchorProposalAssessment`) --
+    so what a Human VFX Supervisor reviewed before clicking that action
+    is exactly what gets applied below, never a stale or unrelated one.
+    """
+    assessment = await session.scalar(
+        select(CrossRoleAssessment)
+        .where(CrossRoleAssessment.shot_id == shot_id)
+        .order_by(CrossRoleAssessment.created_at.desc())
+        .limit(1)
+    )
+    if assessment is None or assessment.core_anchor_revision_id != confirmed_revision_id:
+        return None
+    proposal: ReAnchorProposal | None = await session.scalar(
+        select(ReAnchorProposal).where(ReAnchorProposal.cross_role_assessment_id == assessment.id)
+    )
+    return proposal
+
+
+def _apply_proposed_field_changes(
+    content: dict[str, Any], proposal_output: dict[str, Any]
+) -> dict[str, Any]:
+    """Applies a Re-anchor Proposal's own structured ``proposed_fields``
+    onto a Draft's baseline content (already a clone of the confirmed
+    revision this Draft starts from) -- the smallest truthful way to
+    make "Create Core Anchor R{n+1} draft from proposal" actually
+    reflect the Proposal a Human VFX Supervisor just reviewed, instead
+    of silently discarding it and producing a plain, indistinguishable
+    clone.
+
+    Every field not named by a ``proposed_fields`` entry is left exactly
+    as cloned -- ``proposed_direction`` is the only text ever used here,
+    read directly from the real, already-persisted Proposal, never a
+    hardcoded string.
+
+    For a list-type field (``constraints`` / ``variation_zones`` /
+    ``drift_risks`` / ``open_questions``), the proposed change is
+    *appended*: the existing confirmed items are preserved exactly,
+    never replaced or reordered away, since a Proposal proposes an
+    addition or refinement, not a wholesale rewrite. For the one
+    scalar field (``core_summary``), the proposed text replaces it --
+    there is no way to "append" to a single summary sentence.
+
+    The result is still only ever a Draft: the Human VFX Supervisor
+    reviews, and can further edit or remove any of this, before
+    confirming -- this function never confirms anything and is never
+    called anywhere except while building a new Draft's initial
+    content.
+    """
+    updated = dict(content)
+    for field_proposal in proposal_output.get("proposed_fields", []):
+        field = field_proposal["field"]
+        proposed_text = field_proposal["proposed_direction"]
+        if field in _PROPOSAL_LIST_FIELD_ITEM_KEYS:
+            item_key = _PROPOSAL_LIST_FIELD_ITEM_KEYS[field]
+            existing_items = list(updated.get(field) or [])
+            updated[field] = [*existing_items, {item_key: proposed_text}]
+        elif field in _PROPOSAL_SCALAR_FIELDS:
+            updated[field] = proposed_text
+    return updated
+
+
 async def create_draft_revision_from_confirmed(
     session: AsyncSession, actor: ActorContext, shot_id: uuid.UUID
 ) -> CoreAnchorRevision:
@@ -369,6 +458,18 @@ async def create_draft_revision_from_confirmed(
     ``create_core_anchor_draft_from_decomposition`` -- this is that same
     business rule, enforced here too since this is a third caller of
     ``create_draft_revision``.
+
+    When the Shot's current Re-anchor Proposal exists (see
+    ``_find_current_reanchor_proposal``), its own structured
+    ``proposed_fields`` are applied on top of the cloned baseline before
+    the Draft is created (see ``_apply_proposed_field_changes``) -- this
+    is the one real "Create Core Anchor R{n+1} draft from proposal" path
+    the Intent Workspace's Re-anchor Proposal Review section calls, and
+    the only reason this otherwise-plain clone action ever differs from
+    a byte-for-byte copy of the confirmed revision. No other caller of
+    this function changes: a Shot with no current Proposal (the ordinary
+    "Create new revision" case, and the only case this function needed
+    to handle before) still gets an exact clone.
     """
     anchor = await get_core_anchor_for_shot(session, shot_id)
     if anchor is None or anchor.active_revision_id is None:
@@ -392,6 +493,9 @@ async def create_draft_revision_from_confirmed(
         )
 
     content = _revision_content_for_draft(confirmed)
+    proposal = await _find_current_reanchor_proposal(session, shot_id, confirmed.id)
+    if proposal is not None:
+        content = _apply_proposed_field_changes(content, proposal.proposal_output)
     return await create_draft_revision(session, actor, shot_id, content)
 
 

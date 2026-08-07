@@ -271,15 +271,15 @@ def _assert_content_reflects_three_department_conflict(assessment_output: dict[s
         "revisions, not just Compositing's"
     )
 
-    # The Proposal recommends clarifying a combined-intensity ceiling in
-    # a future Core Anchor revision.
+    # The Proposal recommends capping the combined intensity of motion
+    # acceleration, warm rim/contrast, bloom, particles, and debris.
     proposal = assessment_output["re_anchor_proposal"]
     assert proposal is not None
     proposal_text = " ".join(
         [proposal["reason_for_consideration"]]
         + [field["proposed_direction"] for field in proposal["proposed_fields"]]
     ).lower()
-    assert "combined-intensity ceiling" in proposal_text
+    assert "combined intensity" in proposal_text
 
 
 async def _assert_reaches_locked_j1_state(
@@ -568,6 +568,12 @@ async def test_j1_to_j2_use_proposal_creates_core_draft(
     j1 = await inspect_d1_journey(session)
     assert j1 is not None and j1.journey_state == "assessment_complete"
 
+    r1_revisions_before = (
+        await client.get(f"/intent/shots/{reset.shot_id}/core-anchor/revisions")
+    ).json()
+    r1_before = next(r for r in r1_revisions_before if r["status"] == "confirmed")
+    r1_constraints_before = [c["content"] for c in r1_before["constraints"]]
+
     response = await client.post(
         f"/intent/shots/{reset.shot_id}/core-anchor/drafts/from-confirmed", headers=VFX
     )
@@ -576,9 +582,48 @@ async def test_j1_to_j2_use_proposal_creates_core_draft(
     assert draft["status"] == "draft"
     assert draft["revision_number"] == 2
 
+    # Proposal -> R2 Draft: R1's own fields not targeted by the Proposal
+    # are preserved exactly (owner re-validation correction).
+    assert draft["core_summary"] == r1_before["core_summary"]
+    assert draft["shot_objective"] == r1_before["shot_objective"]
+    assert draft["emotional_tone"] == r1_before["emotional_tone"]
+    assert draft["visual_focus"] == r1_before["visual_focus"]
+    # Cloned semantic-child rows are new rows with their own id/timestamp
+    # -- compare by real content, not identity.
+    assert [z["content"] for z in draft["variation_zones"]] == [
+        z["content"] for z in r1_before["variation_zones"]
+    ]
+    assert [d["description"] for d in draft["drift_risks"]] == [
+        d["description"] for d in r1_before["drift_risks"]
+    ]
+    assert [q["question"] for q in draft["open_questions"]] == [
+        q["question"] for q in r1_before["open_questions"]
+    ]
+
+    # The Proposal's own proposed constraint is applied: R1's existing
+    # constraint(s) are preserved, and exactly one new one is appended,
+    # sourced from the real, already-persisted Proposal -- never a
+    # UI-only string.
+    draft_constraints = [c["content"] for c in draft["constraints"]]
+    assert draft_constraints[:-1] == r1_constraints_before
+    assert len(draft_constraints) == len(r1_constraints_before) + 1
+    new_constraint = draft_constraints[-1].lower()
+    assert "combined intensity" in new_constraint
+    assert "motion acceleration" in new_constraint
+    assert "heroic" in new_constraint or "theatrical" in new_constraint
+
+    # The original R1 revision itself is unchanged -- still confirmed,
+    # still exactly its own original constraints, never rewritten by
+    # creating a Draft.
+    r1_after = (await client.get(f"/intent/core-anchor-revisions/{r1_before['id']}")).json()
+    assert r1_after["status"] == "confirmed"
+    assert [c["content"] for c in r1_after["constraints"]] == r1_constraints_before
+    assert r1_after["core_summary"] == r1_before["core_summary"]
+
     result = await inspect_d1_journey(session)
     assert result is not None
     assert result.journey_state == "reanchor_draft"
+    # Exactly one Draft exists.
     assert result.counts["core_drafts"] == 1
     assert result.counts["core_anchor_confirmed_revisions"] == 1  # R1 still authoritative
     assert result.counts["core_anchor_revisions"] == 2  # R1 confirmed + R2 draft
@@ -593,6 +638,18 @@ async def test_j1_to_j2_use_proposal_creates_core_draft(
     assert result.counts["guidance"] == 3
     assert result.counts["cg_reviews"] == 3
     assert result.counts["vfx_reviews"] == 1
+
+    # Opening/reviewing the new Draft is read-only: repeated GETs of the
+    # Draft and the canonical graph never change anything.
+    before_review = await inspect_d1_journey(session)
+    assert before_review is not None
+    for _ in range(2):
+        review_response = await client.get(f"/intent/core-anchor-revisions/{draft['id']}")
+        assert review_response.status_code == 200
+        assert review_response.json() == draft
+    after_review = await inspect_d1_journey(session)
+    assert after_review is not None
+    assert _semantic_snapshot(before_review) == _semantic_snapshot(after_review)
 
 
 async def test_j2_to_j3_confirm_r2_downstream_not_auto_replaced(

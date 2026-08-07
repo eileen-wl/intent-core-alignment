@@ -843,11 +843,20 @@ class DeterministicD1CrossRoleAssessmentGenerator:
                         "restraint constraint, without a specific combined-intensity ceiling "
                         "across Animation, Lighting, and Compositing."
                     )[:420],
+                    # Deliberately without the `_D1_PROPOSAL_LABEL` prefix
+                    # every other advisory-only proposal field in this
+                    # module carries: `proposed_direction` is the exact
+                    # text `core_anchor_service._apply_proposed_field_
+                    # changes` copies verbatim into the new Core Anchor
+                    # R2 Draft's own Constraints when the Human VFX
+                    # Supervisor clicks "Create Core Anchor R2 draft from
+                    # proposal" -- real Anchor content, not an advisory
+                    # aside, so it reads like the Shot's other real
+                    # constraints (see `_core_content`'s own risk text).
                     proposed_direction=(
-                        f"{_D1_PROPOSAL_LABEL} Consider a combined-intensity ceiling for a "
-                        "future Core Anchor revision that caps combined motion acceleration, "
-                        "warm rim intensity, bloom, particles, and debris together, not per "
-                        "department."
+                        "Keep the combined intensity of motion acceleration, warm rim/contrast, "
+                        "bloom, particles and debris below the point where restrained threat "
+                        "becomes heroic or theatrical spectacle."
                     )[:420],
                     why_it_may_help=(
                         f"{_D1_PROPOSAL_LABEL} Each department's own recorded refinement stays "
