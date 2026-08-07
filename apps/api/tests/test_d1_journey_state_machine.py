@@ -540,6 +540,86 @@ async def test_failed_noncanonical_provider_generation_does_not_mutate_canonical
 
 
 # ---------------------------------------------------------------------------
+# Task 10 (owner re-validation correction): Execution R1 historical
+# correctness across a re-anchor -- the combined-intensity ceiling must
+# never leak into R1, which is confirmed before the Proposal that
+# introduces it exists.
+# ---------------------------------------------------------------------------
+
+_FUTURE_R2_PHRASES = ("combined intensity", "combined-intensity ceiling", "ceiling")
+_EXECUTION_CONTENT_FIELDS = (
+    "technical_boundaries",
+    "parameter_ranges",
+    "delivery_conditions",
+    "production_ready_criteria",
+    "downstream_dependencies",
+    "publish_requirements",
+    "allowed_refinements",
+    "escalation_conditions",
+)
+
+
+async def _confirmed_execution_content_by_task(
+    session: AsyncSession, task_ids: tuple[uuid.UUID, ...]
+) -> dict[uuid.UUID, dict[str, Any]]:
+    """The confirmed Execution Anchor revision's own row (id + every
+    content field) per canonical Task -- department-agnostic, so the
+    same helper checks Animation, Lighting, and Compositing identically.
+    """
+    result: dict[uuid.UUID, dict[str, Any]] = {}
+    for task_id in task_ids:
+        execution_anchor = await session.scalar(
+            select(ExecutionAnchor).where(ExecutionAnchor.task_id == task_id)
+        )
+        assert execution_anchor is not None and execution_anchor.active_revision_id is not None
+        revision = await session.get(ExecutionAnchorRevision, execution_anchor.active_revision_id)
+        assert revision is not None and revision.status == "confirmed"
+        result[task_id] = {
+            "id": revision.id,
+            **{field: getattr(revision, field) for field in _EXECUTION_CONTENT_FIELDS},
+        }
+    return result
+
+
+def _assert_no_future_r2_leakage(content_by_task: dict[uuid.UUID, dict[str, Any]]) -> None:
+    for task_id, content in content_by_task.items():
+        combined_text = " ".join(
+            str(content[field]) for field in _EXECUTION_CONTENT_FIELDS if content[field]
+        ).lower()
+        for phrase in _FUTURE_R2_PHRASES:
+            assert phrase not in combined_text, (
+                f"Task {task_id}'s confirmed Execution Anchor R1 must not yet know about "
+                f"{phrase!r} -- that concept is only introduced by the later Re-anchor "
+                "Proposal"
+            )
+
+
+async def test_reset_execution_r1_has_no_future_r2_leakage(session: AsyncSession) -> None:
+    """Requirement 1 + 7: immediately after Reset (J0), Animation,
+    Lighting, and Compositing's confirmed Execution Anchor R1 each
+    reflect only Core Anchor R1 -- none of them already contain the
+    combined-intensity ceiling the Re-anchor Proposal only introduces
+    later.
+    """
+    reset = await reset_d1_journey(session)
+    content_by_task = await _confirmed_execution_content_by_task(session, reset.task_ids)
+    assert len(content_by_task) == 3
+    _assert_no_future_r2_leakage(content_by_task)
+
+    # Each department's own real local-optimum content is still present
+    # (this is not a blanket content wipe -- only the future-R2 concept
+    # is absent).
+    all_text = " ".join(
+        str(value)
+        for content in content_by_task.values()
+        for value in content.values()
+        if isinstance(value, str)
+    ).lower()
+    for phrase in ("lunge", "warm rim", "bloom"):
+        assert phrase in all_text
+
+
+# ---------------------------------------------------------------------------
 # Task 10: J1 -> J2 -> J3 transitions
 # ---------------------------------------------------------------------------
 
@@ -697,6 +777,10 @@ async def test_j2_to_j3_confirm_r2_downstream_not_auto_replaced(
             )
         ).all()
     }
+    # Full content, not just ids -- proves R1 is byte-for-byte historical
+    # after the re-anchor, and still carries no future-R2 leakage.
+    r1_content_before = await _confirmed_execution_content_by_task(session, reset.task_ids)
+    _assert_no_future_r2_leakage(r1_content_before)
     r1_guidance_ids = {
         row.id
         for row in (
@@ -770,3 +854,42 @@ async def test_j2_to_j3_confirm_r2_downstream_not_auto_replaced(
         ).all()
     }
     assert current_guidance_ids == r1_guidance_ids
+
+    # Requirement 2 + 7: Execution R1's own row ids AND every content
+    # field are byte-for-byte unchanged, for all three departments --
+    # confirming Core R2 does not mutate Execution R1 to "absorb" it.
+    r1_content_after = await _confirmed_execution_content_by_task(session, reset.task_ids)
+    assert r1_content_after == r1_content_before
+    # Requirement 1 + 7 again, post-J3: still no future-R2 leakage.
+    _assert_no_future_r2_leakage(r1_content_after)
+
+    # Requirement 3 + 6: R1 is marked outdated purely because its own
+    # `based_on_core_anchor_revision_number` (1) no longer matches the
+    # Shot's current confirmed Core Anchor revision (2) -- never because
+    # its own content changed, and no Execution R2 exists (Draft or
+    # confirmed) for any department.
+    for task_id in reset.task_ids:
+        context_response = await client.get(f"/cg/tasks/{task_id}/anchor-context", headers=CG)
+        assert context_response.status_code == 200, context_response.text
+        execution_context = context_response.json()["execution_anchor"]
+        assert execution_context["context_state"] == "outdated"
+        assert execution_context["confirmed_revision_number"] == 1
+        assert execution_context["based_on_core_anchor_revision_number"] == 1
+        assert execution_context["draft_revision_number"] is None
+
+    # Requirement 5: opening/reviewing the J3 CG Execution page (its real
+    # backend reads) is itself read-only.
+    before_review = await inspect_d1_journey(session)
+    assert before_review is not None
+    for task_id in reset.task_ids:
+        for _ in range(2):
+            review_response = await client.get(f"/cg/tasks/{task_id}/anchor-context", headers=CG)
+            assert review_response.status_code == 200
+            execution_response = await client.get(f"/intent/tasks/{task_id}/execution-anchor")
+            assert execution_response.status_code == 200
+    after_review = await inspect_d1_journey(session)
+    assert after_review is not None
+    assert _semantic_snapshot(before_review) == _semantic_snapshot(after_review)
+    assert (
+        await _confirmed_execution_content_by_task(session, reset.task_ids)
+    ) == r1_content_before

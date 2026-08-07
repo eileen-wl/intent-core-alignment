@@ -217,12 +217,47 @@ def _execution_content(department: str, revision: str) -> dict[str, str]:
             "saturation risk reading as spectacle rather than restrained threat."
         ),
     }[department]
+    # Owner re-validation correction (historical-state correctness, not
+    # UI wording): R1 is confirmed *before* the Re-anchor Proposal exists
+    # and must not already know about the combined-intensity ceiling the
+    # Proposal only introduces for R2 -- see `parameter_ranges` and
+    # `downstream_dependencies` below. Each department's own R1 range is
+    # deliberately scoped to that department's own dimensions only,
+    # never the cross-department combined cap.
+    r1_parameter_ranges = {
+        "animation": (
+            "Lunge speed, impact timing, and final-pose intensity each stay within "
+            "Animation's own confirmed local range."
+        ),
+        "lighting": (
+            "Warm rim intensity and contrast each stay within Lighting's own confirmed local range."
+        ),
+        "comp": (
+            "Bloom, particle density, and debris each stay within Compositing's own "
+            "confirmed local range."
+        ),
+    }[department]
     return {
         "technical_boundaries": f"{'Preserve the combined-intensity ceiling.' if revision == 'R2' else 'Translate controlled, oppressive, inevitable threat without heroic spectacle.'} {local}",
-        "parameter_ranges": "Combined motion acceleration, warm rim, bloom, particles, and debris remain capped by the confirmed Core Anchor.",
+        "parameter_ranges": (
+            r1_parameter_ranges
+            if revision == "R1"
+            else (
+                "Combined motion acceleration, warm rim, bloom, particles, and debris "
+                "remain capped by the confirmed Core Anchor's combined-intensity ceiling."
+            )
+        ),
         "delivery_conditions": "Deliver a readable confrontation whose threat remains controlled and oppressive.",
         "production_ready_criteria": "Local readability improves without turning the scene triumphant.",
-        "downstream_dependencies": "Compositing integration preserves the combined-intensity ceiling across all three departments.",
+        "downstream_dependencies": (
+            "Compositing integration depends on Animation and Lighting each staying "
+            "within their own confirmed local range."
+            if revision == "R1"
+            else (
+                "Compositing integration preserves the combined-intensity ceiling across "
+                "all three departments."
+            )
+        ),
         "publish_requirements": "Human CG Supervisor confirmation is required before publish.",
         "allowed_refinements": local,
         "escalation_conditions": (

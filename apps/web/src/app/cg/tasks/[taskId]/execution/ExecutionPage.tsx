@@ -238,6 +238,21 @@ export function ExecutionPage({
               }
               coreAnchorConfirmed={data.coreAnchorConfirmed}
               hasConfirmedRevision={data.confirmedRevision !== null}
+              confirmedRevisionNumber={
+                data.confirmedRevision?.revision_number ?? null
+              }
+              // Owner re-validation correction: once a confirmed
+              // Execution Anchor's own upstream Core Anchor revision has
+              // been superseded (real `execution_anchor.context_state`
+              // from the Anchor Context aggregate -- the same field the
+              // Anchor Context Layer already renders "Outdated" from),
+              // starting a new revision should clearly mean
+              // retranslating from the now-current Core Anchor, not an
+              // ambiguous generic "Create new revision".
+              isOutdated={anchorContext?.execution_anchor?.context_state === "outdated"}
+              coreAnchorRevisionNumber={
+                anchorContext?.core_anchor.confirmed_revision_number ?? null
+              }
             />
           </section>
         </>

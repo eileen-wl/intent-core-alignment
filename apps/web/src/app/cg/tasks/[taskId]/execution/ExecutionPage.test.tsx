@@ -1,4 +1,5 @@
 import type {
+  AnchorContextRead,
   CgInboxItemRead,
   DecisionRead,
   ExecutionAnchorRevisionRead,
@@ -10,6 +11,7 @@ import {
   waitFor,
   within,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
@@ -143,6 +145,76 @@ function data(
     coreAnchorConfirmed: true,
     confirmDecision: null,
     ...overrides,
+  };
+}
+
+/** A confirmed Execution Anchor R1 whose own upstream Core Anchor has
+ * since been superseded by a confirmed R2 -- the real J3 owner-
+ * validation state (`execution_anchor.context_state === "outdated"`). */
+function outdatedAnchorContext(): AnchorContextRead {
+  return {
+    role: "cg_supervisor",
+    shot_id: "s1",
+    task_id: "t1",
+    core_anchor: {
+      exists: true,
+      lifecycle_state: "confirmed",
+      confirmed_revision_id: "ca2",
+      confirmed_revision_number: 2,
+      direction_summary: "Cap combined intensity.",
+      must_preserve: "Restrained threat.",
+      allowed_variation: null,
+      confirmed_by_human_role: "vfx_supervisor",
+      confirmed_by_actor_id: "vfx-1",
+      link_target: "/vfx/shots/s1/intent",
+      newer_draft_exists: false,
+      pending_human_gate_exists: false,
+      draft_revision_number: null,
+    },
+    execution_anchor: {
+      exists: true,
+      department: "lighting",
+      lifecycle_state: "confirmed",
+      context_state: "outdated",
+      confirmed_revision_id: "r1",
+      confirmed_revision_number: 1,
+      direction_summary: "Keep faces readable without a heroic lift.",
+      execution_boundary: "Stay within the approved exposure range.",
+      allowed_refinement: "Refine local fill only.",
+      based_on_core_anchor_revision_id: "ca1",
+      based_on_core_anchor_revision_number: 1,
+      upstream_relationship_available: true,
+      confirmed_by_human_role: "cg_supervisor",
+      confirmed_by_actor_id: "cg-1",
+      link_target: "/cg/tasks/t1/execution",
+      draft_revision_number: null,
+      draft_source: null,
+    },
+    attention: {
+      level: "high",
+      summary: "Execution Anchor is based on a superseded Core Anchor revision.",
+      review_requirement: "Human CG review is required.",
+      source_assessment_id: null,
+      source_signal_id: null,
+      assessed_at: null,
+      link_target: null,
+    },
+    current_version: {
+      version_id: null,
+      name: null,
+      version_number: null,
+      link_target: "/cg/tasks/t1/version-review",
+    },
+    guidance_state: "outdated",
+    open_vfx_escalation: false,
+    next_action: {
+      title: "Retranslate Execution Anchor from the confirmed Core Anchor R2",
+      why_now: "The confirmed Execution Anchor is based on a superseded Core Anchor revision.",
+      downstream_effect: "A new Execution Anchor Draft is created for Human CG review.",
+      target_route: "/cg/tasks/t1/execution",
+      action_label: "Generate Execution Anchor draft",
+      executable: true,
+    },
   };
 }
 
@@ -320,6 +392,96 @@ describe("ExecutionPage", () => {
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Start blank draft" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("outdated confirmed revision (J3): offers the retranslation-labelled primary action instead of the ambiguous generic Create-new-revision path", () => {
+    render(
+      <ExecutionPage
+        taskId="t1"
+        data={data({
+          confirmedRevision: revision({
+            status: "confirmed",
+            revision_number: 1,
+            confirmed_by_human_role: "cg_supervisor",
+            confirmed_at: "2026-01-02T00:00:00Z",
+          }),
+          coreAnchorConfirmed: true,
+        })}
+        anchorContext={outdatedAnchorContext()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", {
+        name: "Generate Execution Anchor R2 draft from Core Anchor R2",
+      }),
+    ).toBeVisible();
+    // Still available, but relabelled -- never removed, never the
+    // primary/only path when the Anchor is outdated.
+    expect(
+      screen.getByRole("button", {
+        name: "Start manually from Execution Anchor R1",
+      }),
+    ).toBeVisible();
+    // Never the ambiguous generic label at the same time.
+    expect(
+      screen.queryByRole("button", { name: "Create new revision" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("outdated confirmed revision (J3): the primary action calls the existing formal Agent-generate-from-confirmed-Core-Anchor action -- no demo-only shortcut", async () => {
+    generateExecutionAnchorDraftActionMock.mockResolvedValue({ ok: true });
+    render(
+      <ExecutionPage
+        taskId="t1"
+        data={data({
+          confirmedRevision: revision({ status: "confirmed", revision_number: 1 }),
+          coreAnchorConfirmed: true,
+        })}
+        anchorContext={outdatedAnchorContext()}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+
+    await userEvent.click(
+      screen.getByRole("button", {
+        name: "Generate Execution Anchor R2 draft from Core Anchor R2",
+      }),
+    );
+
+    expect(generateExecutionAnchorDraftActionMock).toHaveBeenCalledWith("t1");
+    expect(createExecutionAnchorDraftFromConfirmedActionMock).not.toHaveBeenCalled();
+  });
+
+  it("current (non-outdated) confirmed revision: unchanged -- still the plain Create-new-revision action, even with an Anchor Context present", () => {
+    render(
+      <ExecutionPage
+        taskId="t1"
+        data={data({
+          confirmedRevision: revision({ status: "confirmed", revision_number: 1 }),
+          coreAnchorConfirmed: true,
+        })}
+        anchorContext={{
+          ...outdatedAnchorContext(),
+          execution_anchor: {
+            ...outdatedAnchorContext().execution_anchor!,
+            context_state: "current",
+          },
+        }}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Create new revision" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: /Generate Execution Anchor R/ }),
     ).not.toBeInTheDocument();
   });
 

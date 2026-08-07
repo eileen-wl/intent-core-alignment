@@ -63,24 +63,52 @@ function fieldValuesFromRevision(
  * HumanGate/Decision recording, real conflict handling). No Execution
  * Anchor yet offers "Generate Execution Anchor draft" (Agent-assisted,
  * reads the confirmed Core Anchor) as the primary action and "Start
- * blank draft" as a secondary manual option; a confirmed Execution
- * Anchor offers "Create new revision" from that confirmed baseline. The
- * backend rejects confirming a draft with no meaningful content in any
- * field -- this editor disables Confirm and explains why in the same
- * case, while Save always remains available for an incomplete working
- * draft. */
+ * blank draft" as a secondary manual option; a confirmed, still-current
+ * Execution Anchor offers "Create new revision" from that confirmed
+ * baseline, unchanged.
+ *
+ * A confirmed Execution Anchor whose own upstream Core Anchor revision
+ * has since been superseded (`isOutdated`, from the real Anchor Context
+ * `execution_anchor.context_state` -- owner re-validation correction)
+ * instead offers "Generate Execution Anchor R{n+1} draft from Core
+ * Anchor R{n}" as the primary action -- the exact same, already-formal
+ * `generateExecutionAnchorDraftAction` Agent/Human-Gate path used for a
+ * first-ever Execution Anchor, just also offered once a confirmed one
+ * already exists and needs retranslating -- with the plain clone-based
+ * "Create new revision" relabeled "Start manually from Execution Anchor
+ * R{n}" as a secondary option, never removed, just no longer ambiguous
+ * about which one actually reflects the new Core Anchor.
+ *
+ * The backend rejects confirming a draft with no meaningful content in
+ * any field -- this editor disables Confirm and explains why in the
+ * same case, while Save always remains available for an incomplete
+ * working draft. */
 export function ExecutionAnchorEditor({
   taskId,
   draftRevision,
   draftHumanGateId,
   coreAnchorConfirmed,
   hasConfirmedRevision,
+  confirmedRevisionNumber = null,
+  isOutdated = false,
+  coreAnchorRevisionNumber = null,
 }: {
   taskId: string;
   draftRevision: ExecutionAnchorRevisionRead | null;
   draftHumanGateId: string | null;
   coreAnchorConfirmed: boolean;
   hasConfirmedRevision: boolean;
+  /** The confirmed Execution Anchor's own revision number, for the
+   * "R{n+1}" labels below -- `null` when there is no confirmed revision
+   * (`hasConfirmedRevision` is `false`). */
+  confirmedRevisionNumber?: number | null;
+  /** True only when the confirmed Execution Anchor's own upstream Core
+   * Anchor revision has been superseded (real Anchor Context state, not
+   * a UI guess) -- see `ExecutionPage.tsx`. */
+  isOutdated?: boolean;
+  /** The Shot's currently confirmed Core Anchor revision number, for
+   * the "from Core Anchor R{n}" half of the outdated-state label. */
+  coreAnchorRevisionNumber?: number | null;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -126,9 +154,51 @@ export function ExecutionAnchorEditor({
       });
     }
 
+    const nextRevisionNumber =
+      confirmedRevisionNumber !== null ? confirmedRevisionNumber + 1 : null;
+
     return (
       <div className={styles.wrapper}>
-        {hasConfirmedRevision ? (
+        {hasConfirmedRevision && isOutdated ? (
+          <div className={styles.startActions}>
+            <button
+              type="button"
+              className={styles.primaryButton}
+              disabled={isPending}
+              onClick={() =>
+                runStartAction(() => generateExecutionAnchorDraftAction(taskId))
+              }
+            >
+              {isPending
+                ? "Generating…"
+                : `Generate Execution Anchor ${
+                    nextRevisionNumber !== null ? `R${nextRevisionNumber} ` : ""
+                  }draft from Core Anchor${
+                    coreAnchorRevisionNumber !== null
+                      ? ` R${coreAnchorRevisionNumber}`
+                      : ""
+                  }`}
+            </button>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              disabled={isPending}
+              onClick={() =>
+                runStartAction(() =>
+                  createExecutionAnchorDraftFromConfirmedAction(taskId),
+                )
+              }
+            >
+              {isPending
+                ? "Starting…"
+                : `Start manually from Execution Anchor${
+                    confirmedRevisionNumber !== null
+                      ? ` R${confirmedRevisionNumber}`
+                      : ""
+                  }`}
+            </button>
+          </div>
+        ) : hasConfirmedRevision ? (
           <button
             type="button"
             className={styles.primaryButton}
