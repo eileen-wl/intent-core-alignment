@@ -68,6 +68,7 @@ from typing import Any, Final
 from intent_core_contracts.api.cross_role_assessment import (
     CrossRoleAssessmentOutput,
     CrossRoleEvidenceReference,
+    CrossRoleFinding,
     ReAnchorFieldProposal,
     ReAnchorProposalOutput,
 )
@@ -145,6 +146,18 @@ D1_LEGACY_TASK_EXTERNAL_ID: Final = "icas-demo:d1:legacy-baseline-shot:compositi
 # Anchors, and every journey-state record).
 CANONICAL_D1_SHOT_EXTERNAL_ID: Final = "icas-demo:d1:shot-010"
 _CANONICAL_D1_SHOT_NAME: Final = "Shot 010 — Final confrontation"
+# The three canonical Task identities `demo_seed.d1_journey` owns
+# (ICAS_PACKAGE_C_JOURNEY_REBASE_CLAUDE_HANDOFF.md §2). Declared again
+# here, privately, purely so `resolve_canonical_d1_sibling_department_
+# evidence` below can read all three departments' real seeded evidence
+# without an import from `d1_journey` (which already imports this
+# module at its own top level -- importing back would be circular).
+# These three literal strings are the same fixed product identity
+# `d1_journey.CANONICAL_TASK_EXTERNAL_IDS` declares; nothing here
+# resolves-or-creates any of them.
+_CANONICAL_ANIMATION_TASK_EXTERNAL_ID: Final = "icas-demo:d1:shot-010:animation-pass"
+_CANONICAL_LIGHTING_TASK_EXTERNAL_ID: Final = "icas-demo:d1:shot-010:lighting-pass"
+_CANONICAL_COMPOSITING_TASK_EXTERNAL_ID: Final = "icas-demo:d1:shot-010:compositing-review"
 # Stable, parseable marker (docs/step-7/16_STEP_7C0D_...md §2.3) --
 # Version has no ExternalEntityLink support, so this prefix on the free-
 # text `description`/`raw_text`/`content` field is the seed-owned key,
@@ -662,22 +675,52 @@ async def _ensure_artist_guidance(
 _D1_PROPOSAL_LABEL: Final = "[Cross-role D1]"
 
 
+_D1_DEPARTMENT_LABELS: Final = {
+    "animation": "Animation",
+    "lighting": "Lighting",
+    "comp": "Compositing",
+}
+
+
 class DeterministicD1CrossRoleAssessmentGenerator:
     """D1 Demo-only deterministic generator (Step 7C-1 targeted
-    correction) -- never used by any production request path and never
-    substituted for `DeterministicCrossRoleAssessmentGenerator` outside
-    this seed module. Delegates every field to the real, unmodified
-    `DeterministicCrossRoleAssessmentGenerator` and only adds a
-    `re_anchor_proposal`, grounded in the same snapshot evidence ids
-    that generator already cites (the confirmed Core Anchor revision,
-    the VFX Supervisor Agent review, the CG Supervisor Agent review).
-    This is deterministic Demo *data* generation, not a UI mock: the
-    result is handed to the real `generate_cross_role_assessment`
-    service call below, which runs it through the same
-    `_validate_re_anchor_proposal` evidence-diversity gate,
+    correction; Package C content-fidelity fix) -- never used by any
+    production request path and never substituted for
+    `DeterministicCrossRoleAssessmentGenerator` outside this seed
+    module. Delegates the shared-intent read, role perspectives,
+    agreements, and evidence-gaps disclosure to the real, unmodified
+    `DeterministicCrossRoleAssessmentGenerator`.
+
+    When `snapshot_payload["sibling_departments"]` is present (added
+    only for the canonical Package C D1 Journey identity by
+    `agents.cross_role_assessment_service.generate_cross_role_assessment`,
+    via `resolve_canonical_d1_sibling_department_evidence` -- see that
+    function's own docstring), this generator reads each department's
+    real, currently-confirmed Execution Anchor content and CG Review
+    directly and derives the locked Animation + Lighting + Compositing
+    local-optimum conflict from those seeded facts: a `local_optimum_
+    risk` per department (citing that department's own Execution Anchor
+    revision), one combined `cross_role_tension` citing all three
+    departments together, and a `re_anchor_proposal` recommending a
+    combined-intensity ceiling. Every field is a live read of the real
+    payload content -- if the canonical D1 fixture's Execution Anchor
+    text ever changes, this generator's output changes with it; nothing
+    here is a fixed UI-layer string substitute.
+
+    When `sibling_departments` is absent (the noncanonical legacy D1
+    fixture Shot this same module's `ensure_d1_scenario` seeds, which
+    has only one Task), falls back to the original single-Task
+    camera-timing/contrast-drift proposal, grounded in the same snapshot
+    evidence ids `DeterministicCrossRoleAssessmentGenerator` already
+    cites (the confirmed Core Anchor revision, the VFX Supervisor Agent
+    review, the CG Supervisor Agent review) -- unchanged from before.
+
+    Either way, the result is handed to the real
+    `generate_cross_role_assessment` service call, which runs it through
+    the same `_validate_re_anchor_proposal` evidence-diversity gate,
     `_validate_evidence_resolves_to_snapshot`, and
-    `_validate_content_boundaries` checks a live provider's output
-    would face, and persists it the same way.
+    `_validate_content_boundaries` checks a live provider's output would
+    face, and persists it the same way.
     """
 
     def generate(self, *, snapshot_payload: dict[str, Any]) -> CrossRoleAssessmentOutput:
@@ -705,6 +748,149 @@ class DeterministicD1CrossRoleAssessmentGenerator:
             label=f"CG review {cg_review['id']}",
         )
 
+        sibling_departments = snapshot_payload.get("sibling_departments")
+        if sibling_departments:
+            return self._three_department_conflict(
+                base, sibling_departments, core_anchor_evidence, vfx_evidence, cg_evidence
+            )
+        return self._single_task_fallback(base, core_anchor_evidence, vfx_evidence, cg_evidence)
+
+    @staticmethod
+    def _three_department_conflict(
+        base: CrossRoleAssessmentOutput,
+        sibling_departments: dict[str, dict[str, Any]],
+        core_anchor_evidence: CrossRoleEvidenceReference,
+        vfx_evidence: CrossRoleEvidenceReference,
+        cg_evidence: CrossRoleEvidenceReference,
+    ) -> CrossRoleAssessmentOutput:
+        department_execution_evidence: dict[str, CrossRoleEvidenceReference] = {}
+        local_optimum_risks = list(base.local_optimum_risks)
+        for department, label in _D1_DEPARTMENT_LABELS.items():
+            info = sibling_departments[department]
+            revision = info["execution_anchor_revision"]
+            execution_evidence = CrossRoleEvidenceReference(
+                source_type="execution_anchor_revision",
+                source_id=revision["id"],
+                label=f"{label} Execution Anchor revision {revision['id']}",
+            )
+            department_execution_evidence[department] = execution_evidence
+            finding_evidence = [execution_evidence]
+            review = info.get("cg_supervisor_review")
+            if review is not None:
+                finding_evidence.append(
+                    CrossRoleEvidenceReference(
+                        source_type="cg_supervisor_review",
+                        source_id=review["id"],
+                        label=f"{label} CG review {review['id']}",
+                    )
+                )
+            local_optimum_risks.append(
+                CrossRoleFinding(
+                    summary=(f"{_D1_PROPOSAL_LABEL} {label}: {revision['allowed_refinements']}")[
+                        :280
+                    ],
+                    why_it_matters=(f"{_D1_PROPOSAL_LABEL} {revision['escalation_conditions']}")[
+                        :420
+                    ],
+                    affected_roles=["cg_supervisor", "vfx_supervisor"],
+                    priority="high",
+                    evidence=finding_evidence,
+                )
+            )
+
+        combined_evidence = [
+            department_execution_evidence["animation"],
+            department_execution_evidence["lighting"],
+            department_execution_evidence["comp"],
+        ]
+        cross_role_tensions = [
+            *base.cross_role_tensions,
+            CrossRoleFinding(
+                summary=(
+                    f"{_D1_PROPOSAL_LABEL} Animation, Lighting, and Compositing are each "
+                    "locally defensible, but combined they shift the Shot from the confirmed "
+                    "Core Anchor's controlled, oppressive, restrained threat toward heroic, "
+                    "theatrical spectacle."
+                )[:280],
+                why_it_matters=(
+                    f"{_D1_PROPOSAL_LABEL} Each department's own confirmed Execution Anchor "
+                    "records a locally reasonable refinement and its own escalation condition "
+                    "for combined drift; none has individually changed, but together they "
+                    "approach every recorded escalation condition at once."
+                )[:420],
+                affected_roles=["vfx_supervisor", "cg_supervisor", "artist"],
+                priority="high",
+                evidence=combined_evidence,
+            ),
+        ]
+
+        proposal = ReAnchorProposalOutput(
+            reason_for_consideration=(
+                f"{_D1_PROPOSAL_LABEL} Animation, Lighting, and Compositing Execution "
+                "Anchors each record a real, locally defensible optimisation and its own "
+                "escalation condition; combined, they approach the confirmed Core Anchor's "
+                "restrained-threat boundary from three directions at once."
+            )[:420],
+            preserved_elements=[
+                f"{_D1_PROPOSAL_LABEL} The controlled, oppressive, inevitable threat.",
+                f"{_D1_PROPOSAL_LABEL} Weight and silhouette hierarchy over spectacle.",
+            ],
+            proposed_fields=[
+                ReAnchorFieldProposal(
+                    field="constraints",
+                    current_problem=(
+                        f"{_D1_PROPOSAL_LABEL} The confirmed Core Anchor names one combined "
+                        "restraint constraint, without a specific combined-intensity ceiling "
+                        "across Animation, Lighting, and Compositing."
+                    )[:420],
+                    proposed_direction=(
+                        f"{_D1_PROPOSAL_LABEL} Consider a combined-intensity ceiling for a "
+                        "future Core Anchor revision that caps combined motion acceleration, "
+                        "warm rim intensity, bloom, particles, and debris together, not per "
+                        "department."
+                    )[:420],
+                    why_it_may_help=(
+                        f"{_D1_PROPOSAL_LABEL} Each department's own recorded refinement stays "
+                        "within its own local boundary; a combined ceiling would let the three "
+                        "be checked together against the shared restrained-threat intent, "
+                        "rather than only one department at a time."
+                    )[:420],
+                    evidence=combined_evidence,
+                )
+            ],
+            adoption_risks=[
+                f"{_D1_PROPOSAL_LABEL} A combined-intensity ceiling could read as restricting "
+                "each department's own already-confirmed refinement, even though none has "
+                "individually changed."
+            ],
+            questions_for_human_vfx_supervisor=[
+                f"{_D1_PROPOSAL_LABEL} Should the combined-intensity ceiling be expressed as "
+                "one shared Core Anchor constraint, or as linked per-department Execution "
+                "Anchor limits?"
+            ],
+            evidence=[
+                core_anchor_evidence,
+                vfx_evidence,
+                cg_evidence,
+                *combined_evidence,
+            ],
+        )
+
+        return base.model_copy(
+            update={
+                "local_optimum_risks": local_optimum_risks,
+                "cross_role_tensions": cross_role_tensions,
+                "re_anchor_proposal": proposal,
+            }
+        )
+
+    @staticmethod
+    def _single_task_fallback(
+        base: CrossRoleAssessmentOutput,
+        core_anchor_evidence: CrossRoleEvidenceReference,
+        vfx_evidence: CrossRoleEvidenceReference,
+        cg_evidence: CrossRoleEvidenceReference,
+    ) -> CrossRoleAssessmentOutput:
         proposal = ReAnchorProposalOutput(
             reason_for_consideration=(
                 f"{_D1_PROPOSAL_LABEL} The VFX and CG Supervisor Agent reviews both record "
@@ -1078,6 +1264,95 @@ async def resolve_canonical_d1_assessment_generator(
     if canonical_shot_id != shot_id:
         return None
     return DeterministicD1CrossRoleAssessmentGenerator()
+
+
+async def resolve_canonical_d1_sibling_department_evidence(
+    session: AsyncSession, *, project_id: uuid.UUID, shot_id: uuid.UUID
+) -> dict[str, dict[str, Any]] | None:
+    """Package C content-fidelity fix (owner re-validation correction):
+    the canonical Cross-role Assessment stays formally attached to one
+    Version/Task (the Compositing integration Version, matching the
+    existing single-Version/Task schema), but a truthful three-
+    department local-optimum conflict requires real evidence from
+    Animation and Lighting too -- evidence the standard single-Task
+    `generate_cross_role_assessment` snapshot never includes.
+
+    Returns a `{department: {...}}` mapping (each department's real,
+    currently-confirmed `ExecutionAnchorRevision` content plus its
+    newest `CGSupervisorReview`, if one exists) only for the exact
+    canonical Package C D1 Journey identity -- matched by the same
+    `ExternalEntityLink(source="demo")` rows `resolve_canonical_d1_
+    assessment_generator` checks, never by display name -- and only when
+    all three canonical Tasks each already have a confirmed Execution
+    Anchor revision (true for any legal J0-J4 state; if the graph is
+    mid-transition or otherwise incomplete, returns `None` rather than a
+    partial, potentially misleading mapping).
+
+    Returns `None` for every other Project/Shot, including the
+    noncanonical legacy D1 fixture Shot this same module's `ensure_
+    d1_scenario` seeds (which has only one Task) -- the caller then
+    leaves the standard snapshot payload untouched.
+    """
+    canonical_project_id = await find_linked_entity_id(
+        session, entity_type="project", source=_DEMO_SOURCE, external_id=D1_PROJECT_EXTERNAL_ID
+    )
+    if canonical_project_id != project_id:
+        return None
+    canonical_shot_id = await find_linked_entity_id(
+        session, entity_type="shot", source=_DEMO_SOURCE, external_id=CANONICAL_D1_SHOT_EXTERNAL_ID
+    )
+    if canonical_shot_id != shot_id:
+        return None
+
+    departments: dict[str, dict[str, Any]] = {}
+    for department, external_id in (
+        ("animation", _CANONICAL_ANIMATION_TASK_EXTERNAL_ID),
+        ("lighting", _CANONICAL_LIGHTING_TASK_EXTERNAL_ID),
+        ("comp", _CANONICAL_COMPOSITING_TASK_EXTERNAL_ID),
+    ):
+        task_id = await find_linked_entity_id(
+            session, entity_type="task", source=_DEMO_SOURCE, external_id=external_id
+        )
+        if task_id is None:
+            return None
+        task = await session.get(Task, task_id)
+        if task is None or task.shot_id != shot_id:
+            return None
+        execution_anchor = await session.scalar(
+            select(ExecutionAnchor).where(ExecutionAnchor.task_id == task_id)
+        )
+        if execution_anchor is None or execution_anchor.active_revision_id is None:
+            return None
+        execution_revision = await session.get(
+            ExecutionAnchorRevision, execution_anchor.active_revision_id
+        )
+        if execution_revision is None or execution_revision.status != "confirmed":
+            return None
+        cg_review = await session.scalar(
+            select(CGSupervisorReview)
+            .where(CGSupervisorReview.execution_anchor_revision_id == execution_revision.id)
+            .order_by(CGSupervisorReview.created_at.desc())
+            .limit(1)
+        )
+        departments[department] = {
+            "task": {"id": str(task.id), "name": task.name, "department": task.department},
+            "execution_anchor_revision": {
+                "id": str(execution_revision.id),
+                "revision_number": execution_revision.revision_number,
+                "allowed_refinements": execution_revision.allowed_refinements,
+                "escalation_conditions": execution_revision.escalation_conditions,
+                "technical_boundaries": execution_revision.technical_boundaries,
+            },
+            "cg_supervisor_review": (
+                {
+                    "id": str(cg_review.id),
+                    "executive_summary": cg_review.review_output["executive_summary"],
+                }
+                if cg_review is not None
+                else None
+            ),
+        }
+    return departments
 
 
 async def ensure_d1_scenario(session: AsyncSession) -> D1ScenarioResult:

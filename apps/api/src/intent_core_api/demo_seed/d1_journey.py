@@ -179,10 +179,43 @@ def _core_content(revision: str) -> dict[str, Any]:
 
 
 def _execution_content(department: str, revision: str) -> dict[str, str]:
+    # Locked story content (ICAS_PACKAGE_C_JOURNEY_REBASE_CLAUDE_HANDOFF.md
+    # §5): each department's own locally-defensible optimisation, and the
+    # specific risk it carries in isolation -- real seeded Execution
+    # Anchor facts the D1-specific Cross-role Assessment generator reads
+    # and cites directly, never a UI-layer string substitute.
     local = {
-        "animation": "Faster lunge, clearer impact timing, and a stronger final pose remain subordinate to controlled pauses and silhouette weight.",
-        "lighting": "A stronger warm rim, contrast, and facial or weapon readability remain restrained.",
-        "comp": "Bloom, particles, debris, saturation, and impact emphasis remain restrained so polish does not become spectacle.",
+        "animation": (
+            "Faster lunge, clearer impact timing, a stronger final pose, and slightly "
+            "reduced pauses are each locally defensible refinements, but must remain "
+            "subordinate to controlled pauses and silhouette weight."
+        ),
+        "lighting": (
+            "A stronger warm rim, increased contrast, and brighter impact accents are each "
+            "locally defensible refinements, but facial and weapon readability must remain "
+            "restrained rather than triumphant."
+        ),
+        "comp": (
+            "Stronger bloom, brighter particles, and more debris or saturation are each "
+            "locally defensible refinements, but impact emphasis must remain restrained so "
+            "polish does not become spectacle."
+        ),
+    }[department]
+    risk = {
+        "animation": (
+            "Combined, the faster lunge, clearer impact timing, stronger final pose, and "
+            "reduced pauses risk reading as more heroic or action-driven energy rather than "
+            "controlled, restrained threat."
+        ),
+        "lighting": (
+            "Combined, the stronger warm rim, increased contrast, and brighter impact "
+            "accents risk reading as a more theatrical or triumphant tone rather than "
+            "restrained threat."
+        ),
+        "comp": (
+            "Combined, the stronger bloom, brighter particles, and added debris or "
+            "saturation risk reading as spectacle rather than restrained threat."
+        ),
     }[department]
     return {
         "technical_boundaries": f"{'Preserve the combined-intensity ceiling.' if revision == 'R2' else 'Translate controlled, oppressive, inevitable threat without heroic spectacle.'} {local}",
@@ -192,7 +225,10 @@ def _execution_content(department: str, revision: str) -> dict[str, str]:
         "downstream_dependencies": "Compositing integration preserves the combined-intensity ceiling across all three departments.",
         "publish_requirements": "Human CG Supervisor confirmation is required before publish.",
         "allowed_refinements": local,
-        "escalation_conditions": "Escalate to Human VFX Supervisor when local improvement changes the shared emotional read.",
+        "escalation_conditions": (
+            "Escalate to Human VFX Supervisor when local improvement changes the shared "
+            f"emotional read. {risk}"
+        ),
     }
 
 

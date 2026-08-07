@@ -229,6 +229,56 @@ async def test_referential_invariants_after_assessment(session: AsyncSession) ->
 # ---------------------------------------------------------------------------
 
 
+def _assert_content_reflects_three_department_conflict(assessment_output: dict[str, Any]) -> None:
+    """Package C content-fidelity fix (owner re-validation correction):
+    the generated J1 content, not just its counts, must truthfully
+    represent the locked Animation + Lighting + Compositing local-
+    optimum conflict -- every assertion below reads real generated
+    text/evidence, never a hardcoded UI-layer stand-in.
+    """
+    local_optimum_risks = assessment_output["local_optimum_risks"]
+    assert len(local_optimum_risks) >= 1
+    risk_text = " ".join(
+        item["summary"] + " " + item["why_it_matters"] for item in local_optimum_risks
+    )
+    for department_label in ("Animation", "Lighting", "Compositing"):
+        assert department_label in risk_text, f"{department_label} evidence not represented"
+
+    # The combined restraint -> heroic spectacle conflict, evidenced by
+    # all three departments' own Execution Anchor revisions together.
+    combined_findings = [
+        finding
+        for finding in assessment_output["cross_role_tensions"] + local_optimum_risks
+        if "spectacle" in finding["summary"].lower()
+        or "spectacle" in finding["why_it_matters"].lower()
+    ]
+    assert combined_findings, "no finding names the combined heroic/theatrical spectacle drift"
+    combined_finding = next(
+        finding
+        for finding in assessment_output["cross_role_tensions"]
+        if "Compositing" in finding["summary"]
+    )
+    execution_evidence_source_ids = {
+        ref["source_id"]
+        for ref in combined_finding["evidence"]
+        if ref["source_type"] == "execution_anchor_revision"
+    }
+    assert len(execution_evidence_source_ids) == 3, (
+        "combined conflict finding must cite all three departments' own Execution Anchor "
+        "revisions, not just Compositing's"
+    )
+
+    # The Proposal recommends clarifying a combined-intensity ceiling in
+    # a future Core Anchor revision.
+    proposal = assessment_output["re_anchor_proposal"]
+    assert proposal is not None
+    proposal_text = " ".join(
+        [proposal["reason_for_consideration"]]
+        + [field["proposed_direction"] for field in proposal["proposed_fields"]]
+    ).lower()
+    assert "combined-intensity ceiling" in proposal_text
+
+
 async def _assert_reaches_locked_j1_state(
     session: AsyncSession,
     client: AsyncClient,
@@ -242,7 +292,9 @@ async def _assert_reaches_locked_j1_state(
         headers=VFX,
     )
     assert response.status_code == 201, response.text
-    assessment_id = uuid.UUID(response.json()["id"])
+    payload = response.json()
+    assessment_id = uuid.UUID(payload["id"])
+    _assert_content_reflects_three_department_conflict(payload["assessment_output"])
 
     result = await inspect_d1_journey(session)
     assert result is not None

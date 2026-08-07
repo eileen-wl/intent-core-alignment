@@ -1679,6 +1679,33 @@ async def generate_cross_role_assessment(
             session, project_id=project.id, shot_id=shot.id
         )
 
+    # Same late-bound, function-local import pattern as above (see that
+    # comment for why a module-level import here would be circular).
+    from intent_core_api.demo_seed.d1_scenario import (
+        DeterministicD1CrossRoleAssessmentGenerator,
+        resolve_canonical_d1_sibling_department_evidence,
+    )
+
+    if isinstance(resolved_generator, DeterministicD1CrossRoleAssessmentGenerator):
+        # Package C content-fidelity fix: augments the exact same
+        # `payload` object already used for both generation and
+        # `_validate_evidence_resolves_to_snapshot` -- so every sibling-
+        # department fact the D1 generator cites is genuinely present in
+        # the persisted ContextSnapshot, not invented. Identity-gated a
+        # second time inside `resolve_canonical_d1_sibling_department_
+        # evidence` itself (returns `None` for the noncanonical legacy
+        # D1 fixture Shot, which also uses this same generator), so this
+        # never adds anything for a Shot/Project this generator wasn't
+        # already resolved for. Mutating `payload` in place here, before
+        # `spec` captures it below, is safe: `_persist` and
+        # `AgentExecutionSpec.snapshot_payload` both close over this same
+        # dict, evaluated only once `execute_agent` actually runs.
+        sibling_departments = await resolve_canonical_d1_sibling_department_evidence(
+            session, project_id=project.id, shot_id=shot.id
+        )
+        if sibling_departments is not None:
+            payload["sibling_departments"] = sibling_departments
+
     provider, model_name, prompt_version = prompt_registry.execution_metadata(
         _CAPABILITY_CROSS_ROLE_ASSESSMENT
     )
