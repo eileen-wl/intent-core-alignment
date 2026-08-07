@@ -3,6 +3,7 @@ import type {
   ContextReconstructionRead,
   ContextSnapshotRead,
   CoreAnchorRevisionRead,
+  CrossRoleAssessmentRead,
   HumanGateRead,
   IntentDecompositionRead,
   VfxInboxItemRead,
@@ -15,6 +16,7 @@ import {
   getHumanGateForRevision,
   listContextReconstructionsForShot,
   listCoreAnchorRevisions,
+  listCrossRoleAssessmentsForShot,
   listDecisionsForRevision,
   listIntentDecompositionsForShot,
 } from "@/features/vfx/api";
@@ -70,6 +72,35 @@ export interface IntentWorkspaceData {
    * Decision genuinely carries no rationale -- the UI must say so
    * honestly rather than treat `null` as "not loaded yet". */
   confirmedDecisionRationale: string | null;
+  /** The Shot's current Cross-role Assessment, but only when it carries
+   * a current Re-anchor Proposal, was generated against the Shot's
+   * currently confirmed Core Anchor revision, and reached high
+   * attention -- the exact locked J1 precondition
+   * (ICAS_PACKAGE_C_JOURNEY_REBASE_CLAUDE_HANDOFF.md §4) for surfacing
+   * the dedicated Proposal-review section and its "Create Core Anchor
+   * R{n+1} draft from proposal" action. `null` in every other state:
+   * no Assessment yet, no Proposal, a stale/superseded revision, lower
+   * attention, or an active Draft already exists (J2/J3). A pure read
+   * -- never creates anything, and never fetched at all while a Draft
+   * is active or before any confirmed revision exists. */
+  currentReanchorProposalAssessment: CrossRoleAssessmentRead | null;
+}
+
+async function loadCurrentReanchorProposalAssessment(
+  shotId: string,
+  confirmedRevision: CoreAnchorRevisionRead,
+): Promise<CrossRoleAssessmentRead | null> {
+  const assessments = await listCrossRoleAssessmentsForShot(shotId);
+  const current = assessments[0];
+  if (
+    current &&
+    current.re_anchor_proposal !== null &&
+    current.core_anchor_revision_id === confirmedRevision.id &&
+    current.intent_signal.attention_level === "high"
+  ) {
+    return current;
+  }
+  return null;
 }
 
 async function loadEvidenceData(
@@ -162,6 +193,13 @@ export async function loadIntentWorkspaceData(
       ? await loadConfirmedDecisionRationale(confirmedRevision.id)
       : null;
 
+  // Same guard as `confirmedDecisionRationale`: only meaningful for
+  // Normal Confirmed (no active Draft, a confirmed revision exists).
+  const currentReanchorProposalAssessment =
+    draftRevision === null && confirmedRevision
+      ? await loadCurrentReanchorProposalAssessment(shotId, confirmedRevision)
+      : null;
+
   return {
     item,
     confirmedRevision,
@@ -170,5 +208,6 @@ export async function loadIntentWorkspaceData(
     evidenceData,
     previousConfirmedRevision,
     confirmedDecisionRationale,
+    currentReanchorProposalAssessment,
   };
 }

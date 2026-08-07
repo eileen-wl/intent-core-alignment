@@ -106,6 +106,9 @@ async def test_read_purity_across_all_normal_pages(
         (f"/shots/{reset.shot_id}/activity", None),
         (f"/intent/shots/{reset.shot_id}/core-anchor", None),
         (f"/intent/shots/{reset.shot_id}/core-anchor/revisions", None),
+        # Package C owner re-validation correction: the Intent page's
+        # dedicated Re-anchor Proposal Review section reads this too.
+        (f"/intent/shots/{reset.shot_id}/cross-role-assessments", None),
         # CG Home / Inbox / Tasks / Task Overview / Execution / Version
         # Review / Dependencies / Activity
         ("/cg/inbox", None),

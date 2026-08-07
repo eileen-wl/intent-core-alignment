@@ -1,0 +1,130 @@
+.section {
+  max-width: var(--content-width-comparison);
+  margin: 0 auto;
+  padding: var(--space-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--surface-panel);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.headerRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.attentionBadge {
+  padding: 0.15rem var(--space-3);
+  border-radius: var(--radius-pill);
+  background: var(--state-danger-surface, var(--surface-muted));
+  border: 1px solid var(--state-danger-border, var(--border-subtle));
+  color: var(--state-danger, var(--text-primary));
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  color: var(--text-primary);
+}
+
+.meta {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.summary {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+}
+
+.subheading {
+  margin: 0 0 var(--space-3) 0;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.findingList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.finding {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+}
+
+.findingSummary {
+  margin: 0 0 var(--space-1) 0;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.findingWhy {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.proposalCard {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-muted);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.proposalReason {
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.proposedField {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.proposedFieldLabel {
+  margin: 0 0 var(--space-1) 0;
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: capitalize;
+}
+
+.proposedFieldDirection {
+  margin: 0 0 var(--space-1) 0;
+  color: var(--text-primary);
+}
+
+.proposedFieldWhy {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.advisoryNotice {
+  margin: 0;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}

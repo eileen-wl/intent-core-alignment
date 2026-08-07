@@ -19,6 +19,7 @@ import { ConfirmedAnchorSummary } from "./ConfirmedAnchorSummary";
 import { CoreAnchorRevisionEditor } from "./CoreAnchorRevisionEditor";
 import { IntentEvidenceDisclosures } from "./IntentEvidenceDisclosures";
 import { IntentInitialEmptyState } from "./IntentInitialEmptyState";
+import { ReanchorProposalReview } from "./ReanchorProposalReview";
 import { ReturnToShotOverviewLink } from "./ReturnToShotOverviewLink";
 import { StartDraftButton } from "./StartDraftButton";
 import { GenerateIntentCapabilityButton } from "./GenerateIntentCapabilityButton";
@@ -263,14 +264,25 @@ export function IntentWorkspacePage({
               />
               <div className={styles.confirmedActions}>
                 {justConfirmed && <ReturnToShotOverviewLink shotId={shotId} />}
-                <StartDraftButton
-                  label="Create new revision"
-                  pendingLabel="Starting…"
-                  action={createCoreAnchorDraftFromConfirmedAction.bind(
-                    null,
-                    shotId,
-                  )}
-                />
+                {data.currentReanchorProposalAssessment ? (
+                  <ReanchorProposalReview
+                    confirmedRevision={data.confirmedRevision}
+                    assessment={data.currentReanchorProposalAssessment}
+                    action={createCoreAnchorDraftFromConfirmedAction.bind(
+                      null,
+                      shotId,
+                    )}
+                  />
+                ) : (
+                  <StartDraftButton
+                    label="Create new revision"
+                    pendingLabel="Starting…"
+                    action={createCoreAnchorDraftFromConfirmedAction.bind(
+                      null,
+                      shotId,
+                    )}
+                  />
+                )}
               </div>
             </>
           ) : (

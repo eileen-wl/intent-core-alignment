@@ -81,7 +81,8 @@ describe("loadIntentWorkspaceData", () => {
       .mockResolvedValueOnce(jsonResponse(200, [CONFIRMED])) // listCoreAnchorRevisions
       .mockResolvedValueOnce(jsonResponse(200, [])) // listIntentDecompositionsForShot
       .mockResolvedValueOnce(jsonResponse(200, [])) // listContextReconstructionsForShot
-      .mockResolvedValueOnce(jsonResponse(200, [])); // listDecisionsForRevision
+      .mockResolvedValueOnce(jsonResponse(200, [])) // listDecisionsForRevision
+      .mockResolvedValueOnce(jsonResponse(200, [])); // listCrossRoleAssessmentsForShot
 
     const result = await loadIntentWorkspaceData("s1");
     expect(result?.confirmedRevision).toEqual(CONFIRMED);
@@ -95,6 +96,9 @@ describe("loadIntentWorkspaceData", () => {
     // No Decision has been recorded in this fixture -- honest null,
     // never a fabricated placeholder rationale.
     expect(result?.confirmedDecisionRationale).toBeNull();
+    // No Cross-role Assessment has been recorded in this fixture --
+    // honest null, no Re-anchor Proposal review section to show.
+    expect(result?.currentReanchorProposalAssessment).toBeNull();
   });
 
   it("fetches the real confirming Decision's rationale for a confirmed-only Shot", async () => {
@@ -111,7 +115,8 @@ describe("loadIntentWorkspaceData", () => {
             rationale: "Matches the director's note.",
           },
         ]),
-      );
+      )
+      .mockResolvedValueOnce(jsonResponse(200, [])); // listCrossRoleAssessmentsForShot
 
     const result = await loadIntentWorkspaceData("s1");
     expect(result?.confirmedDecisionRationale).toBe(
@@ -125,14 +130,72 @@ describe("loadIntentWorkspaceData", () => {
       .mockResolvedValueOnce(jsonResponse(200, [SUPERSEDED, LATER_CONFIRMED]))
       .mockResolvedValueOnce(jsonResponse(200, [])) // decompositions
       .mockResolvedValueOnce(jsonResponse(200, [])) // reconstructions
-      .mockResolvedValueOnce(jsonResponse(200, [])); // decisions
+      .mockResolvedValueOnce(jsonResponse(200, [])) // decisions
+      .mockResolvedValueOnce(jsonResponse(200, [])); // listCrossRoleAssessmentsForShot
 
     const result = await loadIntentWorkspaceData("s1");
     expect(result?.confirmedRevision).toEqual(LATER_CONFIRMED);
     expect(result?.previousConfirmedRevision).toEqual(SUPERSEDED);
     // Exactly the calls the confirmed-only branch makes -- no dedicated
     // fetch was added for the superseded revision itself.
-    expect(fetchMock).toHaveBeenCalledTimes(5);
+    expect(fetchMock).toHaveBeenCalledTimes(6);
+  });
+
+  it("surfaces currentReanchorProposalAssessment when the current Assessment carries a current Proposal at high attention against the confirmed revision", async () => {
+    const assessment = {
+      id: "assessment-1",
+      core_anchor_revision_id: "r1",
+      re_anchor_proposal: { id: "proposal-1" },
+      intent_signal: { attention_level: "high" },
+    };
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(200, ITEM))
+      .mockResolvedValueOnce(jsonResponse(200, [CONFIRMED]))
+      .mockResolvedValueOnce(jsonResponse(200, [])) // decompositions
+      .mockResolvedValueOnce(jsonResponse(200, [])) // reconstructions
+      .mockResolvedValueOnce(jsonResponse(200, [])) // decisions
+      .mockResolvedValueOnce(jsonResponse(200, [assessment])); // listCrossRoleAssessmentsForShot
+
+    const result = await loadIntentWorkspaceData("s1");
+    expect(result?.currentReanchorProposalAssessment).toEqual(assessment);
+  });
+
+  it("does not surface currentReanchorProposalAssessment when the newest Assessment targets a different (stale) Core Anchor revision", async () => {
+    const staleAssessment = {
+      id: "assessment-1",
+      core_anchor_revision_id: "some-older-revision",
+      re_anchor_proposal: { id: "proposal-1" },
+      intent_signal: { attention_level: "high" },
+    };
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(200, ITEM))
+      .mockResolvedValueOnce(jsonResponse(200, [CONFIRMED]))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, [staleAssessment]));
+
+    const result = await loadIntentWorkspaceData("s1");
+    expect(result?.currentReanchorProposalAssessment).toBeNull();
+  });
+
+  it("does not surface currentReanchorProposalAssessment when the current Assessment has no Proposal or is below high attention", async () => {
+    const noProposal = {
+      id: "assessment-1",
+      core_anchor_revision_id: "r1",
+      re_anchor_proposal: null,
+      intent_signal: { attention_level: "medium" },
+    };
+    fetchMock
+      .mockResolvedValueOnce(jsonResponse(200, ITEM))
+      .mockResolvedValueOnce(jsonResponse(200, [CONFIRMED]))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, []))
+      .mockResolvedValueOnce(jsonResponse(200, [noProposal]));
+
+    const result = await loadIntentWorkspaceData("s1");
+    expect(result?.currentReanchorProposalAssessment).toBeNull();
   });
 
   it("resolves draft state, fetches the draft's HumanGate, and cites the superseded revision as evidence", async () => {

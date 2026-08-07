@@ -1,5 +1,6 @@
 import type {
   CoreAnchorRevisionRead,
+  CrossRoleAssessmentRead,
   VfxInboxItemRead,
 } from "@intent-core/contracts";
 import { cleanup, render, screen, within } from "@testing-library/react";
@@ -103,6 +104,144 @@ function revision(
   };
 }
 
+function reanchorProposalAssessment(
+  overrides: Partial<CrossRoleAssessmentRead> = {},
+): CrossRoleAssessmentRead {
+  return {
+    id: "assessment-1",
+    project_id: "p1",
+    shot_id: "s1",
+    task_id: "t3",
+    version_id: "v3",
+    core_anchor_revision_id: "r1",
+    execution_anchor_revision_id: "exec-comp",
+    vfx_supervisor_review_id: "vfx-review-1",
+    cg_supervisor_review_id: "cg-review-1",
+    artist_agent_guidance_id: "guidance-1",
+    context_snapshot_id: "snapshot-1",
+    agent_run_id: "run-1",
+    created_at: "2026-01-01T00:00:00Z",
+    assessment_output: {
+      executive_summary:
+        "Animation, Lighting, and Compositing each optimise locally but combine into spectacle.",
+      shared_intent_read: {
+        summary: "Shared intent",
+        why_it_matters: "Why it matters",
+        affected_roles: ["vfx_supervisor"],
+        priority: "high",
+        evidence: [
+          {
+            source_type: "core_anchor_revision",
+            source_id: "r1",
+            label: "Confirmed Core Anchor revision r1",
+          },
+        ],
+      },
+      role_perspectives: [],
+      agreements: [],
+      cross_role_tensions: [
+        {
+          summary:
+            "Animation, Lighting, and Compositing are each locally defensible, but combined they shift the Shot toward heroic, theatrical spectacle.",
+          why_it_matters: "Each department's own refinement is real.",
+          affected_roles: ["vfx_supervisor", "cg_supervisor", "artist"],
+          priority: "high",
+          evidence: [
+            {
+              source_type: "execution_anchor_revision",
+              source_id: "exec-animation",
+              label: "Animation Execution Anchor revision",
+            },
+          ],
+        },
+      ],
+      local_optimum_risks: [],
+      unresolved_dependencies: [],
+      human_coordination_priorities: [],
+      re_anchor_proposal: null,
+      evidence_gaps: ["Not directly inspected footage."],
+    },
+    intent_signal: {
+      id: "signal-1",
+      cross_role_assessment_id: "assessment-1",
+      project_id: "p1",
+      shot_id: "s1",
+      task_id: "t3",
+      version_id: "v3",
+      attention_level: "high",
+      signal_output: {
+        attention_level: "high",
+        label: "human_review_required",
+        summary: "Human review is warranted.",
+        drivers: [],
+        role_coverage: {
+          vfx_supervisor: true,
+          cg_supervisor: true,
+          artist: true,
+        },
+        re_anchor_proposal_present: true,
+        caveats: [],
+      },
+      created_at: "2026-01-01T00:00:00Z",
+    },
+    re_anchor_proposal: {
+      id: "proposal-1",
+      cross_role_assessment_id: "assessment-1",
+      project_id: "p1",
+      shot_id: "s1",
+      current_core_anchor_revision_id: "r1",
+      created_at: "2026-01-01T00:00:00Z",
+      proposal_output: {
+        reason_for_consideration:
+          "Animation, Lighting, and Compositing Execution Anchors each record a real, locally defensible optimisation.",
+        preserved_elements: ["Controlled, oppressive threat."],
+        proposed_fields: [
+          {
+            field: "constraints",
+            current_problem: "One combined restraint constraint exists.",
+            proposed_direction:
+              "Consider a combined-intensity ceiling for a future Core Anchor revision.",
+            why_it_may_help:
+              "Lets all three departments be checked together.",
+            evidence: [
+              {
+                source_type: "execution_anchor_revision",
+                source_id: "exec-animation",
+                label: "Animation Execution Anchor revision",
+              },
+              {
+                source_type: "execution_anchor_revision",
+                source_id: "exec-lighting",
+                label: "Lighting Execution Anchor revision",
+              },
+            ],
+          },
+        ],
+        adoption_risks: ["Could read as restricting each department."],
+        questions_for_human_vfx_supervisor: ["Shared or per-department?"],
+        evidence: [
+          {
+            source_type: "core_anchor_revision",
+            source_id: "r1",
+            label: "Confirmed Core Anchor revision r1",
+          },
+          {
+            source_type: "vfx_supervisor_review",
+            source_id: "vfx-review-1",
+            label: "VFX review",
+          },
+          {
+            source_type: "cg_supervisor_review",
+            source_id: "cg-review-1",
+            label: "CG review",
+          },
+        ],
+      },
+    },
+    ...overrides,
+  };
+}
+
 describe("IntentWorkspacePage", () => {
   it("shows an honest unavailable state when the API could not be reached", () => {
     render(
@@ -131,6 +270,7 @@ describe("IntentWorkspacePage", () => {
       },
       previousConfirmedRevision: null,
       confirmedDecisionRationale: null,
+      currentReanchorProposalAssessment: null,
     };
 
     render(
@@ -177,6 +317,7 @@ describe("IntentWorkspacePage", () => {
       },
       previousConfirmedRevision: null,
       confirmedDecisionRationale: null,
+      currentReanchorProposalAssessment: null,
     };
     render(
       <IntentWorkspacePage
@@ -200,6 +341,60 @@ describe("IntentWorkspacePage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("shows the Re-anchor Proposal Review section instead of the plain Create-new-revision action when a current Proposal exists (J1 -> J2 handoff)", () => {
+    const data: IntentWorkspaceData = {
+      item: item(),
+      confirmedRevision: revision(),
+      draftRevision: null,
+      draftHumanGate: null,
+      evidenceData: {
+        evidence: [],
+        run: null,
+        snapshot: null,
+        decompositions: [],
+        reconstructions: [],
+      },
+      previousConfirmedRevision: null,
+      confirmedDecisionRationale: null,
+      currentReanchorProposalAssessment: reanchorProposalAssessment(),
+    };
+    render(
+      <IntentWorkspacePage
+        shotId="s1"
+        data={data}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText("Re-anchor Proposal — Human Review"),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        /Animation, Lighting, and Compositing are each locally defensible/,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/combined-intensity ceiling/),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "This Proposal is advisory only. Core Anchor R1 remains authoritative until a Human VFX Supervisor confirms a new revision.",
+      ),
+    ).toBeVisible();
+
+    // Exactly one primary path for the re-anchor action -- never both.
+    expect(
+      screen.getByRole("button", {
+        name: "Create Core Anchor R2 draft from proposal",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Create new revision" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("groups confirmed content under Production Evidence, the Decision under Human Decision and Provenance, and Evidence/Provenance disclosures under Agent Interpretation (Step 9B-2)", () => {
     const data: IntentWorkspaceData = {
       item: item(),
@@ -215,6 +410,7 @@ describe("IntentWorkspacePage", () => {
       },
       previousConfirmedRevision: null,
       confirmedDecisionRationale: "Matches the director's note on restraint.",
+      currentReanchorProposalAssessment: null,
     };
     render(
       <IntentWorkspacePage
@@ -273,6 +469,7 @@ describe("IntentWorkspacePage", () => {
       },
       previousConfirmedRevision: null,
       confirmedDecisionRationale: null,
+      currentReanchorProposalAssessment: null,
     };
     render(
       <IntentWorkspacePage
@@ -305,6 +502,7 @@ describe("IntentWorkspacePage", () => {
       evidenceData: null,
       previousConfirmedRevision: null,
       confirmedDecisionRationale: null,
+      currentReanchorProposalAssessment: null,
     };
     render(
       <IntentWorkspacePage
@@ -334,6 +532,7 @@ describe("IntentWorkspacePage", () => {
       evidenceData: null,
       previousConfirmedRevision: null,
       confirmedDecisionRationale: null,
+      currentReanchorProposalAssessment: null,
     };
     render(
       <IntentWorkspacePage
@@ -409,6 +608,7 @@ describe("IntentWorkspacePage", () => {
       evidenceData: null,
       previousConfirmedRevision: null,
       confirmedDecisionRationale: null,
+      currentReanchorProposalAssessment: null,
     };
     render(
       <IntentWorkspacePage
@@ -464,6 +664,7 @@ describe("IntentWorkspacePage", () => {
       },
       previousConfirmedRevision: null,
       confirmedDecisionRationale: null,
+      currentReanchorProposalAssessment: null,
     };
     render(
       <IntentWorkspacePage
@@ -496,6 +697,7 @@ describe("IntentWorkspacePage", () => {
       evidenceData: null,
       previousConfirmedRevision: null,
       confirmedDecisionRationale: null,
+      currentReanchorProposalAssessment: null,
     };
     render(
       <IntentWorkspacePage
@@ -531,6 +733,7 @@ describe("IntentWorkspacePage", () => {
       },
       previousConfirmedRevision: null,
       confirmedDecisionRationale: null,
+      currentReanchorProposalAssessment: null,
     };
     render(
       <IntentWorkspacePage
@@ -564,6 +767,7 @@ describe("IntentWorkspacePage", () => {
       },
       previousConfirmedRevision: null,
       confirmedDecisionRationale: null,
+      currentReanchorProposalAssessment: null,
     };
     render(
       <IntentWorkspacePage
@@ -594,6 +798,7 @@ describe("IntentWorkspacePage", () => {
       },
       previousConfirmedRevision: null,
       confirmedDecisionRationale: null,
+      currentReanchorProposalAssessment: null,
     };
     render(
       <IntentWorkspacePage
@@ -621,6 +826,7 @@ describe("IntentWorkspacePage", () => {
       },
       previousConfirmedRevision: null,
       confirmedDecisionRationale: null,
+      currentReanchorProposalAssessment: null,
     };
     const { container } = render(
       <IntentWorkspacePage
