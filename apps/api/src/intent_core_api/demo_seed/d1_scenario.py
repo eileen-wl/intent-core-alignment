@@ -74,7 +74,11 @@ from intent_core_contracts.api.cross_role_assessment import (
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from intent_core_api.agents import cg_supervisor_review_service, vfx_supervisor_review_service
+from intent_core_api.agents import (
+    cg_supervisor_review_service,
+    model_gateway,
+    vfx_supervisor_review_service,
+)
 from intent_core_api.agents.artist_guidance_service import (
     DeterministicArtistGuidanceGenerator,
     generate_artist_agent_guidance,
@@ -83,6 +87,7 @@ from intent_core_api.agents.cg_supervisor_review_service import (
     DeterministicCGSupervisorReviewGenerator,
 )
 from intent_core_api.agents.cross_role_assessment_service import (
+    CrossRoleAssessmentGenerator,
     DeterministicCrossRoleAssessmentGenerator,
     generate_cross_role_assessment,
 )
@@ -1025,6 +1030,53 @@ async def resolve_or_create_canonical_root(session: AsyncSession) -> tuple[Proje
         name=_CANONICAL_D1_SHOT_NAME,
     )
     return project, shot
+
+
+async def resolve_canonical_d1_assessment_generator(
+    session: AsyncSession, *, project_id: uuid.UUID, shot_id: uuid.UUID
+) -> CrossRoleAssessmentGenerator | None:
+    """Package C explicit-transition fix: the sole hook
+    `agents.cross_role_assessment_service.generate_cross_role_assessment`
+    calls, and only when its caller did not already supply an explicit
+    `generator=` override (Reset/Load-Completed always do, so this never
+    runs for them).
+
+    Returns `DeterministicD1CrossRoleAssessmentGenerator` -- the D1-
+    specific generator that truthfully represents the locked Animation +
+    Lighting + Compositing local-optimum conflict -- only when BOTH:
+
+    - the configured model provider resolves to "deterministic" (the
+      generic demo/test provider; a live provider such as "deepseek" is
+      never touched, since it can already produce a genuine high-
+      attention/re-anchor result on its own), AND
+    - `project_id`/`shot_id` are exactly the canonical Package C D1
+      Journey identity, matched by real `ExternalEntityLink(source=
+      "demo")` rows -- never by Project/Shot display name.
+
+    Returns `None` for every other Project, Shot, or provider, in which
+    case the caller falls back to its own generic generator resolution
+    unchanged -- the generic deterministic and live-provider behavior
+    for every other Shot is completely unaffected. This function never
+    creates, mutates, or reads anything beyond the two `ExternalEntityLink`
+    lookups already used everywhere else in this module: no Assessment,
+    Anchor, Draft, or Signal is created here -- it only *selects* which
+    already-existing, already-validated generator
+    `generate_cross_role_assessment` goes on to run and persist through
+    its own real, unbypassed pipeline.
+    """
+    if model_gateway.resolve_provider_name() != "deterministic":
+        return None
+    canonical_project_id = await find_linked_entity_id(
+        session, entity_type="project", source=_DEMO_SOURCE, external_id=D1_PROJECT_EXTERNAL_ID
+    )
+    if canonical_project_id != project_id:
+        return None
+    canonical_shot_id = await find_linked_entity_id(
+        session, entity_type="shot", source=_DEMO_SOURCE, external_id=CANONICAL_D1_SHOT_EXTERNAL_ID
+    )
+    if canonical_shot_id != shot_id:
+        return None
+    return DeterministicD1CrossRoleAssessmentGenerator()
 
 
 async def ensure_d1_scenario(session: AsyncSession) -> D1ScenarioResult:

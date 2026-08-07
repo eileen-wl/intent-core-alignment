@@ -1656,6 +1656,26 @@ async def generate_cross_role_assessment(
         assessment.re_anchor_proposal = proposal  # type: ignore[attr-defined]
         return assessment
 
+    resolved_generator = generator
+    if resolved_generator is None:
+        # Package C explicit-transition fix (ICAS_PACKAGE_C_JOURNEY_
+        # REBASE_CLAUDE_HANDOFF.md): a late-bound, function-local import
+        # -- `demo_seed.d1_scenario` already imports this module at its
+        # own top level, so a module-level import here would be
+        # circular. Returns non-None only for the exact canonical
+        # Package C D1 Journey Project/Shot identity under the generic
+        # "deterministic" provider; every other Shot/Project/provider is
+        # completely unaffected and falls through to `_get_generator()`
+        # exactly as before. See that function's own docstring for the
+        # full dispatch rule.
+        from intent_core_api.demo_seed.d1_scenario import (
+            resolve_canonical_d1_assessment_generator,
+        )
+
+        resolved_generator = await resolve_canonical_d1_assessment_generator(
+            session, project_id=project.id, shot_id=shot.id
+        )
+
     provider, model_name, prompt_version = prompt_registry.execution_metadata(
         _CAPABILITY_CROSS_ROLE_ASSESSMENT
     )
@@ -1667,7 +1687,9 @@ async def generate_cross_role_assessment(
         model_name=model_name,
         prompt_version=prompt_version,
         snapshot_payload=payload,
-        resolve_generator=lambda: generator if generator is not None else _get_generator(),
+        resolve_generator=(
+            lambda: resolved_generator if resolved_generator is not None else _get_generator()
+        ),
         persist_result=_persist,
         failure_label="Core Agent cross-role assessment generation",
     )

@@ -10,25 +10,35 @@ product UI itself uses.
 
 from __future__ import annotations
 
+import uuid
 from typing import Any
 
+import pytest
 from httpx import AsyncClient
 from intent_core_api.agents.cross_role_assessment_service import generate_cross_role_assessment
+from intent_core_api.demo_seed import d1_scenario
 from intent_core_api.demo_seed.d1_journey import (
     D1JourneyResult,
     inspect_d1_journey,
     reset_d1_journey,
 )
-from intent_core_api.demo_seed.d1_scenario import DeterministicD1CrossRoleAssessmentGenerator
+from intent_core_api.demo_seed.d1_scenario import (
+    DeterministicD1CrossRoleAssessmentGenerator,
+    resolve_canonical_d1_assessment_generator,
+)
 from intent_core_api.intent.models import (
     CoreAnchor,
     CoreAnchorRevision,
     ExecutionAnchor,
     ExecutionAnchorRevision,
 )
-from intent_core_api.versions_and_feedback.models import ArtistAgentGuidance, VFXSupervisorReview
+from intent_core_api.versions_and_feedback.models import (
+    ArtistAgentGuidance,
+    IntentSignal,
+    VFXSupervisorReview,
+)
 from intent_core_api.workflow.actors import ActorContext
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 VFX = {"X-Actor-Role": "vfx_supervisor", "X-Actor-Id": "vfx-1"}
@@ -207,35 +217,22 @@ async def test_referential_invariants_after_assessment(session: AsyncSession) ->
 # ---------------------------------------------------------------------------
 
 
-async def test_j0_to_j1_real_default_generator_produces_medium_not_high(
+async def test_j0_to_j1_real_generate_endpoint_reaches_locked_j1_state(
     session: AsyncSession, client: AsyncClient
 ) -> None:
-    """Documents an empirically-verified, pre-existing product-behaviour
-    gap discovered while building this transition test (not introduced
-    by the Package C journey rebase): the real
-    `POST /versions/{id}/cross-role-assessments/generate` action -- the
-    same endpoint the real Alignment UI's "Generate Cross-role
-    Assessment" button calls -- uses whichever generator
-    `model_gateway.resolve_provider_name()` resolves. In this
-    environment (and in any default local/dev/test environment, since
-    `MODEL_PROVIDER` defaults to "deterministic") that resolves to
-    `DeterministicCrossRoleAssessmentGenerator`, which its own module
-    docstring documents as deliberately keeping every finding at low/
-    medium priority and never proposing a re-anchor. Fed the canonical
-    J0 evidence, it can therefore never reach "high" attention or a
-    Re-anchor Proposal -- only a live model provider (MODEL_PROVIDER=
-    deepseek) or the D1-Demo-only `DeterministicD1CrossRoleAssessmentGenerator`
-    (used internally by Reset/Load-Completed, see
-    `test_j0_to_j1_transition_with_warranting_generator` below) can.
+    """Transition A (ICAS_PACKAGE_C_JOURNEY_REBASE_CLAUDE_HANDOFF.md
+    §11), driven through the exact real product action: the same
+    `POST /versions/{id}/cross-role-assessments/generate` endpoint the
+    real Alignment UI's "Generate Cross-role Assessment" button calls,
+    with no `generator=` override and no internal seed helper involved.
 
-    journey-status honestly reflects this: per the locked J1 invariant
-    (assessment=1, high attention), a medium-attention assessment does
-    not satisfy J1 and `journey_state` correctly stays "mixed" rather
-    than being guessed as the closest snapshot -- see
-    ICAS_PACKAGE_C_JOURNEY_REBASE_CLAUDE_HANDOFF.md §8. This is flagged
-    in the implementation report for an explicit product decision; nei-
-    ther the real Agent generation contract nor the demo-only generator
-    was changed to paper over it.
+    For the canonical D1 Journey identity under the generic
+    "deterministic" provider, `generate_cross_role_assessment`'s default
+    generator resolution now dispatches to the D1-specific deterministic
+    generator that truthfully represents the locked Animation + Lighting
+    + Compositing local-optimum conflict (see
+    `demo_seed.d1_scenario.resolve_canonical_d1_assessment_generator`),
+    so the real action reaches the real locked J1 state.
     """
     reset = await reset_d1_journey(session)
     _animation_task_id, _lighting_task_id, comp_task_id = reset.task_ids
@@ -247,49 +244,84 @@ async def test_j0_to_j1_real_default_generator_produces_medium_not_high(
         headers=VFX,
     )
     assert response.status_code == 201, response.text
-
-    result = await inspect_d1_journey(session)
-    assert result is not None
-    assert result.counts["assessments"] == 1
-    assert result.counts["proposals"] == 0
-    assert result.attention_levels == ("medium",)
-    assert result.journey_state == "mixed"
-
-
-async def test_j0_to_j1_transition_with_warranting_generator(session: AsyncSession) -> None:
-    """The state-machine classification side of Transition A
-    (ICAS_PACKAGE_C_JOURNEY_REBASE_CLAUDE_HANDOFF.md §11): once a
-    genuinely high-attention, re-anchor-warranting assessment exists --
-    exactly the shape Reset/Load-Completed's own
-    `DeterministicD1CrossRoleAssessmentGenerator` produces, still through
-    the same real, unbypassed `generate_cross_role_assessment` service
-    call the real endpoint uses -- `journey_state` correctly reaches
-    "assessment_complete" (J1) with no Core Draft yet.
-    """
-    reset = await reset_d1_journey(session)
-    _animation_task_id, _lighting_task_id, comp_task_id = reset.task_ids
-    _animation_version_id, _lighting_version_id, comp_version_id = reset.version_ids
-
-    await generate_cross_role_assessment(
-        session,
-        _SEED_VFX,
-        comp_version_id,
-        comp_task_id,
-        generator=DeterministicD1CrossRoleAssessmentGenerator(),
-    )
+    assessment_id = uuid.UUID(response.json()["id"])
 
     result = await inspect_d1_journey(session)
     assert result is not None
     assert result.journey_state == "assessment_complete"
+    # Exactly one canonical current CrossRoleAssessment.
+    assert result.assessment_ids == (assessment_id,)
     assert result.counts["assessments"] == 1
-    assert result.counts["proposals"] == 1
+    # High attention.
     assert result.attention_levels == ("high",)
+    # One ReAnchorProposal linked to that Assessment.
+    assert len(result.proposal_ids) == 1
+    assert result.proposal_assessment_ids[result.proposal_ids[0]] == assessment_id
+    # IntentSignal was created (required by the domain for every
+    # CrossRoleAssessment -- verified directly against the DB, since
+    # `D1JourneyResult` itself only carries attention levels).
+    signal_count = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(IntentSignal)
+            .where(IntentSignal.cross_role_assessment_id == assessment_id)
+        )
+    )
+    assert signal_count == 1
+    # No Core R2 Draft yet -- the Proposal is advisory only.
     assert result.counts["core_drafts"] == 0
-    # J0 baseline otherwise untouched.
     assert result.counts["core_anchor_confirmed_revisions"] == 1
+    assert result.counts["core_anchor_revisions"] == 1
+    # J0 baseline otherwise untouched.
     assert result.counts["execution_anchor_confirmed_revisions"] == 3
     assert result.counts["execution_drafts"] == 0
     assert result.counts["versions"] == 3
+
+
+async def test_canonical_d1_generator_dispatch_is_scoped_to_exact_identity(
+    session: AsyncSession,
+) -> None:
+    """Unit-level regression for the dispatch rule itself
+    (`demo_seed.d1_scenario.resolve_canonical_d1_assessment_generator`):
+    it must fire only for the exact canonical D1 Project/Shot identity
+    (matched by real `ExternalEntityLink`, never a guessed/random id or
+    a display name), and must never override a live model provider.
+    """
+    reset = await reset_d1_journey(session)
+
+    canonical = await resolve_canonical_d1_assessment_generator(
+        session, project_id=reset.project_id, shot_id=reset.shot_id
+    )
+    assert isinstance(canonical, DeterministicD1CrossRoleAssessmentGenerator)
+
+    # Neither a wrong Shot under the real canonical Project, nor a
+    # random Project/Shot pair, ever dispatches to the D1-specific
+    # generator -- both fall through to `None` untouched.
+    assert (
+        await resolve_canonical_d1_assessment_generator(
+            session, project_id=reset.project_id, shot_id=uuid.uuid4()
+        )
+        is None
+    )
+    assert (
+        await resolve_canonical_d1_assessment_generator(
+            session, project_id=uuid.uuid4(), shot_id=uuid.uuid4()
+        )
+        is None
+    )
+
+
+async def test_canonical_d1_generator_dispatch_never_overrides_live_provider(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    reset = await reset_d1_journey(session)
+
+    monkeypatch.setattr(d1_scenario.model_gateway, "resolve_provider_name", lambda: "deepseek")
+
+    result = await resolve_canonical_d1_assessment_generator(
+        session, project_id=reset.project_id, shot_id=reset.shot_id
+    )
+    assert result is None
 
 
 # ---------------------------------------------------------------------------
