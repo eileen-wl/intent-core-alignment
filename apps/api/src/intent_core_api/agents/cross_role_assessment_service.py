@@ -1663,11 +1663,14 @@ async def generate_cross_role_assessment(
         # -- `demo_seed.d1_scenario` already imports this module at its
         # own top level, so a module-level import here would be
         # circular. Returns non-None only for the exact canonical
-        # Package C D1 Journey Project/Shot identity under the generic
-        # "deterministic" provider; every other Shot/Project/provider is
-        # completely unaffected and falls through to `_get_generator()`
-        # exactly as before. See that function's own docstring for the
-        # full dispatch rule.
+        # Package C D1 Journey Project/Shot identity -- deliberately
+        # regardless of the ambient configured provider, so this one
+        # reproducible demo fixture's locked transition never depends on
+        # environment configuration; every other Shot/Project keeps
+        # using whatever provider is actually configured, completely
+        # unaffected, and falls through to `_get_generator()` exactly as
+        # before. See that function's own docstring for the full
+        # dispatch rule.
         from intent_core_api.demo_seed.d1_scenario import (
             resolve_canonical_d1_assessment_generator,
         )

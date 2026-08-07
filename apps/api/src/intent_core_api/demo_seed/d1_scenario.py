@@ -74,11 +74,7 @@ from intent_core_contracts.api.cross_role_assessment import (
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from intent_core_api.agents import (
-    cg_supervisor_review_service,
-    model_gateway,
-    vfx_supervisor_review_service,
-)
+from intent_core_api.agents import cg_supervisor_review_service, vfx_supervisor_review_service
 from intent_core_api.agents.artist_guidance_service import (
     DeterministicArtistGuidanceGenerator,
     generate_artist_agent_guidance,
@@ -1043,29 +1039,34 @@ async def resolve_canonical_d1_assessment_generator(
 
     Returns `DeterministicD1CrossRoleAssessmentGenerator` -- the D1-
     specific generator that truthfully represents the locked Animation +
-    Lighting + Compositing local-optimum conflict -- only when BOTH:
+    Lighting + Compositing local-optimum conflict -- whenever
+    `project_id`/`shot_id` are exactly the canonical Package C D1
+    Journey identity, matched by real `ExternalEntityLink(source=
+    "demo")` rows -- never by Project/Shot display name.
 
-    - the configured model provider resolves to "deterministic" (the
-      generic demo/test provider; a live provider such as "deepseek" is
-      never touched, since it can already produce a genuine high-
-      attention/re-anchor result on its own), AND
-    - `project_id`/`shot_id` are exactly the canonical Package C D1
-      Journey identity, matched by real `ExternalEntityLink(source=
-      "demo")` rows -- never by Project/Shot display name.
+    Deliberately **not** gated on the ambient configured model provider
+    (`model_gateway.resolve_provider_name()`): canonical D1 is a
+    reproducible demo fixture whose locked J0 -> J1 transition must be
+    deterministic regardless of whatever provider a given environment
+    happens to have configured (an owner's local `.env` set to
+    "deepseek" previously fell through to a real, non-deterministic
+    network call here and could fail outright -- see
+    ICAS_PACKAGE_C_JOURNEY_REBASE_CLAUDE_HANDOFF.md). This is not a
+    global fallback: it only ever fires for this one exact Shot/Project
+    identity, so every noncanonical Shot -- including any real ftrack/
+    live Shot, which can never carry this `source="demo"` identity --
+    keeps using whatever provider is actually configured, completely
+    unaffected.
 
-    Returns `None` for every other Project, Shot, or provider, in which
-    case the caller falls back to its own generic generator resolution
-    unchanged -- the generic deterministic and live-provider behavior
-    for every other Shot is completely unaffected. This function never
-    creates, mutates, or reads anything beyond the two `ExternalEntityLink`
-    lookups already used everywhere else in this module: no Assessment,
-    Anchor, Draft, or Signal is created here -- it only *selects* which
-    already-existing, already-validated generator
-    `generate_cross_role_assessment` goes on to run and persist through
-    its own real, unbypassed pipeline.
+    Returns `None` for every other Project/Shot, in which case the
+    caller falls back to its own generic generator resolution unchanged.
+    This function never creates, mutates, or reads anything beyond the
+    two `ExternalEntityLink` lookups already used everywhere else in
+    this module: no Assessment, Anchor, Draft, or Signal is created
+    here -- it only *selects* which already-existing, already-validated
+    generator `generate_cross_role_assessment` goes on to run and
+    persist through its own real, unbypassed pipeline.
     """
-    if model_gateway.resolve_provider_name() != "deterministic":
-        return None
     canonical_project_id = await find_linked_entity_id(
         session, entity_type="project", source=_DEMO_SOURCE, external_id=D1_PROJECT_EXTERNAL_ID
     )

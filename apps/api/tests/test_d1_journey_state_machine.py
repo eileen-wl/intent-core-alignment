@@ -15,16 +15,25 @@ from typing import Any
 
 import pytest
 from httpx import AsyncClient
-from intent_core_api.agents.cross_role_assessment_service import generate_cross_role_assessment
-from intent_core_api.demo_seed import d1_scenario
+from intent_core_api.agents import model_gateway
+from intent_core_api.agents.cross_role_assessment_service import (
+    DeterministicCrossRoleAssessmentGenerator,
+    generate_cross_role_assessment,
+)
 from intent_core_api.demo_seed.d1_journey import (
     D1JourneyResult,
     inspect_d1_journey,
     reset_d1_journey,
 )
 from intent_core_api.demo_seed.d1_scenario import (
+    D1_LEGACY_TASK_EXTERNAL_ID,
     DeterministicD1CrossRoleAssessmentGenerator,
+    ensure_d1_scenario,
     resolve_canonical_d1_assessment_generator,
+)
+from intent_core_api.integrations.external_link_service import (
+    find_linked_entity_id,
+    record_external_link,
 )
 from intent_core_api.intent.models import (
     CoreAnchor,
@@ -32,12 +41,15 @@ from intent_core_api.intent.models import (
     ExecutionAnchor,
     ExecutionAnchorRevision,
 )
+from intent_core_api.production_context.models import Project, Shot
 from intent_core_api.versions_and_feedback.models import (
     ArtistAgentGuidance,
     IntentSignal,
+    Version,
     VFXSupervisorReview,
 )
 from intent_core_api.workflow.actors import ActorContext
+from intent_core_api.workflow.exceptions import AgentGenerationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -217,27 +229,13 @@ async def test_referential_invariants_after_assessment(session: AsyncSession) ->
 # ---------------------------------------------------------------------------
 
 
-async def test_j0_to_j1_real_generate_endpoint_reaches_locked_j1_state(
-    session: AsyncSession, client: AsyncClient
-) -> None:
-    """Transition A (ICAS_PACKAGE_C_JOURNEY_REBASE_CLAUDE_HANDOFF.md
-    §11), driven through the exact real product action: the same
-    `POST /versions/{id}/cross-role-assessments/generate` endpoint the
-    real Alignment UI's "Generate Cross-role Assessment" button calls,
-    with no `generator=` override and no internal seed helper involved.
-
-    For the canonical D1 Journey identity under the generic
-    "deterministic" provider, `generate_cross_role_assessment`'s default
-    generator resolution now dispatches to the D1-specific deterministic
-    generator that truthfully represents the locked Animation + Lighting
-    + Compositing local-optimum conflict (see
-    `demo_seed.d1_scenario.resolve_canonical_d1_assessment_generator`),
-    so the real action reaches the real locked J1 state.
-    """
-    reset = await reset_d1_journey(session)
-    _animation_task_id, _lighting_task_id, comp_task_id = reset.task_ids
-    _animation_version_id, _lighting_version_id, comp_version_id = reset.version_ids
-
+async def _assert_reaches_locked_j1_state(
+    session: AsyncSession,
+    client: AsyncClient,
+    *,
+    comp_task_id: uuid.UUID,
+    comp_version_id: uuid.UUID,
+) -> D1JourneyResult:
     response = await client.post(
         f"/intent/versions/{comp_version_id}/cross-role-assessments/generate",
         json={"task_id": str(comp_task_id)},
@@ -276,52 +274,214 @@ async def test_j0_to_j1_real_generate_endpoint_reaches_locked_j1_state(
     assert result.counts["execution_anchor_confirmed_revisions"] == 3
     assert result.counts["execution_drafts"] == 0
     assert result.counts["versions"] == 3
+    return result
+
+
+async def test_j0_to_j1_real_generate_endpoint_reaches_locked_j1_state(
+    session: AsyncSession, client: AsyncClient
+) -> None:
+    """Transition A (ICAS_PACKAGE_C_JOURNEY_REBASE_CLAUDE_HANDOFF.md
+    §11), driven through the exact real product action: the same
+    `POST /versions/{id}/cross-role-assessments/generate` endpoint the
+    real Alignment UI's "Generate Cross-role Assessment" button calls,
+    with no `generator=` override and no internal seed helper involved.
+    Runs under this environment's default "deterministic" provider.
+    """
+    reset = await reset_d1_journey(session)
+    _animation_task_id, _lighting_task_id, comp_task_id = reset.task_ids
+    _animation_version_id, _lighting_version_id, comp_version_id = reset.version_ids
+
+    await _assert_reaches_locked_j1_state(
+        session, client, comp_task_id=comp_task_id, comp_version_id=comp_version_id
+    )
+
+
+async def test_j0_to_j1_real_generate_endpoint_reaches_locked_j1_state_under_deepseek(
+    session: AsyncSession, client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Requirement 1 + 2 (owner re-validation correction): canonical D1
+    is a reproducible demo fixture whose locked J0 -> J1 transition must
+    not depend on the ambient configured provider. With the provider
+    forced to "deepseek" (no MODEL_API_KEY/MODEL_NAME configured in this
+    test environment -- a real fall-through to the generic live-provider
+    path would raise `AgentGenerationError` here, not silently succeed),
+    the real endpoint still reaches the exact same locked J1 state
+    deterministically, with no live network call.
+    """
+    monkeypatch.setattr(model_gateway, "resolve_provider_name", lambda: "deepseek")
+
+    reset = await reset_d1_journey(session)
+    _animation_task_id, _lighting_task_id, comp_task_id = reset.task_ids
+    _animation_version_id, _lighting_version_id, comp_version_id = reset.version_ids
+
+    await _assert_reaches_locked_j1_state(
+        session, client, comp_task_id=comp_task_id, comp_version_id=comp_version_id
+    )
 
 
 async def test_canonical_d1_generator_dispatch_is_scoped_to_exact_identity(
-    session: AsyncSession,
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Unit-level regression for the dispatch rule itself
     (`demo_seed.d1_scenario.resolve_canonical_d1_assessment_generator`):
     it must fire only for the exact canonical D1 Project/Shot identity
     (matched by real `ExternalEntityLink`, never a guessed/random id or
-    a display name), and must never override a live model provider.
+    a display name) -- checked under both the default provider and a
+    forced "deepseek" provider, since identity scoping must hold
+    regardless of provider.
     """
     reset = await reset_d1_journey(session)
 
-    canonical = await resolve_canonical_d1_assessment_generator(
-        session, project_id=reset.project_id, shot_id=reset.shot_id
-    )
-    assert isinstance(canonical, DeterministicD1CrossRoleAssessmentGenerator)
+    for forced_provider in (None, "deepseek"):
+        if forced_provider is not None:
+            monkeypatch.setattr(model_gateway, "resolve_provider_name", lambda p=forced_provider: p)
 
-    # Neither a wrong Shot under the real canonical Project, nor a
-    # random Project/Shot pair, ever dispatches to the D1-specific
-    # generator -- both fall through to `None` untouched.
-    assert (
-        await resolve_canonical_d1_assessment_generator(
-            session, project_id=reset.project_id, shot_id=uuid.uuid4()
+        canonical = await resolve_canonical_d1_assessment_generator(
+            session, project_id=reset.project_id, shot_id=reset.shot_id
         )
-        is None
-    )
-    assert (
-        await resolve_canonical_d1_assessment_generator(
-            session, project_id=uuid.uuid4(), shot_id=uuid.uuid4()
+        assert isinstance(canonical, DeterministicD1CrossRoleAssessmentGenerator)
+
+        # Neither a wrong Shot under the real canonical Project, nor a
+        # random Project/Shot pair, ever dispatches to the D1-specific
+        # generator -- both fall through to `None` untouched, so a
+        # noncanonical Shot keeps using whatever provider is actually
+        # configured (requirement 3).
+        assert (
+            await resolve_canonical_d1_assessment_generator(
+                session, project_id=reset.project_id, shot_id=uuid.uuid4()
+            )
+            is None
         )
-        is None
-    )
+        assert (
+            await resolve_canonical_d1_assessment_generator(
+                session, project_id=uuid.uuid4(), shot_id=uuid.uuid4()
+            )
+            is None
+        )
 
 
-async def test_canonical_d1_generator_dispatch_never_overrides_live_provider(
+async def test_canonical_d1_generator_dispatch_fires_regardless_of_ambient_provider(
     session: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Requirement 1, at the unit level: the dispatch itself -- not just
+    the end-to-end endpoint -- returns the D1-specific generator for the
+    canonical identity even when the ambient provider is "deepseek".
+    """
     reset = await reset_d1_journey(session)
 
-    monkeypatch.setattr(d1_scenario.model_gateway, "resolve_provider_name", lambda: "deepseek")
+    monkeypatch.setattr(model_gateway, "resolve_provider_name", lambda: "deepseek")
 
     result = await resolve_canonical_d1_assessment_generator(
         session, project_id=reset.project_id, shot_id=reset.shot_id
     )
-    assert result is None
+    assert isinstance(result, DeterministicD1CrossRoleAssessmentGenerator)
+
+
+async def test_ftrack_live_identity_never_intercepted(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Requirement 4: a real ftrack/live Project and Shot -- which can
+    never carry the `source="demo"` ExternalEntityLink identity the
+    dispatch matches on -- is never intercepted, under either provider.
+    """
+    await reset_d1_journey(session)
+
+    live_project = Project(name="Live ftrack Project", source="ftrack")
+    session.add(live_project)
+    await session.flush()
+    await record_external_link(
+        session,
+        entity_type="project",
+        entity_id=live_project.id,
+        source="ftrack",
+        external_id="ftrack:live-project-9001",
+    )
+    live_shot = Shot(project_id=live_project.id, name="Live ftrack Shot", source="ftrack")
+    session.add(live_shot)
+    await session.flush()
+    await record_external_link(
+        session,
+        entity_type="shot",
+        entity_id=live_shot.id,
+        source="ftrack",
+        external_id="ftrack:live-shot-9001",
+    )
+    await session.commit()
+
+    for forced_provider in (None, "deepseek"):
+        if forced_provider is not None:
+            monkeypatch.setattr(model_gateway, "resolve_provider_name", lambda p=forced_provider: p)
+        result = await resolve_canonical_d1_assessment_generator(
+            session, project_id=live_project.id, shot_id=live_shot.id
+        )
+        assert result is None
+
+
+async def test_explicit_generator_override_wins_over_canonical_dispatch(
+    session: AsyncSession,
+) -> None:
+    """Requirement 5: an explicit `generator=` override always wins,
+    even for the canonical D1 identity -- the dispatch only ever fills
+    in a *default*, exactly like Reset/Load-Completed already rely on.
+    """
+    reset = await reset_d1_journey(session)
+    _animation_task_id, _lighting_task_id, comp_task_id = reset.task_ids
+    _animation_version_id, _lighting_version_id, comp_version_id = reset.version_ids
+
+    await generate_cross_role_assessment(
+        session,
+        _SEED_VFX,
+        comp_version_id,
+        comp_task_id,
+        generator=DeterministicCrossRoleAssessmentGenerator(),
+    )
+
+    # The generic generator never proposes a re-anchor or high-priority
+    # finding -- proving this assessment was produced by the explicit
+    # override, not the D1-specific dispatch generator (which always
+    # proposes one and always reaches high attention here). Per the
+    # locked spec, an assessment that doesn't reach high attention does
+    # not satisfy J1, so `journey_state` honestly stays "mixed".
+    result = await inspect_d1_journey(session)
+    assert result is not None
+    assert result.counts["assessments"] == 1
+    assert result.counts["proposals"] == 0
+    assert result.attention_levels != ("high",)
+    assert result.journey_state == "mixed"
+
+
+async def test_failed_noncanonical_provider_generation_does_not_mutate_canonical_d1(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Requirement 6: a Generate attempt for a noncanonical Shot that
+    fails under a forced "deepseek" provider (no MODEL_API_KEY/
+    MODEL_NAME configured) must not leave any trace on the canonical D1
+    Journey graph.
+    """
+    await reset_d1_journey(session)
+    before = await inspect_d1_journey(session)
+    assert before is not None
+
+    # A real, fully-formed noncanonical Shot/Task/Version with every
+    # Generate prerequisite already met -- `ensure_d1_scenario`'s own
+    # legacy fixture (Package C journey rebase retargeted it off the
+    # canonical Shot 010 entirely, see D1_LEGACY_SHOT_EXTERNAL_ID).
+    legacy = await ensure_d1_scenario(session)
+    legacy_task_id = await find_linked_entity_id(
+        session, entity_type="task", source="demo", external_id=D1_LEGACY_TASK_EXTERNAL_ID
+    )
+    assert legacy_task_id is not None
+    legacy_version = await session.get(Version, legacy.version_id)
+    assert legacy_version is not None
+
+    monkeypatch.setattr(model_gateway, "resolve_provider_name", lambda: "deepseek")
+
+    with pytest.raises(AgentGenerationError):
+        await generate_cross_role_assessment(session, _SEED_VFX, legacy_version.id, legacy_task_id)
+
+    after = await inspect_d1_journey(session)
+    assert after is not None
+    assert _semantic_snapshot(after) == _semantic_snapshot(before)
 
 
 # ---------------------------------------------------------------------------
