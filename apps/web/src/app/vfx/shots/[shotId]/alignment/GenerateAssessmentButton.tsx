@@ -16,10 +16,19 @@ export function GenerateAssessmentButton({
   shotId,
   taskId,
   versionId,
+  label = "Generate Assessment",
+  pendingLabel = "Generating Assessment…",
 }: {
   shotId: string;
   taskId: string;
   versionId: string;
+  /** Package C follow-up (Alignment workspace reassessment): the same
+   * real action, just re-labelled "Generate new Cross-role Assessment"
+   * when a historical Assessment already exists and this is offered as
+   * a genuine reassessment against newer eligible evidence, rather
+   * than the first-ever Assessment for this Shot. */
+  label?: string;
+  pendingLabel?: string;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -46,7 +55,7 @@ export function GenerateAssessmentButton({
           });
         }}
       >
-        {isPending ? "Generating Assessment…" : "Generate Assessment"}
+        {isPending ? pendingLabel : label}
       </button>
       {error && (
         <p className={styles.error} role="alert">

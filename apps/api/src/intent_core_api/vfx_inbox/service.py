@@ -294,6 +294,20 @@ def _assessment_generation_check(
     ever set together with `available=True`, and are the one real
     Task+Version pair that actually satisfies every prerequisite (never
     just "the latest Task" and "the latest Version" independently).
+
+    Package C follow-up (Alignment workspace reassessment): if a Shot
+    already has a latest Assessment, only a *strictly newer* Version
+    (by `created_at`) than the one that Assessment already used
+    qualifies -- offering to "generate" against the same-vintage-or-
+    older evidence that already produced the current Assessment (its
+    own exact pair, or an older Version that merely happens to still
+    satisfy the raw prerequisite checks) is not a genuinely new
+    readiness signal. A real newer Version -- e.g. a department's newly
+    resolved Version, once its own CG Review/VFX Review/Artist Guidance
+    evidence exists -- is still returned as ready, so this same one
+    check naturally distinguishes "no new evidence yet" from "a newer
+    eligible Version is ready for reassessment" without a separate code
+    path.
     """
     if not core_anchor_confirmed:
         return False, None, None, None
@@ -307,6 +321,15 @@ def _assessment_generation_check(
             None,
         )
 
+    already_assessed_version_created_at: datetime | None = None
+    if data.latest_assessment is not None:
+        already_assessed_version = next(
+            (v for v in data.versions if v.id == data.latest_assessment.version_id), None
+        )
+        already_assessed_version_created_at = (
+            already_assessed_version.created_at if already_assessed_version is not None else None
+        )
+
     for task_id, execution_revision_id in data.task_confirmed_execution_anchor.items():
         if execution_revision_id not in data.execution_revisions_with_cg_review:
             continue
@@ -314,6 +337,11 @@ def _assessment_generation_check(
             if version.id not in data.versions_with_vfx_review:
                 continue
             if (task_id, version.id) not in data.tasks_with_artist_guidance_by_version:
+                continue
+            if (
+                already_assessed_version_created_at is not None
+                and version.created_at <= already_assessed_version_created_at
+            ):
                 continue
             return True, None, task_id, version.id
 
@@ -485,13 +513,15 @@ async def build_inbox_item(
         # whether some higher-precedence Core-Anchor focus type also
         # currently wins this Shot's Current focus slot elsewhere (e.g.
         # Inbox/Overview) -- the Alignment Workspace's own "ready to
-        # generate" state is not gated on Inbox precedence.
-        generation_ready_task_id=(
-            generation_ready_task_id if data.latest_assessment is None else None
-        ),
-        generation_ready_version_id=(
-            generation_ready_version_id if data.latest_assessment is None else None
-        ),
+        # generate" state is not gated on Inbox precedence. Package C
+        # follow-up: no longer blanket-nulled once a latest Assessment
+        # exists -- `_assessment_generation_check` itself already skips
+        # that Assessment's own exact (task_id, version_id) pair, so a
+        # non-null value here always means a genuinely different,
+        # newly-eligible pair (reassessment), never the same pair that
+        # already produced the current Assessment.
+        generation_ready_task_id=generation_ready_task_id,
+        generation_ready_version_id=generation_ready_version_id,
         latest_version_without_review_id=(
             latest_version.id if latest_version_without_review and latest_version else None
         ),

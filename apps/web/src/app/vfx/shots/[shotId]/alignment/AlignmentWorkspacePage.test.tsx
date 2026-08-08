@@ -13,6 +13,14 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/vfx/shots/s1/alignment",
 }));
 
+const { generateAssessmentActionMock } = vi.hoisted(() => ({
+  generateAssessmentActionMock: vi.fn(),
+}));
+vi.mock("@/features/vfx/alignment-workspace/actions", () => ({
+  generateAssessmentAction: generateAssessmentActionMock,
+}));
+
+import userEvent from "@testing-library/user-event";
 import type { AlignmentWorkspaceData } from "@/features/vfx/alignment-workspace/data";
 import { AlignmentWorkspacePage } from "./AlignmentWorkspacePage";
 
@@ -573,5 +581,108 @@ describe("AlignmentWorkspacePage", () => {
     );
     expect(screen.getByText("Assessment history")).toBeVisible();
     expect(screen.getByText("An earlier assessment summary.")).toBeVisible();
+  });
+
+  describe("Package C follow-up: reassessment readiness alongside a historical Assessment", () => {
+    it("does not offer reassessment when no newer eligible Version/evidence exists", () => {
+      render(
+        <AlignmentWorkspacePage
+          shotId="s1"
+          data={data()}
+          unavailable={false}
+          onExitRole={vi.fn()}
+        />,
+      );
+      expect(
+        screen.queryByText(
+          "A newer eligible Version is ready for reassessment",
+        ),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", {
+          name: "Generate new Cross-role Assessment",
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("surfaces Generate new Cross-role Assessment once a newer eligible Version/evidence set is ready, without hiding the historical Assessment", () => {
+      render(
+        <AlignmentWorkspacePage
+          shotId="s1"
+          data={data({
+            item: item({
+              generation_ready_task_id: "t1",
+              generation_ready_version_id: "v2",
+            }),
+            versionsById: new Map([
+              ["v1", version()],
+              [
+                "v2",
+                version({
+                  id: "v2",
+                  name: "SH010_v002",
+                  version_number: 2,
+                }),
+              ],
+            ]),
+          })}
+          unavailable={false}
+          onExitRole={vi.fn()}
+        />,
+      );
+      expect(
+        screen.getByText("A newer eligible Version is ready for reassessment"),
+      ).toBeVisible();
+      expect(
+        screen.getByRole("button", {
+          name: "Generate new Cross-role Assessment",
+        }),
+      ).toBeVisible();
+      // The historical Assessment's own content is still fully shown,
+      // clearly labelled, never replaced or hidden.
+      expect(screen.getByText("Historical assessment")).toBeVisible();
+      expect(
+        screen.getByText(
+          "The Version stays close to the confirmed Core Anchor.",
+        ),
+      ).toBeVisible();
+    });
+
+    it("calls the real generation action with the newer eligible Task/Version pair, never the historical pair", async () => {
+      generateAssessmentActionMock.mockResolvedValue({ ok: true });
+      const user = userEvent.setup();
+      render(
+        <AlignmentWorkspacePage
+          shotId="s1"
+          data={data({
+            item: item({
+              generation_ready_task_id: "t1",
+              generation_ready_version_id: "v2",
+            }),
+            versionsById: new Map([
+              ["v1", version()],
+              [
+                "v2",
+                version({ id: "v2", name: "SH010_v002", version_number: 2 }),
+              ],
+            ]),
+          })}
+          unavailable={false}
+          onExitRole={vi.fn()}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole("button", {
+          name: "Generate new Cross-role Assessment",
+        }),
+      );
+
+      expect(generateAssessmentActionMock).toHaveBeenCalledWith(
+        "s1",
+        "v2",
+        "t1",
+      );
+    });
   });
 });

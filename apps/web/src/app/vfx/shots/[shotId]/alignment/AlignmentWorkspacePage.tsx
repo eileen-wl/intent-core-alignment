@@ -194,12 +194,16 @@ export function AlignmentWorkspacePage({
             nextAction={
               current?.re_anchor_proposal
                 ? "Review the Re-anchor Proposal in Intent."
-                : current
-                  ? "Inspect the completed assessment and coordinate any human follow-up."
-                  : data.item.generation_ready_task_id &&
-                      data.item.generation_ready_version_id
-                    ? "Generate the assessment, then review the findings."
-                    : "Complete the current prerequisites before generating a new assessment."
+                : current &&
+                    data.item.generation_ready_task_id &&
+                    data.item.generation_ready_version_id
+                  ? "A newer eligible Version is ready -- generate a new Cross-role Assessment."
+                  : current
+                    ? "Inspect the completed assessment and coordinate any human follow-up."
+                    : data.item.generation_ready_task_id &&
+                        data.item.generation_ready_version_id
+                      ? "Generate the assessment, then review the findings."
+                      : "Complete the current prerequisites before generating a new assessment."
             }
           />
 
@@ -245,7 +249,32 @@ export function AlignmentWorkspacePage({
             )
           ) : (
             <>
+              {data.item.generation_ready_task_id &&
+                data.item.generation_ready_version_id && (
+                  <EmptyState
+                    title="A newer eligible Version is ready for reassessment"
+                    description={`Current resolved evidence for ${versionLabel(
+                      data.versionsById.get(
+                        data.item.generation_ready_version_id,
+                      ),
+                    )} is now available -- generating a new Cross-role Assessment keeps the historical Assessment below exactly as it is.`}
+                    action={
+                      <GenerateAssessmentButton
+                        shotId={shotId}
+                        taskId={data.item.generation_ready_task_id}
+                        versionId={data.item.generation_ready_version_id}
+                        label="Generate new Cross-role Assessment"
+                        pendingLabel="Generating new Assessment…"
+                      />
+                    }
+                  />
+                )}
+
               <EvidenceLayerSection kind="production-evidence">
+                {data.item.generation_ready_task_id &&
+                  data.item.generation_ready_version_id && (
+                    <p className={styles.empty}>Historical assessment</p>
+                  )}
                 <MetadataRow
                   items={[
                     {

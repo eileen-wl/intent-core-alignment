@@ -1652,6 +1652,26 @@ async def test_j0_to_j4_full_formal_journey_via_real_endpoints(
     assert before_final_assessment is not None
     assert before_final_assessment.counts["assessments"] == 1  # still not auto-created
 
+    # --- Alignment workspace follow-up: the formal VFX Shot Alignment
+    # page's own readiness signal (`GET /vfx/inbox/{shot_id}`) now
+    # exposes the resolved Compositing Task/Version as ready for
+    # reassessment -- distinct from the historical J1 Assessment, which
+    # remains the Shot's `latest_assessment_id` until the new one is
+    # actually generated. Read-purity: opening this page repeatedly
+    # never advances the journey.
+    inbox_before = await inspect_d1_journey(session)
+    assert inbox_before is not None
+    for _ in range(2):
+        inbox_response = await client.get(f"/vfx/inbox/{reset.shot_id}", headers=VFX)
+        assert inbox_response.status_code == 200, inbox_response.text
+        inbox_item = inbox_response.json()
+        assert inbox_item["generation_ready_task_id"] == str(comp_task_id)
+        assert inbox_item["generation_ready_version_id"] == comp_resolved_version_id
+        assert inbox_item["latest_assessment_id"] == str(j1_assessment_id)
+    inbox_after = await inspect_d1_journey(session)
+    assert inbox_after is not None
+    assert _semantic_snapshot(inbox_before) == _semantic_snapshot(inbox_after)
+
     # --- Explicit final Cross-role Assessment, real endpoint. ---
     final_response = await client.post(
         f"/intent/versions/{comp_resolved_version_id}/cross-role-assessments/generate",
@@ -1714,6 +1734,18 @@ async def test_j0_to_j4_full_formal_journey_via_real_endpoints(
         )
     )
     assert j1_proposal_count == 1
+
+    # The Alignment page's own readiness signal now points at the new,
+    # current Assessment -- and correctly reports no *further*
+    # reassessment-ready pair, since no additional qualifying evidence
+    # exists beyond what was just used.
+    final_assessment_id = uuid.UUID(final["id"])
+    inbox_final_response = await client.get(f"/vfx/inbox/{reset.shot_id}", headers=VFX)
+    assert inbox_final_response.status_code == 200, inbox_final_response.text
+    inbox_final_item = inbox_final_response.json()
+    assert inbox_final_item["latest_assessment_id"] == str(final_assessment_id)
+    assert inbox_final_item["generation_ready_task_id"] is None
+    assert inbox_final_item["generation_ready_version_id"] is None
 
     # Every department's Execution R1 remains historical (superseded,
     # byte-for-byte unchanged content) regardless of having reached J4.

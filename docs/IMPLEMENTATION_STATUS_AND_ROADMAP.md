@@ -665,6 +665,47 @@ outstanding Prettier issues from earlier work, left alone as out of this turn's 
 validation of the full J3 → J4 UI walkthrough is still pending; Package C is not yet marked
 complete.
 
+### Package C reassessment in the formal Alignment workspace (2026-08-08)
+
+Package C remains in progress on `feat/package-c-golden-demo-journey`. The J3 → J4 UI walkthrough
+(commit `ab56036`) still had to leave the canonical `/vfx/shots/[shotId]/alignment` workspace for its
+final step: that page's own readiness signal (`generation_ready_task_id`/`generation_ready_version_id`
+on `VfxInboxItemRead`) was unconditionally nulled once any Assessment already existed for the Shot,
+so the real "Generate Cross-role Assessment" action there could only ever fire once per Shot, ever.
+`vfx_inbox.service._assessment_generation_check` now compares candidate Task/Version pairs against
+the *Version's own `created_at`* on the Shot's latest Assessment, not just an exact-pair match: a
+pair is "ready" only when its Version is strictly newer than the one the latest Assessment already
+used, so a stale pairing that happens to still satisfy the raw prerequisite checks (an older Version
+whose Task's *current* confirmed Execution Anchor picked up a fresh CG Review) is correctly excluded,
+while a genuinely new resolved Version is correctly surfaced. The blanket "assessment exists →
+always null" gate in `build_inbox_item` is removed; the check itself is now the single source of
+truth for both the first-ever Assessment and every later reassessment.
+
+The Alignment workspace page now renders both facts side by side once a historical Assessment exists
+and a newer eligible pair is ready: the historical Assessment's own content stays fully visible,
+labelled "Historical assessment," and a new "A newer eligible Version is ready for reassessment"
+panel with a `Generate new Cross-role Assessment` action (the same real generation endpoint,
+`GenerateAssessmentButton` now takes an optional `label`/`pendingLabel`) appears above it. Generating
+does not delete or replace the historical Assessment -- it becomes the newest entry in the page's
+already-existing "Assessment history" list, unchanged from before. The older free-form Task×Version
+picker page is untouched and still exists for other flows; it is no longer required for the canonical
+owner walkthrough.
+
+Regression coverage added: a `vfx_inbox` test proving a newer eligible Version becomes ready once its
+own CG Review/VFX Review/Artist Guidance evidence exists after an Assessment already exists; three
+`AlignmentWorkspacePage` tests (reassessment hidden with no newer evidence, shown with the historical
+Assessment still visible, and the real action called with the correct newer pair); and the existing
+full J0→J4 integration test extended with the Alignment page's own `GET /vfx/inbox/{shot_id}`
+read-purity and readiness assertions at the reassessment-ready transition, and a post-generation check
+that readiness correctly returns to absent with no further qualifying pair.
+
+Validation: full backend suite (1,000 tests) and full frontend suite (1,026 tests) pass; Ruff
+format/check and mypy pass on touched Python files; web TypeScript typecheck and ESLint pass; the
+production build (`next build`, 18 static pages) passes; repo-root Prettier passes on every file
+touched this turn; `git diff --check` clean. Owner validation of the full J3 → J4 UI walkthrough
+through only the Reset developer step plus the formal role pages is still pending; Package C is not
+yet marked complete.
+
 ### Package A final merge gate (2026-08-03)
 
 Package A owner visual validation passed. The complete repository regression then passed: 53

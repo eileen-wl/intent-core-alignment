@@ -263,6 +263,36 @@ async def test_generation_ready_pair_absent_once_an_assessment_exists(
     assert item["generation_ready_version_id"] is None
 
 
+async def test_generation_ready_pair_present_for_a_newer_eligible_version_after_an_assessment_exists(
+    client: AsyncClient,
+) -> None:
+    """Package C follow-up (Alignment workspace reassessment): a Shot
+    that already has a latest Assessment must still surface readiness
+    for a genuinely *different* qualifying Task/Version pair (e.g. a
+    newly resolved Version with its own fresh role-output evidence) --
+    the prior blanket "any Assessment exists -> never ready again" gap
+    is fixed. The already-assessed pair itself must never be offered
+    again with no new evidence (see the sibling test above).
+    """
+    shot_id, task_id, confirmed_revision_id, version_id = await _build_ready_shot(client)
+    await _generate_assessment(client, version_id, task_id)
+
+    # A newer Version for the same Task, with its own fresh VFX Review
+    # and Artist Guidance -- the same already-confirmed Execution
+    # Anchor revision's CG Review already covers it (CG Review is
+    # revision-scoped, not Version-scoped).
+    newer_version_id = await _create_version(client, shot_id, name="SH010_v002")
+    await _generate_vfx_review(client, newer_version_id)
+    await _generate_artist_guidance(client, newer_version_id, task_id)
+
+    response = await client.get(f"/vfx/inbox/{shot_id}")
+    item = response.json()
+    assert item["generation_ready_task_id"] == task_id
+    assert item["generation_ready_version_id"] == newer_version_id
+    # The historical Assessment's own facts are untouched.
+    assert item["latest_assessment_id"] is not None
+
+
 async def test_generation_ready_pair_absent_when_prerequisites_are_not_met(
     client: AsyncClient,
 ) -> None:
