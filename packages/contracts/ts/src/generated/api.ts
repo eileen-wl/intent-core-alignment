@@ -178,6 +178,77 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/internal/demo/d1/reset-journey": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reset D1 Journey Endpoint */
+        post: operations["reset_d1_journey_endpoint_internal_demo_d1_reset_journey_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/demo/d1/load-completed-journey": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Load Completed D1 Journey Endpoint */
+        post: operations["load_completed_d1_journey_endpoint_internal_demo_d1_load_completed_journey_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/demo/d1/journey-status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** D1 Journey Status Endpoint */
+        get: operations["d1_journey_status_endpoint_internal_demo_d1_journey_status_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/internal/demo/obsolete-golden/cleanup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cleanup Obsolete Golden Endpoint
+         * @description Developer-only cleanup for the abandoned exact Golden namespace.
+         */
+        post: operations["cleanup_obsolete_golden_endpoint_internal_demo_obsolete_golden_cleanup_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/internal/ping-worker": {
         parameters: {
             query?: never;
@@ -2924,6 +2995,48 @@ export interface components {
             /** Evidence */
             evidence: components["schemas"]["CrossRoleEvidenceReference"][];
         };
+        /** D1JourneyResultRead */
+        D1JourneyResultRead: {
+            /** Snapshot */
+            snapshot: string;
+            /** Journey State */
+            journey_state: string;
+            /**
+             * Project Id
+             * Format: uuid
+             */
+            project_id: string;
+            /**
+             * Shot Id
+             * Format: uuid
+             */
+            shot_id: string;
+            /** Task Ids */
+            task_ids: string[];
+            /** Version Ids */
+            version_ids: string[];
+            /** Counts */
+            counts: {
+                [key: string]: number;
+            };
+            /** Assessment Ids */
+            assessment_ids: string[];
+            /** Proposal Ids */
+            proposal_ids: string[];
+            /** Proposal Assessment Ids */
+            proposal_assessment_ids: {
+                [key: string]: string;
+            };
+            /** Attention Levels */
+            attention_levels: string[];
+            /** Completed At */
+            completed_at: string;
+            /**
+             * Project External Id
+             * @default icas-demo:d1
+             */
+            project_external_id: string;
+        };
         /** D1ScenarioResultRead */
         D1ScenarioResultRead: {
             /**
@@ -3597,6 +3710,11 @@ export interface components {
             shot_id: string;
             /** Shot External Id */
             shot_external_id: string;
+        };
+        /** ObsoleteGoldenCleanupRead */
+        ObsoleteGoldenCleanupRead: {
+            /** Removed */
+            removed: boolean;
         };
         /** OpenQuestionInput */
         OpenQuestionInput: {
@@ -4273,6 +4391,8 @@ export interface components {
              * Format: uuid
              */
             shot_id: string;
+            /** Task Id */
+            task_id?: string | null;
             /** Name */
             name: string;
             /** Version Number */
@@ -4956,6 +5076,86 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ResetCgDemoTaskResultRead"];
+                };
+            };
+        };
+    };
+    reset_d1_journey_endpoint_internal_demo_d1_reset_journey_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["D1JourneyResultRead"];
+                };
+            };
+        };
+    };
+    load_completed_d1_journey_endpoint_internal_demo_d1_load_completed_journey_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["D1JourneyResultRead"];
+                };
+            };
+        };
+    };
+    d1_journey_status_endpoint_internal_demo_d1_journey_status_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["D1JourneyResultRead"] | null;
+                };
+            };
+        };
+    };
+    cleanup_obsolete_golden_endpoint_internal_demo_obsolete_golden_cleanup_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ObsoleteGoldenCleanupRead"];
                 };
             };
         };

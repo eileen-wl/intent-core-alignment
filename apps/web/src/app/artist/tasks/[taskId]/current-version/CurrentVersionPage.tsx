@@ -13,6 +13,7 @@ import { getAuthorDisplayText } from "@/lib/authorProvenance";
 import type { CurrentVersionData } from "@/features/artist/current-version/data";
 import { ArtistTaskWorkspaceFrame } from "../ArtistTaskWorkspaceFrame";
 import { GenerateArtistGuidanceButton } from "../GenerateArtistGuidanceButton";
+import { PublishResolvedVersionButton } from "./PublishResolvedVersionButton";
 import styles from "./CurrentVersionPage.module.css";
 
 /** `/artist/tasks/:taskId/current-version` (Step 7C-5) -- the latest
@@ -60,6 +61,15 @@ export function CurrentVersionPage({
             <div className={styles.grid}>
               <div className={styles.listColumn}>
                 <h2 className={styles.columnHeading}>Production Versions</h2>
+                {data.canPublishResolvedVersion &&
+                  data.publishableExecutionAnchorRevision && (
+                    <PublishResolvedVersionButton
+                      taskId={taskId}
+                      nextRevisionNumber={
+                        data.publishableExecutionAnchorRevision.revision_number
+                      }
+                    />
+                  )}
                 <div className={styles.list}>
                   {data.versions.map((version) => {
                     const isActive = data.selectedVersion?.id === version.id;

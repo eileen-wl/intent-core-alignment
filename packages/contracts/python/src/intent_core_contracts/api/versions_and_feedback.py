@@ -9,14 +9,30 @@ schemas exactly in shape and doc-comment style.
 contracts) are deliberately left untouched by Step 8C-2
 (docs/step-8/02_STEP_8B_VERSION_NOTE_SYNC_CONTRACT.md §8, ADR-0014
 Decision 3): they must never accept ``source``, ``external_id``,
-``task_id``, ``source_created_at``, or either ``external_author_*``
-field, so the public/manual creation path can never claim ftrack
-provenance. ``VersionRead``/``ReviewNoteRead`` gain read-only,
-already-nullable-at-the-database-layer sync metadata fields below,
-since a client only ever *observes* these, never sets them through this
-module's endpoints. The trusted internal sync payload contracts that
-*can* set them (for a not-yet-implemented endpoint) live separately in
+``source_created_at``, or either ``external_author_*`` field, so the
+public/manual creation path can never claim ftrack provenance.
+``VersionRead``/``ReviewNoteRead`` gain read-only, already-nullable-at-
+the-database-layer sync metadata fields below, since a client only
+ever *observes* these, never sets them through this module's
+endpoints. The trusted internal sync payload contracts that *can* set
+them (for a not-yet-implemented endpoint) live separately in
 ``api.ftrack_version_note_sync``, not here.
+
+Package C narrow ADR-0014 Decision 3 amendment (owner-approved, J3 -> J4
+Version-publish follow-up): ``task_id`` is re-classified out of the
+"ftrack provenance" group above and is now accepted on ``VersionCreate``
+as a plain, optional domain association -- a human (any of the three
+roles ``versions_and_feedback.service._MANUAL_CREATE_ROLES`` already
+allows) may explicitly submit a manually-created Version that belongs
+to one specific Task, exactly mirroring the domain model's own
+pre-existing, previously write-only-by-ftrack-sync ``Version.task_id``
+column and the already-established Task-scoping convention
+(``department_execution_overview``'s ``_is_version_in_task_scope`` /
+the frontend's ``lib/taskScopedVersions.ts``). ``source`` still always
+resolves to ``"manual"`` for anything created this way -- setting
+``task_id`` never implies or claims ftrack provenance. The remaining
+four fields (``source``, ``external_id``, ``source_created_at``,
+``external_author_*``) stay exactly as forbidden as before.
 """
 
 from __future__ import annotations
@@ -42,14 +58,18 @@ ActorKind = Literal["human", "agent", "system"]
 class VersionCreate(BaseModel):
     # extra="forbid" (matches the existing precedent in
     # api.intent_decomposition.CoreAnchorDraftFromDecompositionRequest):
-    # a client cannot smuggle source/external_id/task_id/
-    # source_created_at/external_author_* through this public manual-
-    # create endpoint -- they are silently-ignored-by-default in
-    # Pydantic v2 otherwise, which would be a real gap given this
-    # endpoint's own explicit boundary decision (ADR-0014 Decision 3).
+    # a client cannot smuggle source/external_id/source_created_at/
+    # external_author_* through this public manual-create endpoint --
+    # they are silently-ignored-by-default in Pydantic v2 otherwise,
+    # which would be a real gap given this endpoint's own explicit
+    # boundary decision (ADR-0014 Decision 3). `task_id` is deliberately
+    # NOT in that forbidden group (see the module docstring's Package C
+    # amendment) -- it is a plain, optional domain association, not a
+    # provenance claim.
     model_config = ConfigDict(extra="forbid")
 
     shot_id: UUID
+    task_id: UUID | None = None
     name: str = Field(min_length=1, max_length=200)
     version_number: int | None = None
     description: str = Field(min_length=1)

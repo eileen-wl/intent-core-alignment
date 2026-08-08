@@ -59,6 +59,21 @@ export interface CurrentVersionData {
    * or when the role-gated media call itself failed (a media-resolution
    * failure never blocks the rest of this Task page). */
   media: VersionMediaRead | null;
+  /** Package C follow-up (J3 -> J4 Version-publish): true only when
+   * this Task's confirmed Execution Anchor is itself based on the
+   * Shot's own currently-confirmed Core Anchor revision (genuinely
+   * "current", not outdated) AND no Version scoped to this Task yet
+   * carries that same Execution Anchor revision number -- the real,
+   * truthful signal that "the current Production Version still belongs
+   * to the R1/conflict era" and a resolved Version has not been
+   * published for it yet. */
+  canPublishResolvedVersion: boolean;
+  /** This Task's confirmed Execution Anchor revision, whenever
+   * `canPublishResolvedVersion` is true -- the real source content the
+   * "Publish next Version from Execution Anchor R{n}" action derives
+   * its default name/description from. `null` whenever
+   * `canPublishResolvedVersion` is `false`. */
+  publishableExecutionAnchorRevision: ExecutionAnchorRevisionRead | null;
 }
 
 export async function loadCurrentVersionData(
@@ -142,6 +157,30 @@ export async function loadCurrentVersionData(
       )
     : null;
 
+  // Package C follow-up (J3 -> J4 Version-publish): "the current
+  // Version still belongs to the R1/conflict era" is computed purely
+  // from real data already fetched above -- no new backend field. The
+  // confirmed Execution Anchor must itself be based on the Shot's own
+  // currently-confirmed Core Anchor revision (the same real check the
+  // backend's `context_state: "outdated"` signal uses, done here
+  // directly against `core_anchor_revision_id`), and no Version scoped
+  // to this Task may already carry that Execution Anchor's own
+  // `revision_number` -- the "Publish" action always numbers the
+  // resolved Version it creates to match, so this stays a real,
+  // self-consistent signal.
+  const maxPublishedVersionNumberForTask = Math.max(
+    0,
+    ...sortedVersions
+      .filter((version) => version.task_id === taskId)
+      .map((version) => version.version_number ?? 0),
+  );
+  const canPublishResolvedVersion =
+    executionAnchorRevision !== null &&
+    executionAnchorRevision.status === "confirmed" &&
+    coreAnchorRevision !== null &&
+    executionAnchorRevision.core_anchor_revision_id === coreAnchorRevision.id &&
+    executionAnchorRevision.revision_number > maxPublishedVersionNumberForTask;
+
   return {
     item,
     versions: sortedVersions,
@@ -153,5 +192,9 @@ export async function loadCurrentVersionData(
     cgSupervisorReviews,
     crossRoleAssessments,
     media,
+    canPublishResolvedVersion,
+    publishableExecutionAnchorRevision: canPublishResolvedVersion
+      ? executionAnchorRevision
+      : null,
   };
 }

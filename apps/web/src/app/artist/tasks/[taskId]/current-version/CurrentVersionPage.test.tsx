@@ -1,15 +1,27 @@
 import type {
   ArtistInboxItemRead,
   CrossRoleAssessmentRead,
+  ExecutionAnchorRevisionRead,
   ReviewNoteRead,
   VersionRead,
 } from "@intent-core/contracts";
 import { cleanup, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn(), replace: vi.fn() }),
   usePathname: () => "/artist/tasks/t1/current-version",
+}));
+
+const { generateArtistGuidanceActionMock, publishResolvedVersionActionMock } =
+  vi.hoisted(() => ({
+    generateArtistGuidanceActionMock: vi.fn(),
+    publishResolvedVersionActionMock: vi.fn(),
+  }));
+vi.mock("@/features/artist/actions", () => ({
+  generateArtistGuidanceAction: generateArtistGuidanceActionMock,
+  publishResolvedVersionAction: publishResolvedVersionActionMock,
 }));
 
 import type { CurrentVersionData } from "@/features/artist/current-version/data";
@@ -98,6 +110,8 @@ function data(overrides: Partial<CurrentVersionData> = {}): CurrentVersionData {
     cgSupervisorReviews: [],
     crossRoleAssessments: [],
     media: null,
+    canPublishResolvedVersion: false,
+    publishableExecutionAnchorRevision: null,
     ...overrides,
   };
 }
@@ -723,6 +737,137 @@ describe("CurrentVersionPage", () => {
       expect(
         screen.queryByRole("button", { name: /Approve/i }),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("Package C follow-up: Publish next Version from Execution Anchor R{n}", () => {
+    function executionAnchorRevision(
+      overrides: Partial<ExecutionAnchorRevisionRead> = {},
+    ): ExecutionAnchorRevisionRead {
+      return {
+        id: "ea-rev-2",
+        execution_anchor_id: "ea1",
+        core_anchor_revision_id: "core-rev-2",
+        revision_number: 2,
+        status: "confirmed",
+        technical_boundaries: "Preserve the combined-intensity ceiling.",
+        parameter_ranges: null,
+        delivery_conditions: null,
+        production_ready_criteria: null,
+        downstream_dependencies: null,
+        publish_requirements: null,
+        allowed_refinements: "Local refinements within Animation's own range.",
+        escalation_conditions: null,
+        created_by_actor_kind: "agent",
+        created_by_actor_id: "cg-agent",
+        created_by_human_role: null,
+        created_by_agent_type: "cg_supervisor_agent",
+        created_by_agent_run_id: "run-1",
+        confirmed_by_human_role: "cg_supervisor",
+        confirmed_by_actor_id: "cg-1",
+        confirmed_at: "2026-08-01T00:00:00Z",
+        supersedes_revision_id: "ea-rev-1",
+        created_at: "2026-08-01T00:00:00Z",
+        updated_at: "2026-08-01T00:00:00Z",
+        ...overrides,
+      };
+    }
+
+    it("offers the Publish action once the confirmed Execution Anchor is genuinely current and unpublished", () => {
+      render(
+        <CurrentVersionPage
+          taskId="t1"
+          data={data({
+            canPublishResolvedVersion: true,
+            publishableExecutionAnchorRevision: executionAnchorRevision(),
+          })}
+          unavailable={false}
+          onExitRole={vi.fn()}
+        />,
+      );
+      expect(
+        screen.getByRole("button", {
+          name: "Publish next Version from Execution Anchor R2",
+        }),
+      ).toBeVisible();
+    });
+
+    it("does not offer the Publish action when the current Version already reflects this Execution Anchor revision", () => {
+      render(
+        <CurrentVersionPage
+          taskId="t1"
+          data={data({
+            canPublishResolvedVersion: false,
+            publishableExecutionAnchorRevision: null,
+          })}
+          unavailable={false}
+          onExitRole={vi.fn()}
+        />,
+      );
+      expect(
+        screen.queryByRole("button", {
+          name: /Publish next Version from Execution Anchor/,
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("calls the real publish action with this Task's id, never a fabricated Version", async () => {
+      publishResolvedVersionActionMock.mockResolvedValue({ ok: true });
+      const user = userEvent.setup();
+      render(
+        <CurrentVersionPage
+          taskId="t1"
+          data={data({
+            canPublishResolvedVersion: true,
+            publishableExecutionAnchorRevision: executionAnchorRevision(),
+          })}
+          unavailable={false}
+          onExitRole={vi.fn()}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole("button", {
+          name: "Publish next Version from Execution Anchor R2",
+        }),
+      );
+
+      expect(publishResolvedVersionActionMock).toHaveBeenCalledWith("t1");
+    });
+
+    it("surfaces the action's own error message without publishing silently succeeding", async () => {
+      publishResolvedVersionActionMock.mockResolvedValue({
+        ok: false,
+        error: {
+          kind: "conflict",
+          message:
+            "This Task's confirmed Execution Anchor is not yet current, or a resolved Version already exists for it.",
+        },
+      });
+      const user = userEvent.setup();
+      render(
+        <CurrentVersionPage
+          taskId="t1"
+          data={data({
+            canPublishResolvedVersion: true,
+            publishableExecutionAnchorRevision: executionAnchorRevision(),
+          })}
+          unavailable={false}
+          onExitRole={vi.fn()}
+        />,
+      );
+
+      await user.click(
+        screen.getByRole("button", {
+          name: "Publish next Version from Execution Anchor R2",
+        }),
+      );
+
+      expect(
+        await screen.findByText(
+          "This Task's confirmed Execution Anchor is not yet current, or a resolved Version already exists for it.",
+        ),
+      ).toBeVisible();
     });
   });
 });

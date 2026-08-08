@@ -15,6 +15,7 @@ import type {
   ReviewNoteRead,
   TaskDependencyRead,
   TaskRead,
+  VersionCreate,
   VersionMediaRead,
   VersionRead,
 } from "@intent-core/contracts";
@@ -205,6 +206,25 @@ export function listExecutionAnchorRevisions(
 
 export function listVersionsForShot(shotId: string): Promise<VersionRead[]> {
   return artistFetch<VersionRead[]>(`/shots/${shotId}/versions`);
+}
+
+/** Real, generic "Submit a Version" domain action
+ * (docs/ROLE_PERMISSIONS.md -- all three human roles) -- the same
+ * `POST /versions` endpoint any manually-created Version already goes
+ * through. `task_id` is a plain, optional domain association (ADR-0014
+ * Decision 3 amendment): submitting it associates this Version with
+ * exactly one Task, the same real column ftrack-synced Versions
+ * already populate. Used by the "Publish next Version from Execution
+ * Anchor R2" action -- never auto-called, always an explicit human
+ * submission. */
+export function createVersion(
+  payload: VersionCreate,
+  actorHeaders: ActorHeaders,
+): Promise<VersionRead> {
+  return artistFetch<VersionRead>(
+    "/versions",
+    mutationInit("POST", payload, actorHeaders),
+  );
 }
 
 export function listReviewNotesForVersion(

@@ -41,6 +41,7 @@ async def create_version(
         name=payload.name,
         version_number=payload.version_number,
         description=payload.description,
+        task_id=payload.task_id,
     )
 
 

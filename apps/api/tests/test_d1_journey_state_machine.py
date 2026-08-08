@@ -1473,3 +1473,267 @@ async def test_resolved_cross_role_assessment_after_all_departments_confirm_r2(
     assert result is not None
     assert result.counts["assessments"] == 2
     assert j1_assessment_id in result.assessment_ids
+
+
+# ---------------------------------------------------------------------------
+# Package C follow-up: the full J0 -> J4 formal journey, real endpoints only
+# (Reset is the sole developer-triggered step -- see the module docstring
+# and `demo_seed.d1_journey.load_completed_d1_journey`'s own docstring,
+# which now shares this exact same real-service-call shape).
+# ---------------------------------------------------------------------------
+
+
+async def test_j0_to_j4_full_formal_journey_via_real_endpoints(
+    session: AsyncSession, client: AsyncClient
+) -> None:
+    """Owner-validation walkthrough, end to end: J0 Reset -> explicit J1
+    Assessment/Proposal -> R2 Core Draft/confirm -> downstream_
+    retranslation (Animation/Lighting/Compositing Execution R2 Draft +
+    confirm, each followed by its own real CG Review, resolved Version
+    publish, and Artist Guidance) -> required VFX Creative Review ->
+    explicit final Cross-role Assessment -> J4 `completed`. Every step
+    after Reset goes through the same real HTTP endpoint the product
+    UI itself calls -- no internal seed helper, no `generator=`
+    override anywhere in this call chain. At each major transition,
+    asserts the steps that have not happened yet truthfully have not
+    happened (no auto-created Version/Guidance/Review/Assessment), and
+    that historical ids/content are preserved exactly where the domain
+    promises history.
+    """
+    reset = await reset_d1_journey(session)
+    animation_task_id, lighting_task_id, comp_task_id = reset.task_ids
+    _animation_version_id, _lighting_version_id, comp_version_id = reset.version_ids
+    department_names = ("Animation", "Lighting", "Compositing")
+    department_task_ids = (animation_task_id, lighting_task_id, comp_task_id)
+
+    # --- J0 -> J1: explicit Assessment/Proposal, real endpoint. ---
+    j1_response = await client.post(
+        f"/intent/versions/{comp_version_id}/cross-role-assessments/generate",
+        json={"task_id": str(comp_task_id)},
+        headers=VFX,
+    )
+    assert j1_response.status_code == 201, j1_response.text
+    j1_assessment_id = uuid.UUID(j1_response.json()["id"])
+    assert j1_response.json()["re_anchor_proposal"] is not None
+
+    j1 = await inspect_d1_journey(session)
+    assert j1 is not None
+    assert j1.journey_state == "assessment_complete"
+    assert j1.counts["versions"] == 3
+    assert j1.counts["guidance"] == 3
+    assert j1.counts["cg_reviews"] == 3
+    assert j1.counts["vfx_reviews"] == 1
+
+    # --- J1 -> J2: Core Anchor R2 draft from the Proposal, real endpoint. ---
+    core_draft_response = await client.post(
+        f"/intent/shots/{reset.shot_id}/core-anchor/drafts/from-confirmed", headers=VFX
+    )
+    assert core_draft_response.status_code == 201, core_draft_response.text
+    core_draft_id = core_draft_response.json()["id"]
+
+    j2 = await inspect_d1_journey(session)
+    assert j2 is not None
+    assert j2.journey_state == "reanchor_draft"
+    assert j2.counts["execution_anchor_confirmed_revisions"] == 3  # R1 still authoritative
+
+    # --- J2 -> J3: Human VFX confirms Core Anchor R2, real endpoint. ---
+    core_confirm_response = await client.post(
+        f"/intent/core-anchor-revisions/{core_draft_id}/confirm",
+        json={"rationale": "Human VFX confirmed Core Anchor R2 after reviewing the Proposal."},
+        headers=VFX,
+    )
+    assert core_confirm_response.status_code == 200, core_confirm_response.text
+    core_r2_id = core_confirm_response.json()["id"]
+
+    j3 = await inspect_d1_journey(session)
+    assert j3 is not None
+    assert j3.journey_state == "r2_confirmed"
+    # Nothing downstream of the Core Anchor moved yet.
+    assert j3.counts["versions"] == 3
+    assert j3.counts["execution_drafts"] == 0
+    assert j3.counts["guidance"] == 3
+    assert j3.counts["cg_reviews"] == 3  # still the J0-J3 baseline -- unchanged
+    assert j3.counts["vfx_reviews"] == 1
+
+    # --- J3 -> J4: per department, Execution R2 Draft -> confirm -> CG
+    # Review -> resolved Version publish -> Artist Guidance, all real
+    # endpoints, all explicit (no step auto-creates the next). ---
+    resolved_version_ids: dict[str, str] = {}
+    for index, (name, task_id) in enumerate(
+        zip(department_names, department_task_ids, strict=True)
+    ):
+        generate_response = await client.post(f"/intent/tasks/{task_id}/execution-anchor/generate")
+        assert generate_response.status_code == 201, generate_response.text
+        draft = generate_response.json()
+        assert draft["core_anchor_revision_id"] == core_r2_id
+
+        confirm_response = await client.post(
+            f"/intent/execution-anchor-revisions/{draft['id']}/confirm",
+            json={"rationale": f"Human CG confirmed {name}'s Execution Anchor R2."},
+            headers=CG,
+        )
+        assert confirm_response.status_code == 200, confirm_response.text
+        confirmed_revision_id = confirm_response.json()["id"]
+
+        # Not auto-created: no Version, Guidance, or additional Review
+        # exists yet for this department's brand-new confirmed R2.
+        mid_progress = await inspect_d1_journey(session)
+        assert mid_progress is not None
+        assert mid_progress.journey_state == "downstream_retranslation"
+        assert mid_progress.counts["versions"] == 3 + index  # only prior departments' publishes
+        assert mid_progress.counts["cg_reviews"] == 3 + index
+
+        review_response = await client.post(
+            f"/intent/execution-anchor-revisions/{confirmed_revision_id}/cg-supervisor-reviews/generate",
+            headers=CG,
+        )
+        assert review_response.status_code == 201, review_response.text
+
+        # Explicit "Publish next Version from Execution Anchor R2" --
+        # the real generic `POST /versions` endpoint, Artist-submitted,
+        # task_id-scoped to this exact department's Task.
+        publish_response = await client.post(
+            "/versions",
+            json={
+                "shot_id": str(reset.shot_id),
+                "task_id": str(task_id),
+                "name": f"{name} Resolved V2",
+                "version_number": 2,
+                "description": (
+                    f"{name} resolved version responding to the confirmed Execution Anchor "
+                    "R2 combined-intensity ceiling."
+                ),
+            },
+            headers=ARTIST,
+        )
+        assert publish_response.status_code == 201, publish_response.text
+        resolved_version = publish_response.json()
+        assert resolved_version["task_id"] == str(task_id)
+        assert resolved_version["source"] == "manual"
+        resolved_version_ids[name] = resolved_version["id"]
+
+        # Not auto-created: no Guidance exists yet for the just-published
+        # resolved Version.
+        after_publish = await inspect_d1_journey(session)
+        assert after_publish is not None
+        assert after_publish.counts["versions"] == 4 + index
+        assert after_publish.counts["guidance"] == 3 + index
+
+        guidance_response = await client.post(
+            f"/intent/versions/{resolved_version['id']}/artist-guidances/generate",
+            json={"task_id": str(task_id)},
+            headers=ARTIST,
+        )
+        assert guidance_response.status_code == 201, guidance_response.text
+        assert guidance_response.json()["version_id"] == resolved_version["id"]
+
+    all_departments_done = await inspect_d1_journey(session)
+    assert all_departments_done is not None
+    assert all_departments_done.journey_state == "downstream_retranslation"
+    assert all_departments_done.counts["execution_anchor_revisions"] == 6
+    assert all_departments_done.counts["execution_drafts"] == 0
+    assert all_departments_done.counts["versions"] == 6
+    assert all_departments_done.counts["guidance"] == 6
+    assert all_departments_done.counts["cg_reviews"] == 6
+    # Still not auto-created: no new VFX Review, no new Assessment.
+    assert all_departments_done.counts["vfx_reviews"] == 1
+    assert all_departments_done.counts["assessments"] == 1
+
+    # --- Required VFX Creative Review for the resolved Compositing
+    # Version -- `generate_cross_role_assessment`'s own real
+    # precondition, exposed/used here rather than invented. ---
+    comp_resolved_version_id = resolved_version_ids["Compositing"]
+    vfx_review_response = await client.post(
+        f"/intent/versions/{comp_resolved_version_id}/vfx-supervisor-reviews/generate", headers=VFX
+    )
+    assert vfx_review_response.status_code == 201, vfx_review_response.text
+
+    before_final_assessment = await inspect_d1_journey(session)
+    assert before_final_assessment is not None
+    assert before_final_assessment.counts["assessments"] == 1  # still not auto-created
+
+    # --- Explicit final Cross-role Assessment, real endpoint. ---
+    final_response = await client.post(
+        f"/intent/versions/{comp_resolved_version_id}/cross-role-assessments/generate",
+        json={"task_id": str(comp_task_id)},
+        headers=VFX,
+    )
+    assert final_response.status_code == 201, final_response.text
+    final = final_response.json()
+    assert final["core_anchor_revision_id"] == core_r2_id
+    assert final["re_anchor_proposal"] is None
+    assert final["intent_signal"]["attention_level"] == "medium"
+    final_findings = (
+        final["assessment_output"]["local_optimum_risks"]
+        + final["assessment_output"]["cross_role_tensions"]
+    )
+    assert all(finding["priority"] != "high" for finding in final_findings)
+    combined_final_text = " ".join(
+        finding["summary"] + " " + finding["why_it_matters"] for finding in final_findings
+    ).lower()
+    assert "combined" in combined_final_text and "ceiling" in combined_final_text
+
+    # --- J4: completed, defined from this exact real canonical graph. ---
+    j4 = await inspect_d1_journey(session)
+    assert j4 is not None
+    assert j4.journey_state == "completed"
+    assert j4.snapshot == "completed"
+    assert j4.counts["core_anchor_revisions"] == 2
+    assert j4.counts["core_anchor_confirmed_revisions"] == 1
+    assert j4.counts["core_drafts"] == 0
+    assert j4.counts["execution_anchor_revisions"] == 6
+    assert j4.counts["execution_anchor_confirmed_revisions"] == 3
+    assert j4.counts["execution_drafts"] == 0
+    assert j4.counts["versions"] == 6
+    assert j4.counts["guidance"] == 6
+    assert j4.counts["cg_reviews"] == 6
+    assert j4.counts["vfx_reviews"] == 2
+    assert j4.counts["assessments"] == 2
+    assert j4.counts["proposals"] >= 1
+    assert j4.attention_levels == ("high", "medium")
+
+    # Historical J1 Assessment/Proposal/IntentSignal are preserved,
+    # never overwritten or deleted by reaching J4.
+    assert j1_assessment_id in j4.assessment_ids
+    j1_signal_count = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(IntentSignal)
+            .where(
+                IntentSignal.cross_role_assessment_id == j1_assessment_id,
+                IntentSignal.attention_level == "high",
+            )
+        )
+    )
+    assert j1_signal_count == 1
+    j1_proposal_count = int(
+        await session.scalar(
+            select(func.count())
+            .select_from(ReAnchorProposal)
+            .where(ReAnchorProposal.cross_role_assessment_id == j1_assessment_id)
+        )
+    )
+    assert j1_proposal_count == 1
+
+    # Every department's Execution R1 remains historical (superseded,
+    # byte-for-byte unchanged content) regardless of having reached J4.
+    for task_id in department_task_ids:
+        r1 = await _execution_revision_by_number(session, task_id, 1)
+        assert r1.status == "superseded"
+
+    # Read-purity: opening the J4 pages repeatedly never advances the
+    # journey further or mutates anything.
+    before_review = await inspect_d1_journey(session)
+    assert before_review is not None
+    for task_id in department_task_ids:
+        for _ in range(2):
+            assert (
+                await client.get(f"/cg/tasks/{task_id}/anchor-context", headers=CG)
+            ).status_code == 200
+            assert (
+                await client.get(f"/intent/tasks/{task_id}/execution-anchor")
+            ).status_code == 200
+    assert (await client.get(f"/shots/{reset.shot_id}/versions")).status_code == 200
+    after_review = await inspect_d1_journey(session)
+    assert after_review is not None
+    assert _semantic_snapshot(before_review) == _semantic_snapshot(after_review)

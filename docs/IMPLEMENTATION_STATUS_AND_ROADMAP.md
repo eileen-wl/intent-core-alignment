@@ -607,6 +607,64 @@ Ruff format/check and mypy pass on touched files, web TypeScript typecheck and E
 re-validation of the Reset → role-entry → journey-status sequence is still pending. Package C
 remains in progress; Package D has not started.
 
+### Package C J3 → J4 formal completion (2026-08-08)
+
+Package C remains in progress on `feat/package-c-golden-demo-journey`. Owner validation of the
+downstream-retranslation step (accepted separately, commit `7104025`) exposed the final structural
+blocker to completing the Journey through the real formal UI: the backend already exposed a real,
+generic `POST /versions` capability, but no product action anywhere in `apps/web` could create the
+next Production Version for a Task. `Version.task_id` (`ADR-0014 Decision 3`) is narrowly amended:
+it is no longer grouped with ftrack-only provenance fields on the public `VersionCreate` contract —
+a human may now explicitly submit a manually-created Version that belongs to one specific Task,
+mirroring the domain model's own pre-existing, previously write-only-by-ftrack-sync column. The
+Artist Current Version page now offers "Publish next Version from Execution Anchor R{n}" once a
+Task's confirmed Execution Anchor is genuinely current against the confirmed Core Anchor and no
+Version scoped to that Task yet carries that revision number — computed entirely from data the page
+already loads, no new backend field. The action re-derives readiness and content server-side (never
+trusts the client), creates exactly one Version, and never auto-creates Guidance, Reviews, or an
+Assessment.
+
+`demo_seed.d1_journey.load_completed_d1_journey` (the developer-only J4 shortcut) is rewritten to
+call the same real service functions the formal role flow uses — Core R2 draft-from-proposal,
+per-department Execution R2 generate/confirm (identity-gated to the D1-specific translation), a real
+CG Review per confirmed revision, an Artist-submitted resolved Version per department, real Artist
+Guidance, one required VFX Creative Review for the resolved Compositing Version, and the final
+Cross-role Assessment — rather than its own bespoke bulk-fixture pipeline, so it can no longer
+silently diverge from what J4 actually requires. `journey_state = "completed"` is redefined from
+this real graph shape: `dependencies` stays frozen at its J0 baseline of 2 (the real flow never
+touches TaskDependency at all — this was previously a shortcut-only artifact), and
+`attention_levels == ("high", "medium")` now directly encodes both "the historical J1 Assessment
+stays untouched" and "the final Assessment genuinely resolved lower than J1." `downstream_
+retranslation`'s own range check is loosened to match: Versions/Guidance/CG Reviews may each
+independently climb from the J0 baseline toward the J4 target as each department completes its own
+post-confirm sequence, rather than assuming they stay frozen until every department finishes.
+
+Audited and left unchanged as already-real and already-correct: confirming one department's
+Execution R2 never auto-confirms another; a confirmed Execution R2 references the confirmed Core R2
+revision; a superseded Execution R1 stays byte-for-byte historical; the CG Version Review and VFX
+Versions Workspace pages already resolve real Task-scoped/Shot-wide Versions generically, so a
+newly published resolved Version appears in them with no code change. One structural gap was found
+and left unfixed, flagged rather than shortcut around: the polished `/vfx/shots/[shotId]/alignment`
+workspace's "Generate Assessment" button is scoped to a Shot's *first* Assessment only (its own
+readiness signal returns null once any Assessment already exists), so it cannot trigger the J4 final
+Assessment; the pre-existing free-form Task×Version picker on `/shots/[shotId]` remains the real,
+currently-functional path for a second/final Assessment, used unchanged by the new J0→J4 test.
+
+New regression coverage: one full J0 Reset → explicit J1 Assessment/Proposal → R2 Core Draft/confirm
+→ per-department Execution R2 Draft/confirm/CG-Review/Version-publish/Guidance →  VFX Creative
+Review → final Cross-role Assessment → `journey_state = "completed"` integration test, driven
+entirely through real HTTP endpoints (Reset is the only developer-triggered step); `POST /versions`
+`task_id` validation tests (cross-shot rejection, unknown-task 404, default-null compatibility); and
+Artist Current Version page tests for the new Publish action's visibility, click, and error paths.
+
+Validation: full backend suite (999 tests) and full frontend suite (1,023 tests) pass; Ruff
+format/check and mypy pass on touched Python files; web TypeScript typecheck, ESLint, and the
+production build (`next build`, 18 static pages) pass; repo-root Prettier passes on every file
+touched this turn (a small number of pre-existing, untouched files elsewhere in the tree still have
+outstanding Prettier issues from earlier work, left alone as out of this turn's scope). Owner
+validation of the full J3 → J4 UI walkthrough is still pending; Package C is not yet marked
+complete.
+
 ### Package A final merge gate (2026-08-03)
 
 Package A owner visual validation passed. The complete repository regression then passed: 53

@@ -8,7 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.audit import service as audit_service
-from intent_core_api.production_context.models import Shot
+from intent_core_api.production_context.models import Shot, Task
 from intent_core_api.versions_and_feedback.models import AlignmentAssessment, ReviewNote, Version
 from intent_core_api.workflow import decision_service
 from intent_core_api.workflow.actors import (
@@ -21,6 +21,7 @@ from intent_core_api.workflow.exceptions import (
     ConflictError,
     InternalConsistencyError,
     NotFoundError,
+    ValidationError,
 )
 from intent_core_api.workflow.models import Decision
 
@@ -42,6 +43,7 @@ async def create_version(
     name: str,
     version_number: int | None,
     description: str,
+    task_id: uuid.UUID | None = None,
 ) -> Version:
     # Authoritative check: enforced here regardless of what the router
     # does, matching intent.brief_service's own precedent. Also the only
@@ -53,8 +55,16 @@ async def create_version(
     if shot is None:
         raise NotFoundError("Shot not found")
 
+    if task_id is not None:
+        task = await session.get(Task, task_id)
+        if task is None:
+            raise NotFoundError("Task not found")
+        if task.shot_id != shot_id:
+            raise ValidationError("task_id does not belong to the given shot_id")
+
     version = Version(
         shot_id=shot_id,
+        task_id=task_id,
         name=name,
         version_number=version_number,
         description=description,

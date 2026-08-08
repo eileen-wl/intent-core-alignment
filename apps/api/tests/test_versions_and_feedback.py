@@ -92,6 +92,119 @@ async def test_create_version_for_unknown_shot_returns_404(client: AsyncClient) 
     assert response.status_code == 404
 
 
+# Package C follow-up (ADR-0014 Decision 3 amendment, J3 -> J4 Version-
+# publish): `task_id` is a plain, optional domain association -- any of
+# the three human roles may submit a manually-created Version that
+# belongs to one specific Task, mirroring the real "Publish next Version
+# from Execution Anchor R2" product action.
+
+
+async def test_artist_can_publish_version_scoped_to_a_task(client: AsyncClient) -> None:
+    shot_id = await _create_ftrack_shot(client)
+    task = (
+        await client.post(
+            "/tasks",
+            json={"shot_id": shot_id, "name": "Animation Pass", "source": "manual"},
+        )
+    ).json()
+
+    response = await client.post(
+        "/versions",
+        json={
+            "shot_id": shot_id,
+            "task_id": task["id"],
+            "name": "Animation Resolved V2",
+            "version_number": 2,
+            "description": "Resolved version responding to the confirmed Execution Anchor R2.",
+        },
+        headers=ARTIST,
+    )
+
+    assert response.status_code == 201, response.text
+    version = response.json()
+    assert version["task_id"] == task["id"]
+    assert version["shot_id"] == shot_id
+    assert version["source"] == "manual"
+    assert version["created_by_human_role"] == "artist"
+
+
+async def test_create_version_with_task_from_a_different_shot_is_rejected(
+    client: AsyncClient,
+) -> None:
+    shot_id = await _create_ftrack_shot(client)
+    other_project = (
+        await client.post(
+            "/projects",
+            json={
+                "name": "Other Project",
+                "source": "ftrack",
+                "external_id": "ftrack-project-other",
+            },
+        )
+    ).json()
+    other_shot = (
+        await client.post(
+            "/shots",
+            json={
+                "project_id": other_project["id"],
+                "name": "bc0099",
+                "source": "ftrack",
+                "external_id": "ftrack-shot-other",
+            },
+        )
+    ).json()
+    other_shot_id = str(other_shot["id"])
+    task_on_other_shot = (
+        await client.post(
+            "/tasks",
+            json={"shot_id": other_shot_id, "name": "Lighting Pass", "source": "manual"},
+        )
+    ).json()
+
+    response = await client.post(
+        "/versions",
+        json={
+            "shot_id": shot_id,
+            "task_id": task_on_other_shot["id"],
+            "name": "v1",
+            "description": "desc",
+        },
+        headers=ARTIST,
+    )
+
+    assert response.status_code == 422, response.text
+
+
+async def test_create_version_with_unknown_task_id_returns_404(client: AsyncClient) -> None:
+    shot_id = await _create_ftrack_shot(client)
+
+    response = await client.post(
+        "/versions",
+        json={
+            "shot_id": shot_id,
+            "task_id": "00000000-0000-0000-0000-000000000000",
+            "name": "v1",
+            "description": "desc",
+        },
+        headers=ARTIST,
+    )
+
+    assert response.status_code == 404
+
+
+async def test_create_version_without_task_id_still_defaults_to_null(client: AsyncClient) -> None:
+    shot_id = await _create_ftrack_shot(client)
+
+    response = await client.post(
+        "/versions",
+        json={"shot_id": shot_id, "name": "v1", "description": "desc"},
+        headers=ARTIST,
+    )
+
+    assert response.status_code == 201, response.text
+    assert response.json()["task_id"] is None
+
+
 async def test_human_actor_can_create_review_note_linked_to_correct_version(
     client: AsyncClient,
 ) -> None:

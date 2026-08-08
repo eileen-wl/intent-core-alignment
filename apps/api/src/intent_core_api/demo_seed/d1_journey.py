@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.agents import (
     artist_guidance_service,
+    cg_agent_service,
     cg_supervisor_review_service,
     vfx_supervisor_review_service,
 )
@@ -620,12 +621,20 @@ async def _anchors(
 async def _version(
     session: AsyncSession, shot: Shot, task: Task, name: str, number: int, description: str
 ) -> Version:
-    result = await version_service.create_version(
-        session, _SEED_VFX, shot.id, name=name, version_number=number, description=description
+    # Package C follow-up (J3 -> J4 Version-publish): now goes through
+    # `create_version`'s own real `task_id` parameter (ADR-0014 Decision
+    # 3 amendment) instead of a post-hoc direct ORM assignment -- the
+    # exact same real domain path the new "Publish next Version from
+    # Execution Anchor R2" product action uses.
+    return await version_service.create_version(
+        session,
+        _SEED_VFX,
+        shot.id,
+        name=name,
+        version_number=number,
+        description=description,
+        task_id=task.id,
     )
-    result.task_id = task.id
-    await session.commit()
-    return result
 
 
 async def _evidence(
@@ -764,6 +773,33 @@ def _execution_retranslation_range(counts: dict[str, int]) -> bool:
     )
 
 
+# Package C follow-up (J3 -> J4 Version-publish): unlike J0-J3, where
+# every non-Execution-Anchor downstream fact stays frozen
+# (`_non_execution_downstream_stable`), the real locked role flow lets
+# each department publish its own resolved Version, generate its own
+# Artist Guidance, and get its own new CG Review as soon as *that*
+# department confirms Execution R2 -- independently of whether the
+# other two departments have started yet. So Versions/Guidance/CG
+# Reviews each range between the frozen J0-J3 baseline (3, none of the
+# three departments has published/regenerated yet) and the full J4
+# target (6, all three have) -- one department at a time, in any order,
+# never requiring the other two to wait. The VFX Creative Review is
+# Compositing-only (the one Version/Task pair the final Assessment
+# actually runs against) and ranges 1 (J1 baseline) to 2 (its own
+# resolved-Version review generated). TaskDependency evidence is real
+# but untouched by any step in this flow, so it alone stays frozen
+# exactly at its J0-J3 baseline of 2 throughout.
+def _downstream_retranslation_non_execution_range(counts: dict[str, int]) -> bool:
+    return (
+        counts["tasks"] == 3
+        and 3 <= counts["versions"] <= 6
+        and 3 <= counts["guidance"] <= 6
+        and 3 <= counts["cg_reviews"] <= 6
+        and 1 <= counts["vfx_reviews"] <= 2
+        and counts["dependencies"] == 2
+    )
+
+
 def _classify_journey_state(counts: dict[str, int], attention_levels: tuple[str, ...]) -> str:
     """One canonical classifier over the graph `_load_canonical_graph`
     returns -- the single place J0-J4 exact invariants
@@ -817,23 +853,37 @@ def _classify_journey_state(counts: dict[str, int], attention_levels: tuple[str,
 
     # Package C follow-up (downstream retranslation semantics): while
     # one or more departments are actively drafting/confirming
-    # Execution R2 (including the moment all three have confirmed R2
-    # but J4's downstream regeneration has not run yet), this is a
-    # legal, in-progress phase of J3 -> J4 -- never `mixed`. Reuses the
-    # exact same Core-Anchor-R2-confirmed / J1-Assessment-and-Proposal-
-    # unchanged facts `r2_confirmed` itself requires (this check is
-    # only ever reached once `r2_confirmed`'s own stricter, execution-
-    # frozen condition above has already failed to match).
+    # Execution R2 -- and independently, one or more of them may have
+    # already published its own resolved Version and regenerated its
+    # own Guidance/CG Review too, per the real locked role flow --
+    # this is a legal, in-progress phase of J3 -> J4, never `mixed`.
+    # `assessments == 1` (the historical J1 Assessment only) is what
+    # actually distinguishes this from `completed` (`== 2`); the
+    # Version/Guidance/Review ranges below can otherwise legitimately
+    # reach the same upper bound `completed` requires.
     if (
         counts["core_anchor_revisions"] == 2
         and single_confirmed_core
         and counts["assessments"] == 1
         and counts["proposals"] in (0, 1)
-        and _non_execution_downstream_stable(counts)
+        and _downstream_retranslation_non_execution_range(counts)
         and _execution_retranslation_range(counts)
     ):
         return "downstream_retranslation"
 
+    # Package C follow-up (J3 -> J4 Version-publish): defined from the
+    # real canonical graph the formal UI walkthrough actually produces
+    # (see `load_completed_d1_journey`'s own docstring) -- never from
+    # the developer shortcut's own implementation details.
+    # `dependencies` stays at its J0-J3 baseline of 2 (the real flow
+    # never touches TaskDependency at all -- publishing a resolved
+    # Version, generating Guidance/Reviews, and generating the final
+    # Assessment none of them create or modify a dependency row).
+    # `attention_levels == ("high", "medium")` directly encodes two
+    # required J4 semantics at once: the historical J1 Assessment's own
+    # `high` attention is preserved untouched, and the final Assessment
+    # genuinely resolved to a lower (`medium`) attention than J1 -- not
+    # just "some second assessment exists somewhere".
     if (
         counts["tasks"] == 3
         and counts["versions"] == 6
@@ -844,10 +894,11 @@ def _classify_journey_state(counts: dict[str, int], attention_levels: tuple[str,
         and counts["execution_drafts"] == 0
         and counts["assessments"] == 2
         and counts["proposals"] >= 1
-        and counts["dependencies"] == 4
+        and counts["dependencies"] == 2
         and counts["vfx_reviews"] == 2
         and counts["cg_reviews"] == 6
         and counts["guidance"] == 6
+        and attention_levels == ("high", "medium")
     ):
         return "completed"
 
@@ -1066,6 +1117,33 @@ async def reset_d1_journey(session: AsyncSession) -> D1JourneyResult:
 
 
 async def load_completed_d1_journey(session: AsyncSession) -> D1JourneyResult:
+    """Package C follow-up (J3 -> J4 Version-publish): a developer-only
+    shortcut that fast-forwards through the exact same real, formal
+    domain actions the owner-validation UI walkthrough uses -- no
+    bespoke bulk-fixture content, no second `_evidence()` call, no
+    demo-only backend path. This guarantees the shortcut can never
+    silently diverge from what J4 actually requires: `_classify_
+    journey_state`'s own "completed" branch is defined from this same
+    real shape, not the other way around.
+
+    Locked role flow (owner-approved), all real service calls:
+    VFX generates the J1 Assessment/Proposal -> VFX starts and confirms
+    Core Anchor R2 from that Proposal -> per department, the CG
+    Supervisor Agent generates (identity-gated to the D1-specific
+    translation, same as the real endpoint) and the Human CG Supervisor
+    confirms Execution Anchor R2, then a CG Review is generated against
+    it -> the Artist explicitly publishes one resolved Production
+    Version per department, referencing that department's Task, and
+    Artist Guidance is generated against it -> one VFX Creative Review
+    is generated for the resolved Compositing Version (the same
+    precondition `generate_cross_role_assessment` enforces for a real,
+    non-shortcut Assessment) -> the final, resolved Cross-role
+    Assessment is generated -- which, because every department's
+    confirmed Execution Anchor revision_number is now >= 2, resolves
+    through `DeterministicD1CrossRoleAssessmentGenerator`'s truthful
+    `_three_department_resolved` branch (lower attention, no new
+    proposal) rather than the J1 conflict branch.
+    """
     async with _atomic_snapshot(session):
         reset = await _build_reset_d1_journey(session)
         project = await session.get(Project, reset.project_id)
@@ -1093,50 +1171,94 @@ async def load_completed_d1_journey(session: AsyncSession) -> D1JourneyResult:
             resolved_tasks[2].id,
             generator=DeterministicD1CrossRoleAssessmentGenerator(),
         )
-        core = await core_anchor_service.create_draft_revision(
-            session, _SEED_VFX, shot.id, _core_content("R2")
+
+        # Real "Create Core Anchor R2 draft from proposal" +  "Confirm"
+        # actions -- applies the just-generated Proposal's own
+        # structured `proposed_fields`, exactly like the real UI button.
+        core_draft = await core_anchor_service.create_draft_revision_from_confirmed(
+            session, _SEED_VFX, shot.id
         )
         await core_anchor_service.confirm_revision(
-            session, _SEED_VFX, core.id, f"{D1_JOURNEY_MARKER} Human VFX confirmed Core Anchor R2."
+            session,
+            _SEED_VFX,
+            core_draft.id,
+            f"{D1_JOURNEY_MARKER} Human VFX confirmed Core Anchor R2.",
         )
-        execution = []
-        for task in resolved_tasks:
-            draft = await execution_anchor_service.create_draft_revision(
-                session, _SEED_CG, task.id, _execution_content(task.department or "comp", "R2")
-            )
-            execution.append(
-                await execution_anchor_service.confirm_revision(
-                    session,
-                    _SEED_CG,
-                    draft.id,
-                    f"{D1_JOURNEY_MARKER} Human CG confirmed {task.department} Execution Anchor R2.",
-                )
-            )
-        resolved = [
-            await _version(
+
+        resolved_versions: list[Version] = []
+        for name, task in zip(
+            ("Animation", "Lighting", "Compositing"), resolved_tasks, strict=True
+        ):
+            # Real "Generate Execution Anchor R2 draft from Core Anchor
+            # R2" action -- no `generator=` override, so the canonical
+            # D1 identity gate (`resolve_canonical_d1_execution_generator`)
+            # dispatches to the truthful per-department translation.
+            draft = await cg_agent_service.generate_execution_anchor_draft(session, task.id)
+            confirmed = await execution_anchor_service.confirm_revision(
                 session,
-                shot,
-                task,
-                f"{name} Resolved V2",
-                2,
-                f"{D1_JOURNEY_MARKER} {name} resolved version applying Core Anchor R2 combined-intensity constraints.",
+                _SEED_CG,
+                draft.id,
+                f"{D1_JOURNEY_MARKER} Human CG confirmed {task.department} Execution Anchor R2.",
             )
-            for name, task in zip(
-                ("Animation", "Lighting", "Compositing"), resolved_tasks, strict=True
+            # Real "Generate CG Supervisor Review" action against the
+            # just-confirmed R2 revision -- version-independent.
+            await cg_supervisor_review_service.generate_cg_supervisor_review(
+                session,
+                _SEED_CG,
+                confirmed.id,
+                generator=DeterministicCGSupervisorReviewGenerator(),
             )
-        ]
-        await _evidence(
-            session, shot, resolved_tasks, resolved, execution, dependency_resolved=True
+            # Real "Publish next Version from Execution Anchor R2"
+            # action -- the Artist explicitly submits one resolved
+            # Production Version for this Task, through the same
+            # `POST /versions` (task_id-scoped) path the real UI uses.
+            version = await version_service.create_version(
+                session,
+                _SEED_ARTIST,
+                shot.id,
+                name=f"{name} Resolved V2",
+                version_number=2,
+                description=(
+                    f"{D1_JOURNEY_MARKER} {name} resolved version responding to the confirmed "
+                    "Execution Anchor R2 combined-intensity ceiling."
+                ),
+                task_id=task.id,
+            )
+            resolved_versions.append(version)
+            # Real "Generate Artist Guidance" action against the
+            # resolved Version.
+            await artist_guidance_service.generate_artist_agent_guidance(
+                session,
+                _SEED_ARTIST,
+                version.id,
+                task.id,
+                generator=DeterministicArtistGuidanceGenerator(),
+            )
+
+        # Real "Generate Creative Review" action for the resolved
+        # Compositing Version -- the exact VFX evidence `generate_
+        # cross_role_assessment` requires before it can run against
+        # that Version at all.
+        await vfx_supervisor_review_service.generate_vfx_supervisor_review(
+            session,
+            _SEED_VFX,
+            resolved_versions[2].id,
+            generator=DeterministicVFXSupervisorReviewGenerator(),
         )
+
+        # Real "Generate Cross-role Assessment" action, against the
+        # resolved Compositing Version/Task -- resolves through the
+        # truthful `_three_department_resolved` branch now that every
+        # department's confirmed Execution Anchor is its own real R2.
         await generate_cross_role_assessment(
             session,
             _SEED_VFX,
-            resolved[2].id,
+            resolved_versions[2].id,
             resolved_tasks[2].id,
             generator=DeterministicD1CrossRoleAssessmentGenerator(),
         )
         return await _load_canonical_graph(
-            session, project, shot, resolved_tasks, [*conflict_versions, *resolved]
+            session, project, shot, resolved_tasks, [*conflict_versions, *resolved_versions]
         )
 
 
