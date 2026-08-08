@@ -47,7 +47,10 @@ export function ReanchorProposalReview({
   const nextRevisionNumber = confirmedRevision.revision_number + 1;
 
   return (
-    <section className={styles.section} aria-labelledby="reanchor-proposal-heading">
+    <section
+      className={styles.section}
+      aria-labelledby="reanchor-proposal-heading"
+    >
       <div className={styles.headerRow}>
         <AuthorityLabel variant="human-review-required" />
         <span className={styles.attentionBadge}>High attention</span>
@@ -77,21 +80,26 @@ export function ReanchorProposalReview({
 
       <div className={styles.proposalCard}>
         <AuthorityLabel variant="ai-proposal" />
-        <p className={styles.proposalReason}>{proposal.proposal_output.reason_for_consideration}</p>
+        <p className={styles.proposalReason}>
+          {proposal.proposal_output.reason_for_consideration}
+        </p>
         {proposal.proposal_output.proposed_fields.map((field, index) => (
           <div key={index} className={styles.proposedField}>
             <p className={styles.proposedFieldLabel}>
               Proposed change — {field.field.replace(/_/g, " ")}
             </p>
-            <p className={styles.proposedFieldDirection}>{field.proposed_direction}</p>
+            <p className={styles.proposedFieldDirection}>
+              {field.proposed_direction}
+            </p>
             <p className={styles.proposedFieldWhy}>{field.why_it_may_help}</p>
           </div>
         ))}
       </div>
 
       <p className={styles.advisoryNotice} role="status">
-        This Proposal is advisory only. Core Anchor R{confirmedRevision.revision_number} remains
-        authoritative until a Human VFX Supervisor confirms a new revision.
+        This Proposal is advisory only. Core Anchor R
+        {confirmedRevision.revision_number} remains authoritative until a Human
+        VFX Supervisor confirms a new revision.
       </p>
 
       <StartDraftButton

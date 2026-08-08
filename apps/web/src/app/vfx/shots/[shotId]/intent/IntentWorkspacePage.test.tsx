@@ -201,8 +201,7 @@ function reanchorProposalAssessment(
             current_problem: "One combined restraint constraint exists.",
             proposed_direction:
               "Consider a combined-intensity ceiling for a future Core Anchor revision.",
-            why_it_may_help:
-              "Lets all three departments be checked together.",
+            why_it_may_help: "Lets all three departments be checked together.",
             evidence: [
               {
                 source_type: "execution_anchor_revision",
@@ -367,17 +366,13 @@ describe("IntentWorkspacePage", () => {
       />,
     );
 
-    expect(
-      screen.getByText("Re-anchor Proposal — Human Review"),
-    ).toBeVisible();
+    expect(screen.getByText("Re-anchor Proposal — Human Review")).toBeVisible();
     expect(
       screen.getByText(
         /Animation, Lighting, and Compositing are each locally defensible/,
       ),
     ).toBeVisible();
-    expect(
-      screen.getByText(/combined-intensity ceiling/),
-    ).toBeVisible();
+    expect(screen.getByText(/combined-intensity ceiling/)).toBeVisible();
     expect(
       screen.getByText(
         "This Proposal is advisory only. Core Anchor R1 remains authoritative until a Human VFX Supervisor confirms a new revision.",

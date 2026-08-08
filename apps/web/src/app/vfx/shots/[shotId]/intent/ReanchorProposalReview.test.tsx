@@ -1,4 +1,7 @@
-import type { CoreAnchorRevisionRead, CrossRoleAssessmentRead } from "@intent-core/contracts";
+import type {
+  CoreAnchorRevisionRead,
+  CrossRoleAssessmentRead,
+} from "@intent-core/contracts";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -120,7 +123,11 @@ const ASSESSMENT: CrossRoleAssessmentRead = {
       label: "human_review_required",
       summary: "Human review is warranted.",
       drivers: [],
-      role_coverage: { vfx_supervisor: true, cg_supervisor: true, artist: true },
+      role_coverage: {
+        vfx_supervisor: true,
+        cg_supervisor: true,
+        artist: true,
+      },
       re_anchor_proposal_present: true,
       caveats: [],
     },
@@ -134,7 +141,8 @@ const ASSESSMENT: CrossRoleAssessmentRead = {
     current_core_anchor_revision_id: "r1",
     created_at: "2026-01-01T00:00:00Z",
     proposal_output: {
-      reason_for_consideration: "Each department's own Execution Anchor is real evidence.",
+      reason_for_consideration:
+        "Each department's own Execution Anchor is real evidence.",
       preserved_elements: ["Controlled, oppressive threat."],
       proposed_fields: [
         {
@@ -165,8 +173,16 @@ const ASSESSMENT: CrossRoleAssessmentRead = {
           source_id: "r1",
           label: "Confirmed Core Anchor revision r1",
         },
-        { source_type: "vfx_supervisor_review", source_id: "vfx-review-1", label: "VFX review" },
-        { source_type: "cg_supervisor_review", source_id: "cg-review-1", label: "CG review" },
+        {
+          source_type: "vfx_supervisor_review",
+          source_id: "vfx-review-1",
+          label: "VFX review",
+        },
+        {
+          source_type: "cg_supervisor_review",
+          source_id: "cg-review-1",
+          label: "CG review",
+        },
       ],
     },
   },
@@ -188,13 +204,17 @@ describe("ReanchorProposalReview", () => {
       screen.getByText("Three-department combined conflict summary."),
     ).toBeVisible();
     expect(
-      screen.getByText("Animation, Lighting, and Compositing combine into spectacle."),
+      screen.getByText(
+        "Animation, Lighting, and Compositing combine into spectacle.",
+      ),
     ).toBeVisible();
     expect(
       screen.getByText("Animation: faster lunge, clearer impact timing."),
     ).toBeVisible();
     expect(
-      screen.getByText(/combined-intensity ceiling for a future Core Anchor revision/),
+      screen.getByText(
+        /combined-intensity ceiling for a future Core Anchor revision/,
+      ),
     ).toBeVisible();
     expect(
       screen.getByText(
@@ -204,7 +224,9 @@ describe("ReanchorProposalReview", () => {
   });
 
   it("calls the create-draft-from-confirmed action when the primary action is clicked -- the same action the plain Create-new-revision control already used", async () => {
-    const action = vi.fn().mockResolvedValue({ ok: true, revision: CONFIRMED_REVISION });
+    const action = vi
+      .fn()
+      .mockResolvedValue({ ok: true, revision: CONFIRMED_REVISION });
     render(
       <ReanchorProposalReview
         confirmedRevision={CONFIRMED_REVISION}
@@ -214,7 +236,9 @@ describe("ReanchorProposalReview", () => {
     );
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Create Core Anchor R2 draft from proposal" }),
+      screen.getByRole("button", {
+        name: "Create Core Anchor R2 draft from proposal",
+      }),
     );
 
     expect(action).toHaveBeenCalledTimes(1);

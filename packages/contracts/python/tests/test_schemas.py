@@ -112,6 +112,7 @@ def test_version_create_request_shape_is_unchanged() -> None:
     version = VersionCreate(shot_id=uuid4(), name="v1", version_number=1, description="First pass.")
     assert version.model_dump() == {
         "shot_id": version.shot_id,
+        "task_id": None,
         "name": "v1",
         "version_number": 1,
         "description": "First pass.",

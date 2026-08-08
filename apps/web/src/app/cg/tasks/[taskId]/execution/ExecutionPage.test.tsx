@@ -192,7 +192,8 @@ function outdatedAnchorContext(): AnchorContextRead {
     },
     attention: {
       level: "high",
-      summary: "Execution Anchor is based on a superseded Core Anchor revision.",
+      summary:
+        "Execution Anchor is based on a superseded Core Anchor revision.",
       review_requirement: "Human CG review is required.",
       source_assessment_id: null,
       source_signal_id: null,
@@ -209,8 +210,10 @@ function outdatedAnchorContext(): AnchorContextRead {
     open_vfx_escalation: false,
     next_action: {
       title: "Retranslate Execution Anchor from the confirmed Core Anchor R2",
-      why_now: "The confirmed Execution Anchor is based on a superseded Core Anchor revision.",
-      downstream_effect: "A new Execution Anchor Draft is created for Human CG review.",
+      why_now:
+        "The confirmed Execution Anchor is based on a superseded Core Anchor revision.",
+      downstream_effect:
+        "A new Execution Anchor Draft is created for Human CG review.",
       target_route: "/cg/tasks/t1/execution",
       action_label: "Generate Execution Anchor draft",
       executable: true,
@@ -438,7 +441,10 @@ describe("ExecutionPage", () => {
       <ExecutionPage
         taskId="t1"
         data={data({
-          confirmedRevision: revision({ status: "confirmed", revision_number: 1 }),
+          confirmedRevision: revision({
+            status: "confirmed",
+            revision_number: 1,
+          }),
           coreAnchorConfirmed: true,
         })}
         anchorContext={outdatedAnchorContext()}
@@ -454,7 +460,9 @@ describe("ExecutionPage", () => {
     );
 
     expect(generateExecutionAnchorDraftActionMock).toHaveBeenCalledWith("t1");
-    expect(createExecutionAnchorDraftFromConfirmedActionMock).not.toHaveBeenCalled();
+    expect(
+      createExecutionAnchorDraftFromConfirmedActionMock,
+    ).not.toHaveBeenCalled();
   });
 
   it("current (non-outdated) confirmed revision: unchanged -- still the plain Create-new-revision action, even with an Anchor Context present", () => {
@@ -462,7 +470,10 @@ describe("ExecutionPage", () => {
       <ExecutionPage
         taskId="t1"
         data={data({
-          confirmedRevision: revision({ status: "confirmed", revision_number: 1 }),
+          confirmedRevision: revision({
+            status: "confirmed",
+            revision_number: 1,
+          }),
           coreAnchorConfirmed: true,
         })}
         anchorContext={{

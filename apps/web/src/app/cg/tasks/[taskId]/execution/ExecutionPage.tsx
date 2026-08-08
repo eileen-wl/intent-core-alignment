@@ -249,7 +249,9 @@ export function ExecutionPage({
               // starting a new revision should clearly mean
               // retranslating from the now-current Core Anchor, not an
               // ambiguous generic "Create new revision".
-              isOutdated={anchorContext?.execution_anchor?.context_state === "outdated"}
+              isOutdated={
+                anchorContext?.execution_anchor?.context_state === "outdated"
+              }
               coreAnchorRevisionNumber={
                 anchorContext?.core_anchor.confirmed_revision_number ?? null
               }
