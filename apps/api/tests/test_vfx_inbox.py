@@ -263,7 +263,7 @@ async def test_generation_ready_pair_absent_once_an_assessment_exists(
     assert item["generation_ready_version_id"] is None
 
 
-async def test_generation_ready_pair_present_for_a_newer_eligible_version_after_an_assessment_exists(
+async def test_generation_ready_pair_present_for_a_newer_eligible_version_after_assessment_exists(
     client: AsyncClient,
 ) -> None:
     """Package C follow-up (Alignment workspace reassessment): a Shot

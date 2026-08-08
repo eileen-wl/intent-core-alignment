@@ -980,6 +980,28 @@ async def generate_cg_supervisor_review(
         selected_version=selected_version,
     )
 
+    resolved_generator = generator
+    if resolved_generator is None:
+        # Package C follow-up (owner-runtime DeepSeek `finish_reason=
+        # 'length'` failure): a late-bound, function-local import --
+        # `demo_seed.d1_scenario` already imports this module at its
+        # own top level, so a module-level import here would be
+        # circular. Returns non-None only for the exact canonical
+        # Package C D1 Journey Project/Shot/Task identity --
+        # deliberately regardless of the ambient configured provider,
+        # exactly mirroring `cg_agent_service.generate_execution_
+        # anchor_draft`'s own dispatch rule; every other Task/Shot/
+        # Project keeps using whatever provider is actually configured,
+        # completely unaffected. See that function's own docstring for
+        # the full rule.
+        from intent_core_api.demo_seed.d1_scenario import (
+            resolve_canonical_d1_cg_review_generator,
+        )
+
+        resolved_generator = await resolve_canonical_d1_cg_review_generator(
+            session, project_id=project.id, shot_id=shot.id, task_id=task.id
+        )
+
     async def _persist(
         session: AsyncSession,
         snapshot: ContextSnapshot,
@@ -1014,7 +1036,9 @@ async def generate_cg_supervisor_review(
         model_name=model_name,
         prompt_version=prompt_version,
         snapshot_payload=payload,
-        resolve_generator=lambda: generator if generator is not None else _get_generator(),
+        resolve_generator=lambda: (
+            resolved_generator if resolved_generator is not None else _get_generator()
+        ),
         persist_result=_persist,
         failure_label="CG Supervisor Agent execution review generation",
     )

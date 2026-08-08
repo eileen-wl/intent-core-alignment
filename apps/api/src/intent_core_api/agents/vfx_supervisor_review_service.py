@@ -616,6 +616,26 @@ async def generate_vfx_supervisor_review(
         session, version=version, shot=shot, project=project
     )
 
+    resolved_generator = generator
+    if resolved_generator is None:
+        # Package C follow-up (owner-flow generator audit): a late-
+        # bound, function-local import -- `demo_seed.d1_scenario`
+        # already imports this module at its own top level, so a
+        # module-level import here would be circular. Returns non-None
+        # only for the exact canonical Package C D1 Journey Project/
+        # Shot identity -- deliberately regardless of the ambient
+        # configured provider, exactly mirroring `cg_supervisor_review_
+        # service.generate_cg_supervisor_review`'s own dispatch rule.
+        # Not Task-scoped: a VFX Creative Review reviews one Version
+        # against the confirmed Core Anchor only.
+        from intent_core_api.demo_seed.d1_scenario import (
+            resolve_canonical_d1_vfx_review_generator,
+        )
+
+        resolved_generator = await resolve_canonical_d1_vfx_review_generator(
+            session, project_id=project.id, shot_id=shot.id
+        )
+
     async def _persist(
         session: AsyncSession,
         snapshot: ContextSnapshot,
@@ -647,7 +667,9 @@ async def generate_vfx_supervisor_review(
         model_name=model_name,
         prompt_version=prompt_version,
         snapshot_payload=payload,
-        resolve_generator=lambda: generator if generator is not None else _get_generator(),
+        resolve_generator=lambda: (
+            resolved_generator if resolved_generator is not None else _get_generator()
+        ),
         persist_result=_persist,
         failure_label="VFX Supervisor Agent creative review generation",
     )

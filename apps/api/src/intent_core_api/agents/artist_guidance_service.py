@@ -1110,6 +1110,24 @@ async def generate_artist_agent_guidance(
         project=project,
     )
 
+    resolved_generator = generator
+    if resolved_generator is None:
+        # Package C follow-up (owner-flow generator audit): a late-
+        # bound, function-local import -- `demo_seed.d1_scenario`
+        # already imports this module at its own top level, so a
+        # module-level import here would be circular. Returns non-None
+        # only for the exact canonical Package C D1 Journey Project/
+        # Shot/Task identity -- deliberately regardless of the ambient
+        # configured provider, exactly mirroring `cg_supervisor_review_
+        # service.generate_cg_supervisor_review`'s own dispatch rule.
+        from intent_core_api.demo_seed.d1_scenario import (
+            resolve_canonical_d1_artist_guidance_generator,
+        )
+
+        resolved_generator = await resolve_canonical_d1_artist_guidance_generator(
+            session, project_id=project.id, shot_id=shot.id, task_id=task.id
+        )
+
     async def _persist(
         session: AsyncSession,
         snapshot: ContextSnapshot,
@@ -1144,7 +1162,9 @@ async def generate_artist_agent_guidance(
         model_name=model_name,
         prompt_version=prompt_version,
         snapshot_payload=payload,
-        resolve_generator=lambda: generator if generator is not None else _get_generator(),
+        resolve_generator=lambda: (
+            resolved_generator if resolved_generator is not None else _get_generator()
+        ),
         persist_result=_persist,
         failure_label="Artist Agent iteration guidance generation",
     )

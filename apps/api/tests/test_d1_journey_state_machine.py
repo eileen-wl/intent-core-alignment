@@ -537,6 +537,18 @@ async def test_failed_noncanonical_provider_generation_does_not_mutate_canonical
 
     monkeypatch.setattr(model_gateway, "resolve_provider_name", lambda: "deepseek")
 
+    # Package C follow-up (deterministic-credential-failure hardening):
+    # also patches `require_deepseek_settings` directly, rather than
+    # relying on this environment's own real `.env` genuinely lacking
+    # DeepSeek credentials -- a real, valid MODEL_API_KEY configured
+    # here would let a real DeepSeek call for this small legacy fixture
+    # actually succeed over the network, which is exactly the order-
+    # dependent flakiness previously observed on this same test.
+    def _raise_missing_credentials() -> tuple[str, str]:
+        raise AgentGenerationError("model_provider='deepseek' requires MODEL_API_KEY to be set")
+
+    monkeypatch.setattr(model_gateway, "require_deepseek_settings", _raise_missing_credentials)
+
     with pytest.raises(AgentGenerationError):
         await generate_cross_role_assessment(session, _SEED_VFX, legacy_version.id, legacy_task_id)
 
