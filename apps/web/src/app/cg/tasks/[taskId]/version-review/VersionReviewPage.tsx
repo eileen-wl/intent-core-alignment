@@ -261,7 +261,7 @@ export function VersionReviewPage({
                           authority="Advisory technical interpretation; it does not approve the Version or resolve a Human Decision."
                           nextAction={
                             selectedCgReviews.length
-                              ? "Inspect the review, then record a Review Note, dependency, or escalation as appropriate."
+                              ? "Inspect the Agent review, then record a Review Note, dependency, or escalation if needed."
                               : data.activeExecutionRevision
                                 ? "Generate Execution Review for the selected Version."
                                 : "Create and confirm the Execution Anchor before generating an Execution Review."
@@ -269,16 +269,16 @@ export function VersionReviewPage({
                         />
                         <section className={styles.section}>
                           <h4 className={styles.sectionHeading}>
-                            CG Supervisor reviews
+                            Agent Execution Reviews
                           </h4>
                           {selectedCgReviews.length === 0 ? (
                             <p className={styles.empty}>
-                              No CG Supervisor review has been generated for the
-                              active Execution Anchor yet.
+                              No Agent Execution Review has been generated for
+                              the active Execution Anchor yet.
                             </p>
                           ) : (
                             <p className={styles.contextText}>
-                              {selectedCgReviews.length} CG Supervisor{" "}
+                              {selectedCgReviews.length} Agent{" "}
                               {selectedCgReviews.length === 1
                                 ? "review"
                                 : "reviews"}{" "}
@@ -299,7 +299,7 @@ export function VersionReviewPage({
                       <section className={styles.section}>
                         <SectionHeader
                           title="Review actions"
-                          description="Recording a Review Note or requesting a CG Supervisor review produces new evidence/interpretation; escalating creates a pending action -- none of these is itself a Human Decision."
+                          description="Recording a Review Note or generating an Agent Execution Review produces new evidence/interpretation; escalating creates a pending action -- none of these is itself a Human Decision."
                           level={3}
                         />
                         <VersionReviewActions

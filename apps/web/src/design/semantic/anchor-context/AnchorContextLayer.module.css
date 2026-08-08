@@ -7,10 +7,54 @@
   box-shadow: var(--shadow-sm);
   backdrop-filter: blur(10px);
 }
-.layer[data-expanded="false"] {
+
+/* The full Anchor Context block (this rule and everything below, until
+ * `.stickySummaryBar`) always participates in normal document flow and
+ * scrolls away with the page -- it must never be `position: sticky`,
+ * expanded or collapsed. Only `.stickySummaryBar` below is sticky. */
+.stickySummaryBar {
   position: sticky;
   top: calc(5.125rem + var(--space-2));
   z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-block: var(--space-2) 0;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--surface-panel) 96%, transparent);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(10px);
+  font-size: var(--font-size-xs);
+}
+.stickySummaryText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+.stickySummaryButton {
+  flex: none;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+.stickySummaryButton:hover {
+  border-color: var(--focus-ring-color);
+  background: var(--surface-muted);
+}
+.stickySummaryButton:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
 }
 
 .disclosure {
@@ -158,9 +202,6 @@
 }
 
 @media (max-width: 1200px) {
-  .layer[data-expanded="false"] {
-    position: static;
-  }
   .summary {
     grid-template-columns: 1fr;
     grid-template-areas:

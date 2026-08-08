@@ -39,6 +39,26 @@ import { filterVersionsForTask } from "@/lib/taskScopedVersions";
  * active Anchor context, and related cross-role evidence where it
  * genuinely exists. Never confuses a Production Version with an Anchor
  * Revision -- these are always kept as clearly distinct objects. */
+/** Package C follow-up (current vs. historical Guidance presentation):
+ * one real Guidance record paired with its own real, persisted
+ * provenance -- resolved from `guidance.execution_anchor_revision_id`
+ * against this Task's actual Execution Anchor revision history, never
+ * recomputed/borrowed from today's live Core/Execution Anchor
+ * content. A Guidance generated when Execution R1 was confirmed stays
+ * reported as "R1" forever, even after Execution R2 is confirmed. */
+export interface GuidanceProvenance {
+  guidance: ArtistAgentGuidanceRead;
+  /** This Guidance's own real Execution Anchor `revision_number` --
+   * `null` only if that revision row could not be resolved (should
+   * never happen for a real persisted Guidance). */
+  executionAnchorRevisionNumber: number | null;
+  /** True only when this Guidance's own persisted `execution_anchor_
+   * revision_id` is still this Task's currently active/confirmed
+   * Execution Anchor revision -- a real id comparison, never a
+   * recomputation from today's Core/Execution Anchor content. */
+  isCurrent: boolean;
+}
+
 export interface CurrentVersionData {
   item: ArtistInboxItemRead;
   /** Every real recorded Version for this Task's Shot, newest first. */
@@ -50,6 +70,18 @@ export interface CurrentVersionData {
   /** Every real ArtistAgentGuidance generated for this Task against the
    * selected Version, newest first. */
   guidances: ArtistAgentGuidanceRead[];
+  /** The same `guidances`, each paired with its own real provenance --
+   * see `GuidanceProvenance`. Use this (not `guidances` directly) to
+   * decide what "current" vs. "Historical" means for display. */
+  guidancesWithProvenance: GuidanceProvenance[];
+  /** The one Guidance (if any) whose own persisted Execution Anchor
+   * revision is still this Task's currently active/confirmed one --
+   * the only Guidance genuinely applicable to the currently confirmed
+   * Execution Anchor and Core Anchor. `null` whenever no such Guidance
+   * exists yet for the selected Version -- truthfully "Guidance
+   * missing" for this Version, even when older, historical Guidance
+   * exists for it. */
+  currentGuidance: ArtistAgentGuidanceRead | null;
   coreAnchorRevision: CoreAnchorRevisionRead | null;
   executionAnchorRevision: ExecutionAnchorRevisionRead | null;
   cgSupervisorReviews: CGSupervisorReviewRead[];
@@ -136,20 +168,61 @@ export async function loadCurrentVersionData(
       ) ?? null;
   }
 
+  // Package C follow-up (current vs. historical Guidance): the
+  // Execution Anchor revision history is fetched once and reused both
+  // to resolve today's active revision (unchanged behaviour) and to
+  // resolve each individual Guidance's own real, persisted provenance
+  // -- never recomputed from today's live anchor content.
   let executionAnchorRevision: ExecutionAnchorRevisionRead | null = null;
   let cgSupervisorReviews: CGSupervisorReviewRead[] = [];
-  if (executionAnchor !== null && executionAnchor.active_revision_id !== null) {
+  const needsExecutionAnchorRevisions =
+    (executionAnchor !== null && executionAnchor.active_revision_id !== null) ||
+    guidances.length > 0;
+  const executionAnchorRevisionsById = new Map<
+    string,
+    ExecutionAnchorRevisionRead
+  >();
+  if (needsExecutionAnchorRevisions) {
     const revisions = await listExecutionAnchorRevisions(taskId);
-    executionAnchorRevision =
-      revisions.find(
-        (revision) => revision.id === executionAnchor.active_revision_id,
-      ) ?? null;
+    for (const revision of revisions) {
+      executionAnchorRevisionsById.set(revision.id, revision);
+    }
+    if (
+      executionAnchor !== null &&
+      executionAnchor.active_revision_id !== null
+    ) {
+      executionAnchorRevision =
+        executionAnchorRevisionsById.get(executionAnchor.active_revision_id) ??
+        null;
+    }
     if (executionAnchorRevision !== null) {
       cgSupervisorReviews = await listCgSupervisorReviews(
         executionAnchorRevision.id,
       );
     }
   }
+
+  // Package C follow-up (current vs. historical Guidance): a real id
+  // comparison against each Guidance's own persisted `execution_
+  // anchor_revision_id` -- a Guidance generated against a now-
+  // superseded Execution Anchor revision stays reported under its own
+  // real revision number and is never treated as current.
+  const guidancesWithProvenance: GuidanceProvenance[] = guidances.map(
+    (guidance) => {
+      const revision = executionAnchorRevisionsById.get(
+        guidance.execution_anchor_revision_id,
+      );
+      return {
+        guidance,
+        executionAnchorRevisionNumber: revision?.revision_number ?? null,
+        isCurrent:
+          executionAnchorRevision !== null &&
+          guidance.execution_anchor_revision_id === executionAnchorRevision.id,
+      };
+    },
+  );
+  const currentGuidance =
+    guidancesWithProvenance.find((entry) => entry.isCurrent)?.guidance ?? null;
 
   const media = selectedVersion
     ? await fetchVersionMedia(taskId, selectedVersion.id, actorHeaders).catch(
@@ -187,6 +260,8 @@ export async function loadCurrentVersionData(
     selectedVersion,
     reviewNotes,
     guidances,
+    guidancesWithProvenance,
+    currentGuidance,
     coreAnchorRevision,
     executionAnchorRevision,
     cgSupervisorReviews,

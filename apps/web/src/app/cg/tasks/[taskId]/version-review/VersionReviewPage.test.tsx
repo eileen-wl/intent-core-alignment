@@ -231,7 +231,7 @@ describe("VersionReviewPage", () => {
     expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
   });
 
-  it("groups Version/Anchor context under Production Evidence, CG Supervisor reviews under Agent Interpretation, and shows an honest Human Decision state without manufacturing one (Step 9B-2)", () => {
+  it("groups Version/Anchor context under Production Evidence, Agent Execution Reviews under Agent Interpretation, and shows an honest Human Decision state without manufacturing one (Step 9B-2)", () => {
     render(
       <VersionReviewPage
         taskId="t1"
@@ -268,7 +268,7 @@ describe("VersionReviewPage", () => {
     ).toBeVisible();
   });
 
-  it("places Add Review Note, Generate CG Supervisor review, and Escalate to VFX in their own Review actions section, outside every evidence layer (Step 9B-2 correction)", () => {
+  it("places Add Review Note, Generate Agent Execution Review, and Escalate to VFX in their own Review actions section, outside every evidence layer (Step 9B-2 correction)", () => {
     render(
       <VersionReviewPage
         taskId="t1"
@@ -324,7 +324,7 @@ describe("VersionReviewPage", () => {
     ).toBeNull();
     expect(
       within(humanDecisionSection).queryByRole("button", {
-        name: "Generate CG Supervisor review",
+        name: "Generate Agent Execution Review",
       }),
     ).toBeNull();
     expect(
@@ -338,14 +338,14 @@ describe("VersionReviewPage", () => {
       screen.getByRole("button", { name: "Record Review Note" }),
     ).toBeVisible();
     expect(
-      screen.getByRole("button", { name: "Generate CG Supervisor review" }),
+      screen.getByRole("button", { name: "Generate Agent Execution Review" }),
     ).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Escalate to VFX" }),
     ).toBeVisible();
   });
 
-  it("honestly shows no CG Supervisor review has been generated yet", () => {
+  it("honestly shows no Agent Execution Review has been generated yet", () => {
     render(
       <VersionReviewPage
         taskId="t1"
@@ -356,7 +356,7 @@ describe("VersionReviewPage", () => {
     );
     expect(
       screen.getByText(
-        "No CG Supervisor review has been generated for the active Execution Anchor yet.",
+        "No Agent Execution Review has been generated for the active Execution Anchor yet.",
       ),
     ).toBeVisible();
   });
@@ -417,7 +417,7 @@ describe("VersionReviewPage", () => {
     expect(screen.queryByText(/Source author:/)).not.toBeInTheDocument();
   });
 
-  it("real CG Supervisor review count renders honestly once one exists", () => {
+  it("real Agent Execution Review count renders honestly once one exists", () => {
     const review: CGSupervisorReviewRead = {
       id: "cgr1",
       project_id: "p1",
@@ -453,7 +453,7 @@ describe("VersionReviewPage", () => {
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByText("1 CG Supervisor review recorded.")).toBeVisible();
+    expect(screen.getByText("1 Agent review recorded.")).toBeVisible();
   });
 
   describe("Step 9B-4 real media context", () => {

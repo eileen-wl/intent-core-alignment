@@ -1,4 +1,5 @@
 import type {
+  ArtistAgentGuidanceRead,
   ArtistInboxItemRead,
   CrossRoleAssessmentRead,
   ExecutionAnchorRevisionRead,
@@ -98,6 +99,83 @@ function note(overrides: Partial<ReviewNoteRead> = {}): ReviewNoteRead {
   };
 }
 
+function executionAnchorRevision(
+  overrides: Partial<ExecutionAnchorRevisionRead> = {},
+): ExecutionAnchorRevisionRead {
+  return {
+    id: "ea1",
+    execution_anchor_id: "ea",
+    core_anchor_revision_id: "ca1",
+    revision_number: 1,
+    status: "confirmed",
+    technical_boundaries: "24fps, no motion blur.",
+    parameter_ranges: null,
+    delivery_conditions: null,
+    production_ready_criteria: null,
+    downstream_dependencies: null,
+    publish_requirements: null,
+    allowed_refinements: null,
+    escalation_conditions: null,
+    created_by_actor_kind: "human",
+    created_by_actor_id: "cg-1",
+    created_by_human_role: "cg_supervisor",
+    created_by_agent_type: null,
+    created_by_agent_run_id: null,
+    confirmed_by_human_role: "cg_supervisor",
+    confirmed_by_actor_id: "cg-1",
+    confirmed_at: "2026-01-02T00:00:00Z",
+    supersedes_revision_id: null,
+    created_at: "2026-01-02T00:00:00Z",
+    updated_at: "2026-01-02T00:00:00Z",
+    ...overrides,
+  };
+}
+
+function guidanceItem() {
+  return {
+    summary: "Summary.",
+    why_it_matters: "Why it matters.",
+    priority: "medium" as const,
+    evidence: [
+      {
+        source_type: "version" as const,
+        source_id: "v1",
+        label: "Version v1",
+      },
+    ],
+  };
+}
+
+function guidance(
+  overrides: Partial<ArtistAgentGuidanceRead> = {},
+): ArtistAgentGuidanceRead {
+  return {
+    id: "g1",
+    project_id: "p1",
+    shot_id: "s1",
+    task_id: "t1",
+    version_id: "v1",
+    execution_anchor_revision_id: "ea1",
+    context_snapshot_id: "cs1",
+    agent_run_id: "run1",
+    guidance_output: {
+      executive_summary: "Current guidance summary.",
+      creative_intent_read: guidanceItem(),
+      task_goal: guidanceItem(),
+      current_iteration_read: guidanceItem(),
+      non_negotiables: [],
+      allowed_variations: [],
+      feedback_translations: [],
+      iteration_priorities: [],
+      cross_department_dependencies: [],
+      questions_for_human_supervisor: [],
+      evidence_gaps: [],
+    },
+    created_at: "2026-08-01T00:00:00Z",
+    ...overrides,
+  };
+}
+
 function data(overrides: Partial<CurrentVersionData> = {}): CurrentVersionData {
   return {
     item: item(),
@@ -105,6 +183,8 @@ function data(overrides: Partial<CurrentVersionData> = {}): CurrentVersionData {
     selectedVersion: version(),
     reviewNotes: [note()],
     guidances: [],
+    guidancesWithProvenance: [],
+    currentGuidance: null,
     coreAnchorRevision: null,
     executionAnchorRevision: null,
     cgSupervisorReviews: [],
@@ -520,7 +600,7 @@ describe("CurrentVersionPage", () => {
     ).toBeVisible();
   });
 
-  it("honestly shows no CG Supervisor review has been generated yet", () => {
+  it("honestly shows no Agent Execution Review has been generated yet", () => {
     render(
       <CurrentVersionPage
         taskId="t1"
@@ -531,7 +611,7 @@ describe("CurrentVersionPage", () => {
     );
     expect(
       screen.getByText(
-        "No CG Supervisor review has been generated for the active Execution Anchor yet.",
+        "No Agent Execution Review has been generated for the active Execution Anchor yet.",
       ),
     ).toBeVisible();
   });
@@ -635,6 +715,120 @@ describe("CurrentVersionPage", () => {
         "No Artist guidance has been generated for this Version yet.",
       ),
     ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Generate guidance" }),
+    ).toBeVisible();
+  });
+
+  it("shows the current guidance for the active Execution Anchor revision and labels an older guidance against a superseded revision as Historical, using each guidance's own real provenance rather than today's live anchors", () => {
+    const currentExecutionRevision = executionAnchorRevision({
+      id: "ea2",
+      revision_number: 2,
+      confirmed_at: "2026-02-01T00:00:00Z",
+      created_at: "2026-02-01T00:00:00Z",
+      updated_at: "2026-02-01T00:00:00Z",
+    });
+    const historicalGuidance = guidance({
+      id: "g-historical",
+      execution_anchor_revision_id: "ea1",
+      created_at: "2026-01-05T00:00:00Z",
+      guidance_output: {
+        ...guidance().guidance_output,
+        executive_summary: "Historical guidance from the R1/conflict era.",
+      },
+    });
+    const currentGuidance = guidance({
+      id: "g-current",
+      execution_anchor_revision_id: "ea2",
+      created_at: "2026-02-02T00:00:00Z",
+      guidance_output: {
+        ...guidance().guidance_output,
+        executive_summary: "Current guidance for the resolved Version.",
+      },
+    });
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data({
+          executionAnchorRevision: currentExecutionRevision,
+          guidances: [currentGuidance, historicalGuidance],
+          guidancesWithProvenance: [
+            {
+              guidance: currentGuidance,
+              executionAnchorRevisionNumber: 2,
+              isCurrent: true,
+            },
+            {
+              guidance: historicalGuidance,
+              executionAnchorRevisionNumber: 1,
+              isCurrent: false,
+            },
+          ],
+          currentGuidance,
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getAllByText("Current guidance for the resolved Version.").length,
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByText("Historical guidance from the R1/conflict era."),
+    ).toBeVisible();
+    expect(screen.getByText("Historical")).toBeVisible();
+    expect(screen.getByText(/Execution Anchor R1/)).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Regenerate guidance" }),
+    ).toBeVisible();
+  });
+
+  it("shows a truthful 'no current guidance' message and keeps old guidance labeled Historical once the Execution Anchor is reconfirmed at a newer revision, without recomputing the old guidance's provenance from today's anchors", () => {
+    const currentExecutionRevision = executionAnchorRevision({
+      id: "ea2",
+      revision_number: 2,
+    });
+    const historicalGuidance = guidance({
+      id: "g-historical",
+      execution_anchor_revision_id: "ea1",
+      guidance_output: {
+        ...guidance().guidance_output,
+        executive_summary:
+          "Guidance generated against the earlier Execution Anchor.",
+      },
+    });
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data({
+          executionAnchorRevision: currentExecutionRevision,
+          guidances: [historicalGuidance],
+          guidancesWithProvenance: [
+            {
+              guidance: historicalGuidance,
+              executionAnchorRevisionNumber: 1,
+              isCurrent: false,
+            },
+          ],
+          currentGuidance: null,
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "No current Artist guidance has been generated for Execution Anchor R2 yet.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "Guidance generated against the earlier Execution Anchor.",
+      ),
+    ).toBeVisible();
+    expect(screen.getByText("Historical")).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Generate guidance" }),
     ).toBeVisible();

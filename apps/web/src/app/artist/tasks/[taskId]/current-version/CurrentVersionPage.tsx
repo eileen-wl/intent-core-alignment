@@ -185,14 +185,14 @@ export function CurrentVersionPage({
                           agent="Artist Agent"
                           capability="Iteration Guidance"
                           state={
-                            data.guidances.length
+                            data.currentGuidance
                               ? "completed"
                               : data.coreAnchorRevision &&
                                   data.executionAnchorRevision
                                 ? "ready"
                                 : "not_ready"
                           }
-                          generatedAt={data.guidances[0]?.created_at}
+                          generatedAt={data.currentGuidance?.created_at}
                           inputs={[
                             `Version ${data.selectedVersion.name}`,
                             data.coreAnchorRevision
@@ -218,39 +218,39 @@ export function CurrentVersionPage({
                             },
                           ]}
                           output={
-                            data.guidances[0] ? (
+                            data.currentGuidance ? (
                               <>
                                 <p>
                                   {
-                                    data.guidances[0].guidance_output
+                                    data.currentGuidance.guidance_output
                                       .executive_summary
                                   }
                                 </p>
                                 <p>
                                   Feedback translations:{" "}
                                   {
-                                    data.guidances[0].guidance_output
+                                    data.currentGuidance.guidance_output
                                       .feedback_translations.length
                                   }
                                 </p>
                                 <p>
                                   Iteration priorities:{" "}
                                   {
-                                    data.guidances[0].guidance_output
+                                    data.currentGuidance.guidance_output
                                       .iteration_priorities.length
                                   }
                                 </p>
                               </>
                             ) : (
                               <p>
-                                No guidance has been generated for this Version
-                                yet.
+                                No current guidance has been generated for this
+                                Version&apos;s active Execution Anchor yet.
                               </p>
                             )
                           }
                           authority="Advisory execution guidance; the Artist may act within the confirmed boundaries, but cannot edit or confirm either Anchor or approve the Version."
                           nextAction={
-                            data.guidances.length
+                            data.currentGuidance
                               ? "Use the current guidance and escalate unresolved supervisor questions."
                               : data.coreAnchorRevision &&
                                   data.executionAnchorRevision
@@ -262,18 +262,58 @@ export function CurrentVersionPage({
                           <h4 className={styles.sectionHeading}>
                             Applicable Artist guidance
                           </h4>
-                          {data.guidances.length === 0 ? (
-                            <p className={styles.empty}>
-                              No Artist guidance has been generated for this
-                              Version yet.
-                            </p>
-                          ) : (
+                          {data.currentGuidance ? (
                             <p className={styles.contextText}>
                               {
-                                data.guidances[0].guidance_output
+                                data.currentGuidance.guidance_output
                                   .executive_summary
                               }
                             </p>
+                          ) : (
+                            <p className={styles.empty}>
+                              {data.executionAnchorRevision
+                                ? `No current Artist guidance has been generated for Execution Anchor R${data.executionAnchorRevision.revision_number} yet.`
+                                : "No Artist guidance has been generated for this Version yet."}
+                            </p>
+                          )}
+                          {data.guidancesWithProvenance.some(
+                            (entry) => !entry.isCurrent,
+                          ) && (
+                            <div className={styles.historicalGuidance}>
+                              <h5 className={styles.sectionHeading}>
+                                Historical guidance
+                              </h5>
+                              <ul className={styles.noteList}>
+                                {data.guidancesWithProvenance
+                                  .filter((entry) => !entry.isCurrent)
+                                  .map((entry) => (
+                                    <li
+                                      key={entry.guidance.id}
+                                      className={styles.note}
+                                    >
+                                      <span className={styles.historicalLabel}>
+                                        Historical
+                                      </span>
+                                      <p className={styles.noteMeta}>
+                                        {entry.executionAnchorRevisionNumber !==
+                                        null
+                                          ? `Execution Anchor R${entry.executionAnchorRevisionNumber}`
+                                          : "Execution Anchor revision unavailable"}{" "}
+                                        ·{" "}
+                                        {new Date(
+                                          entry.guidance.created_at,
+                                        ).toLocaleString()}
+                                      </p>
+                                      <p className={styles.noteContent}>
+                                        {
+                                          entry.guidance.guidance_output
+                                            .executive_summary
+                                        }
+                                      </p>
+                                    </li>
+                                  ))}
+                              </ul>
+                            </div>
                           )}
                           <GenerateArtistGuidanceButton
                             taskId={taskId}
@@ -289,7 +329,7 @@ export function CurrentVersionPage({
                                   ]),
                             ]}
                             label={
-                              data.guidances.length > 0
+                              data.currentGuidance
                                 ? "Regenerate guidance"
                                 : "Generate guidance"
                             }
@@ -298,16 +338,16 @@ export function CurrentVersionPage({
 
                         <section className={styles.section}>
                           <h4 className={styles.sectionHeading}>
-                            CG Supervisor reviews
+                            Agent Execution Reviews
                           </h4>
                           {data.cgSupervisorReviews.length === 0 ? (
                             <p className={styles.empty}>
-                              No CG Supervisor review has been generated for the
-                              active Execution Anchor yet.
+                              No Agent Execution Review has been generated for
+                              the active Execution Anchor yet.
                             </p>
                           ) : (
                             <p className={styles.contextText}>
-                              {data.cgSupervisorReviews.length} CG Supervisor{" "}
+                              {data.cgSupervisorReviews.length} Agent{" "}
                               {data.cgSupervisorReviews.length === 1
                                 ? "review"
                                 : "reviews"}{" "}

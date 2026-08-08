@@ -11,8 +11,8 @@ import {
 import styles from "./VersionReviewActions.module.css";
 
 /** Real, persisted Version Review actions (Step 7C-4): add a Review
- * Note, generate a CG Supervisor review for the active Execution
- * Anchor revision, and escalate to VFX. No fabricated
+ * Note, generate an advisory Agent Execution Review for the active
+ * Execution Anchor revision, and escalate to VFX. No fabricated
  * acknowledge/approval state -- `ReviewNote` has no status field to
  * back one. */
 export function VersionReviewActions({
@@ -88,7 +88,7 @@ export function VersionReviewActions({
               });
             }}
           >
-            {isPending ? "Generating…" : "Generate CG Supervisor review"}
+            {isPending ? "Generating…" : "Generate Agent Execution Review"}
           </button>
         )}
 

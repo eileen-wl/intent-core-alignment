@@ -34,7 +34,7 @@ const EVENT_TYPE_LABEL: Record<ArtistFeedbackEventType, string> = {
   version_recorded: "Production Version recorded",
   review_note_recorded: "Review Note recorded",
   artist_guidance_generated: "Artist guidance generated",
-  cg_supervisor_review_generated: "CG Supervisor review generated",
+  cg_supervisor_review_generated: "Agent Execution Review generated",
   cross_role_assessment_involving_task: "Cross-role Assessment generated",
   dependency_recorded: "Dependency recorded",
   dependency_acknowledged: "Dependency acknowledged",

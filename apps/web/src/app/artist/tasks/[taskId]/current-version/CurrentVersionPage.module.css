@@ -139,3 +139,20 @@
   color: var(--text-muted);
   font-size: var(--font-size-xs);
 }
+
+.historicalGuidance {
+  margin-top: var(--space-3);
+}
+
+.historicalLabel {
+  display: inline-block;
+  margin-bottom: var(--space-1);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-elevated);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

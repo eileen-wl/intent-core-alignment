@@ -15,7 +15,7 @@ const EVENT_TYPE_LABEL: Record<TaskActivityEventType, string> = {
   execution_anchor_confirmed: "Execution Anchor confirmed",
   execution_anchor_draft_discarded: "Execution Anchor draft discarded",
   human_decision_recorded: "Decision recorded",
-  cg_supervisor_review_generated: "CG Supervisor review generated",
+  cg_supervisor_review_generated: "Agent Execution Review generated",
   dependency_recorded: "Dependency recorded",
   dependency_acknowledged: "Dependency acknowledged",
   dependency_resolved: "Dependency resolved",

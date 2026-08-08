@@ -2552,7 +2552,7 @@ function GenerateCgSupervisorReviewButton({
         disabled={pending}
         onClick={() => void handleGenerate()}
       >
-        {pending ? "Generating…" : "Generate CG Supervisor review"}
+        {pending ? "Generating…" : "Generate Agent Execution Review"}
       </button>
       {error && <p role="alert">{error}</p>}
     </div>
@@ -2616,7 +2616,7 @@ function CgSupervisorReviewSection({
       )}
       {state.status === "loading" && (
         <p>
-          <small>Loading CG Supervisor reviews…</small>
+          <small>Loading Agent Execution Reviews…</small>
         </p>
       )}
       {state.status === "error" && <p role="alert">{state.message}</p>}

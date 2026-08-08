@@ -244,6 +244,29 @@ describe("AnchorContextLayer", () => {
     expect(screen.queryByText("x")).not.toBeInTheDocument();
   });
 
+  it("renders a compact one-line sticky summary bar with its own Expand action, in addition to the full non-sticky block's own disclosure control", () => {
+    render(<AnchorContextLayer context={contextFor("cg_supervisor")} />);
+
+    expect(screen.getByText("Core R2 · Execution R1 · outdated")).toBeVisible();
+    const stickyExpand = screen.getByRole("button", { name: "Expand" });
+    expect(stickyExpand).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(stickyExpand);
+    expect(
+      screen.getByRole("button", { name: "Collapse anchor context" }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: "Collapse" })).toHaveAttribute(
+      "aria-expanded",
+      "true",
+    );
+  });
+
+  it("shows a Core-only sticky summary for VFX, since there is no Execution Anchor at that role", () => {
+    render(<AnchorContextLayer context={contextFor("vfx_supervisor")} />);
+
+    expect(screen.getByText("Core R2 · confirmed")).toBeVisible();
+  });
+
   it("keeps the Artist header groups and disclosure control as distinct wrapping regions", () => {
     render(<AnchorContextLayer context={contextFor("artist")} />);
 

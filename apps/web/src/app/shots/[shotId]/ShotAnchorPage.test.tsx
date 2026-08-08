@@ -3585,7 +3585,9 @@ describe("ShotAnchorPage", () => {
 
       await screen.findByText("AI execution review — CG Supervisor Agent");
       expect(
-        screen.queryByRole("button", { name: "Generate CG Supervisor review" }),
+        screen.queryByRole("button", {
+          name: "Generate Agent Execution Review",
+        }),
       ).not.toBeInTheDocument();
       expect(
         screen.getByText("Only a CG Supervisor can generate a new review."),
@@ -3594,7 +3596,7 @@ describe("ShotAnchorPage", () => {
       await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
       expect(
         await screen.findByRole("button", {
-          name: "Generate CG Supervisor review",
+          name: "Generate Agent Execution Review",
         }),
       ).toBeInTheDocument();
     });
@@ -3608,7 +3610,7 @@ describe("ShotAnchorPage", () => {
 
       await user.click(
         await screen.findByRole("button", {
-          name: "Generate CG Supervisor review",
+          name: "Generate Agent Execution Review",
         }),
       );
 
