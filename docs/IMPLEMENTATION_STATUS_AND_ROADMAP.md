@@ -535,7 +535,7 @@ forward-looking surface-polish sequence with the approved four-package product-i
 |---|---|---|
 | **Package A — Anchor-first experience** | Persistent, role-appropriate Anchor context and Intent Signal orientation across the current role-aware journey | **Implementation and owner-validation correction complete on feature branch; repeat owner visual validation and final full regression pending** |
 | **Package B — Visible Agent journey completion** | Discoverable Agent input → output → human-authority chains on current role-aware routes | **Not started** |
-| **Package C — Coherent Golden Demo scenario** | Resettable/loadable three-department journey with separated Demo, live ftrack, and development-fixture data worlds | **Not started** |
+| **Package C — Coherent Golden Demo scenario** | Resettable/loadable three-department journey with separated Demo, live ftrack, and development-fixture data worlds | **Functionality complete; J0 → J4 owner validation PASSED (`journey_state = completed`); final presentation cleanup done; merge gate pending** |
 | **Package D — UX and visual convergence** | Journey, terminology, navigation, hierarchy, usability, and visual convergence after the product structure is coherent | **Not started** |
 
 Package A now has an implementation and owner-correction checkpoint on
@@ -705,6 +705,95 @@ production build (`next build`, 18 static pages) passes; repo-root Prettier pass
 touched this turn; `git diff --check` clean. Owner validation of the full J3 → J4 UI walkthrough
 through only the Reset developer step plus the formal role pages is still pending; Package C is not
 yet marked complete.
+
+### Package C J0 → J4 owner validation PASSED (2026-08-08)
+
+Package C remains in progress on `feat/package-c-golden-demo-journey`. Owner validation completed
+the entire formal J0 → J4 UI journey through the real product routes -- Reset, VFX/CG/Artist role
+entry, per-department Execution R2 confirm/CG-Review/Version-publish/Guidance, the required VFX
+Creative Review, and the final Cross-role Assessment -- and reported `journey_state` still `mixed`
+against a graph that otherwise looked complete. The exact blocker was traced to one brittle
+predicate: `_classify_journey_state`'s `completed` branch required `cg_reviews == 6` exactly, and
+the owner's real graph legitimately had 8 (2 historical duplicates from repeated Generate clicks
+during validation, a real, already-tested product capability, not a bug). `dependencies == 2` was
+already satisfied and was never the blocker; the locked J0→J4 golden-path test proves J4 completion
+has never required resolved dependency evidence, so the classifier's dependency predicate was left
+unchanged rather than inventing a new required transition -- the real, already-existing Human CG
+"Resolve"/"Acknowledge" Dependency action remains available at the owner's discretion, independent
+of J4 classification.
+
+`_load_canonical_graph` now additionally computes `cg_reviews_current_tasks`: how many of the 3
+canonical Tasks have at least one CGSupervisorReview whose own `execution_anchor_revision_id` is
+that Task's currently confirmed Execution Anchor revision -- real coverage, never a raw count.
+`completed` now requires `cg_reviews_current_tasks == 3` instead of `cg_reviews == 6`, so historical/
+duplicate reviews can never turn an otherwise-complete graph `mixed`, and are never deleted merely to
+satisfy a count. The frontend's "Generate Agent Execution Review" action relabels to "Regenerate
+Agent Execution Review" once a current review already exists for the active revision (currentness
+gating, not a block -- regenerating against unchanged evidence stays a real, supported action).
+
+Separately, `DeterministicD1CrossRoleAssessmentGenerator`'s `_three_department_resolved`/
+`_three_department_conflict` branches were found to carry a stale `executive_summary` forward via
+`base.model_copy(...)` after appending their own department findings -- e.g. reporting "0
+local-optimum risk(s)" next to a Findings section that visibly held three. Both branches now
+recompute `executive_summary` from the actual final list lengths.
+
+Validation: full backend suite (1,010 tests) and full frontend suite (1,032 tests) pass; Ruff
+format/check and mypy pass; web TypeScript typecheck, ESLint, and the production build pass;
+repo-root Prettier passes on every file touched this turn; `git diff --check` clean. No Reset or
+mutation was performed against the owner's live database. **Final owner-reported state: `snapshot =
+completed`, `journey_state = completed`.** Package C functionality is complete; the merge gate
+(full owner sign-off plus final presentation cleanup, see next entry) is still pending.
+
+### Package C final presentation cleanup (2026-08-08)
+
+With J0 → J4 owner validation PASSED, this pass is presentation cleanup only -- the state machine,
+Journey semantics, and product capabilities are explicitly unchanged, and no Reset or mutation was
+performed against the owner's database.
+
+**Internal/fixture labels removed from user-facing content.** The canonical D1 deterministic
+generators (`demo_seed/d1_scenario.py`) embedded implementation-oriented bracketed prefixes directly
+into Agent-generated creative/execution prose, e.g. `[CG Agent execution anchor draft - D1
+combined-intensity ceiling translation] Animation owns...`. Five D1-only label constants/usages were
+removed at the source -- `DeterministicD1ExecutionAnchorDraftGenerator`, the R2-era branches of
+`DeterministicD1CGSupervisorReviewGenerator`/`DeterministicD1ArtistGuidanceGenerator`/
+`DeterministicD1VFXSupervisorReviewGenerator`, and `DeterministicD1CrossRoleAssessmentGenerator`'s
+`[Cross-role D1]` proposal/finding label (23 call sites) -- so a fresh D1 run now reads `Animation
+owns the faster motion...` instead. Department names (Animation/Lighting/Compositing) and real
+Agent/capability/provider/ContextSnapshot/AgentRun provenance are untouched; provenance stays
+available in its own dedicated UI. Deliberately left unchanged, per explicit scope: the shared,
+generic deterministic generators' own `"[X deterministic]"` labels
+(`cross_role_assessment_service`/`cg_supervisor_review_service`/`artist_guidance_service`'s base
+classes, used for every non-D1 shot too) -- fixing those would be sanitizing generic/non-D1 content,
+out of this pass's scope. Existing owner-persisted records may still show the old prefixed text
+(immutable, append-only, never rewritten); only a fresh future D1 run generates clean content.
+
+**Audited and found already correct, no changes made:** frontend wording (the "Generate CG
+Supervisor review"/"CG Supervisor reviews recorded" phrasing already fixed in the prior UX pass, no
+further genuine inconsistencies found); current/historical presentation (Core R2 current, Execution
+R2 current, resolved V2 current, R2-era Guidance current, the historical J1 high Assessment and its
+Re-anchor Proposal correctly shown only under "Assessment history," never as a current unresolved
+proposal -- verified via `IntentWorkspacePage`'s own `core_anchor_revision_id === confirmedRevision.id`
++ newest-assessment gate); the Anchor Context shared component (the full expanded panel has no
+`position: sticky` anywhere in its stylesheet; only the compact, single-line summary bar is sticky;
+behavior is identical across VFX/CG/Artist since all three share one component); and the legacy
+Golden Demo concept (zero case-insensitive `"golden"` references anywhere in `apps/web/src`; the only
+remaining backend reference is `demo_seed/golden_scenario.py`'s own dev-only cleanup endpoint for
+removing legacy rows, not a creation/serving path -- not invoked against the owner's database this
+pass).
+
+New regression coverage: `test_completed_journey_user_facing_content_has_no_internal_fixture_labels`
+asserts a fresh `load_completed_d1_journey` run's full persisted Execution Anchor/CG Review/Artist
+Guidance/VFX Review/Cross-role Assessment content contains none of the five removed label patterns,
+while leaving the shared generic generators' own labels unasserted (explicitly out of scope).
+
+Validation: full backend suite (1,011 tests) pass; Ruff format/check and mypy pass; full frontend
+suite (1,032 tests, unchanged from the prior entry since no frontend code was touched this pass) and
+web TypeScript/ESLint were already verified clean; `git diff --check` clean (backend files only this
+pass). The production build was not re-run this pass: the owner's local `next dev` server was
+actively running (restarted since the prior turn) and holds a file lock `next build` cannot clear
+without stopping it; since this pass changed no frontend code, the build already verified clean in
+the prior entry stands. **Package C functionality is complete. The merge gate is still pending** --
+the branch has not been merged and was not pushed.
 
 ### Package A final merge gate (2026-08-03)
 

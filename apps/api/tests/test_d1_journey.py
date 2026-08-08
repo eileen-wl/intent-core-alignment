@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 from intent_core_api.agents import cg_supervisor_review_service
 from intent_core_api.agents.cg_supervisor_review_service import (
@@ -26,9 +28,19 @@ from intent_core_api.integrations.external_link_service import (
     record_external_link,
 )
 from intent_core_api.integrations.models import ExternalEntityLink
-from intent_core_api.intent.models import Constraint, ExecutionAnchor
+from intent_core_api.intent.models import (
+    CGSupervisorReview,
+    Constraint,
+    ExecutionAnchor,
+    ExecutionAnchorRevision,
+)
 from intent_core_api.production_context.models import Shot
-from intent_core_api.versions_and_feedback.models import Version
+from intent_core_api.versions_and_feedback.models import (
+    ArtistAgentGuidance,
+    CrossRoleAssessment,
+    Version,
+    VFXSupervisorReview,
+)
 from intent_core_api.workflow.actors import ActorContext
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,6 +75,100 @@ async def test_reset_reuses_d1_shot_and_creates_three_department_journey(
         ).all()
     }
     assert ids == set(CANONICAL_TASK_EXTERNAL_IDS.values())
+
+
+_FORBIDDEN_INTERNAL_LABELS: tuple[str, ...] = (
+    "[CG Agent execution anchor draft",
+    "[CG D1 deterministic",
+    "[Artist D1 deterministic",
+    "[VFX D1 deterministic",
+    "[Cross-role D1]",
+)
+
+
+async def test_completed_journey_user_facing_content_has_no_internal_fixture_labels(
+    session: AsyncSession,
+) -> None:
+    """Package C final presentation cleanup: a fresh canonical D1 run's
+    Execution Anchor content, Artist Guidance, CG/VFX Reviews, and
+    Cross-role Assessment findings must read as real creative/execution
+    prose -- never carrying an implementation-oriented bracketed label
+    like `[CG Agent execution anchor draft - D1 combined-intensity
+    ceiling translation]`. Deliberately does not assert anything about
+    the shared, generic deterministic generators' own `"[X
+    deterministic]"` labels (`cross_role_assessment_service`/
+    `cg_supervisor_review_service`/`artist_guidance_service`'s own base
+    classes) -- those are unrelated, generic/non-D1 behaviour this pass
+    explicitly leaves untouched.
+    """
+    completed = await load_completed_d1_journey(session)
+    task_ids = list(completed.task_ids)
+
+    execution_revisions = (
+        await session.scalars(
+            select(ExecutionAnchorRevision).where(
+                ExecutionAnchorRevision.execution_anchor_id.in_(
+                    select(ExecutionAnchor.id).where(ExecutionAnchor.task_id.in_(task_ids))
+                )
+            )
+        )
+    ).all()
+    cg_reviews = (
+        await session.scalars(
+            select(CGSupervisorReview).where(
+                CGSupervisorReview.execution_anchor_revision_id.in_(
+                    [row.id for row in execution_revisions]
+                )
+            )
+        )
+    ).all()
+    guidances = (
+        await session.scalars(
+            select(ArtistAgentGuidance).where(ArtistAgentGuidance.task_id.in_(task_ids))
+        )
+    ).all()
+    vfx_reviews = (
+        await session.scalars(
+            select(VFXSupervisorReview).where(
+                VFXSupervisorReview.version_id.in_(list(completed.version_ids))
+            )
+        )
+    ).all()
+    assessments = (
+        await session.scalars(
+            select(CrossRoleAssessment).where(CrossRoleAssessment.task_id.in_(task_ids))
+        )
+    ).all()
+
+    blob_parts = [
+        *(
+            json.dumps(
+                {
+                    field: getattr(revision, field)
+                    for field in (
+                        "technical_boundaries",
+                        "parameter_ranges",
+                        "delivery_conditions",
+                        "production_ready_criteria",
+                        "downstream_dependencies",
+                        "publish_requirements",
+                        "allowed_refinements",
+                        "escalation_conditions",
+                    )
+                }
+            )
+            for revision in execution_revisions
+        ),
+        *(json.dumps(review.review_output) for review in cg_reviews),
+        *(json.dumps(guidance.guidance_output) for guidance in guidances),
+        *(json.dumps(review.review_output) for review in vfx_reviews),
+        *(json.dumps(assessment.assessment_output) for assessment in assessments),
+    ]
+    full_blob = "\n".join(blob_parts)
+    assert full_blob, "expected real persisted content to check"
+
+    for forbidden in _FORBIDDEN_INTERNAL_LABELS:
+        assert forbidden not in full_blob, f"leaked internal label: {forbidden!r}"
 
 
 async def test_completed_is_bounded_and_idempotent(session: AsyncSession) -> None:

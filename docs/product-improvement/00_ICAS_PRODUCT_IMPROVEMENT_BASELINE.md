@@ -1167,6 +1167,80 @@ deferred and Package D has not started.
 
 ---
 
+# 26. Package C final presentation cleanup checkpoint (2026-08-08)
+
+With J0 → J4 owner validation PASSED (checkpoint 25), this checkpoint is presentation cleanup only.
+The state machine, Journey semantics, and product capabilities are explicitly unchanged; no Reset or
+mutation was performed against the owner's database.
+
+The canonical D1 deterministic generators (`demo_seed/d1_scenario.py`) embedded implementation-
+oriented bracketed prefixes directly into Agent-generated creative/execution prose visible to the
+owner, e.g. `[CG Agent execution anchor draft - D1 combined-intensity ceiling translation] Animation
+owns...`. Five D1-only label constants/usages were removed at the source — the Execution Anchor
+draft generator, the R2-era branches of the D1 CG Review/Artist Guidance/VFX Review generators, and
+the Cross-role Assessment D1 proposal/finding label (23 call sites) — so a fresh D1 run now reads
+`Animation owns the faster motion...` instead. Department names and real Agent/capability/provider/
+ContextSnapshot/AgentRun provenance are untouched. Deliberately left unchanged, per explicit scope:
+the shared, generic deterministic generators' own `"[X deterministic]"` labels, used identically for
+every non-D1 shot — fixing those would be sanitizing generic content, out of this checkpoint's scope.
+Existing owner-persisted records may still show the old prefixed text (immutable, append-only, never
+rewritten); only a fresh future D1 run generates clean content.
+
+Audited and found already correct, no changes made: the "Generate CG Supervisor review"/"CG
+Supervisor reviews recorded" wording fixed in the prior UX pass (no further genuine inconsistencies
+found); current/historical presentation (historical J1 high Assessment and its Re-anchor Proposal
+correctly shown only under "Assessment history," never as a current unresolved proposal); the shared
+Anchor Context component (the full expanded panel is never sticky, only the compact single-line
+summary bar is, identically across VFX/CG/Artist); and the legacy Golden Demo concept (zero
+case-insensitive references anywhere in the frontend; the only remaining backend reference is the
+dev-only cleanup endpoint for removing legacy rows, not invoked this pass).
+
+New regression coverage proves a fresh canonical D1 run's full persisted content contains none of
+the five removed label patterns. Validation: full backend suite (1,011 tests) pass; Ruff format/
+check and mypy pass; frontend suite (1,032 tests, unchanged — no frontend code touched this
+checkpoint) and web TypeScript/ESLint were already verified clean; `git diff --check` clean. The
+production build was not re-run: the owner's local dev server was actively running and holds a file
+lock this checkpoint did not need to break since no frontend code changed. **Package C functionality
+is complete. The merge gate is still pending** — not merged, not pushed.
+
+---
+
+# 25. Package C J0 → J4 owner validation PASSED checkpoint (2026-08-08)
+
+Owner validation completed the entire formal J0 → J4 UI journey through the real product routes and
+reported `journey_state` still `mixed` against a graph that otherwise looked complete
+(`snapshot`/`journey_state` requested: `completed`). The exact blocker was one brittle predicate:
+`_classify_journey_state`'s `completed` branch required `cg_reviews == 6` exactly, and the owner's
+real graph legitimately had 8 — 2 historical duplicates from repeated Generate clicks during
+validation, a real, already-tested product capability (`test_multiple_runs_create_multiple_
+immutable_reviews`), not a bug. `dependencies == 2` was already satisfied and was never the blocker;
+the locked J0→J4 golden-path test proves J4 completion has never required resolved dependency
+evidence, so that predicate was left unchanged rather than inventing a new required transition — the
+real, already-existing Human CG "Resolve"/"Acknowledge" Dependency action remains available at the
+owner's discretion, independent of J4 classification.
+
+`_load_canonical_graph` now additionally computes `cg_reviews_current_tasks`: how many of the 3
+canonical Tasks have at least one CGSupervisorReview whose own `execution_anchor_revision_id` is
+that Task's currently confirmed Execution Anchor revision — real coverage, never a raw count.
+`completed` now requires `cg_reviews_current_tasks == 3` instead of `cg_reviews == 6`, so historical/
+duplicate reviews can never turn an otherwise-complete graph `mixed`, and are never deleted merely to
+satisfy a count. The frontend's "Generate Agent Execution Review" action relabels to "Regenerate
+Agent Execution Review" once a current review already exists for the active revision (currentness
+gating, not a block).
+
+Separately, `DeterministicD1CrossRoleAssessmentGenerator`'s resolved/conflict branches were found to
+carry a stale `executive_summary` forward after appending their own department findings — e.g.
+reporting "0 local-optimum risk(s)" next to a Findings section that visibly held three. Both
+branches now recompute `executive_summary` from the actual final list lengths.
+
+Validation: full backend suite (1,010 tests) and full frontend suite (1,032 tests) pass; Ruff
+format/check and mypy pass; web TypeScript typecheck, ESLint, and the production build pass;
+`git diff --check` clean. No Reset or mutation was performed against the owner's live database.
+**Final owner-reported state: `snapshot = completed`, `journey_state = completed`.** Package C
+functionality is complete; the merge gate is still pending.
+
+---
+
 # 24. Package C journey state-machine rebase checkpoint (2026-08-07)
 
 `ICAS_PACKAGE_C_AUDIT_REPORT.md` traced an owner-observed defect: after an explicit `Reset D1

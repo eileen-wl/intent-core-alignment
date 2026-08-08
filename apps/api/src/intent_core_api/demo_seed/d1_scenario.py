@@ -693,23 +693,18 @@ async def _ensure_artist_guidance(
     )
 
 
-_D1_PROPOSAL_LABEL: Final = "[Cross-role D1]"
-
-
 _D1_DEPARTMENT_LABELS: Final = {
     "animation": "Animation",
     "lighting": "Lighting",
     "comp": "Compositing",
 }
 
-# Byte-for-byte the same label and length bound
+# Same length bound
 # `cross_role_assessment_service.DeterministicCrossRoleAssessmentGenerator.
 # generate` uses for its own `executive_summary` (that module's own
-# private `_EXECUTIVE_SUMMARY_LIMIT`/label literal, replicated here
-# rather than imported, since this module already keeps its own D1-only
-# label constants local instead of reaching into that module's private
-# names).
-_BASE_ASSESSMENT_LABEL: Final = "[Cross-role deterministic]"
+# private `_EXECUTIVE_SUMMARY_LIMIT`, replicated here rather than
+# imported, since this module already keeps its own D1-only constants
+# local instead of reaching into that module's private names).
 _EXECUTIVE_SUMMARY_LIMIT: Final = 700
 
 
@@ -728,12 +723,16 @@ def _recomputed_executive_summary(
     augmentation* `executive_summary` string forward unchanged --
     stale text like "0 local-optimum risk(s)" sitting next to a
     Findings section that visibly holds three. Recomputing from the
-    actual final list lengths, byte-for-byte the same sentence shape
-    the base generator itself uses, keeps the summary truthful without
-    changing what evidence any Finding cites or adding a new one.
+    actual final list lengths, same sentence shape the base generator
+    itself uses (minus its internal `"[Cross-role deterministic]"`
+    label -- Package C presentation cleanup: this is D1's own visible
+    executive summary, not the shared generic generator's own output,
+    so it never carries an implementation-fixture prefix), keeps the
+    summary truthful without changing what evidence any Finding cites
+    or adding a new one.
     """
     text = (
-        f"{_BASE_ASSESSMENT_LABEL} {len(cross_role_tensions)} cross-role tension(s), "
+        f"{len(cross_role_tensions)} cross-role tension(s), "
         f"{len(local_optimum_risks)} local-optimum risk(s), and "
         f"{len(unresolved_dependencies)} unresolved dependency(ies) considered across the "
         "VFX Supervisor Agent, CG Supervisor Agent, and Artist Agent recorded output."
@@ -899,12 +898,8 @@ class DeterministicD1CrossRoleAssessmentGenerator:
                 )
             local_optimum_risks.append(
                 CrossRoleFinding(
-                    summary=(f"{_D1_PROPOSAL_LABEL} {label}: {revision['allowed_refinements']}")[
-                        :280
-                    ],
-                    why_it_matters=(f"{_D1_PROPOSAL_LABEL} {revision['escalation_conditions']}")[
-                        :420
-                    ],
+                    summary=(f"{label}: {revision['allowed_refinements']}")[:280],
+                    why_it_matters=(f"{revision['escalation_conditions']}")[:420],
                     affected_roles=["cg_supervisor", "vfx_supervisor"],
                     priority="medium",
                     evidence=finding_evidence,
@@ -920,14 +915,14 @@ class DeterministicD1CrossRoleAssessmentGenerator:
             *base.cross_role_tensions,
             CrossRoleFinding(
                 summary=(
-                    f"{_D1_PROPOSAL_LABEL} Animation, Lighting, and Compositing have each "
+                    "Animation, Lighting, and Compositing have each "
                     "confirmed an Execution Anchor R2 translating the confirmed Core Anchor "
                     "R2's combined-intensity ceiling into their own department-specific "
                     "boundaries; integration now reads as the confirmed restrained threat, "
                     "not spectacle."
                 )[:280],
                 why_it_matters=(
-                    f"{_D1_PROPOSAL_LABEL} Each department's own current confirmed content "
+                    "Each department's own current confirmed content "
                     "now stays bounded by the shared combined-intensity ceiling; continued "
                     "cross-department monitoring remains appropriate."
                 )[:420],
@@ -981,12 +976,8 @@ class DeterministicD1CrossRoleAssessmentGenerator:
                 )
             local_optimum_risks.append(
                 CrossRoleFinding(
-                    summary=(f"{_D1_PROPOSAL_LABEL} {label}: {revision['allowed_refinements']}")[
-                        :280
-                    ],
-                    why_it_matters=(f"{_D1_PROPOSAL_LABEL} {revision['escalation_conditions']}")[
-                        :420
-                    ],
+                    summary=(f"{label}: {revision['allowed_refinements']}")[:280],
+                    why_it_matters=(f"{revision['escalation_conditions']}")[:420],
                     affected_roles=["cg_supervisor", "vfx_supervisor"],
                     priority="high",
                     evidence=finding_evidence,
@@ -1002,13 +993,13 @@ class DeterministicD1CrossRoleAssessmentGenerator:
             *base.cross_role_tensions,
             CrossRoleFinding(
                 summary=(
-                    f"{_D1_PROPOSAL_LABEL} Animation, Lighting, and Compositing are each "
+                    "Animation, Lighting, and Compositing are each "
                     "locally defensible, but combined they shift the Shot from the confirmed "
                     "Core Anchor's controlled, oppressive, restrained threat toward heroic, "
                     "theatrical spectacle."
                 )[:280],
                 why_it_matters=(
-                    f"{_D1_PROPOSAL_LABEL} Each department's own confirmed Execution Anchor "
+                    "Each department's own confirmed Execution Anchor "
                     "records a locally reasonable refinement and its own escalation condition "
                     "for combined drift; none has individually changed, but together they "
                     "approach every recorded escalation condition at once."
@@ -1021,40 +1012,38 @@ class DeterministicD1CrossRoleAssessmentGenerator:
 
         proposal = ReAnchorProposalOutput(
             reason_for_consideration=(
-                f"{_D1_PROPOSAL_LABEL} Animation, Lighting, and Compositing Execution "
+                "Animation, Lighting, and Compositing Execution "
                 "Anchors each record a real, locally defensible optimisation and its own "
                 "escalation condition; combined, they approach the confirmed Core Anchor's "
                 "restrained-threat boundary from three directions at once."
             )[:420],
             preserved_elements=[
-                f"{_D1_PROPOSAL_LABEL} The controlled, oppressive, inevitable threat.",
-                f"{_D1_PROPOSAL_LABEL} Weight and silhouette hierarchy over spectacle.",
+                "The controlled, oppressive, inevitable threat.",
+                "Weight and silhouette hierarchy over spectacle.",
             ],
             proposed_fields=[
                 ReAnchorFieldProposal(
                     field="constraints",
                     current_problem=(
-                        f"{_D1_PROPOSAL_LABEL} The confirmed Core Anchor names one combined "
+                        "The confirmed Core Anchor names one combined "
                         "restraint constraint, without a specific combined-intensity ceiling "
                         "across Animation, Lighting, and Compositing."
                     )[:420],
-                    # Deliberately without the `_D1_PROPOSAL_LABEL` prefix
-                    # every other advisory-only proposal field in this
-                    # module carries: `proposed_direction` is the exact
-                    # text `core_anchor_service._apply_proposed_field_
-                    # changes` copies verbatim into the new Core Anchor
-                    # R2 Draft's own Constraints when the Human VFX
-                    # Supervisor clicks "Create Core Anchor R2 draft from
-                    # proposal" -- real Anchor content, not an advisory
-                    # aside, so it reads like the Shot's other real
-                    # constraints (see `_core_content`'s own risk text).
+                    # `proposed_direction` is the exact text
+                    # `core_anchor_service._apply_proposed_field_changes`
+                    # copies verbatim into the new Core Anchor R2 Draft's
+                    # own Constraints when the Human VFX Supervisor
+                    # clicks "Create Core Anchor R2 draft from proposal"
+                    # -- real Anchor content, not an advisory aside, so
+                    # it reads like the Shot's other real constraints
+                    # (see `_core_content`'s own risk text).
                     proposed_direction=(
                         "Keep the combined intensity of motion acceleration, warm rim/contrast, "
                         "bloom, particles and debris below the point where restrained threat "
                         "becomes heroic or theatrical spectacle."
                     )[:420],
                     why_it_may_help=(
-                        f"{_D1_PROPOSAL_LABEL} Each department's own recorded refinement stays "
+                        "Each department's own recorded refinement stays "
                         "within its own local boundary; a combined ceiling would let the three "
                         "be checked together against the shared restrained-threat intent, "
                         "rather than only one department at a time."
@@ -1063,12 +1052,12 @@ class DeterministicD1CrossRoleAssessmentGenerator:
                 )
             ],
             adoption_risks=[
-                f"{_D1_PROPOSAL_LABEL} A combined-intensity ceiling could read as restricting "
+                "A combined-intensity ceiling could read as restricting "
                 "each department's own already-confirmed refinement, even though none has "
                 "individually changed."
             ],
             questions_for_human_vfx_supervisor=[
-                f"{_D1_PROPOSAL_LABEL} Should the combined-intensity ceiling be expressed as "
+                "Should the combined-intensity ceiling be expressed as "
                 "one shared Core Anchor constraint, or as linked per-department Execution "
                 "Anchor limits?"
             ],
@@ -1102,29 +1091,28 @@ class DeterministicD1CrossRoleAssessmentGenerator:
     ) -> CrossRoleAssessmentOutput:
         proposal = ReAnchorProposalOutput(
             reason_for_consideration=(
-                f"{_D1_PROPOSAL_LABEL} The VFX and CG Supervisor Agent reviews both record "
+                "The VFX and CG Supervisor Agent reviews both record "
                 "camera-timing and contrast drift concerns that the confirmed Core Anchor's "
                 "drift_risks field currently names only as one combined risk."
             ),
             preserved_elements=[
-                f"{_D1_PROPOSAL_LABEL} The restrained, internal emotional tone.",
-                f"{_D1_PROPOSAL_LABEL} That camera timing must not imply release before the "
-                "climax.",
+                "The restrained, internal emotional tone.",
+                "That camera timing must not imply release before the climax.",
             ],
             proposed_fields=[
                 ReAnchorFieldProposal(
                     field="drift_risks",
                     current_problem=(
-                        f"{_D1_PROPOSAL_LABEL} The confirmed drift_risks field names camera "
+                        "The confirmed drift_risks field names camera "
                         "timing and contrast drift together, without distinguishing which "
                         "recorded role's concern is driving the current drift."
                     ),
                     proposed_direction=(
-                        f"{_D1_PROPOSAL_LABEL} Consider naming the camera-timing risk and the "
+                        "Consider naming the camera-timing risk and the "
                         "contrast-grading risk as two separately trackable drift risks."
                     ),
                     why_it_may_help=(
-                        f"{_D1_PROPOSAL_LABEL} Separating the two recorded concerns would let "
+                        "Separating the two recorded concerns would let "
                         "each role's evidence be checked against the Core Anchor independently, "
                         "rather than through one combined risk statement."
                     ),
@@ -1132,11 +1120,11 @@ class DeterministicD1CrossRoleAssessmentGenerator:
                 )
             ],
             adoption_risks=[
-                f"{_D1_PROPOSAL_LABEL} Splitting the drift risk into two entries could read as "
+                "Splitting the drift risk into two entries could read as "
                 "raising two problems where the underlying scene intent has not changed."
             ],
             questions_for_human_vfx_supervisor=[
-                f"{_D1_PROPOSAL_LABEL} Should camera-timing drift and contrast-grading drift "
+                "Should camera-timing drift and contrast-grading drift "
                 "remain one combined risk, or be tracked separately going forward?"
             ],
             evidence=[core_anchor_evidence, vfx_evidence, cg_evidence],
@@ -1579,9 +1567,6 @@ _D1_EXECUTION_R2_SPECTACLE_TERMS: Final = {
     "lighting": "triumphant or theatrical spectacle",
     "comp": "spectacle",
 }
-_D1_EXECUTION_R2_LABEL: Final = (
-    "[CG Agent execution anchor draft - D1 combined-intensity ceiling translation]"
-)
 
 
 class DeterministicD1ExecutionAnchorDraftGenerator:
@@ -1627,61 +1612,58 @@ class DeterministicD1ExecutionAnchorDraftGenerator:
         other = _D1_EXECUTION_R2_OTHER_DEPARTMENTS[department]
         spectacle = _D1_EXECUTION_R2_SPECTACLE_TERMS[department]
         dept_label = _D1_DEPARTMENT_LABELS[department]
-        label = _D1_EXECUTION_R2_LABEL
 
         if department == "animation":
             delivery_conditions = (
-                f"{label} Controlled pauses and silhouette weight remain primary; {own} may "
+                f"Controlled pauses and silhouette weight remain primary; {own} may "
                 "read as more confident, never as a release into spectacle."
             )
         else:
             delivery_conditions = (
-                f"{label} {own[0].upper()}{own[1:]} may read as more confident, never as a "
+                f"{own[0].upper()}{own[1:]} may read as more confident, never as a "
                 f"release into spectacle; coordinate timing directly with {other}'s current "
                 "contributions."
             )
 
         if department == "comp":
             downstream_dependencies = (
-                f"{label} Compositing integration coordinates {other}'s current confirmed "
+                f"Compositing integration coordinates {other}'s current confirmed "
                 "contributions, keeping the combined result inside the shared "
                 "combined-intensity ceiling."
             )
         else:
             downstream_dependencies = (
-                f"{label} Compositing integration depends on {dept_label}'s {own} contribution "
+                f"Compositing integration depends on {dept_label}'s {own} contribution "
                 f"staying inside the shared combined-intensity ceiling alongside {other}."
             )
 
         return ExecutionAnchorRevisionDraftCreate(
             technical_boundaries=(
-                f"{label} {dept_label} owns the {own} contribution to the confirmed Core "
+                f"{dept_label} owns the {own} contribution to the confirmed Core "
                 f'Anchor\'s combined-intensity ceiling: "{constraint_text}". {own[0].upper()}'
                 f"{own[1:]} may not be increased independently of what {other} are already "
                 "contributing."
             ),
             parameter_ranges=(
-                f"{label} {own[0].upper()}{own[1:]} stay within {dept_label}'s own confirmed "
+                f"{own[0].upper()}{own[1:]} stay within {dept_label}'s own confirmed "
                 f"local range, and must not rise further whenever {other} are already raising "
                 "visual intensity toward the shared combined-intensity ceiling."
             ),
             delivery_conditions=delivery_conditions,
             production_ready_criteria=(
-                f"{label} Production-ready only when {dept_label}'s own intensity contribution, "
+                f"Production-ready only when {dept_label}'s own intensity contribution, "
                 f"combined with {other}'s current contributions, still reads as restrained "
                 "threat rather than spectacle."
             ),
             downstream_dependencies=downstream_dependencies,
-            publish_requirements=(
-                f"{label} Human CG Supervisor confirmation is required before publish."
-            ),
+            publish_requirements=("Human CG Supervisor confirmation is required before publish."),
             allowed_refinements=(
-                f"{label} Local refinements to {dept_label}'s own {own}, within its own "
+                f"Local refinements to {dept_label}'s own {own}, within its own "
                 f"confirmed range, coordinated against {other}'s current confirmed "
                 "contributions."
             ),
             escalation_conditions=(
-                f"{label} Escalate to the VFX Supervisor if the combined Animation + Lighting "
+                f"Escalate to the VFX Supervisor if the combined Animation + Lighting "
                 f"+ Compositing intensity risks turning the confirmed restrained threat into "
                 f"{spectacle}."
             ),
@@ -1826,7 +1808,6 @@ class DeterministicD1CGSupervisorReviewGenerator:
         task = snapshot_payload["task"]
         department = task.get("department") or "comp"
         dept_label = _D1_DEPARTMENT_LABELS.get(department, task["name"])
-        label = "[CG D1 deterministic - R2 combined-intensity ceiling compliance]"
 
         boundary_text = (
             target_revision.get("allowed_refinements")
@@ -1836,7 +1817,7 @@ class DeterministicD1CGSupervisorReviewGenerator:
         escalation_text = target_revision.get("escalation_conditions") or ""
 
         executive_summary = (
-            f"{label} {dept_label}'s confirmed Execution Anchor R"
+            f"{dept_label}'s confirmed Execution Anchor R"
             f"{target_revision['revision_number']} stays within its own role-specific "
             f"contribution to the confirmed Core Anchor's combined-intensity ceiling: "
             f"{boundary_text}"
@@ -1844,13 +1825,13 @@ class DeterministicD1CGSupervisorReviewGenerator:
 
         execution_direction_read = CGReviewItem(
             summary=(
-                f"{label} {dept_label} Execution Anchor R{target_revision['revision_number']} "
+                f"{dept_label} Execution Anchor R{target_revision['revision_number']} "
                 "confirmed compliant with the combined-intensity ceiling."
             )[:280],
             rationale=(
-                f"{label} {escalation_text}"
+                escalation_text
                 if escalation_text
-                else f"{label} No escalation condition is recorded on this revision."
+                else "No escalation condition is recorded on this revision."
             )[:420],
             priority="high",
             evidence=[
@@ -1963,25 +1944,15 @@ class DeterministicD1ArtistGuidanceGenerator:
         version = snapshot_payload["version"]
         department = task.get("department") or "comp"
         dept_label = _D1_DEPARTMENT_LABELS.get(department, task["name"])
-        label = "[Artist D1 deterministic - R2 combined-intensity ceiling boundary]"
 
         boundary_text = (
             target_revision.get("allowed_refinements")
             or target_revision.get("technical_boundaries")
             or ""
         )
-        # Strip the source Execution Anchor generator's own bracketed
-        # label prefix (e.g. "[CG Agent execution anchor draft - D1
-        # combined-intensity ceiling translation]") before embedding it
-        # here -- it carries no information of its own and would
-        # otherwise consume most of this field's tight character
-        # budget, pushing the actual department-specific content past
-        # the truncation limit.
-        if boundary_text.startswith("[") and "] " in boundary_text:
-            boundary_text = boundary_text.split("] ", 1)[1]
 
         executive_summary = (
-            f"{label} {dept_label}'s resolved Version {version['name']} reflects the "
+            f"{dept_label}'s resolved Version {version['name']} reflects the "
             f"confirmed Execution Anchor R{target_revision['revision_number']}'s own "
             f"department-specific contribution to the confirmed Core Anchor's "
             f"combined-intensity ceiling."
@@ -1992,7 +1963,7 @@ class DeterministicD1ArtistGuidanceGenerator:
                 f"{dept_label} R{target_revision['revision_number']} boundary: {boundary_text}"
             )[:200],
             why_it_matters=(
-                f"{label} This is the confirmed Execution Anchor R2 revision for this "
+                "This is the confirmed Execution Anchor R2 revision for this "
                 "Task, translating the shared combined-intensity ceiling into this "
                 "department's own contribution."
             )[:240],
@@ -2104,10 +2075,9 @@ class DeterministicD1VFXSupervisorReviewGenerator:
             return base
 
         constraint_text = constraints[0]["content"]
-        label = "[VFX D1 deterministic - R2 combined-intensity ceiling integration read]"
 
         executive_summary = (
-            f"{label} {version['name']} integrates Animation, Lighting, and Compositing's "
+            f"{version['name']} integrates Animation, Lighting, and Compositing's "
             "confirmed Execution R2 contributions; the combined result reads as restrained "
             "and controlled, not heroic, theatrical, or spectacle, honoring the confirmed "
             f"Core Anchor's combined-intensity ceiling: {constraint_text}"
@@ -2115,13 +2085,13 @@ class DeterministicD1VFXSupervisorReviewGenerator:
 
         creative_direction_read = VFXReviewItem(
             summary=(
-                f"{label} Review {version['name']} against the confirmed Core Anchor "
+                f"Review {version['name']} against the confirmed Core Anchor "
                 f"revision #{confirmed_revision['revision_number']}'s combined-intensity "
                 "ceiling, integrating all three departments' confirmed Execution R2 "
                 "contributions."
             ),
             rationale=(
-                f"{label} This is the Shot's currently confirmed Core Anchor revision, and "
+                "This is the Shot's currently confirmed Core Anchor revision, and "
                 f"{version['name']} is a resolved Version responding to it."
             ),
             priority="high",
