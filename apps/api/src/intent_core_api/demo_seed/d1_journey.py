@@ -878,7 +878,33 @@ def _classify_journey_state(counts: dict[str, int], attention_levels: tuple[str,
     # `dependencies` stays at its J0-J3 baseline of 2 (the real flow
     # never touches TaskDependency at all -- publishing a resolved
     # Version, generating Guidance/Reviews, and generating the final
-    # Assessment none of them create or modify a dependency row).
+    # Assessment none of them create or modify a dependency row; J4
+    # completion has never required resolved dependency evidence --
+    # confirmed by this exact invariant already matching the real
+    # locked `test_j0_to_j4_full_formal_journey_via_real_endpoints`
+    # golden path, which reaches `completed` without ever touching
+    # `TaskDependency`. The real, already-existing "Resolve"/
+    # "Acknowledge" Human CG Supervisor action -- `cross_department.
+    # service.resolve_dependency`/`acknowledge_dependency`, exposed at
+    # `POST /tasks/{task_id}/dependencies/{dependency_id}/resolve` and
+    # the CG Dependencies page's own "Resolve" button -- remains fully
+    # available for a Human CG Supervisor to use at their own
+    # discretion; it is simply not a J4 completion precondition).
+    #
+    # Package C follow-up (duplicate Agent Execution Review
+    # tolerance): a raw `cg_reviews == 6` total is brittle -- a
+    # Human CG Supervisor may legitimately regenerate a review against
+    # unchanged evidence (a real, already-tested product capability,
+    # see `test_multiple_runs_create_multiple_immutable_reviews`), and
+    # historical duplicates from that must never turn an otherwise
+    # complete graph `mixed`, nor may they be silently deleted just to
+    # satisfy a count. `cg_reviews_current_tasks == 3` instead checks
+    # real *coverage*: every one of the 3 canonical Tasks has at least
+    # one CGSupervisorReview whose own `execution_anchor_revision_id`
+    # is that Task's currently active/confirmed Execution Anchor
+    # revision -- true regardless of how many extra historical/
+    # duplicate rows also exist.
+    #
     # `attention_levels == ("high", "medium")` directly encodes two
     # required J4 semantics at once: the historical J1 Assessment's own
     # `high` attention is preserved untouched, and the final Assessment
@@ -896,7 +922,7 @@ def _classify_journey_state(counts: dict[str, int], attention_levels: tuple[str,
         and counts["proposals"] >= 1
         and counts["dependencies"] == 2
         and counts["vfx_reviews"] == 2
-        and counts["cg_reviews"] == 6
+        and counts["cg_reviews_current_tasks"] == 3
         and counts["guidance"] == 6
         and attention_levels == ("high", "medium")
     ):
@@ -954,13 +980,22 @@ async def _load_canonical_graph(
     core_confirmed_ids = [row.id for row in core_revision_rows if row.status == "confirmed"]
     core_draft_ids = [row.id for row in core_revision_rows if row.status == "draft"]
 
-    execution_anchor_ids = list(
+    execution_anchors = list(
         (
             await session.scalars(
-                select(ExecutionAnchor.id).where(ExecutionAnchor.task_id.in_(task_ids))
+                select(ExecutionAnchor).where(ExecutionAnchor.task_id.in_(task_ids))
             )
         ).all()
     )
+    execution_anchor_ids = [anchor.id for anchor in execution_anchors]
+    # Package C follow-up (duplicate Agent Execution Review tolerance):
+    # each real Task's own currently active/confirmed Execution Anchor
+    # revision id -- `None` whenever that Task has no confirmed
+    # Execution Anchor yet. Used below to check real per-Task CG Review
+    # *coverage*, never a raw total count.
+    active_execution_revision_id_by_task = {
+        anchor.task_id: anchor.active_revision_id for anchor in execution_anchors
+    }
     execution_revision_rows = (
         list(
             (
@@ -1040,6 +1075,32 @@ async def _load_canonical_graph(
         if execution_revision_rows
         else 0
     )
+    # Package C follow-up (duplicate Agent Execution Review tolerance):
+    # a real `execution_anchor_revision_id` coverage set -- historical
+    # duplicate reviews against the *same* current revision, or reviews
+    # against a now-superseded revision, never inflate or deflate this;
+    # only genuine current-per-Task coverage does.
+    cg_review_execution_revision_ids = (
+        set(
+            (
+                await session.scalars(
+                    select(CGSupervisorReview.execution_anchor_revision_id).where(
+                        CGSupervisorReview.execution_anchor_revision_id.in_(
+                            [row.id for row in execution_revision_rows]
+                        )
+                    )
+                )
+            ).all()
+        )
+        if execution_revision_rows
+        else set()
+    )
+    cg_reviews_current_tasks = sum(
+        1
+        for task_id in task_ids
+        if active_execution_revision_id_by_task.get(task_id) is not None
+        and active_execution_revision_id_by_task[task_id] in cg_review_execution_revision_ids
+    )
     guidance_count = int(
         await session.scalar(
             select(func.count())
@@ -1070,6 +1131,7 @@ async def _load_canonical_graph(
         "proposals": len(proposal_ids),
         "vfx_reviews": vfx_review_count,
         "cg_reviews": cg_review_count,
+        "cg_reviews_current_tasks": cg_reviews_current_tasks,
         "guidance": guidance_count,
         "dependencies": dependency_count,
     }

@@ -19,10 +19,19 @@ export function VersionReviewActions({
   taskId,
   versionId,
   activeExecutionRevisionId,
+  hasCurrentReview = false,
 }: {
   taskId: string;
   versionId: string;
   activeExecutionRevisionId: string | null;
+  /** True when an Agent Execution Review already exists for the active
+   * Execution Anchor revision -- real evidence-currentness gating
+   * (Package C follow-up), not a hard block: generating again against
+   * the exact same unchanged evidence is still a real, supported
+   * product action (e.g. a fresh read), so the control stays enabled
+   * and simply relabels to "Regenerate" to make that an explicit
+   * choice rather than an accidental repeat click. */
+  hasCurrentReview?: boolean;
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -88,7 +97,11 @@ export function VersionReviewActions({
               });
             }}
           >
-            {isPending ? "Generating…" : "Generate Agent Execution Review"}
+            {isPending
+              ? "Generating…"
+              : hasCurrentReview
+                ? "Regenerate Agent Execution Review"
+                : "Generate Agent Execution Review"}
           </button>
         )}
 

@@ -3654,6 +3654,28 @@ describe("ShotAnchorPage", () => {
         within(review).queryByRole("button", { name: /edit/i }),
       ).not.toBeInTheDocument();
     });
+
+    it("relabels the Generate action to Regenerate once a current Agent Execution Review already exists for the active revision (currentness gating, Package C follow-up)", async () => {
+      const user = userEvent.setup();
+      const fixture = baseFixture();
+      fixture.cgSupervisorReviews["ea-rev-1"] = [cgSupervisorReview()];
+      installFetchMock(fixture);
+      render(<ShotAnchorPage shotId="shot-1" />);
+
+      await screen.findByLabelText("CG Supervisor review cg-review-1");
+      await user.selectOptions(screen.getByLabelText("Role"), "cg_supervisor");
+
+      expect(
+        await screen.findByRole("button", {
+          name: "Regenerate Agent Execution Review",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", {
+          name: "Generate Agent Execution Review",
+        }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   describe("Cross-role assessment section", () => {

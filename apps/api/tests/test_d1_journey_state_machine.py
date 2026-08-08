@@ -1528,6 +1528,25 @@ async def test_j0_to_j4_full_formal_journey_via_real_endpoints(
     j1_assessment_id = uuid.UUID(j1_response.json()["id"])
     assert j1_response.json()["re_anchor_proposal"] is not None
 
+    # Owner re-validation correction: the executive_summary sentence's
+    # own encoded counts must never disagree with the real, persisted
+    # Findings arrays sitting right next to it (self-consistency, not a
+    # hardcoded expected number -- the deterministic content itself is
+    # locked elsewhere).
+    j1_output = j1_response.json()["assessment_output"]
+    assert (
+        f"{len(j1_output['local_optimum_risks'])} local-optimum risk(s)"
+        in j1_output["executive_summary"]
+    )
+    assert (
+        f"{len(j1_output['cross_role_tensions'])} cross-role tension(s)"
+        in j1_output["executive_summary"]
+    )
+    assert (
+        f"{len(j1_output['unresolved_dependencies'])} unresolved dependency(ies)"
+        in j1_output["executive_summary"]
+    )
+
     j1 = await inspect_d1_journey(session)
     assert j1 is not None
     assert j1.journey_state == "assessment_complete"
@@ -1705,6 +1724,24 @@ async def test_j0_to_j4_full_formal_journey_via_real_endpoints(
     ).lower()
     assert "combined" in combined_final_text and "ceiling" in combined_final_text
 
+    # Owner re-validation correction: same self-consistency check as J1
+    # above -- the final Assessment's own executive_summary must report
+    # the real, final (post-department-augmentation) Findings counts,
+    # never a stale pre-augmentation count copied forward unchanged.
+    final_output = final["assessment_output"]
+    assert (
+        f"{len(final_output['local_optimum_risks'])} local-optimum risk(s)"
+        in final_output["executive_summary"]
+    )
+    assert (
+        f"{len(final_output['cross_role_tensions'])} cross-role tension(s)"
+        in final_output["executive_summary"]
+    )
+    assert (
+        f"{len(final_output['unresolved_dependencies'])} unresolved dependency(ies)"
+        in final_output["executive_summary"]
+    )
+
     # --- J4: completed, defined from this exact real canonical graph. ---
     j4 = await inspect_d1_journey(session)
     assert j4 is not None
@@ -1719,6 +1756,7 @@ async def test_j0_to_j4_full_formal_journey_via_real_endpoints(
     assert j4.counts["versions"] == 6
     assert j4.counts["guidance"] == 6
     assert j4.counts["cg_reviews"] == 6
+    assert j4.counts["cg_reviews_current_tasks"] == 3
     assert j4.counts["vfx_reviews"] == 2
     assert j4.counts["assessments"] == 2
     assert j4.counts["proposals"] >= 1

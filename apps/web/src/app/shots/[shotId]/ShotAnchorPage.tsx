@@ -2524,10 +2524,14 @@ function GenerateCgSupervisorReviewButton({
   revisionId,
   actor,
   onGenerated,
+  hasCurrentReview = false,
 }: {
   revisionId: string;
   actor: { role: HumanRole; actorId: string };
   onGenerated: () => void;
+  /** Package C follow-up: currentness gating, not a hard block -- see
+   * `VersionReviewActions.tsx`'s identical prop for the full rationale. */
+  hasCurrentReview?: boolean;
 }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -2552,7 +2556,11 @@ function GenerateCgSupervisorReviewButton({
         disabled={pending}
         onClick={() => void handleGenerate()}
       >
-        {pending ? "Generating…" : "Generate Agent Execution Review"}
+        {pending
+          ? "Generating…"
+          : hasCurrentReview
+            ? "Regenerate Agent Execution Review"
+            : "Generate Agent Execution Review"}
       </button>
       {error && <p role="alert">{error}</p>}
     </div>
@@ -2607,6 +2615,9 @@ function CgSupervisorReviewSection({
           revisionId={revisionId}
           actor={actor}
           onGenerated={handleGenerated}
+          hasCurrentReview={
+            state.status === "ready" && state.reviews.length > 0
+          }
         />
       )}
       {actor.role !== "cg_supervisor" && (

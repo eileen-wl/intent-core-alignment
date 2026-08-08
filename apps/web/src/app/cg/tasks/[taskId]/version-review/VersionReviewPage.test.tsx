@@ -345,6 +345,79 @@ describe("VersionReviewPage", () => {
     ).toBeVisible();
   });
 
+  it("relabels the Generate action to Regenerate once a current Agent Execution Review already exists for the active Execution Anchor revision (currentness gating, Package C follow-up)", () => {
+    const activeExecutionRevision = {
+      id: "ea1",
+      execution_anchor_id: "ea",
+      core_anchor_revision_id: "ca1",
+      revision_number: 1,
+      status: "confirmed" as const,
+      technical_boundaries: "24fps, no motion blur.",
+      parameter_ranges: null,
+      delivery_conditions: null,
+      production_ready_criteria: null,
+      downstream_dependencies: null,
+      publish_requirements: null,
+      allowed_refinements: null,
+      escalation_conditions: null,
+      created_by_actor_kind: "human" as const,
+      created_by_actor_id: "cg-1",
+      created_by_human_role: "cg_supervisor" as const,
+      created_by_agent_type: null,
+      created_by_agent_run_id: null,
+      confirmed_by_human_role: "cg_supervisor" as const,
+      confirmed_by_actor_id: "cg-1",
+      confirmed_at: "2026-08-01T00:00:00Z",
+      supersedes_revision_id: null,
+      created_at: "2026-08-01T00:00:00Z",
+      updated_at: "2026-08-01T00:00:00Z",
+    };
+    const review: CGSupervisorReviewRead = {
+      id: "cgr1",
+      project_id: "p1",
+      shot_id: "s1",
+      task_id: "t1",
+      execution_anchor_revision_id: "ea1",
+      version_id: "v1",
+      context_snapshot_id: "cs1",
+      agent_run_id: "run1",
+      review_output: {
+        executive_summary: "x",
+        execution_direction_read: {
+          summary: "Reads within the confirmed range.",
+          rationale: "Matches the confirmed Execution Anchor.",
+          priority: "low",
+          evidence: [],
+        },
+        actionable_requirements: [],
+        technical_concerns: [],
+        coordination_concerns: [],
+        implementation_priorities: [],
+        proposed_execution_guidance: [],
+        questions_for_human_cg_supervisor: [],
+        evidence_gaps: [],
+      },
+      created_at: "2026-01-01T00:00:00Z",
+    };
+    render(
+      <VersionReviewPage
+        taskId="t1"
+        data={data({
+          activeExecutionRevision,
+          cgSupervisorReviews: [review],
+        })}
+        unavailable={false}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("button", { name: "Generate Agent Execution Review" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Regenerate Agent Execution Review" }),
+    ).toBeVisible();
+  });
+
   it("honestly shows no Agent Execution Review has been generated yet", () => {
     render(
       <VersionReviewPage

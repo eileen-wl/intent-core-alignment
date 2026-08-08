@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import pytest
+from intent_core_api.agents import cg_supervisor_review_service
+from intent_core_api.agents.cg_supervisor_review_service import (
+    DeterministicCGSupervisorReviewGenerator,
+)
 from intent_core_api.cross_department.models import TaskDependency
 from intent_core_api.demo_seed import d1_journey
 from intent_core_api.demo_seed.d1_journey import (
@@ -22,9 +26,10 @@ from intent_core_api.integrations.external_link_service import (
     record_external_link,
 )
 from intent_core_api.integrations.models import ExternalEntityLink
-from intent_core_api.intent.models import Constraint
+from intent_core_api.intent.models import Constraint, ExecutionAnchor
 from intent_core_api.production_context.models import Shot
 from intent_core_api.versions_and_feedback.models import Version
+from intent_core_api.workflow.actors import ActorContext
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -96,6 +101,46 @@ async def test_completed_dependency_evidence_stays_frozen_and_ceiling_free(
         lowered = row.description.lower()
         assert "intensity ceiling" not in lowered
         assert "confirmed local range" in lowered
+
+
+async def test_completed_tolerates_duplicate_cg_reviews_from_repeated_generate_clicks(
+    session: AsyncSession,
+) -> None:
+    """Owner re-validation correction: a Human CG Supervisor regenerating
+    an Agent Execution Review against unchanged evidence is a real,
+    already-tested product capability (see `test_cg_supervisor_review.
+    test_multiple_runs_create_multiple_immutable_reviews`), not a bug --
+    so an extra historical/duplicate row (e.g. from repeated explicit
+    Generate clicks) must never turn an otherwise-complete graph
+    `mixed`, and must never be silently deleted just to satisfy a raw
+    count. `_classify_journey_state` checks real per-Task current-
+    revision *coverage* (`cg_reviews_current_tasks`), not the raw
+    `cg_reviews` total.
+    """
+    completed = await load_completed_d1_journey(session)
+    assert completed.journey_state == "completed"
+    animation_task_id = completed.task_ids[0]
+
+    execution_anchor = await session.scalar(
+        select(ExecutionAnchor).where(ExecutionAnchor.task_id == animation_task_id)
+    )
+    assert execution_anchor is not None
+    assert execution_anchor.active_revision_id is not None
+
+    cg_actor = ActorContext(actor_kind="human", actor_id="cg-1", human_role="cg_supervisor")
+    await cg_supervisor_review_service.generate_cg_supervisor_review(
+        session,
+        cg_actor,
+        execution_anchor.active_revision_id,
+        generator=DeterministicCGSupervisorReviewGenerator(),
+    )
+
+    after_duplicate = await inspect_d1_journey(session)
+    assert after_duplicate is not None
+    assert after_duplicate.journey_state == "completed"
+    assert after_duplicate.snapshot == "completed"
+    assert after_duplicate.counts["cg_reviews"] == 7
+    assert after_duplicate.counts["cg_reviews_current_tasks"] == 3
 
 
 async def test_reset_completed_reset_preserves_other_d1_fixture(session: AsyncSession) -> None:

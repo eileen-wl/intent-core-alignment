@@ -308,6 +308,7 @@ export function VersionReviewPage({
                           activeExecutionRevisionId={
                             data.activeExecutionRevision?.id ?? null
                           }
+                          hasCurrentReview={data.cgSupervisorReviews.length > 0}
                         />
                       </section>
                     </>

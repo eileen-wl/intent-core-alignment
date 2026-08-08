@@ -702,6 +702,46 @@ _D1_DEPARTMENT_LABELS: Final = {
     "comp": "Compositing",
 }
 
+# Byte-for-byte the same label and length bound
+# `cross_role_assessment_service.DeterministicCrossRoleAssessmentGenerator.
+# generate` uses for its own `executive_summary` (that module's own
+# private `_EXECUTIVE_SUMMARY_LIMIT`/label literal, replicated here
+# rather than imported, since this module already keeps its own D1-only
+# label constants local instead of reaching into that module's private
+# names).
+_BASE_ASSESSMENT_LABEL: Final = "[Cross-role deterministic]"
+_EXECUTIVE_SUMMARY_LIMIT: Final = 700
+
+
+def _recomputed_executive_summary(
+    *,
+    cross_role_tensions: list[CrossRoleFinding],
+    local_optimum_risks: list[CrossRoleFinding],
+    unresolved_dependencies: list[CrossRoleFinding],
+) -> str:
+    """Owner re-validation correction (Package C follow-up): the base
+    `DeterministicCrossRoleAssessmentGenerator`'s own `executive_summary`
+    encodes exact finding counts as text. `_three_department_resolved`
+    and `_three_department_conflict` below both append their own
+    department findings to `base.local_optimum_risks`/`cross_role_
+    tensions` via `base.model_copy(...)`, which carries the *pre-
+    augmentation* `executive_summary` string forward unchanged --
+    stale text like "0 local-optimum risk(s)" sitting next to a
+    Findings section that visibly holds three. Recomputing from the
+    actual final list lengths, byte-for-byte the same sentence shape
+    the base generator itself uses, keeps the summary truthful without
+    changing what evidence any Finding cites or adding a new one.
+    """
+    text = (
+        f"{_BASE_ASSESSMENT_LABEL} {len(cross_role_tensions)} cross-role tension(s), "
+        f"{len(local_optimum_risks)} local-optimum risk(s), and "
+        f"{len(unresolved_dependencies)} unresolved dependency(ies) considered across the "
+        "VFX Supervisor Agent, CG Supervisor Agent, and Artist Agent recorded output."
+    )
+    if len(text) <= _EXECUTIVE_SUMMARY_LIMIT:
+        return text
+    return text[: _EXECUTIVE_SUMMARY_LIMIT - 1] + "…"
+
 
 class DeterministicD1CrossRoleAssessmentGenerator:
     """D1 Demo-only deterministic generator (Step 7C-1 targeted
@@ -902,6 +942,11 @@ class DeterministicD1CrossRoleAssessmentGenerator:
                 "local_optimum_risks": local_optimum_risks,
                 "cross_role_tensions": cross_role_tensions,
                 "re_anchor_proposal": None,
+                "executive_summary": _recomputed_executive_summary(
+                    cross_role_tensions=cross_role_tensions,
+                    local_optimum_risks=local_optimum_risks,
+                    unresolved_dependencies=base.unresolved_dependencies,
+                ),
             }
         )
 
@@ -1040,6 +1085,11 @@ class DeterministicD1CrossRoleAssessmentGenerator:
                 "local_optimum_risks": local_optimum_risks,
                 "cross_role_tensions": cross_role_tensions,
                 "re_anchor_proposal": proposal,
+                "executive_summary": _recomputed_executive_summary(
+                    cross_role_tensions=cross_role_tensions,
+                    local_optimum_risks=local_optimum_risks,
+                    unresolved_dependencies=base.unresolved_dependencies,
+                ),
             }
         )
 
