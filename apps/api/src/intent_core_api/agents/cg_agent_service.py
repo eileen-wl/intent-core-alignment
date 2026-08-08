@@ -344,6 +344,50 @@ async def generate_execution_anchor_draft(
         dependencies=dependencies,
     )
 
+    resolved_generator = generator
+    if resolved_generator is None:
+        # Package C follow-up (downstream retranslation semantics): a
+        # late-bound, function-local import -- `demo_seed.d1_scenario`
+        # already imports this module at its own top level (for the
+        # `ExecutionAnchorDraftGenerator` Protocol type), so a module-
+        # level import here would be circular. Returns non-None only
+        # for the exact canonical Package C D1 Journey Project/Shot/Task
+        # identity -- deliberately regardless of the ambient configured
+        # provider, exactly mirroring `cross_role_assessment_service.
+        # generate_cross_role_assessment`'s own dispatch rule; every
+        # other Task/Shot/Project keeps using whatever provider is
+        # actually configured, completely unaffected. See that
+        # function's own docstring for the full rule.
+        from intent_core_api.demo_seed.d1_scenario import (
+            resolve_canonical_d1_execution_generator,
+        )
+
+        resolved_generator = await resolve_canonical_d1_execution_generator(
+            session, project_id=project.id, shot_id=shot.id, task_id=task.id
+        )
+
+    # Same late-bound, function-local import pattern as above (see that
+    # comment for why a module-level import here would be circular).
+    from intent_core_api.demo_seed.d1_scenario import (
+        DeterministicD1ExecutionAnchorDraftGenerator,
+        resolve_canonical_d1_core_constraints,
+    )
+
+    if isinstance(resolved_generator, DeterministicD1ExecutionAnchorDraftGenerator):
+        # Package C follow-up: augments the exact same `payload` object
+        # already used for generation, with the real confirmed Core
+        # Anchor's own Constraint text -- so the D1 generator's per-
+        # department translation genuinely cites the confirmed Core R2
+        # constraint, never an invented one. Identity-gated a second
+        # time inside `resolve_canonical_d1_core_constraints` itself,
+        # so this never adds anything for a Shot this generator wasn't
+        # already resolved for.
+        constraints = await resolve_canonical_d1_core_constraints(
+            session, project_id=project.id, shot_id=shot.id
+        )
+        if constraints:
+            payload["core_anchor"]["constraints"] = constraints
+
     async def _persist(
         session: AsyncSession,
         snapshot: ContextSnapshot,
@@ -376,7 +420,9 @@ async def generate_execution_anchor_draft(
         model_name=model_name,
         prompt_version=prompt_version,
         snapshot_payload=payload,
-        resolve_generator=lambda: generator if generator is not None else _get_generator(),
+        resolve_generator=lambda: (
+            resolved_generator if resolved_generator is not None else _get_generator()
+        ),
         persist_result=_persist,
         failure_label="CG Agent execution anchor draft generation",
     )

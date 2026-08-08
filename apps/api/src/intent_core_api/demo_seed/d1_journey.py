@@ -709,17 +709,58 @@ async def _evidence(
 # retranslation happens. Core Anchor facts (revision/draft counts,
 # assessment/proposal/attention) are checked separately per state since
 # those are exactly what differs between J0-J3.
-def _downstream_stable_through_j0_j3(counts: dict[str, int]) -> bool:
+#
+# Package C follow-up (downstream retranslation semantics): everything
+# *above* the Execution Anchor layer -- Versions, VFX/CG Reviews,
+# Artist Guidance, cross-department Dependencies -- stays frozen at
+# this same J0-J3 baseline for the entire J3 -> J4 downstream-
+# retranslation phase too (nothing regenerates until the explicit J4
+# completion). Only the Execution Anchor counts themselves are allowed
+# to move during that phase, department by department -- see
+# `_execution_retranslation_range` below -- so this non-execution
+# subset is factored out and reused by both `_downstream_stable_
+# through_j0_j3` (which additionally freezes Execution Anchor counts
+# too, for J0-J3) and `_classify_journey_state`'s own downstream-
+# retranslation check.
+def _non_execution_downstream_stable(counts: dict[str, int]) -> bool:
     return (
         counts["tasks"] == 3
         and counts["versions"] == 3
-        and counts["execution_anchor_revisions"] == 3
-        and counts["execution_anchor_confirmed_revisions"] == 3
-        and counts["execution_drafts"] == 0
         and counts["guidance"] == 3
         and counts["cg_reviews"] == 3
         and counts["vfx_reviews"] == 1
         and counts["dependencies"] == 2
+    )
+
+
+def _downstream_stable_through_j0_j3(counts: dict[str, int]) -> bool:
+    return (
+        _non_execution_downstream_stable(counts)
+        and counts["execution_anchor_revisions"] == 3
+        and counts["execution_anchor_confirmed_revisions"] == 3
+        and counts["execution_drafts"] == 0
+    )
+
+
+# Package C follow-up (downstream retranslation semantics): the legal
+# Execution Anchor lineage shape while one or more departments are
+# actively drafting/confirming Execution R2, strictly after the J3
+# baseline (`_downstream_stable_through_j0_j3`, 3 revisions / 0
+# drafts) and strictly before J4's full regeneration. Each of the
+# three departments contributes either 1 row (still untouched, still
+# only R1) or 2 rows (R1 + R2, whether R2 is still an editable Draft
+# or has already been confirmed -- confirming supersedes R1 in place,
+# it never deletes or replaces the row) -- so the Shot-wide total is
+# always between 3 (excluded here; that is exactly `r2_confirmed`) and
+# 6 (every department has started or finished), with at most 3
+# concurrent Drafts, and always exactly 3 confirmed revisions (each
+# department always has exactly one confirmed Execution Anchor
+# revision at any time -- R1 or R2, never both, never neither).
+def _execution_retranslation_range(counts: dict[str, int]) -> bool:
+    return (
+        3 < counts["execution_anchor_revisions"] <= 6
+        and 0 <= counts["execution_drafts"] <= 3
+        and counts["execution_anchor_confirmed_revisions"] == 3
     )
 
 
@@ -773,6 +814,25 @@ def _classify_journey_state(counts: dict[str, int], attention_levels: tuple[str,
         and counts["proposals"] in (0, 1)
     ):
         return "r2_confirmed"
+
+    # Package C follow-up (downstream retranslation semantics): while
+    # one or more departments are actively drafting/confirming
+    # Execution R2 (including the moment all three have confirmed R2
+    # but J4's downstream regeneration has not run yet), this is a
+    # legal, in-progress phase of J3 -> J4 -- never `mixed`. Reuses the
+    # exact same Core-Anchor-R2-confirmed / J1-Assessment-and-Proposal-
+    # unchanged facts `r2_confirmed` itself requires (this check is
+    # only ever reached once `r2_confirmed`'s own stricter, execution-
+    # frozen condition above has already failed to match).
+    if (
+        counts["core_anchor_revisions"] == 2
+        and single_confirmed_core
+        and counts["assessments"] == 1
+        and counts["proposals"] in (0, 1)
+        and _non_execution_downstream_stable(counts)
+        and _execution_retranslation_range(counts)
+    ):
+        return "downstream_retranslation"
 
     if (
         counts["tasks"] == 3

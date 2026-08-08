@@ -72,6 +72,7 @@ from intent_core_contracts.api.cross_role_assessment import (
     ReAnchorFieldProposal,
     ReAnchorProposalOutput,
 )
+from intent_core_contracts.api.execution_anchor import ExecutionAnchorRevisionDraftCreate
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -80,6 +81,7 @@ from intent_core_api.agents.artist_guidance_service import (
     DeterministicArtistGuidanceGenerator,
     generate_artist_agent_guidance,
 )
+from intent_core_api.agents.cg_agent_service import ExecutionAnchorDraftGenerator
 from intent_core_api.agents.cg_supervisor_review_service import (
     DeterministicCGSupervisorReviewGenerator,
 )
@@ -100,6 +102,7 @@ from intent_core_api.integrations.external_link_service import (
 from intent_core_api.intent import brief_service, core_anchor_service, execution_anchor_service
 from intent_core_api.intent.models import (
     CGSupervisorReview,
+    Constraint,
     CoreAnchor,
     CoreAnchorRevision,
     ExecutionAnchor,
@@ -697,15 +700,26 @@ class DeterministicD1CrossRoleAssessmentGenerator:
     via `resolve_canonical_d1_sibling_department_evidence` -- see that
     function's own docstring), this generator reads each department's
     real, currently-confirmed Execution Anchor content and CG Review
-    directly and derives the locked Animation + Lighting + Compositing
-    local-optimum conflict from those seeded facts: a `local_optimum_
-    risk` per department (citing that department's own Execution Anchor
-    revision), one combined `cross_role_tension` citing all three
-    departments together, and a `re_anchor_proposal` recommending a
-    combined-intensity ceiling. Every field is a live read of the real
-    payload content -- if the canonical D1 fixture's Execution Anchor
-    text ever changes, this generator's output changes with it; nothing
-    here is a fixed UI-layer string substitute.
+    directly. Two truthful outcomes, chosen by `_all_departments_
+    resolved` (real `revision_number` check, never guessed):
+
+    - Not yet resolved (any department still confirmed-R1): derives the
+      locked Animation + Lighting + Compositing local-optimum conflict
+      (`_three_department_conflict`) -- a `local_optimum_risk` per
+      department, one combined `cross_role_tension`, and a
+      `re_anchor_proposal` recommending a combined-intensity ceiling.
+    - Resolved (every department confirmed its own Execution Anchor
+      R2 -- Package C follow-up, downstream retranslation semantics):
+      derives a truthful "integration verified" read instead
+      (`_three_department_resolved`) -- medium-priority findings citing
+      each department's real confirmed R2 content, no `re_anchor_
+      proposal` (the ceiling has already been adopted, not merely
+      proposed).
+
+    Every field either way is a live read of the real payload content
+    -- if the canonical D1 fixture's Execution Anchor text ever
+    changes, this generator's output changes with it; nothing here is a
+    fixed UI-layer string substitute.
 
     When `sibling_departments` is absent (the noncanonical legacy D1
     fixture Shot this same module's `ensure_d1_scenario` seeds, which
@@ -750,10 +764,128 @@ class DeterministicD1CrossRoleAssessmentGenerator:
 
         sibling_departments = snapshot_payload.get("sibling_departments")
         if sibling_departments:
+            if self._all_departments_resolved(sibling_departments):
+                return self._three_department_resolved(
+                    base, sibling_departments, core_anchor_evidence, vfx_evidence, cg_evidence
+                )
             return self._three_department_conflict(
                 base, sibling_departments, core_anchor_evidence, vfx_evidence, cg_evidence
             )
         return self._single_task_fallback(base, core_anchor_evidence, vfx_evidence, cg_evidence)
+
+    @staticmethod
+    def _all_departments_resolved(sibling_departments: dict[str, dict[str, Any]]) -> bool:
+        """Package C follow-up (downstream retranslation semantics):
+        true only once all three departments' currently-confirmed
+        Execution Anchor revision is their own real R2 (`revision_number
+        >= 2`) -- i.e. each has actually confirmed a draft generated
+        from Core Anchor R2, not merely still R1. For the canonical D1
+        Journey, a department's ExecutionAnchor lineage never exceeds
+        two revisions, so `revision_number >= 2` is an exact, real
+        (never guessed) signal that this department's shared-ceiling
+        translation has already been human-confirmed.
+        """
+        return all(
+            info["execution_anchor_revision"]["revision_number"] >= 2
+            for info in sibling_departments.values()
+        )
+
+    @staticmethod
+    def _three_department_resolved(
+        base: CrossRoleAssessmentOutput,
+        sibling_departments: dict[str, dict[str, Any]],
+        core_anchor_evidence: CrossRoleEvidenceReference,
+        vfx_evidence: CrossRoleEvidenceReference,
+        cg_evidence: CrossRoleEvidenceReference,
+    ) -> CrossRoleAssessmentOutput:
+        """Package C follow-up (downstream retranslation semantics): the
+        truthful J4 counterpart to `_three_department_conflict` -- fires
+        once every department has actually confirmed its own Execution
+        Anchor R2, translating the confirmed Core Anchor R2's combined-
+        intensity ceiling into department-specific execution boundaries
+        (see `DeterministicD1ExecutionAnchorDraftGenerator`). Reads each
+        department's real, now-current confirmed Execution Anchor R2
+        content directly -- if that content ever changes, this output
+        changes with it, same evidence-grounding discipline as
+        `_three_department_conflict`.
+
+        Deliberately never attaches a `re_anchor_proposal` (the shared
+        ceiling has already been adopted, not merely proposed) and never
+        raises a `priority="high"` finding (each department's own
+        confirmed Execution Anchor R2 already keeps its contribution
+        inside the shared ceiling) -- `derive_intent_signal` therefore
+        classifies this assessment `medium`, never `high`: real,
+        continued-monitoring attention, not the "human review required"
+        signal a still-open conflict or proposal would raise.
+        """
+        department_execution_evidence: dict[str, CrossRoleEvidenceReference] = {}
+        local_optimum_risks = list(base.local_optimum_risks)
+        for department, label in _D1_DEPARTMENT_LABELS.items():
+            info = sibling_departments[department]
+            revision = info["execution_anchor_revision"]
+            execution_evidence = CrossRoleEvidenceReference(
+                source_type="execution_anchor_revision",
+                source_id=revision["id"],
+                label=f"{label} Execution Anchor revision {revision['id']}",
+            )
+            department_execution_evidence[department] = execution_evidence
+            finding_evidence = [execution_evidence]
+            review = info.get("cg_supervisor_review")
+            if review is not None:
+                finding_evidence.append(
+                    CrossRoleEvidenceReference(
+                        source_type="cg_supervisor_review",
+                        source_id=review["id"],
+                        label=f"{label} CG review {review['id']}",
+                    )
+                )
+            local_optimum_risks.append(
+                CrossRoleFinding(
+                    summary=(f"{_D1_PROPOSAL_LABEL} {label}: {revision['allowed_refinements']}")[
+                        :280
+                    ],
+                    why_it_matters=(f"{_D1_PROPOSAL_LABEL} {revision['escalation_conditions']}")[
+                        :420
+                    ],
+                    affected_roles=["cg_supervisor", "vfx_supervisor"],
+                    priority="medium",
+                    evidence=finding_evidence,
+                )
+            )
+
+        combined_evidence = [
+            department_execution_evidence["animation"],
+            department_execution_evidence["lighting"],
+            department_execution_evidence["comp"],
+        ]
+        cross_role_tensions = [
+            *base.cross_role_tensions,
+            CrossRoleFinding(
+                summary=(
+                    f"{_D1_PROPOSAL_LABEL} Animation, Lighting, and Compositing have each "
+                    "confirmed an Execution Anchor R2 translating the confirmed Core Anchor "
+                    "R2's combined-intensity ceiling into their own department-specific "
+                    "boundaries; integration now reads as the confirmed restrained threat, "
+                    "not spectacle."
+                )[:280],
+                why_it_matters=(
+                    f"{_D1_PROPOSAL_LABEL} Each department's own current confirmed content "
+                    "now stays bounded by the shared combined-intensity ceiling; continued "
+                    "cross-department monitoring remains appropriate."
+                )[:420],
+                affected_roles=["vfx_supervisor", "cg_supervisor", "artist"],
+                priority="medium",
+                evidence=combined_evidence,
+            ),
+        ]
+
+        return base.model_copy(
+            update={
+                "local_optimum_risks": local_optimum_risks,
+                "cross_role_tensions": cross_role_tensions,
+                "re_anchor_proposal": None,
+            }
+        )
 
     @staticmethod
     def _three_department_conflict(
@@ -1362,6 +1494,226 @@ async def resolve_canonical_d1_sibling_department_evidence(
             ),
         }
     return departments
+
+
+_D1_EXECUTION_R2_CONTRIBUTIONS: Final = {
+    "animation": "faster motion, acceleration, impact timing, and stronger poses",
+    "lighting": "warm rim intensity, contrast, and impact accents",
+    "comp": "bloom, particles, debris, and saturation",
+}
+_D1_EXECUTION_R2_OTHER_DEPARTMENTS: Final = {
+    "animation": "Lighting and Compositing",
+    "lighting": "Animation and Compositing",
+    "comp": "Animation and Lighting",
+}
+_D1_EXECUTION_R2_SPECTACLE_TERMS: Final = {
+    "animation": "heroic or theatrical spectacle",
+    "lighting": "triumphant or theatrical spectacle",
+    "comp": "spectacle",
+}
+_D1_EXECUTION_R2_LABEL: Final = (
+    "[CG Agent execution anchor draft - D1 combined-intensity ceiling translation]"
+)
+
+
+class DeterministicD1ExecutionAnchorDraftGenerator:
+    """Package C follow-up (downstream retranslation semantics): the
+    D1-Demo-only generator behind the real "Generate Execution Anchor
+    R{n+1} draft from Core Anchor R{n}" action
+    (`agents.cg_agent_service.generate_execution_anchor_draft`),
+    injected only for the canonical Package C D1 Journey's three Tasks
+    -- see `resolve_canonical_d1_execution_generator` for the exact
+    identity gate and why this is not gated on the ambient configured
+    model provider either (same rationale as `resolve_canonical_d1_
+    assessment_generator`).
+
+    Translates the confirmed Core Anchor's own structured Constraint
+    text -- injected into `snapshot_payload["core_anchor"]["constraints"]`
+    only for this same canonical identity by `resolve_canonical_d1_
+    core_constraints` -- into this one Task's department-specific
+    execution boundaries: each department owns its own slice of the
+    shared combined-intensity ceiling (Animation: faster motion,
+    acceleration, impact timing, and stronger poses; Lighting: warm rim
+    intensity, contrast, and impact accents; Compositing: bloom,
+    particles, debris, and saturation), must not raise its own
+    contribution independently of what the other two departments are
+    already contributing, and escalates specifically when the combined
+    three-department intensity risks turning the confirmed restrained
+    threat into spectacle. Every field below cites the real confirmed
+    Core Anchor constraint text (falling back to `core_summary` only if
+    no Constraint exists yet) rather than a fixed UI-layer string -- if
+    the canonical D1 Core Anchor's own confirmed constraint text ever
+    changes, this generator's output changes with it.
+    """
+
+    def __init__(self, *, department: str) -> None:
+        self._department = department
+
+    def generate(self, *, snapshot_payload: dict[str, Any]) -> ExecutionAnchorRevisionDraftCreate:
+        core = snapshot_payload["core_anchor"]
+        constraints = core.get("constraints") or []
+        constraint_text = constraints[0] if constraints else core["core_summary"]
+
+        department = self._department
+        own = _D1_EXECUTION_R2_CONTRIBUTIONS[department]
+        other = _D1_EXECUTION_R2_OTHER_DEPARTMENTS[department]
+        spectacle = _D1_EXECUTION_R2_SPECTACLE_TERMS[department]
+        dept_label = _D1_DEPARTMENT_LABELS[department]
+        label = _D1_EXECUTION_R2_LABEL
+
+        if department == "animation":
+            delivery_conditions = (
+                f"{label} Controlled pauses and silhouette weight remain primary; {own} may "
+                "read as more confident, never as a release into spectacle."
+            )
+        else:
+            delivery_conditions = (
+                f"{label} {own[0].upper()}{own[1:]} may read as more confident, never as a "
+                f"release into spectacle; coordinate timing directly with {other}'s current "
+                "contributions."
+            )
+
+        if department == "comp":
+            downstream_dependencies = (
+                f"{label} Compositing integration coordinates {other}'s current confirmed "
+                "contributions, keeping the combined result inside the shared "
+                "combined-intensity ceiling."
+            )
+        else:
+            downstream_dependencies = (
+                f"{label} Compositing integration depends on {dept_label}'s {own} contribution "
+                f"staying inside the shared combined-intensity ceiling alongside {other}."
+            )
+
+        return ExecutionAnchorRevisionDraftCreate(
+            technical_boundaries=(
+                f"{label} {dept_label} owns the {own} contribution to the confirmed Core "
+                f'Anchor\'s combined-intensity ceiling: "{constraint_text}". {own[0].upper()}'
+                f"{own[1:]} may not be increased independently of what {other} are already "
+                "contributing."
+            ),
+            parameter_ranges=(
+                f"{label} {own[0].upper()}{own[1:]} stay within {dept_label}'s own confirmed "
+                f"local range, and must not rise further whenever {other} are already raising "
+                "visual intensity toward the shared combined-intensity ceiling."
+            ),
+            delivery_conditions=delivery_conditions,
+            production_ready_criteria=(
+                f"{label} Production-ready only when {dept_label}'s own intensity contribution, "
+                f"combined with {other}'s current contributions, still reads as restrained "
+                "threat rather than spectacle."
+            ),
+            downstream_dependencies=downstream_dependencies,
+            publish_requirements=(
+                f"{label} Human CG Supervisor confirmation is required before publish."
+            ),
+            allowed_refinements=(
+                f"{label} Local refinements to {dept_label}'s own {own}, within its own "
+                f"confirmed range, coordinated against {other}'s current confirmed "
+                "contributions."
+            ),
+            escalation_conditions=(
+                f"{label} Escalate to the VFX Supervisor if the combined Animation + Lighting "
+                f"+ Compositing intensity risks turning the confirmed restrained threat into "
+                f"{spectacle}."
+            ),
+        )
+
+
+async def resolve_canonical_d1_execution_generator(
+    session: AsyncSession, *, project_id: uuid.UUID, shot_id: uuid.UUID, task_id: uuid.UUID
+) -> ExecutionAnchorDraftGenerator | None:
+    """Package C follow-up (downstream retranslation semantics): the
+    sole hook `agents.cg_agent_service.generate_execution_anchor_draft`
+    calls, and only when its caller did not already supply an explicit
+    `generator=` override (never true for canonical D1 -- Execution R1
+    is seeded directly by `d1_journey._anchors`, never through this
+    Agent endpoint, so this always runs the first time the real
+    "Generate Execution Anchor draft" action is used against a
+    canonical D1 Task).
+
+    Returns `DeterministicD1ExecutionAnchorDraftGenerator`, scoped to
+    whichever of the three canonical departments `task_id` resolves to,
+    whenever `project_id`/`shot_id`/`task_id` are exactly the canonical
+    Package C D1 Journey identity -- matched by real
+    `ExternalEntityLink(source="demo")` rows, never by Task name.
+
+    Deliberately **not** gated on the ambient configured model provider
+    (`model_gateway.resolve_provider_name()`), for exactly the same
+    reason `resolve_canonical_d1_assessment_generator` is not: this
+    Task's real "Generate Execution Anchor R{n+1} draft from Core
+    Anchor R{n}" action is the locked J3 downstream-retranslation step
+    of a reproducible demo journey, which must reliably translate the
+    confirmed Core Anchor R2's combined-intensity ceiling regardless of
+    whatever provider a given environment happens to have configured.
+    This is not a global fallback: it only ever fires for these three
+    exact Task identities under the one exact canonical Shot/Project,
+    so every noncanonical Task -- including any real ftrack/live Task,
+    which can never carry this `source="demo"` identity -- keeps using
+    whatever provider is actually configured, completely unaffected.
+
+    Returns `None` for every other Project/Shot/Task, in which case the
+    caller falls back to its own generic generator resolution unchanged.
+    """
+    canonical_project_id = await find_linked_entity_id(
+        session, entity_type="project", source=_DEMO_SOURCE, external_id=D1_PROJECT_EXTERNAL_ID
+    )
+    if canonical_project_id != project_id:
+        return None
+    canonical_shot_id = await find_linked_entity_id(
+        session, entity_type="shot", source=_DEMO_SOURCE, external_id=CANONICAL_D1_SHOT_EXTERNAL_ID
+    )
+    if canonical_shot_id != shot_id:
+        return None
+    for department, external_id in (
+        ("animation", _CANONICAL_ANIMATION_TASK_EXTERNAL_ID),
+        ("lighting", _CANONICAL_LIGHTING_TASK_EXTERNAL_ID),
+        ("comp", _CANONICAL_COMPOSITING_TASK_EXTERNAL_ID),
+    ):
+        canonical_task_id = await find_linked_entity_id(
+            session, entity_type="task", source=_DEMO_SOURCE, external_id=external_id
+        )
+        if canonical_task_id == task_id:
+            return DeterministicD1ExecutionAnchorDraftGenerator(department=department)
+    return None
+
+
+async def resolve_canonical_d1_core_constraints(
+    session: AsyncSession, *, project_id: uuid.UUID, shot_id: uuid.UUID
+) -> list[str] | None:
+    """Package C follow-up (downstream retranslation semantics): the
+    Shot's currently confirmed Core Anchor revision's own real
+    Constraint rows' content, in `order_index` order -- the "actual
+    confirmed Core R2 structured constraint"
+    `DeterministicD1ExecutionAnchorDraftGenerator` cites as its source
+    evidence, rather than a fixed UI-layer string. Returns `None`
+    (never an empty list standing in for "no constraints exist") for
+    every Project/Shot other than the exact canonical Package C D1
+    Journey identity, or if that Shot currently has no confirmed Core
+    Anchor revision at all.
+    """
+    canonical_project_id = await find_linked_entity_id(
+        session, entity_type="project", source=_DEMO_SOURCE, external_id=D1_PROJECT_EXTERNAL_ID
+    )
+    if canonical_project_id != project_id:
+        return None
+    canonical_shot_id = await find_linked_entity_id(
+        session, entity_type="shot", source=_DEMO_SOURCE, external_id=CANONICAL_D1_SHOT_EXTERNAL_ID
+    )
+    if canonical_shot_id != shot_id:
+        return None
+
+    core_anchor = await session.scalar(select(CoreAnchor).where(CoreAnchor.shot_id == shot_id))
+    if core_anchor is None or core_anchor.active_revision_id is None:
+        return None
+    rows = (
+        await session.scalars(
+            select(Constraint)
+            .where(Constraint.core_anchor_revision_id == core_anchor.active_revision_id)
+            .order_by(Constraint.order_index)
+        )
+    ).all()
+    return [row.content for row in rows]
 
 
 async def ensure_d1_scenario(session: AsyncSession) -> D1ScenarioResult:

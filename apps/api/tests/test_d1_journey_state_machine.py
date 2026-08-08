@@ -15,7 +15,7 @@ from typing import Any
 
 import pytest
 from httpx import AsyncClient
-from intent_core_api.agents import model_gateway
+from intent_core_api.agents import cg_agent_service, model_gateway
 from intent_core_api.agents.cross_role_assessment_service import (
     DeterministicCrossRoleAssessmentGenerator,
     generate_cross_role_assessment,
@@ -29,8 +29,10 @@ from intent_core_api.demo_seed.d1_journey import (
 from intent_core_api.demo_seed.d1_scenario import (
     D1_LEGACY_TASK_EXTERNAL_ID,
     DeterministicD1CrossRoleAssessmentGenerator,
+    DeterministicD1ExecutionAnchorDraftGenerator,
     ensure_d1_scenario,
     resolve_canonical_d1_assessment_generator,
+    resolve_canonical_d1_execution_generator,
 )
 from intent_core_api.integrations.external_link_service import (
     find_linked_entity_id,
@@ -42,15 +44,18 @@ from intent_core_api.intent.models import (
     ExecutionAnchor,
     ExecutionAnchorRevision,
 )
-from intent_core_api.production_context.models import Project, Shot
+from intent_core_api.production_context.models import Project, Shot, Task
 from intent_core_api.versions_and_feedback.models import (
     ArtistAgentGuidance,
+    CrossRoleAssessment,
     IntentSignal,
+    ReAnchorProposal,
     Version,
     VFXSupervisorReview,
 )
 from intent_core_api.workflow.actors import ActorContext
 from intent_core_api.workflow.exceptions import AgentGenerationError
+from intent_core_contracts.api.execution_anchor import ExecutionAnchorRevisionDraftCreate
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -943,3 +948,528 @@ async def test_j2_to_j3_confirm_r2_downstream_not_auto_replaced(
         await _confirmed_execution_content_by_task(session, reset.task_ids)
     ) == r1_content_before
     assert (await _dependency_descriptions(session, comp_task_id)) == dependency_descriptions_before
+
+
+# ---------------------------------------------------------------------------
+# Package C follow-up: downstream retranslation semantics (J3 -> J4)
+# ---------------------------------------------------------------------------
+
+
+async def _execution_revision_by_number(
+    session: AsyncSession, task_id: uuid.UUID, revision_number: int
+) -> ExecutionAnchorRevision:
+    execution_anchor = await session.scalar(
+        select(ExecutionAnchor).where(ExecutionAnchor.task_id == task_id)
+    )
+    assert execution_anchor is not None
+    revision = await session.scalar(
+        select(ExecutionAnchorRevision).where(
+            ExecutionAnchorRevision.execution_anchor_id == execution_anchor.id,
+            ExecutionAnchorRevision.revision_number == revision_number,
+        )
+    )
+    assert revision is not None
+    return revision
+
+
+async def test_j3_to_downstream_retranslation_state_transitions(
+    session: AsyncSession, client: AsyncClient
+) -> None:
+    """Owner validation follow-up: the real J3 -> J4 downstream-
+    retranslation phase (one or more departments actively drafting or
+    confirming Execution R2) is a legal intermediate state, never
+    `mixed`. Exercises every required transition-coverage point through
+    the real formal endpoints -- no internal seed helper, no `generator=`
+    override -- reaching each of:
+
+    1. 0 Execution R2 drafts (the exact `r2_confirmed` J3 baseline).
+    2. 1 draft (Animation starts retranslating).
+    3. Partially confirmed departments (Animation confirms; Lighting/
+       Compositing untouched).
+    4. 2 drafts / partial progress (Lighting and Compositing both start
+       while Animation is already confirmed).
+    5. All 3 Execution R2 confirmed, downstream (Versions/Reviews/
+       Guidance) not yet regenerated.
+
+    Also proves, at each step, the Part 3 audit's already-real
+    guarantees: confirming one department never auto-confirms another;
+    a confirmed Execution R2 references the confirmed Core R2 revision;
+    the superseded Execution R1 row stays byte-for-byte historical.
+    """
+    reset = await reset_d1_journey(session)
+    animation_task_id, lighting_task_id, comp_task_id = reset.task_ids
+    _animation_version_id, _lighting_version_id, comp_version_id = reset.version_ids
+
+    await generate_cross_role_assessment(
+        session,
+        _SEED_VFX,
+        comp_version_id,
+        comp_task_id,
+        generator=DeterministicD1CrossRoleAssessmentGenerator(),
+    )
+    draft_response = await client.post(
+        f"/intent/shots/{reset.shot_id}/core-anchor/drafts/from-confirmed", headers=VFX
+    )
+    assert draft_response.status_code == 201, draft_response.text
+    confirm_response = await client.post(
+        f"/intent/core-anchor-revisions/{draft_response.json()['id']}/confirm",
+        json={"rationale": "Human VFX confirmed Core Anchor R2 after reviewing the Proposal."},
+        headers=VFX,
+    )
+    assert confirm_response.status_code == 200, confirm_response.text
+    core_r2_id = uuid.UUID(confirm_response.json()["id"])
+
+    r1_content_by_task = await _confirmed_execution_content_by_task(session, reset.task_ids)
+
+    # (1) 0 Execution R2 drafts -- the plain J3 baseline.
+    baseline = await inspect_d1_journey(session)
+    assert baseline is not None
+    assert baseline.journey_state == "r2_confirmed"
+
+    # (2) 1 draft -- Animation starts retranslating via the real
+    # "Generate Execution Anchor draft" action, dispatched to the D1-
+    # specific generator (no `generator=` override anywhere in this
+    # call chain).
+    animation_generate = await client.post(
+        f"/intent/tasks/{animation_task_id}/execution-anchor/generate"
+    )
+    assert animation_generate.status_code == 201, animation_generate.text
+    animation_draft = animation_generate.json()
+    assert animation_draft["core_anchor_revision_id"] == str(core_r2_id)
+    animation_text = " ".join(
+        str(animation_draft[field]) for field in _EXECUTION_CONTENT_FIELDS if animation_draft[field]
+    ).lower()
+    for phrase in ("faster motion", "acceleration", "impact timing", "stronger poses"):
+        assert phrase in animation_text
+    assert "lighting and compositing" in animation_text
+    assert "heroic" in animation_text and "theatrical" in animation_text
+
+    during_animation_draft = await inspect_d1_journey(session)
+    assert during_animation_draft is not None
+    assert during_animation_draft.journey_state == "downstream_retranslation"
+    assert during_animation_draft.counts["execution_anchor_revisions"] == 4
+    assert during_animation_draft.counts["execution_drafts"] == 1
+    assert during_animation_draft.counts["execution_anchor_confirmed_revisions"] == 3
+    # Nothing above the Execution Anchor layer moved.
+    assert during_animation_draft.counts["versions"] == 3
+    assert during_animation_draft.counts["guidance"] == 3
+    assert during_animation_draft.counts["cg_reviews"] == 3
+    assert during_animation_draft.counts["vfx_reviews"] == 1
+    assert during_animation_draft.counts["dependencies"] == 2
+
+    # (3) Partially confirmed departments -- confirming Animation's own
+    # draft does not touch Lighting or Compositing at all.
+    confirm_animation = await client.post(
+        f"/intent/execution-anchor-revisions/{animation_draft['id']}/confirm",
+        json={"rationale": "Human CG confirmed Animation's Execution Anchor R2."},
+        headers=CG,
+    )
+    assert confirm_animation.status_code == 200, confirm_animation.text
+    animation_confirmed = confirm_animation.json()
+    assert animation_confirmed["core_anchor_revision_id"] == str(core_r2_id)
+    assert animation_confirmed["revision_number"] == 2
+
+    after_animation_confirmed = await inspect_d1_journey(session)
+    assert after_animation_confirmed is not None
+    assert after_animation_confirmed.journey_state == "downstream_retranslation"
+    assert after_animation_confirmed.counts["execution_anchor_revisions"] == 4
+    assert after_animation_confirmed.counts["execution_drafts"] == 0
+    assert after_animation_confirmed.counts["execution_anchor_confirmed_revisions"] == 3
+
+    # Lighting and Compositing are still exactly their R1-era selves --
+    # confirming Animation's R2 never auto-confirms (or otherwise
+    # touches) either sibling department.
+    lighting_still_r1 = await _execution_revision_by_number(session, lighting_task_id, 1)
+    comp_still_r1 = await _execution_revision_by_number(session, comp_task_id, 1)
+    assert lighting_still_r1.status == "confirmed"
+    assert comp_still_r1.status == "confirmed"
+    for field in _EXECUTION_CONTENT_FIELDS:
+        assert getattr(lighting_still_r1, field) == r1_content_by_task[lighting_task_id][field]
+        assert getattr(comp_still_r1, field) == r1_content_by_task[comp_task_id][field]
+
+    # Animation's own R1 is now superseded but stays byte-for-byte
+    # historical -- confirming R2 never mutates it.
+    animation_r1 = await _execution_revision_by_number(session, animation_task_id, 1)
+    assert animation_r1.status == "superseded"
+    for field in _EXECUTION_CONTENT_FIELDS:
+        assert getattr(animation_r1, field) == r1_content_by_task[animation_task_id][field]
+
+    # (4) 2 drafts / partial progress -- Lighting and Compositing both
+    # start retranslating while Animation is already confirmed.
+    lighting_generate = await client.post(
+        f"/intent/tasks/{lighting_task_id}/execution-anchor/generate"
+    )
+    assert lighting_generate.status_code == 201, lighting_generate.text
+    lighting_draft = lighting_generate.json()
+    lighting_text = " ".join(
+        str(lighting_draft[field]) for field in _EXECUTION_CONTENT_FIELDS if lighting_draft[field]
+    ).lower()
+    for phrase in ("warm rim", "contrast", "impact accents"):
+        assert phrase in lighting_text
+    assert "triumphant" in lighting_text and "theatrical" in lighting_text
+
+    comp_generate = await client.post(f"/intent/tasks/{comp_task_id}/execution-anchor/generate")
+    assert comp_generate.status_code == 201, comp_generate.text
+    comp_draft = comp_generate.json()
+    comp_text = " ".join(
+        str(comp_draft[field]) for field in _EXECUTION_CONTENT_FIELDS if comp_draft[field]
+    ).lower()
+    for phrase in ("bloom", "particles", "debris", "saturation"):
+        assert phrase in comp_text
+    assert "spectacle" in comp_text
+
+    two_drafts = await inspect_d1_journey(session)
+    assert two_drafts is not None
+    assert two_drafts.journey_state == "downstream_retranslation"
+    assert two_drafts.counts["execution_anchor_revisions"] == 6
+    assert two_drafts.counts["execution_drafts"] == 2
+    assert two_drafts.counts["execution_anchor_confirmed_revisions"] == 3
+
+    # (5) All 3 Execution R2 confirmed, downstream not yet regenerated.
+    confirm_lighting = await client.post(
+        f"/intent/execution-anchor-revisions/{lighting_draft['id']}/confirm",
+        json={"rationale": "Human CG confirmed Lighting's Execution Anchor R2."},
+        headers=CG,
+    )
+    assert confirm_lighting.status_code == 200, confirm_lighting.text
+    lighting_confirmed = confirm_lighting.json()
+    assert lighting_confirmed["core_anchor_revision_id"] == str(core_r2_id)
+
+    confirm_comp = await client.post(
+        f"/intent/execution-anchor-revisions/{comp_draft['id']}/confirm",
+        json={"rationale": "Human CG confirmed Compositing's Execution Anchor R2."},
+        headers=CG,
+    )
+    assert confirm_comp.status_code == 200, confirm_comp.text
+    comp_confirmed = confirm_comp.json()
+    assert comp_confirmed["core_anchor_revision_id"] == str(core_r2_id)
+
+    all_confirmed = await inspect_d1_journey(session)
+    assert all_confirmed is not None
+    assert all_confirmed.journey_state == "downstream_retranslation"
+    assert all_confirmed.counts["execution_anchor_revisions"] == 6
+    assert all_confirmed.counts["execution_drafts"] == 0
+    assert all_confirmed.counts["execution_anchor_confirmed_revisions"] == 3
+    # Still nothing above the Execution Anchor layer moved, even once
+    # every department has confirmed -- J4's own regeneration has not
+    # run.
+    assert all_confirmed.counts["versions"] == 3
+    assert all_confirmed.counts["guidance"] == 3
+    assert all_confirmed.counts["cg_reviews"] == 3
+    assert all_confirmed.counts["vfx_reviews"] == 1
+    assert all_confirmed.counts["dependencies"] == 2
+    assert all_confirmed.counts["assessments"] == 1
+    assert all_confirmed.counts["proposals"] in (0, 1)
+
+    # Every department's own R1 remains historical, whether or not that
+    # department has since confirmed R2.
+    for task_id in reset.task_ids:
+        r1 = await _execution_revision_by_number(session, task_id, 1)
+        for field in _EXECUTION_CONTENT_FIELDS:
+            assert getattr(r1, field) == r1_content_by_task[task_id][field]
+
+    # Read-purity: opening the J3/J4-in-progress pages repeatedly never
+    # advances the journey.
+    before_review = await inspect_d1_journey(session)
+    assert before_review is not None
+    for task_id in reset.task_ids:
+        for _ in range(2):
+            assert (
+                await client.get(f"/cg/tasks/{task_id}/anchor-context", headers=CG)
+            ).status_code == 200
+            assert (
+                await client.get(f"/intent/tasks/{task_id}/execution-anchor")
+            ).status_code == 200
+    after_review = await inspect_d1_journey(session)
+    assert after_review is not None
+    assert _semantic_snapshot(before_review) == _semantic_snapshot(after_review)
+
+
+async def test_canonical_d1_execution_generator_dispatch_is_scoped_to_exact_identity(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Unit-level regression for the dispatch rule itself
+    (`demo_seed.d1_scenario.resolve_canonical_d1_execution_generator`):
+    it must fire only for the exact canonical D1 Project/Shot/Task
+    identity (matched by real `ExternalEntityLink`, never a guessed/
+    random id or a display name), scoped to the correct department --
+    checked under both the default provider and a forced "deepseek"
+    provider, since identity scoping must hold regardless of provider.
+    """
+    reset = await reset_d1_journey(session)
+    animation_task_id, lighting_task_id, comp_task_id = reset.task_ids
+
+    for forced_provider in (None, "deepseek"):
+        if forced_provider is not None:
+            monkeypatch.setattr(model_gateway, "resolve_provider_name", lambda p=forced_provider: p)
+
+        for task_id, expected_department in (
+            (animation_task_id, "animation"),
+            (lighting_task_id, "lighting"),
+            (comp_task_id, "comp"),
+        ):
+            canonical = await resolve_canonical_d1_execution_generator(
+                session, project_id=reset.project_id, shot_id=reset.shot_id, task_id=task_id
+            )
+            assert isinstance(canonical, DeterministicD1ExecutionAnchorDraftGenerator)
+            assert canonical._department == expected_department  # noqa: SLF001
+
+        # Neither a wrong Task under the real canonical Shot, nor a
+        # random Project/Shot/Task triple, ever dispatches to the
+        # D1-specific generator -- both fall through to `None`
+        # untouched, so a noncanonical Task keeps using whatever
+        # provider is actually configured.
+        assert (
+            await resolve_canonical_d1_execution_generator(
+                session, project_id=reset.project_id, shot_id=reset.shot_id, task_id=uuid.uuid4()
+            )
+            is None
+        )
+        assert (
+            await resolve_canonical_d1_execution_generator(
+                session, project_id=uuid.uuid4(), shot_id=uuid.uuid4(), task_id=uuid.uuid4()
+            )
+            is None
+        )
+
+
+async def test_canonical_d1_execution_generator_dispatch_fires_regardless_of_ambient_provider(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Requirement (owner validation, Execution R2 translation follow-
+    up), at the unit level: the dispatch itself returns the D1-specific
+    generator for the canonical identity even when the ambient provider
+    is "deepseek".
+    """
+    reset = await reset_d1_journey(session)
+    _animation_task_id, _lighting_task_id, comp_task_id = reset.task_ids
+
+    monkeypatch.setattr(model_gateway, "resolve_provider_name", lambda: "deepseek")
+
+    result = await resolve_canonical_d1_execution_generator(
+        session, project_id=reset.project_id, shot_id=reset.shot_id, task_id=comp_task_id
+    )
+    assert isinstance(result, DeterministicD1ExecutionAnchorDraftGenerator)
+
+
+async def test_execution_generator_ftrack_live_identity_never_intercepted(
+    session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A real ftrack/live Project, Shot, and Task -- which can never
+    carry the `source="demo"` ExternalEntityLink identity the dispatch
+    matches on -- is never intercepted, under either provider.
+    """
+    await reset_d1_journey(session)
+
+    live_project = Project(name="Live ftrack Project", source="ftrack")
+    session.add(live_project)
+    await session.flush()
+    await record_external_link(
+        session,
+        entity_type="project",
+        entity_id=live_project.id,
+        source="ftrack",
+        external_id="ftrack:live-project-9002",
+    )
+    live_shot = Shot(project_id=live_project.id, name="Live ftrack Shot", source="ftrack")
+    session.add(live_shot)
+    await session.flush()
+    await record_external_link(
+        session,
+        entity_type="shot",
+        entity_id=live_shot.id,
+        source="ftrack",
+        external_id="ftrack:live-shot-9002",
+    )
+    live_task = Task(shot_id=live_shot.id, name="Live ftrack Task", source="ftrack")
+    session.add(live_task)
+    await session.flush()
+    await record_external_link(
+        session,
+        entity_type="task",
+        entity_id=live_task.id,
+        source="ftrack",
+        external_id="ftrack:live-task-9002",
+    )
+    await session.commit()
+
+    for forced_provider in (None, "deepseek"):
+        if forced_provider is not None:
+            monkeypatch.setattr(model_gateway, "resolve_provider_name", lambda p=forced_provider: p)
+        result = await resolve_canonical_d1_execution_generator(
+            session, project_id=live_project.id, shot_id=live_shot.id, task_id=live_task.id
+        )
+        assert result is None
+
+
+class _OverrideExecutionAnchorDraftGenerator:
+    """Minimal explicit-override stand-in -- proves the canonical D1
+    dispatch only ever fills in a default, never overriding a caller-
+    supplied `generator=`."""
+
+    def __init__(self) -> None:
+        self.called = False
+
+    def generate(self, *, snapshot_payload: dict[str, Any]) -> ExecutionAnchorRevisionDraftCreate:
+        self.called = True
+        return ExecutionAnchorRevisionDraftCreate(
+            technical_boundaries="Override technical boundaries",
+            parameter_ranges="Override parameter ranges",
+            delivery_conditions="Override delivery conditions",
+            production_ready_criteria="Override production-ready criteria",
+            downstream_dependencies="Override downstream dependencies",
+            publish_requirements="Override publish requirements",
+            allowed_refinements="Override allowed refinements",
+            escalation_conditions="Override escalation conditions",
+        )
+
+
+async def test_explicit_execution_generator_override_wins_over_canonical_dispatch(
+    session: AsyncSession, client: AsyncClient
+) -> None:
+    """An explicit `generator=` override always wins, even for the
+    canonical D1 identity -- the dispatch only ever fills in a
+    *default*, exactly like the Cross-role Assessment dispatch already
+    guarantees.
+    """
+    reset = await reset_d1_journey(session)
+    animation_task_id, _lighting_task_id, comp_task_id = reset.task_ids
+    _animation_version_id, _lighting_version_id, comp_version_id = reset.version_ids
+
+    await generate_cross_role_assessment(
+        session,
+        _SEED_VFX,
+        comp_version_id,
+        comp_task_id,
+        generator=DeterministicD1CrossRoleAssessmentGenerator(),
+    )
+    draft_response = await client.post(
+        f"/intent/shots/{reset.shot_id}/core-anchor/drafts/from-confirmed", headers=VFX
+    )
+    assert draft_response.status_code == 201, draft_response.text
+    confirm_response = await client.post(
+        f"/intent/core-anchor-revisions/{draft_response.json()['id']}/confirm",
+        json={"rationale": "Human VFX confirmed Core Anchor R2 after reviewing the Proposal."},
+        headers=VFX,
+    )
+    assert confirm_response.status_code == 200, confirm_response.text
+
+    override_generator = _OverrideExecutionAnchorDraftGenerator()
+    revision = await cg_agent_service.generate_execution_anchor_draft(
+        session, animation_task_id, generator=override_generator
+    )
+    assert override_generator.called
+    # The D1-specific translation phrases are absent -- proving this
+    # draft came from the explicit override, not the canonical dispatch.
+    combined = " ".join(
+        str(getattr(revision, field))
+        for field in _EXECUTION_CONTENT_FIELDS
+        if getattr(revision, field)
+    ).lower()
+    assert "faster motion" not in combined
+    assert "override" in combined
+
+
+async def test_resolved_cross_role_assessment_after_all_departments_confirm_r2(
+    session: AsyncSession, client: AsyncClient
+) -> None:
+    """Part 3 audit follow-up: once all three departments have actually
+    confirmed their own Execution Anchor R2, the real "Generate Cross-
+    role Assessment" action -- called again with no override, exactly
+    as the real UI would -- produces a truthfully lower-attention,
+    proposal-free read (no new unresolved Re-anchor Proposal), while
+    the historical J1 high-attention Assessment and Proposal remain
+    untouched.
+    """
+    reset = await reset_d1_journey(session)
+    animation_task_id, lighting_task_id, comp_task_id = reset.task_ids
+    _animation_version_id, _lighting_version_id, comp_version_id = reset.version_ids
+
+    j1_assessment = await generate_cross_role_assessment(
+        session,
+        _SEED_VFX,
+        comp_version_id,
+        comp_task_id,
+        generator=DeterministicD1CrossRoleAssessmentGenerator(),
+    )
+    j1_assessment_id = j1_assessment.id
+    j1_signal_id = j1_assessment.intent_signal.id
+    assert j1_assessment.intent_signal.attention_level == "high"
+    assert j1_assessment.re_anchor_proposal is not None
+    j1_proposal_id = j1_assessment.re_anchor_proposal.id
+
+    draft_response = await client.post(
+        f"/intent/shots/{reset.shot_id}/core-anchor/drafts/from-confirmed", headers=VFX
+    )
+    assert draft_response.status_code == 201, draft_response.text
+    confirm_response = await client.post(
+        f"/intent/core-anchor-revisions/{draft_response.json()['id']}/confirm",
+        json={"rationale": "Human VFX confirmed Core Anchor R2 after reviewing the Proposal."},
+        headers=VFX,
+    )
+    assert confirm_response.status_code == 200, confirm_response.text
+
+    for task_id in (animation_task_id, lighting_task_id, comp_task_id):
+        generate_response = await client.post(f"/intent/tasks/{task_id}/execution-anchor/generate")
+        assert generate_response.status_code == 201, generate_response.text
+        draft = generate_response.json()
+        confirm = await client.post(
+            f"/intent/execution-anchor-revisions/{draft['id']}/confirm",
+            json={"rationale": "Human CG confirmed the department's Execution Anchor R2."},
+            headers=CG,
+        )
+        assert confirm.status_code == 200, confirm.text
+        # A real, already-formal, already-wired capability (Part 3
+        # audit): generating a new CG Supervisor Review for the just-
+        # confirmed Execution R2 revision requires no new Version at
+        # all -- it is keyed purely by the confirmed revision id.
+        review_response = await client.post(
+            f"/intent/execution-anchor-revisions/{confirm.json()['id']}/cg-supervisor-reviews/generate",
+            headers=CG,
+        )
+        assert review_response.status_code == 201, review_response.text
+
+    all_confirmed = await inspect_d1_journey(session)
+    assert all_confirmed is not None
+    assert all_confirmed.counts["execution_anchor_revisions"] == 6
+    assert all_confirmed.counts["execution_drafts"] == 0
+
+    # The real endpoint the VFX Supervisor's "Generate Cross-role
+    # Assessment" action calls -- no `generator=` override, dispatched
+    # to the canonical D1 generator purely by identity.
+    resolved_response = await client.post(
+        f"/intent/versions/{comp_version_id}/cross-role-assessments/generate",
+        json={"task_id": str(comp_task_id)},
+        headers=VFX,
+    )
+    assert resolved_response.status_code == 201, resolved_response.text
+    resolved = resolved_response.json()
+
+    assert resolved["re_anchor_proposal"] is None
+    assert resolved["intent_signal"]["attention_level"] == "medium"
+    assert (
+        resolved["intent_signal"]["attention_level"] != j1_assessment.intent_signal.attention_level
+    )
+    resolved_output = resolved["assessment_output"]
+    findings = resolved_output["local_optimum_risks"] + resolved_output["cross_role_tensions"]
+    combined_text = " ".join(
+        finding["summary"] + " " + finding["why_it_matters"] for finding in findings
+    ).lower()
+    assert all(finding["priority"] != "high" for finding in findings)
+    assert "confirmed" in combined_text
+
+    # The historical J1 Assessment, Proposal, and IntentSignal are
+    # untouched -- J4 preserves them, it never overwrites or deletes
+    # them.
+    j1_after = await session.get(CrossRoleAssessment, j1_assessment_id)
+    assert j1_after is not None
+    j1_signal_after = await session.get(IntentSignal, j1_signal_id)
+    assert j1_signal_after is not None
+    assert j1_signal_after.attention_level == "high"
+    j1_proposal_after = await session.get(ReAnchorProposal, j1_proposal_id)
+    assert j1_proposal_after is not None
+
+    result = await inspect_d1_journey(session)
+    assert result is not None
+    assert result.counts["assessments"] == 2
+    assert j1_assessment_id in result.assessment_ids
