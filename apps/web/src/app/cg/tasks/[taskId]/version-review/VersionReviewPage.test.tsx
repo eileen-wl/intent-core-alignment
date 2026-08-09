@@ -215,22 +215,6 @@ describe("VersionReviewPage", () => {
     expect(screen.getByText("Note on v1 only")).toBeVisible();
   });
 
-  it("shows Core Anchor and Execution Anchor context as read-only", () => {
-    render(
-      <VersionReviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("Active Core Anchor (read-only)")).toBeVisible();
-    expect(
-      screen.getByText("Active Execution Anchor (read-only)"),
-    ).toBeVisible();
-    expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
-  });
-
   it("groups Version/Anchor context under Production Evidence, Agent Execution Reviews under Agent Interpretation, and shows an honest Human Decision state without manufacturing one (Step 9B-2)", () => {
     render(
       <VersionReviewPage
@@ -252,9 +236,7 @@ describe("VersionReviewPage", () => {
     const evidenceSection = evidenceHeading.closest(
       "[data-evidence-layer]",
     ) as HTMLElement;
-    expect(
-      within(evidenceSection).getByText("Active Core Anchor (read-only)"),
-    ).toBeVisible();
+    expect(within(evidenceSection).getByText("Review notes")).toBeVisible();
 
     // Neither the Escalate button nor a pending review may be presented
     // as if it were a persisted Human Decision.
@@ -639,7 +621,7 @@ describe("VersionReviewPage", () => {
         );
       });
       expect(screen.getByText("Contrast reads slightly hot.")).toBeVisible();
-      expect(screen.getByText("Active Core Anchor (read-only)")).toBeVisible();
+      expect(screen.getByText("Review notes")).toBeVisible();
     });
 
     it("never renders a media upload, annotation, or ftrack write-back control", async () => {

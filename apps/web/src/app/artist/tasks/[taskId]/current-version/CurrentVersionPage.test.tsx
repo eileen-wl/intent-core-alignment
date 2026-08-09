@@ -370,54 +370,6 @@ describe("CurrentVersionPage", () => {
     expect(screen.queryByText(/Source author:/)).not.toBeInTheDocument();
   });
 
-  it("shows Core Anchor and Execution Anchor context as read-only", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data({
-          coreAnchorRevision: {
-            id: "ca1",
-            core_anchor_id: "cap",
-            revision_number: 1,
-            status: "confirmed",
-            shot_objective: null,
-            emotional_tone: null,
-            visual_focus: null,
-            rhythm_intensity: null,
-            character_relationship: null,
-            narrative_priority: null,
-            core_summary: "A restrained dusk confrontation.",
-            created_by_actor_kind: "human",
-            created_by_actor_id: "vfx-1",
-            created_by_human_role: "vfx_supervisor",
-            created_by_agent_type: null,
-            created_by_agent_run_id: null,
-            context_snapshot_id: null,
-            confirmed_by_human_role: "vfx_supervisor",
-            confirmed_by_actor_id: "vfx-1",
-            confirmed_at: "2026-01-01T00:00:00Z",
-            supersedes_revision_id: null,
-            source_intent_decomposition_id: null,
-            created_at: "2026-01-01T00:00:00Z",
-            updated_at: "2026-01-01T00:00:00Z",
-            constraints: [],
-            variation_zones: [],
-            drift_risks: [],
-            references: [],
-            open_questions: [],
-          },
-        })}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("Active Core Anchor (read-only)")).toBeVisible();
-    expect(
-      screen.getByText("Active Execution Anchor (read-only)"),
-    ).toBeVisible();
-    expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
-  });
-
   it("groups Version/Anchor references under Production Evidence, Artist guidance under Agent Interpretation, and confirmed-Anchor authority references under Human Decision without duplicating the full Working Direction (Step 9B-2)", () => {
     render(
       <CurrentVersionPage

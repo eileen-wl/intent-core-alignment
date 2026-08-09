@@ -134,27 +134,6 @@ export function CurrentVersionPage({
 
                         <section className={styles.section}>
                           <h4 className={styles.sectionHeading}>
-                            Active Core Anchor (read-only)
-                          </h4>
-                          <p className={styles.contextText}>
-                            {data.coreAnchorRevision?.core_summary ??
-                              "No Core Anchor is confirmed for this Shot yet."}
-                          </p>
-                        </section>
-
-                        <section className={styles.section}>
-                          <h4 className={styles.sectionHeading}>
-                            Active Execution Anchor (read-only)
-                          </h4>
-                          <p className={styles.contextText}>
-                            {data.executionAnchorRevision
-                              ?.technical_boundaries ??
-                              "No Execution Anchor is confirmed for this Task yet."}
-                          </p>
-                        </section>
-
-                        <section className={styles.section}>
-                          <h4 className={styles.sectionHeading}>
                             Review notes
                           </h4>
                           {data.reviewNotes.length === 0 ? (
