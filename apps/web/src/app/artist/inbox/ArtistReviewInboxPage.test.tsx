@@ -203,7 +203,7 @@ describe("ArtistReviewInboxPage", () => {
     ).toBeVisible();
   });
 
-  it("does not show a Project filter when every work item shares one Project", () => {
+  it("always shows the Project filter, even when every work item shares one Project", () => {
     render(
       <ArtistReviewInboxPage
         inbox={buildInbox([buildItem({ task_id: "t1" })])}
@@ -211,7 +211,99 @@ describe("ArtistReviewInboxPage", () => {
       />,
     );
     expect(
-      screen.queryByRole("combobox", { name: "Project" }),
+      screen.getByRole("combobox", { name: "Project" }),
+    ).toBeInTheDocument();
+  });
+
+  it("always shows the Guidance state filter", () => {
+    render(
+      <ArtistReviewInboxPage
+        inbox={buildInbox([buildItem({ task_id: "t1" })])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("combobox", { name: "Guidance state" }),
+    ).toBeInTheDocument();
+  });
+
+  it("filters work items to the selected Guidance state", () => {
+    render(
+      <ArtistReviewInboxPage
+        inbox={buildInbox([
+          buildItem({ task_id: "t1", guidance_state: "outdated" }),
+          buildItem({
+            task_id: "t2",
+            guidance_state: "current",
+            current_focus: {
+              focus_type: "review_note_needs_response",
+              title: "A Review Note is awaiting your response",
+              explanation: "explanation",
+              target_route: "/artist/tasks/t2/current-version",
+              primary_action_label: "Review feedback",
+              actionable: true,
+            },
+          }),
+        ])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Showing 2 items requiring review")).toBeVisible();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Guidance state" }), {
+      target: { value: "outdated" },
+    });
+
+    expect(screen.getByText("Showing 1 items requiring review")).toBeVisible();
+    expect(screen.getByText("Artist guidance is outdated")).toBeVisible();
+  });
+
+  it("shows a Department filter only when a Department is present, and filters by it", () => {
+    render(
+      <ArtistReviewInboxPage
+        inbox={buildInbox([
+          buildItem({
+            task_id: "t1",
+            department: "compositing",
+            project_id: "p1",
+            project_name: "Alpha",
+          }),
+          buildItem({
+            task_id: "t2",
+            department: "lighting",
+            project_id: "p1",
+            project_name: "Alpha",
+            current_focus: {
+              focus_type: "dependency_needs_attention",
+              title: "An unresolved dependency needs your attention",
+              explanation: "explanation",
+              target_route: "/artist/tasks/t2",
+              primary_action_label: "Review Task",
+              actionable: true,
+            },
+          }),
+        ])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Showing 2 items requiring review")).toBeVisible();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Department" }), {
+      target: { value: "compositing" },
+    });
+
+    expect(screen.getByText("Showing 1 items requiring review")).toBeVisible();
+  });
+
+  it("does not show a Department filter when no work item has one", () => {
+    render(
+      <ArtistReviewInboxPage
+        inbox={buildInbox([buildItem({ task_id: "t1", department: null })])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("combobox", { name: "Department" }),
     ).not.toBeInTheDocument();
   });
 

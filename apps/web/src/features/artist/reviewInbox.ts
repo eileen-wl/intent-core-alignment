@@ -40,6 +40,7 @@ export interface ArtistReviewWorkItem {
   shot: ArtistReviewWorkItemShot;
   task: ArtistReviewWorkItemTask;
   executionAnchorState: ArtistInboxItemRead["execution_anchor_state"];
+  guidanceState: ArtistInboxItemRead["guidance_state"];
   route: string;
 }
 
@@ -93,6 +94,7 @@ export function adaptArtistCurrentFocusToWorkItems(
         department: item.department,
       },
       executionAnchorState: item.execution_anchor_state,
+      guidanceState: item.guidance_state,
       route: focus.target_route,
     });
   }

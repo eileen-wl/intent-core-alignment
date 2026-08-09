@@ -202,7 +202,7 @@ describe("CgReviewInboxPage", () => {
     ).toBeVisible();
   });
 
-  it("does not show a Project filter when every work item shares one Project", () => {
+  it("always shows the Project filter, even when every work item shares one Project", () => {
     render(
       <CgReviewInboxPage
         inbox={buildInbox([buildItem({ task_id: "t1" })])}
@@ -210,7 +210,102 @@ describe("CgReviewInboxPage", () => {
       />,
     );
     expect(
-      screen.queryByRole("combobox", { name: "Project" }),
+      screen.getByRole("combobox", { name: "Project" }),
+    ).toBeInTheDocument();
+  });
+
+  it("always shows the Execution Anchor state filter", () => {
+    render(
+      <CgReviewInboxPage
+        inbox={buildInbox([buildItem({ task_id: "t1" })])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("combobox", { name: "Execution Anchor state" }),
+    ).toBeInTheDocument();
+  });
+
+  it("filters work items to the selected Execution Anchor state", () => {
+    render(
+      <CgReviewInboxPage
+        inbox={buildInbox([
+          buildItem({ task_id: "t1", execution_anchor_state: "confirmed" }),
+          buildItem({
+            task_id: "t2",
+            execution_anchor_state: "draft_pending",
+            current_focus: {
+              focus_type: "execution_anchor_draft_needs_review",
+              title: "Execution Anchor draft in progress",
+              explanation: "explanation",
+              target_route: "/cg/tasks/t2/execution",
+              primary_action_label: "Review draft",
+              actionable: true,
+            },
+          }),
+        ])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Showing 2 items requiring review")).toBeVisible();
+
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Execution Anchor state" }),
+      { target: { value: "confirmed" } },
+    );
+
+    expect(screen.getByText("Showing 1 items requiring review")).toBeVisible();
+    expect(
+      screen.getByText("Execution Anchor draft awaiting your confirmation"),
+    ).toBeVisible();
+  });
+
+  it("shows a Department filter only when a Department is present, and filters by it", () => {
+    render(
+      <CgReviewInboxPage
+        inbox={buildInbox([
+          buildItem({
+            task_id: "t1",
+            department: "lighting",
+            project_id: "p1",
+            project_name: "Alpha",
+          }),
+          buildItem({
+            task_id: "t2",
+            department: "animation",
+            project_id: "p1",
+            project_name: "Alpha",
+            current_focus: {
+              focus_type: "dependency_needs_attention",
+              title: "An unresolved dependency needs your interpretation",
+              explanation: "explanation",
+              target_route: "/cg/tasks/t2/dependencies",
+              primary_action_label: "Review dependencies",
+              actionable: true,
+            },
+          }),
+        ])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Showing 2 items requiring review")).toBeVisible();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Department" }), {
+      target: { value: "lighting" },
+    });
+
+    expect(screen.getByText("Showing 1 items requiring review")).toBeVisible();
+  });
+
+  it("does not show a Department filter when no work item has one", () => {
+    render(
+      <CgReviewInboxPage
+        inbox={buildInbox([buildItem({ task_id: "t1", department: null })])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("combobox", { name: "Department" }),
     ).not.toBeInTheDocument();
   });
 

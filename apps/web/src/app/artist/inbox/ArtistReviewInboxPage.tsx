@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type {
   AnchorContextSummaryRead,
+  ArtistInboxItemRead,
   ArtistInboxRead,
 } from "@intent-core/contracts";
 import Link from "next/link";
@@ -21,10 +22,19 @@ import {
   type ArtistReviewWorkItem,
 } from "@/features/artist/reviewInbox";
 import { groupByCategory } from "@/lib/workItemGrouping";
+import { guidanceStateLabel } from "../artistWording";
 import { ArtistTaskWorkItemRow } from "../ArtistTaskWorkItemRow";
 import styles from "./ArtistReviewInboxPage.module.css";
 
 const ALL_VALUE = "__all__";
+/** Same fixed enum, same order as `TasksListPage.tsx`'s
+ * `GUIDANCE_STATES` -- every possible state is always offered, matching
+ * that page's own filter semantics. */
+const GUIDANCE_STATES: ArtistInboxItemRead["guidance_state"][] = [
+  "none",
+  "outdated",
+  "current",
+];
 
 /** `/artist/inbox` -- Artist Review Inbox (Step 7C-5), mirroring
  * `app/cg/inbox/CgReviewInboxPage.tsx`'s work-item-first architecture:
@@ -96,44 +106,101 @@ function ArtistReviewInboxContent({
   anchorContexts: Record<string, AnchorContextSummaryRead | null>;
 }) {
   const [projectFilter, setProjectFilter] = useState(ALL_VALUE);
+  const [guidanceStateFilter, setGuidanceStateFilter] = useState(ALL_VALUE);
+  const [departmentFilter, setDepartmentFilter] = useState(ALL_VALUE);
 
   const projects = useMemo(
     () =>
       Array.from(new Set(workItems.map((item) => item.project.name))).sort(),
     [workItems],
   );
+  const departments = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          workItems
+            .map((item) => item.task.department)
+            .filter((d): d is string => Boolean(d)),
+        ),
+      ).sort(),
+    [workItems],
+  );
 
   const filtered = useMemo(
     () =>
-      projectFilter === ALL_VALUE
-        ? workItems
-        : workItems.filter((item) => item.project.name === projectFilter),
-    [workItems, projectFilter],
+      workItems.filter((item) => {
+        if (projectFilter !== ALL_VALUE && item.project.name !== projectFilter)
+          return false;
+        if (
+          guidanceStateFilter !== ALL_VALUE &&
+          item.guidanceState !== guidanceStateFilter
+        )
+          return false;
+        if (
+          departmentFilter !== ALL_VALUE &&
+          item.task.department !== departmentFilter
+        )
+          return false;
+        return true;
+      }),
+    [workItems, projectFilter, guidanceStateFilter, departmentFilter],
   );
 
   const groups = useMemo(() => groupByCategory(filtered), [filtered]);
 
   return (
     <div>
-      {projects.length > 1 && (
-        <div className={styles.filters}>
+      <div className={styles.filters}>
+        <label className={styles.filterLabel}>
+          Project
+          <select
+            className={styles.filterSelect}
+            value={projectFilter}
+            onChange={(event) => setProjectFilter(event.target.value)}
+          >
+            <option value={ALL_VALUE}>All Projects</option>
+            {projects.map((project) => (
+              <option key={project} value={project}>
+                {project}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className={styles.filterLabel}>
+          Guidance state
+          <select
+            className={styles.filterSelect}
+            value={guidanceStateFilter}
+            onChange={(event) => setGuidanceStateFilter(event.target.value)}
+          >
+            <option value={ALL_VALUE}>All guidance states</option>
+            {GUIDANCE_STATES.map((state) => (
+              <option key={state} value={state}>
+                {guidanceStateLabel(state)}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        {departments.length > 0 && (
           <label className={styles.filterLabel}>
-            Project
+            Department
             <select
               className={styles.filterSelect}
-              value={projectFilter}
-              onChange={(event) => setProjectFilter(event.target.value)}
+              value={departmentFilter}
+              onChange={(event) => setDepartmentFilter(event.target.value)}
             >
-              <option value={ALL_VALUE}>All Projects</option>
-              {projects.map((project) => (
-                <option key={project} value={project}>
-                  {project}
+              <option value={ALL_VALUE}>All Departments</option>
+              {departments.map((department) => (
+                <option key={department} value={department}>
+                  {department}
                 </option>
               ))}
             </select>
           </label>
-        </div>
-      )}
+        )}
+      </div>
 
       <p>Showing {filtered.length} items requiring review</p>
 

@@ -379,7 +379,7 @@ describe("ReviewInboxPage", () => {
     ).toBeVisible();
   });
 
-  it("does not show a Project filter when every work item shares one Project", () => {
+  it("always shows the Project filter, even when every work item shares one Project", () => {
     render(
       <ReviewInboxPage
         inbox={buildInbox([buildItem({ shot_id: "s1" })])}
@@ -387,8 +387,54 @@ describe("ReviewInboxPage", () => {
       />,
     );
     expect(
-      screen.queryByRole("combobox", { name: "Project" }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("combobox", { name: "Project" }),
+    ).toBeInTheDocument();
+  });
+
+  it("always shows the Core Anchor state filter", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("combobox", { name: "Core Anchor state" }),
+    ).toBeInTheDocument();
+  });
+
+  it("filters work items to the selected Core Anchor state", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([
+          buildItem({ shot_id: "s1", core_anchor_state: "confirmed" }),
+          buildItem({
+            shot_id: "s2",
+            core_anchor_state: "draft_pending",
+            current_focus: {
+              focus_type: "core_anchor_draft_needs_review",
+              title: "Core Anchor draft in progress",
+              explanation: "explanation",
+              target_route: "/vfx/shots/s2/intent",
+              primary_action_label: "Review draft",
+              actionable: true,
+            },
+          }),
+        ])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Showing 2 items requiring review")).toBeVisible();
+
+    fireEvent.change(
+      screen.getByRole("combobox", { name: "Core Anchor state" }),
+      { target: { value: "confirmed" } },
+    );
+
+    expect(screen.getByText("Showing 1 items requiring review")).toBeVisible();
+    expect(
+      screen.getByText("Core Anchor draft awaiting your confirmation"),
+    ).toBeVisible();
   });
 
   it("filters work items to the selected Project", () => {

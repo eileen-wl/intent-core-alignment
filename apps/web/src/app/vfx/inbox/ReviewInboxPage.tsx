@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type {
   AnchorContextSummaryRead,
+  VfxInboxItemRead,
   VfxInboxRead,
 } from "@intent-core/contracts";
 import Link from "next/link";
@@ -23,10 +24,20 @@ import {
   type ReviewWorkItem,
 } from "@/features/vfx/review-inbox/workItem";
 import { groupByCategory } from "@/lib/workItemGrouping";
+import { coreAnchorStateLabel } from "../vfxWording";
 import { WorkItemRow } from "../WorkItemRow";
 import styles from "./ReviewInboxPage.module.css";
 
 const ALL_VALUE = "__all__";
+/** Same fixed enum, same order as `ShotsListPage.tsx`'s
+ * `CORE_ANCHOR_STATES` -- every possible state is always offered, not
+ * only the ones present in today's Inbox, matching that page's own
+ * filter semantics. */
+const CORE_ANCHOR_STATES: VfxInboxItemRead["core_anchor_state"][] = [
+  "none",
+  "draft_pending",
+  "confirmed",
+];
 
 /** `/vfx/inbox` -- Review Inbox (Step 7C-1 content-architecture
  * correction). Work-item-first: the primary information object is the
@@ -109,6 +120,7 @@ function ReviewInboxContent({
   anchorContexts: Record<string, AnchorContextSummaryRead | null>;
 }) {
   const [projectFilter, setProjectFilter] = useState(ALL_VALUE);
+  const [coreAnchorStateFilter, setCoreAnchorStateFilter] = useState(ALL_VALUE);
 
   const projects = useMemo(
     () =>
@@ -124,35 +136,56 @@ function ReviewInboxContent({
 
   const filtered = useMemo(
     () =>
-      projectFilter === ALL_VALUE
-        ? workItems
-        : workItems.filter((item) => item.project?.name === projectFilter),
-    [workItems, projectFilter],
+      workItems.filter((item) => {
+        if (projectFilter !== ALL_VALUE && item.project?.name !== projectFilter)
+          return false;
+        if (
+          coreAnchorStateFilter !== ALL_VALUE &&
+          item.coreAnchorState !== coreAnchorStateFilter
+        )
+          return false;
+        return true;
+      }),
+    [workItems, projectFilter, coreAnchorStateFilter],
   );
 
   const groups = useMemo(() => groupByCategory(filtered), [filtered]);
 
   return (
     <div>
-      {projects.length > 1 && (
-        <div className={styles.filters}>
-          <label className={styles.filterLabel}>
-            Project
-            <select
-              className={styles.filterSelect}
-              value={projectFilter}
-              onChange={(event) => setProjectFilter(event.target.value)}
-            >
-              <option value={ALL_VALUE}>All Projects</option>
-              {projects.map((project) => (
-                <option key={project} value={project}>
-                  {project}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-      )}
+      <div className={styles.filters}>
+        <label className={styles.filterLabel}>
+          Project
+          <select
+            className={styles.filterSelect}
+            value={projectFilter}
+            onChange={(event) => setProjectFilter(event.target.value)}
+          >
+            <option value={ALL_VALUE}>All Projects</option>
+            {projects.map((project) => (
+              <option key={project} value={project}>
+                {project}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className={styles.filterLabel}>
+          Core Anchor state
+          <select
+            className={styles.filterSelect}
+            value={coreAnchorStateFilter}
+            onChange={(event) => setCoreAnchorStateFilter(event.target.value)}
+          >
+            <option value={ALL_VALUE}>All states</option>
+            {CORE_ANCHOR_STATES.map((state) => (
+              <option key={state} value={state}>
+                {coreAnchorStateLabel(state)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
 
       <p>Showing {filtered.length} items requiring review</p>
 
