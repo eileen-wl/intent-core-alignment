@@ -31,9 +31,9 @@
 .button {
   min-width: 15.75rem;
   padding: 0 1.2rem;
-  color: #252a35;
-  background: #ffffff;
-  border: 1px solid #d3d7e1;
+  color: var(--text-primary);
+  background: var(--surface-panel);
+  border: 1px solid var(--border-strong);
 }
 
 .button svg:last-child {
@@ -41,24 +41,25 @@
 }
 
 .button:hover {
-  background: #f8f7fd;
-  border-color: #aaa0dd;
-  box-shadow: 0 4px 12px rgba(49, 40, 92, 0.06);
+  background: var(--accent-agent-surface);
+  border-color: var(--accent-agent-border);
+  box-shadow: var(--shadow-sm);
   transform: translateY(-1px);
 }
 
 .primaryButton {
   width: min(100%, 18.25rem);
   padding: 0 1.2rem;
-  color: #ffffff;
-  background: linear-gradient(135deg, #5f36df, #5635d4);
-  border: 1px solid #5737d5;
-  box-shadow: 0 6px 14px rgba(79, 50, 195, 0.14);
+  color: var(--text-on-accent);
+  background: var(--accent-agent);
+  border: 1px solid var(--accent-agent);
+  box-shadow: var(--shadow-md);
 }
 
 .primaryButton:hover {
-  background: linear-gradient(135deg, #5630d2, #492bc3);
-  box-shadow: 0 8px 18px rgba(79, 50, 195, 0.2);
+  background: var(--accent-agent-text);
+  border-color: var(--accent-agent-text);
+  box-shadow: var(--shadow-md);
   transform: translateY(-1px);
 }
 
