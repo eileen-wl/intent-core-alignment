@@ -420,7 +420,7 @@ export function AlignmentWorkspacePage({
                 )}
               </EvidenceLayerSection>
 
-              <EvidenceLayerSection kind="human-decision">
+              <EvidenceLayerSection kind="human-decision" compact>
                 <p className={styles.empty}>
                   No Human Decision has been recorded directly against this
                   assessment. A Re-anchor Proposal, if accepted, is confirmed or

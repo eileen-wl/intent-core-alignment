@@ -267,7 +267,7 @@ export function VersionReviewPage({
                         </section>
                       </EvidenceLayerSection>
 
-                      <EvidenceLayerSection kind="human-decision">
+                      <EvidenceLayerSection kind="human-decision" compact>
                         <p className={styles.empty}>
                           No Human Decision has been recorded for this
                           Production Version review. Escalating to VFX records a
