@@ -267,6 +267,32 @@ describe("AnchorContextLayer", () => {
     expect(screen.getByText("Core R2 · confirmed")).toBeVisible();
   });
 
+  it("omits the Related context heading entirely when no link actually applies to this role", () => {
+    const context = contextFor("artist");
+    render(
+      <AnchorContextLayer
+        context={{
+          ...context,
+          attention: { ...context.attention, link_target: null },
+        }}
+        defaultExpanded
+      />,
+    );
+
+    expect(screen.queryByText("Related context")).not.toBeInTheDocument();
+  });
+
+  it("shows the Related context heading when a link applies to this role", () => {
+    render(
+      <AnchorContextLayer context={contextFor("artist")} defaultExpanded />,
+    );
+
+    expect(screen.getByText("Related context")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open Alignment →" }),
+    ).toBeInTheDocument();
+  });
+
   it("keeps the Artist header groups and disclosure control as distinct wrapping regions", () => {
     render(<AnchorContextLayer context={contextFor("artist")} />);
 

@@ -185,6 +185,11 @@ export function AnchorContextLayer({
     execution?.direction_summary ?? core.direction_summary,
   );
   const upstream = upstreamState(context);
+  const hasContextLinks = Boolean(
+    (core.link_target && context.role === "vfx_supervisor") ||
+    context.attention.link_target ||
+    (execution?.link_target && context.role === "cg_supervisor"),
+  );
 
   return (
     <>
@@ -364,20 +369,23 @@ export function AnchorContextLayer({
                   </small>
                 )}
               </div>
-              <div className={styles.contextLinks}>
-                <span className={styles.eyebrow}>Related context</span>
-                {core.link_target && context.role === "vfx_supervisor" && (
-                  <Link href={core.link_target}>Open Intent →</Link>
-                )}
-                {context.attention.link_target && (
-                  <Link href={context.attention.link_target}>
-                    Open Alignment →
-                  </Link>
-                )}
-                {execution?.link_target && context.role === "cg_supervisor" && (
-                  <Link href={execution.link_target}>Open Execution →</Link>
-                )}
-              </div>
+              {hasContextLinks && (
+                <div className={styles.contextLinks}>
+                  <span className={styles.eyebrow}>Related context</span>
+                  {core.link_target && context.role === "vfx_supervisor" && (
+                    <Link href={core.link_target}>Open Intent →</Link>
+                  )}
+                  {context.attention.link_target && (
+                    <Link href={context.attention.link_target}>
+                      Open Alignment →
+                    </Link>
+                  )}
+                  {execution?.link_target &&
+                    context.role === "cg_supervisor" && (
+                      <Link href={execution.link_target}>Open Execution →</Link>
+                    )}
+                </div>
+              )}
             </div>
           )}
         </div>

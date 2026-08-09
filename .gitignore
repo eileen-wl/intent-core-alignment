@@ -49,3 +49,6 @@ logs/
 
 # Claude local/private state
 .claude/local/
+
+# impeccable skill's local hook cache (regenerated per machine)
+.impeccable/
