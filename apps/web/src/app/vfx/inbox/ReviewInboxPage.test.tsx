@@ -1,5 +1,5 @@
 import type { VfxInboxItemRead, VfxInboxRead } from "@intent-core/contracts";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ReviewInboxPage } from "./ReviewInboxPage";
@@ -345,5 +345,68 @@ describe("ReviewInboxPage", () => {
     expect(
       screen.getByText("Re-anchor proposal available for consideration"),
     ).toBeVisible();
+  });
+
+  it("groups work items under their own honest category as a heading", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([
+          buildItem({ shot_id: "s1" }),
+          buildItem({
+            shot_id: "s2",
+            current_focus: {
+              focus_type: "re_anchor_proposal_present",
+              title: "Re-anchor proposal available for consideration",
+              explanation: "explanation",
+              target_route: "/vfx/shots/s2/alignment",
+              primary_action_label: "Review proposal",
+              actionable: true,
+            },
+          }),
+        ])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", {
+        name: "Core Anchor confirmation — 1 item",
+      }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", {
+        name: "Alignment interpretation — 1 item",
+      }),
+    ).toBeVisible();
+  });
+
+  it("does not show a Project filter when every work item shares one Project", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("combobox", { name: "Project" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("filters work items to the selected Project", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([
+          buildItem({ shot_id: "s1", project_id: "p1", project_name: "Alpha" }),
+          buildItem({ shot_id: "s2", project_id: "p2", project_name: "Beta" }),
+        ])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Showing 2 items requiring review")).toBeVisible();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Project" }), {
+      target: { value: "Alpha" },
+    });
+
+    expect(screen.getByText("Showing 1 items requiring review")).toBeVisible();
   });
 });

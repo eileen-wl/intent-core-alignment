@@ -1,3 +1,6 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import type {
   AnchorContextSummaryRead,
   CgInboxRead,
@@ -13,8 +16,15 @@ import {
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
-import { adaptCgCurrentFocusToWorkItems } from "@/features/cg/reviewInbox";
+import {
+  adaptCgCurrentFocusToWorkItems,
+  type CgReviewWorkItem,
+} from "@/features/cg/reviewInbox";
+import { groupByCategory } from "@/lib/workItemGrouping";
 import { CgTaskWorkItemRow } from "../CgTaskWorkItemRow";
+import styles from "./CgReviewInboxPage.module.css";
+
+const ALL_VALUE = "__all__";
 
 /** `/cg/inbox` -- CG Review Inbox (Step 7C-4), mirroring
  * `app/vfx/inbox/ReviewInboxPage.tsx`'s work-item-first architecture:
@@ -61,20 +71,95 @@ export function CgReviewInboxPage({
           action={<Link href="/cg/tasks">Browse Tasks →</Link>}
         />
       ) : (
-        <>
-          <p>Showing {workItems.length} items requiring review</p>
-          <div role="list">
-            {workItems.map((item) => (
-              <div role="listitem" key={item.id}>
-                <CgTaskWorkItemRow
-                  item={item}
-                  anchorContext={anchorContexts[item.task.id]}
-                />
-              </div>
-            ))}
-          </div>
-        </>
+        <CgReviewInboxContent
+          workItems={workItems}
+          anchorContexts={anchorContexts}
+        />
       )}
     </AppShell>
+  );
+}
+
+/** Chunks the flat work-item collection by each item's own honest
+ * `category` (never a new classification), and adds a Project filter
+ * matching the pattern already established on `TasksListPage.tsx`.
+ * Group order follows each group's highest-priority item, so the
+ * overall priority ordering is unchanged -- only same-category items
+ * now read together instead of interleaved. */
+function CgReviewInboxContent({
+  workItems,
+  anchorContexts,
+}: {
+  workItems: CgReviewWorkItem[];
+  anchorContexts: Record<string, AnchorContextSummaryRead | null>;
+}) {
+  const [projectFilter, setProjectFilter] = useState(ALL_VALUE);
+
+  const projects = useMemo(
+    () =>
+      Array.from(new Set(workItems.map((item) => item.project.name))).sort(),
+    [workItems],
+  );
+
+  const filtered = useMemo(
+    () =>
+      projectFilter === ALL_VALUE
+        ? workItems
+        : workItems.filter((item) => item.project.name === projectFilter),
+    [workItems, projectFilter],
+  );
+
+  const groups = useMemo(() => groupByCategory(filtered), [filtered]);
+
+  return (
+    <div>
+      {projects.length > 1 && (
+        <div className={styles.filters}>
+          <label className={styles.filterLabel}>
+            Project
+            <select
+              className={styles.filterSelect}
+              value={projectFilter}
+              onChange={(event) => setProjectFilter(event.target.value)}
+            >
+              <option value={ALL_VALUE}>All Projects</option>
+              {projects.map((project) => (
+                <option key={project} value={project}>
+                  {project}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+
+      <p>Showing {filtered.length} items requiring review</p>
+
+      {filtered.length === 0 ? (
+        <EmptyState title="No items match this filter" />
+      ) : (
+        groups.map((group) => (
+          <section
+            key={group.category || group.items[0].id}
+            className={styles.group}
+          >
+            <h2 className={styles.groupHeading}>
+              {group.category} — {group.items.length}{" "}
+              {group.items.length === 1 ? "item" : "items"}
+            </h2>
+            <div role="list">
+              {group.items.map((item) => (
+                <div role="listitem" key={item.id}>
+                  <CgTaskWorkItemRow
+                    item={item}
+                    anchorContext={anchorContexts[item.task.id]}
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        ))
+      )}
+    </div>
   );
 }

@@ -2,7 +2,7 @@ import type {
   ArtistInboxItemRead,
   ArtistInboxRead,
 } from "@intent-core/contracts";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ArtistReviewInboxPage } from "./ArtistReviewInboxPage";
@@ -173,5 +173,64 @@ describe("ArtistReviewInboxPage", () => {
         .getByText("An unresolved dependency needs your attention")
         .closest("a"),
     ).toHaveAttribute("href", "/artist/tasks/t1");
+  });
+
+  it("groups work items under their own honest category as a heading", () => {
+    render(
+      <ArtistReviewInboxPage
+        inbox={buildInbox([
+          buildItem({ task_id: "t1" }),
+          buildItem({
+            task_id: "t2",
+            current_focus: {
+              focus_type: "review_note_needs_response",
+              title: "A Review Note is awaiting your response",
+              explanation: "explanation",
+              target_route: "/artist/tasks/t2/current-version",
+              primary_action_label: "Review feedback",
+              actionable: true,
+            },
+          }),
+        ])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.getByRole("heading", { name: "Guidance update — 1 item" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Feedback — 1 item" }),
+    ).toBeVisible();
+  });
+
+  it("does not show a Project filter when every work item shares one Project", () => {
+    render(
+      <ArtistReviewInboxPage
+        inbox={buildInbox([buildItem({ task_id: "t1" })])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByRole("combobox", { name: "Project" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("filters work items to the selected Project", () => {
+    render(
+      <ArtistReviewInboxPage
+        inbox={buildInbox([
+          buildItem({ task_id: "t1", project_id: "p1", project_name: "Alpha" }),
+          buildItem({ task_id: "t2", project_id: "p2", project_name: "Beta" }),
+        ])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Showing 2 items requiring review")).toBeVisible();
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Project" }), {
+      target: { value: "Alpha" },
+    });
+
+    expect(screen.getByText("Showing 1 items requiring review")).toBeVisible();
   });
 });

@@ -1,3 +1,6 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import type {
   AnchorContextSummaryRead,
   VfxInboxRead,
@@ -17,8 +20,13 @@ import {
   adaptCurrentFocusToWorkItems,
   adaptEscalationWorkItems,
   adaptVersionReviewWorkItems,
+  type ReviewWorkItem,
 } from "@/features/vfx/review-inbox/workItem";
+import { groupByCategory } from "@/lib/workItemGrouping";
 import { WorkItemRow } from "../WorkItemRow";
+import styles from "./ReviewInboxPage.module.css";
+
+const ALL_VALUE = "__all__";
 
 /** `/vfx/inbox` -- Review Inbox (Step 7C-1 content-architecture
  * correction). Work-item-first: the primary information object is the
@@ -78,22 +86,103 @@ export function ReviewInboxPage({
           action={<Link href="/vfx/shots">Browse Shots →</Link>}
         />
       ) : (
-        <>
-          <p>Showing {workItems.length} items requiring review</p>
-          <div role="list">
-            {workItems.map((item) => (
-              <div role="listitem" key={item.id}>
-                <WorkItemRow
-                  item={item}
-                  anchorContext={
-                    item.shot ? anchorContexts[item.shot.id] : null
-                  }
-                />
-              </div>
-            ))}
-          </div>
-        </>
+        <ReviewInboxContent
+          workItems={workItems}
+          anchorContexts={anchorContexts}
+        />
       )}
     </AppShell>
+  );
+}
+
+/** Chunks the flat work-item collection by each item's own honest
+ * `category` (never a new classification), and adds a Project filter
+ * matching the pattern already established on `ShotsListPage.tsx`.
+ * Group order follows each group's highest-priority item, so the
+ * overall priority ordering is unchanged -- only same-category items
+ * now read together instead of interleaved. */
+function ReviewInboxContent({
+  workItems,
+  anchorContexts,
+}: {
+  workItems: ReviewWorkItem[];
+  anchorContexts: Record<string, AnchorContextSummaryRead | null>;
+}) {
+  const [projectFilter, setProjectFilter] = useState(ALL_VALUE);
+
+  const projects = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          workItems
+            .map((item) => item.project?.name)
+            .filter((name): name is string => Boolean(name)),
+        ),
+      ).sort(),
+    [workItems],
+  );
+
+  const filtered = useMemo(
+    () =>
+      projectFilter === ALL_VALUE
+        ? workItems
+        : workItems.filter((item) => item.project?.name === projectFilter),
+    [workItems, projectFilter],
+  );
+
+  const groups = useMemo(() => groupByCategory(filtered), [filtered]);
+
+  return (
+    <div>
+      {projects.length > 1 && (
+        <div className={styles.filters}>
+          <label className={styles.filterLabel}>
+            Project
+            <select
+              className={styles.filterSelect}
+              value={projectFilter}
+              onChange={(event) => setProjectFilter(event.target.value)}
+            >
+              <option value={ALL_VALUE}>All Projects</option>
+              {projects.map((project) => (
+                <option key={project} value={project}>
+                  {project}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+
+      <p>Showing {filtered.length} items requiring review</p>
+
+      {filtered.length === 0 ? (
+        <EmptyState title="No items match this filter" />
+      ) : (
+        groups.map((group) => (
+          <section
+            key={group.category || group.items[0].id}
+            className={styles.group}
+          >
+            <h2 className={styles.groupHeading}>
+              {group.category} — {group.items.length}{" "}
+              {group.items.length === 1 ? "item" : "items"}
+            </h2>
+            <div role="list">
+              {group.items.map((item) => (
+                <div role="listitem" key={item.id}>
+                  <WorkItemRow
+                    item={item}
+                    anchorContext={
+                      item.shot ? anchorContexts[item.shot.id] : null
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          </section>
+        ))
+      )}
+    </div>
   );
 }
