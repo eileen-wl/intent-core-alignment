@@ -5,15 +5,19 @@
   gap: var(--space-2);
 }
 
+/* This button is a real primary Human action (a Human clicks it to
+ * trigger reassessment) -- ICAS Purple via --accent-selected, not
+ * --accent-agent, since its purple means "primary Human action," not
+ * "Agent identity." Same underlying color, correct token name. */
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--accent-agent-border);
+  border: 1px solid var(--accent-selected-border);
   border-radius: var(--radius-md);
-  background: var(--accent-agent-surface);
+  background: var(--accent-selected-surface);
   color: var(--text-primary);
   font-weight: 600;
   transition:
@@ -21,9 +25,13 @@
     transform 120ms ease;
 }
 
-.button:hover:not(:disabled),
-.button:focus-visible {
+.button:hover:not(:disabled) {
   filter: brightness(0.97);
+}
+
+.button:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
 }
 
 .button:disabled {

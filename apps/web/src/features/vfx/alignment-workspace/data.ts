@@ -3,11 +3,13 @@ import type {
   AgentRunRead,
   ContextSnapshotRead,
   CrossRoleAssessmentRead,
+  DepartmentExecutionOverviewRead,
   VersionRead,
   VfxInboxItemRead,
 } from "@intent-core/contracts";
 
 import {
+  fetchDepartmentExecutionOverview,
   fetchVfxInboxItem,
   listCoreAnchorRevisions,
   listCrossRoleAssessmentsForShot,
@@ -43,23 +45,39 @@ export interface AlignmentWorkspaceData {
   revisionsById: Map<string, CoreAnchorRevisionRead>;
   currentRun?: AgentRunRead | null;
   currentSnapshot?: ContextSnapshotRead | null;
+  /** VFX Alignment structural pass: the Shot's real Tasks and their
+   * Execution Anchor/Version/alignment-concern state, one row per real
+   * `Task.id` -- the same read model `ShotOverviewPage`'s Department
+   * Execution Overview already uses (`fetchDepartmentExecutionOverview`,
+   * no new endpoint). `null` when the role-gated backend call itself
+   * fails, so the Department Execution Strip can render its own honest
+   * "unavailable" state without failing the whole Alignment page. */
+  departmentExecutionOverview: DepartmentExecutionOverviewRead | null;
 }
 
 /** Returns `null` only when the Shot itself does not exist -- any other
- * failure propagates as a thrown `VfxApiError`. */
+ * failure propagates as a thrown `VfxApiError`.
+ *
+ * `actorHeaders` (VFX Alignment structural pass): the trusted,
+ * server-resolved VFX Supervisor identity, forwarded only to the one
+ * role-gated call (`fetchDepartmentExecutionOverview`) -- every other
+ * call in this loader remains an unauthenticated read, unchanged. */
 export async function loadAlignmentWorkspaceData(
   shotId: string,
+  actorHeaders: Record<string, string>,
 ): Promise<AlignmentWorkspaceData | null> {
   const item = await fetchVfxInboxItem(shotId);
   if (item === null) {
     return null;
   }
 
-  const [assessments, versions, revisions] = await Promise.all([
-    listCrossRoleAssessmentsForShot(shotId),
-    listVersionsForShot(shotId),
-    listCoreAnchorRevisions(shotId),
-  ]);
+  const [assessments, versions, revisions, departmentExecutionOverview] =
+    await Promise.all([
+      listCrossRoleAssessmentsForShot(shotId),
+      listVersionsForShot(shotId),
+      listCoreAnchorRevisions(shotId),
+      fetchDepartmentExecutionOverview(shotId, actorHeaders).catch(() => null),
+    ]);
 
   const currentRun = assessments[0]?.agent_run_id
     ? await getAgentRun(assessments[0].agent_run_id)
@@ -77,5 +95,6 @@ export async function loadAlignmentWorkspaceData(
     ),
     currentRun,
     currentSnapshot,
+    departmentExecutionOverview,
   };
 }

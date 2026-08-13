@@ -3,9 +3,9 @@
   align-items: center;
   gap: 0.65rem;
   padding: 0.62rem 0.95rem;
-  color: #424a5b;
-  background: #f2f2f7;
-  border: 1px solid #ececf2;
+  color: var(--text-secondary);
+  background: var(--surface-muted);
+  border: 1px solid var(--border-subtle);
   border-radius: 999px;
   font-size: 0.82rem;
   font-weight: 650;
@@ -16,6 +16,6 @@
 .badge span {
   width: 0.62rem;
   height: 0.62rem;
-  background: #6744de;
+  background: var(--accent-agent);
   border-radius: 50%;
 }

@@ -5,9 +5,9 @@
   justify-content: center;
   gap: 0.65rem;
   padding: 0 1rem;
-  color: #262b35;
-  background: #ffffff;
-  border: 1px solid #d9dde6;
+  color: var(--text-primary);
+  background: var(--surface-panel);
+  border: 1px solid var(--border-strong);
   border-radius: 0.55rem;
   font-size: 0.84rem;
   font-weight: 650;
@@ -29,7 +29,7 @@
 }
 
 .button:hover {
-  background: #f8f8fb;
-  border-color: #bfc4d0;
-  box-shadow: 0 3px 10px rgba(27, 31, 42, 0.05);
+  background: var(--surface-muted);
+  border-color: var(--focus-ring-color);
+  box-shadow: var(--shadow-sm);
 }

@@ -6,13 +6,13 @@
 }
 
 .name {
-  color: #1d2028;
+  color: var(--text-primary);
   font-weight: 650;
   font-size: 0.98rem;
 }
 
 .role {
   margin-top: 0.18rem;
-  color: #6c7588;
+  color: var(--text-muted);
   font-size: 0.82rem;
 }

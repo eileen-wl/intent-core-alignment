@@ -45,9 +45,9 @@
 }
 
 .confirmed {
-  background: var(--authority-neutral-surface);
-  border-color: var(--authority-neutral-border);
-  color: var(--authority-neutral-text);
+  background: var(--state-success-surface);
+  border-color: var(--state-success-border);
+  color: var(--state-success);
 }
 
 .attention {

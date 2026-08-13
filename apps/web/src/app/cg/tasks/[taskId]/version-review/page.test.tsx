@@ -46,6 +46,8 @@ describe("/cg/tasks/:taskId/version-review page", () => {
       item: { task_id: "t1" },
       versions: [],
       coreAnchorSummary: null,
+      coreAnchorRevisionNumber: null,
+      coreAnchorStatus: null,
       activeExecutionRevision: null,
       cgSupervisorReviews: [],
     };

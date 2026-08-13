@@ -34,9 +34,10 @@ export default async function Page({
   try {
     const identity = await resolveIdentity();
     if (identity === null) redirect("/demo");
+    const headers = actorHeaders(identity);
     [data, anchorContext] = await Promise.all([
-      loadAlignmentWorkspaceData(shotId),
-      fetchVfxAnchorContextOrNull(shotId, actorHeaders(identity)),
+      loadAlignmentWorkspaceData(shotId, headers),
+      fetchVfxAnchorContextOrNull(shotId, headers),
     ]);
   } catch {
     unavailable = true;

@@ -8,6 +8,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
@@ -117,20 +118,26 @@ function summaryFor(role: AnchorContextRead["role"]): AnchorContextSummaryRead {
 }
 
 describe("AnchorContextLayer", () => {
-  it("uses an explicit accessible disclosure control", () => {
+  it("uses an explicit accessible disclosure control, with no Authoritative Direction content shown while collapsed", () => {
     render(<AnchorContextLayer context={contextFor("vfx_supervisor")} />);
 
     const button = screen.getByRole("button", {
-      name: "Expand anchor context",
+      name: "Show anchor context",
     });
     expect(button).toHaveAttribute("aria-expanded", "false");
     expect(screen.queryByText(/remains authoritative/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Collapse anchor context" }),
+    ).not.toBeInTheDocument();
 
     fireEvent.click(button);
     expect(
       screen.getByRole("button", { name: "Collapse anchor context" }),
     ).toHaveAttribute("aria-expanded", "true");
     expect(screen.getByText(/remains authoritative/)).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Show anchor context" }),
+    ).not.toBeInTheDocument();
   });
 
   it("defaults Overview context to expanded and remembers a session choice", async () => {
@@ -158,7 +165,7 @@ describe("AnchorContextLayer", () => {
     );
     await waitFor(() =>
       expect(
-        screen.getByRole("button", { name: "Expand anchor context" }),
+        screen.getByRole("button", { name: "Show anchor context" }),
       ).toHaveAttribute("aria-expanded", "false"),
     );
   });
@@ -244,27 +251,107 @@ describe("AnchorContextLayer", () => {
     expect(screen.queryByText("x")).not.toBeInTheDocument();
   });
 
-  it("renders a compact one-line sticky summary bar with its own Expand action, in addition to the full non-sticky block's own disclosure control", () => {
-    render(<AnchorContextLayer context={contextFor("cg_supervisor")} />);
-
-    expect(screen.getByText("Core R2 · Execution R1 · outdated")).toBeVisible();
-    const stickyExpand = screen.getByRole("button", { name: "Expand" });
-    expect(stickyExpand).toHaveAttribute("aria-expanded", "false");
-
-    fireEvent.click(stickyExpand);
-    expect(
-      screen.getByRole("button", { name: "Collapse anchor context" }),
-    ).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("button", { name: "Collapse" })).toHaveAttribute(
-      "aria-expanded",
-      "true",
+  it("strips the verified real CG D1 Golden Journey implementation labels from the collapsed Anchor Context direction text (owner-reported regression -- the previous exact-string allowlist did not cover these real runtime label variants)", () => {
+    const context = contextFor("cg_supervisor");
+    render(
+      <AnchorContextLayer
+        context={{
+          ...context,
+          execution_anchor: {
+            ...context.execution_anchor!,
+            direction_summary:
+              "[CG Agent execution anchor draft - D1 combined-intensity ceiling translation] Lighting owns the warm rim.",
+          },
+        }}
+      />,
     );
+
+    expect(screen.getByText("Lighting owns the warm rim.")).toBeVisible();
+    expect(
+      screen.queryByText(/D1 combined-intensity ceiling translation/),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows a Core-only sticky summary for VFX, since there is no Execution Anchor at that role", () => {
+  it("never renders a persistent or sticky bar while collapsed", () => {
+    const { container } = render(
+      <AnchorContextLayer context={contextFor("cg_supervisor")} />,
+    );
+    expect(
+      container.querySelector('[class*="sticky"]'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Show anchor context" }),
+    ).toBeInTheDocument();
+  });
+
+  it("never renders a persistent or sticky bar while expanded", () => {
+    const { container } = render(
+      <AnchorContextLayer
+        context={contextFor("cg_supervisor")}
+        defaultExpanded
+      />,
+    );
+    expect(
+      container.querySelector('[class*="sticky"]'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Collapse anchor context" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows a compact guardrail summary while collapsed, never the full Authoritative Direction region at the same time", () => {
     render(<AnchorContextLayer context={contextFor("vfx_supervisor")} />);
 
-    expect(screen.getByText("Core R2 · confirmed")).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Show anchor context" }),
+    ).toBeVisible();
+    expect(screen.getByText(/Core Anchor R2/)).toBeVisible();
+    expect(screen.getByText(/confirmed/)).toBeVisible();
+    expect(
+      screen.getByText("Keep the hero silhouette readable."),
+    ).toBeVisible();
+    expect(screen.getByText("High attention")).toBeVisible();
+    expect(
+      screen.queryByText("Authoritative direction"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Must preserve")).not.toBeInTheDocument();
+  });
+
+  it("labels the collapsed band with an explicit 'Anchor context' kicker, so it reads as a recognizable context layer rather than loose text", () => {
+    render(<AnchorContextLayer context={contextFor("vfx_supervisor")} />);
+
+    expect(screen.getByText("Anchor context")).toBeVisible();
+  });
+
+  it("omits the attention chip in the collapsed summary when attention has not been assessed, rather than showing a placeholder", () => {
+    const context = contextFor("vfx_supervisor");
+    render(
+      <AnchorContextLayer
+        context={{
+          ...context,
+          attention: { ...context.attention, level: "not_assessed" },
+        }}
+      />,
+    );
+
+    expect(screen.queryByText("Not assessed yet")).not.toBeInTheDocument();
+  });
+
+  it("shows a role-generic collapsed summary for CG and Artist too, using the same real fields (no VFX-only assumption)", () => {
+    const { unmount } = render(
+      <AnchorContextLayer context={contextFor("cg_supervisor")} />,
+    );
+    expect(screen.getByText(/Core Anchor R2/)).toBeVisible();
+    expect(
+      screen.getByText("Preserve the readable turn in blocking."),
+    ).toBeVisible();
+    unmount();
+
+    render(<AnchorContextLayer context={contextFor("artist")} />);
+    expect(screen.getByText(/Core Anchor R2/)).toBeVisible();
+    expect(
+      screen.getByText("Preserve the readable turn in blocking."),
+    ).toBeVisible();
   });
 
   it("omits the Related context heading entirely when no link actually applies to this role", () => {
@@ -293,15 +380,197 @@ describe("AnchorContextLayer", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps the Artist header groups and disclosure control as distinct wrapping regions", () => {
-    render(<AnchorContextLayer context={contextFor("artist")} />);
+  it("keeps the Artist header groups and disclosure control as distinct wrapping regions once expanded", () => {
+    render(
+      <AnchorContextLayer context={contextFor("artist")} defaultExpanded />,
+    );
 
     const section = screen.getByRole("region", { name: "Anchor context" });
     for (const label of ["Why", "How", "What to do now", "Current direction"]) {
       expect(section).toHaveTextContent(label);
     }
     expect(
-      screen.getByRole("button", { name: "Expand anchor context" }),
+      screen.getByRole("button", { name: "Collapse anchor context" }),
     ).toBeVisible();
+  });
+
+  it("shows 'Confirmed by VFX Supervisor' without the internal actor id -- 'vfx-1' is a session/audit identifier, never a real display name", () => {
+    render(
+      <AnchorContextLayer
+        context={contextFor("vfx_supervisor")}
+        defaultExpanded
+      />,
+    );
+
+    expect(screen.getByText("Confirmed by VFX Supervisor")).toBeVisible();
+    expect(screen.queryByText(/vfx-1/)).not.toBeInTheDocument();
+  });
+
+  it("keeps 'Anchor context' as the stable region identity in both collapsed and expanded states, so expansion reads as showing more of the same region rather than switching to a different module (owner-reported regression: expanded state's first heading was 'Authoritative direction')", () => {
+    const { unmount } = render(
+      <AnchorContextLayer context={contextFor("vfx_supervisor")} />,
+    );
+    expect(screen.getByText("Anchor context")).toBeVisible();
+    unmount();
+
+    render(
+      <AnchorContextLayer
+        context={contextFor("vfx_supervisor")}
+        defaultExpanded
+      />,
+    );
+    const section = screen.getByRole("region", { name: "Anchor context" });
+    expect(within(section).getByText("Anchor context")).toBeVisible();
+    // "Authoritative direction" survives, but only as a Level-B
+    // descriptor inside the region -- not the region's own heading.
+    expect(
+      within(section).getByText("Authoritative direction"),
+    ).toBeInTheDocument();
+  });
+
+  describe('variant="review" (CG Version Review visual reference)', () => {
+    it("shows the Core Anchor -> Execution Anchor relationship, current direction, and an expand action while collapsed, without affecting the default variant's own collapsed markup", () => {
+      render(
+        <AnchorContextLayer
+          context={contextFor("cg_supervisor")}
+          variant="review"
+        />,
+      );
+      expect(
+        screen.getByText("Core Anchor R2", { exact: false }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(/Animation Execution Anchor R1/),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText("Preserve the readable turn in blocking."),
+      ).toBeVisible();
+      expect(
+        screen.getByRole("button", { name: "Show full context →" }),
+      ).toBeVisible();
+    });
+
+    it("expands into an authority relationship, a 2x2 guardrail matrix, and a state rail that preserves every real field the default variant shows -- not the old 4-column grid", () => {
+      render(
+        <AnchorContextLayer
+          context={contextFor("cg_supervisor")}
+          variant="review"
+        />,
+      );
+      fireEvent.click(
+        screen.getByRole("button", { name: "Show full context →" }),
+      );
+
+      const region = screen.getByRole("region", { name: "Anchor context" });
+      for (const label of [
+        "Must preserve",
+        "May vary",
+        "Execution boundary",
+        "Intent attention",
+        "Readiness / next action",
+        "Current draft source",
+        "Current production context",
+        "Related context",
+      ]) {
+        expect(region).toHaveTextContent(label);
+      }
+      expect(
+        screen.getByText("The turn lands on the music cue."),
+      ).toBeVisible();
+      expect(
+        screen.getByRole("link", { name: "Open Execution →" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Collapse anchor context" }),
+      ).toBeVisible();
+    });
+
+    it("does not change the default variant's rendering for other roles/pages when variant is omitted", () => {
+      render(<AnchorContextLayer context={contextFor("artist")} />);
+      expect(
+        screen.getByRole("button", { name: "Show anchor context" }),
+      ).toBeVisible();
+      expect(
+        screen.queryByRole("button", { name: "Show full context →" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("strips the verified real CG D1 implementation label from Must preserve / May vary / Execution boundary in the expanded guardrail matrix (owner-reported product bug: the label was visibly leaking there)", () => {
+      const context = contextFor("cg_supervisor");
+      render(
+        <AnchorContextLayer
+          context={{
+            ...context,
+            core_anchor: {
+              ...context.core_anchor,
+              must_preserve:
+                "[CG deterministic] The turn lands on the music cue.",
+            },
+            execution_anchor: {
+              ...context.execution_anchor!,
+              allowed_refinement:
+                "[CG Agent execution anchor draft - D1 combined-intensity ceiling translation] Polish arcs without changing the beat.",
+              execution_boundary:
+                "[CG Agent execution anchor draft - D1 combined-intensity ceiling translation] Do not shift the final pose timing.",
+            },
+          }}
+          variant="review"
+          defaultExpanded
+        />,
+      );
+
+      expect(
+        screen.getByText("The turn lands on the music cue."),
+      ).toBeVisible();
+      expect(
+        screen.getByText("Polish arcs without changing the beat."),
+      ).toBeVisible();
+      expect(
+        screen.getByText("Do not shift the final pose timing."),
+      ).toBeVisible();
+      expect(
+        screen.queryByText(/D1 combined-intensity ceiling translation/),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/CG deterministic\]/)).not.toBeInTheDocument();
+    });
+
+    it("shows a concise, complete-sentence direction while collapsed instead of the full real direction text, without truncating any real content in the expanded state", () => {
+      const context = contextFor("cg_supervisor");
+      const longDirection =
+        "Compositing owns bloom, particles, debris and saturation inside the confirmed combined-intensity boundary. Threat must read through restraint, weight, and silhouette hierarchy. Do not introduce new emissive sources beyond the confirmed palette.";
+      render(
+        <AnchorContextLayer
+          context={{
+            ...context,
+            execution_anchor: {
+              ...context.execution_anchor!,
+              direction_summary: longDirection,
+            },
+          }}
+          variant="review"
+        />,
+      );
+
+      // Collapsed: only the first whole sentence fits the concise
+      // budget -- the second and third sentences are absent, and the
+      // one shown sentence is never sliced mid-thought.
+      expect(
+        screen.getByText(
+          "Compositing owns bloom, particles, debris and saturation inside the confirmed combined-intensity boundary.",
+        ),
+      ).toBeVisible();
+      expect(
+        screen.queryByText(/Threat must read through restraint/),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Do not introduce new emissive sources/),
+      ).not.toBeInTheDocument();
+
+      // Expanded: the full real direction text is untouched.
+      fireEvent.click(
+        screen.getByRole("button", { name: "Show full context →" }),
+      );
+      expect(screen.getByText(longDirection)).toBeVisible();
+    });
   });
 });

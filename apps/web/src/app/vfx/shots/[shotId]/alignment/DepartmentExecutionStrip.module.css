@@ -1,0 +1,148 @@
+.strip {
+  max-width: var(--content-width-comparison);
+  margin: 0 auto var(--space-5);
+}
+
+/* CG-validated Level-A region-heading grammar (icon + sentence case)
+ * -- same treatment as Alignment Signal/Current Assessment/Context,
+ * replacing the previous tiny uppercase heading. Rows below are
+ * unchanged. */
+.heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-panel);
+  overflow: hidden;
+}
+
+.rowDisclosure {
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.rowDisclosure:last-child {
+  border-bottom: none;
+}
+
+/* Owner direction: rows must read as expandable production-state rows,
+ * not static table rows -- explicit chevron (rotated via the native
+ * `[open]` attribute, no JS state needed), visible hover/focus
+ * feedback, and a taller, more deliberate hit area. The native
+ * `<summary>` marker is suppressed since its rendering is inconsistent
+ * across browsers; `.rowChevron` is the one real affordance. */
+.rowSummary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: 3rem;
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  list-style: none;
+  transition: background 120ms ease;
+}
+.rowSummary::-webkit-details-marker {
+  display: none;
+}
+.rowSummary:hover {
+  background: var(--surface-muted);
+}
+.rowSummary:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+.rowSummaryContent {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1;
+}
+
+.rowChevron {
+  flex: none;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0.3rem 0 0.3rem 0.4rem;
+  border-color: transparent transparent transparent var(--text-muted);
+  transition: transform 160ms ease;
+}
+.rowDisclosure[open] > .rowSummary .rowChevron {
+  transform: rotate(90deg);
+}
+
+.rowDetail {
+  margin-top: 0;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  background: var(--surface-muted);
+}
+
+/* Owner correction: alignment concern and execution context read as
+ * two stacked full-width prose blocks, wasting the desktop width and
+ * making the row disproportionately tall. Side-by-side columns (no
+ * nested card surface -- just a small label + paragraph per column)
+ * use the available width and distinguish the two kinds of context. */
+.rowDetailGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: var(--space-2) var(--space-5);
+  margin-top: var(--space-2);
+}
+
+.rowDetailColumn {
+  min-width: 0;
+}
+
+.rowDetailColumnTitle {
+  margin: 0 0 var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-muted);
+}
+
+.rowConcern,
+.rowExecutionSummary {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.rowVersionLink {
+  display: inline-block;
+  margin-top: var(--space-2);
+  font-weight: 600;
+}
+
+.department {
+  min-width: 9rem;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.version {
+  color: var(--text-secondary);
+}
+
+.empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}

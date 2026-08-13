@@ -1,3 +1,5 @@
+export { Icon, type IconName, type IconSize } from "./Icon";
+export { SignalStrip, type SignalStripItem } from "./SignalStrip";
 export { PageHeader } from "./PageHeader";
 export { SectionHeader } from "./SectionHeader";
 export { SummaryCard } from "./SummaryCard";
