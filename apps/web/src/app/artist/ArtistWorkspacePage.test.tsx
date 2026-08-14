@@ -4,7 +4,7 @@ import type {
   ArtistInboxRead,
 } from "@intent-core/contracts";
 import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { ArtistWorkspacePage } from "./ArtistWorkspacePage";
 
@@ -91,11 +91,9 @@ function inbox(items: ArtistInboxItemRead[]): ArtistInboxRead {
 
 describe("ArtistWorkspacePage", () => {
   it("renders honest error and empty states", () => {
-    const { rerender } = render(
-      <ArtistWorkspacePage inbox={null} onExitRole={vi.fn()} />,
-    );
+    const { rerender } = render(<ArtistWorkspacePage inbox={null} />);
     expect(screen.getByText("Workspace Home is unavailable")).toBeVisible();
-    rerender(<ArtistWorkspacePage inbox={inbox([])} onExitRole={vi.fn()} />);
+    rerender(<ArtistWorkspacePage inbox={inbox([])} />);
     expect(screen.getByText("No Tasks exist yet")).toBeVisible();
   });
 
@@ -113,7 +111,6 @@ describe("ArtistWorkspacePage", () => {
           total_count: 1,
           limit: 5,
         }}
-        onExitRole={vi.fn()}
       />,
     );
     const ready = screen.getByRole("region", { name: "Ready to work" });
@@ -139,7 +136,6 @@ describe("ArtistWorkspacePage", () => {
         inbox={inbox([item("one"), item("two")])}
         readyTasks={{ items: [readySummary], total_count: 1, limit: 5 }}
         waitingTasks={{ items: [], total_count: 0, limit: 5 }}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("What to do now")).toBeVisible();
@@ -153,7 +149,6 @@ describe("ArtistWorkspacePage", () => {
           limit: 5,
         }}
         waitingTasks={{ items: [], total_count: 0, limit: 5 }}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.queryByText("What to do now")).not.toBeInTheDocument();
@@ -174,7 +169,6 @@ describe("ArtistWorkspacePage", () => {
           total_count: 1,
           limit: 5,
         }}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("No Tasks are ready to work")).toBeVisible();

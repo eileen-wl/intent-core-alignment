@@ -240,55 +240,14 @@ function data(
 }
 
 describe("AlignmentWorkspacePage", () => {
-  it("renders Project > Shot > Alignment breadcrumbs and all five real Context Tabs, Alignment active", () => {
-    render(
-      <AlignmentWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByRole("link", { name: "D1 Demo Project" }),
-    ).toHaveAttribute("href", "/vfx/shots");
-    for (const [label, href] of [
-      ["Overview", "/vfx/shots/s1"],
-      ["Intent", "/vfx/shots/s1/intent"],
-      ["Versions", "/vfx/shots/s1/versions"],
-      ["Activity", "/vfx/shots/s1/activity"],
-    ] as const) {
-      expect(screen.getByRole("link", { name: label })).toHaveAttribute(
-        "href",
-        href,
-      );
-    }
-    expect(screen.getByRole("link", { name: "Alignment" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
-  it("shows an honest unavailable state when the API could not be reached", () => {
-    render(
-      <AlignmentWorkspacePage
-        shotId="s1"
-        data={null}
-        unavailable
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("This Shot is unavailable")).toBeVisible();
+  it("shows an honest unavailable state when the page-specific data failed to load", () => {
+    render(<AlignmentWorkspacePage shotId="s1" data={null} />);
+    expect(screen.getByText("This page is unavailable")).toBeVisible();
   });
 
   it("shows the honest empty state when no Alignment Assessment has ever been recorded, and generation is not ready", () => {
     render(
-      <AlignmentWorkspacePage
-        shotId="s1"
-        data={data({ assessments: [] })}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
+      <AlignmentWorkspacePage shotId="s1" data={data({ assessments: [] })} />,
     );
     expect(
       screen.getByText("Cross-role Assessment is not ready yet"),
@@ -309,8 +268,6 @@ describe("AlignmentWorkspacePage", () => {
             generation_ready_version_id: "v1",
           }),
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -328,14 +285,7 @@ describe("AlignmentWorkspacePage", () => {
   });
 
   it("renders real assessment content: assessed Version, Core Anchor used, and a compact preview summary by default", () => {
-    render(
-      <AlignmentWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<AlignmentWorkspacePage shotId="s1" data={data()} />);
     expect(
       screen.getByText("The Version stays close to the confirmed Core Anchor."),
     ).toBeVisible();
@@ -346,14 +296,7 @@ describe("AlignmentWorkspacePage", () => {
 
   it("keeps the full findings collapsed behind disclosure by default, and makes every finding accessible once expanded", async () => {
     const user = userEvent.setup();
-    render(
-      <AlignmentWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<AlignmentWorkspacePage shotId="s1" data={data()} />);
     expect(screen.getByText("Restraint reads clearly.")).not.toBeVisible();
 
     await user.click(screen.getByText("View detailed assessment →"));
@@ -363,14 +306,7 @@ describe("AlignmentWorkspacePage", () => {
   });
 
   it("keeps the detailed-assessment disclosure toggle as the same semantic control with matching collapsed/expanded labels, at a fixed footer position (CG-validated grammar backport)", () => {
-    render(
-      <AlignmentWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<AlignmentWorkspacePage shotId="s1" data={data()} />);
 
     // Both real labels live inside the same <summary> of the same
     // <details> (a native-CSS `[open]` swap, not JS state) -- which one
@@ -420,8 +356,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     const decisionRelevantSection = screen
@@ -465,8 +399,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     const decisionRelevantSection = screen
@@ -503,8 +435,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     const decisionRelevantSection = screen
@@ -536,8 +466,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -546,42 +474,21 @@ describe("AlignmentWorkspacePage", () => {
   });
 
   it("shows an honest empty note in the decision-relevant preview when no attention-relevant finding exists at all", () => {
-    render(
-      <AlignmentWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<AlignmentWorkspacePage shotId="s1" data={data()} />);
     expect(
       screen.getByText("No attention-relevant findings in this assessment."),
     ).toBeVisible();
   });
 
   it("keeps Human Attention reachable without opening the findings disclosure", () => {
-    render(
-      <AlignmentWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<AlignmentWorkspacePage shotId="s1" data={data()} />);
     expect(
       screen.getByRole("region", { name: "Human Attention" }),
     ).toBeVisible();
   });
 
   it("promotes the assessed Version/Core Anchor into a compact Assessment Identity line and Context Inspector, never inside a giant Anchor Context duplicate (VFX Alignment structural pass)", () => {
-    render(
-      <AlignmentWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<AlignmentWorkspacePage shotId="s1" data={data()} />);
     expect(screen.getByText(/Core Anchor used:/)).toBeVisible();
     expect(screen.getByText("Core Intent")).toBeVisible();
     expect(screen.getByText("Current Production Context")).toBeVisible();
@@ -604,8 +511,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("High attention")).toBeVisible();
@@ -632,14 +537,7 @@ describe("AlignmentWorkspacePage", () => {
   });
 
   it("no longer renders the redundant Current Assessment count-summary line (removed as duplicate presentation -- the same counts live in Alignment Signal and the category headings)", () => {
-    render(
-      <AlignmentWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<AlignmentWorkspacePage shotId="s1" data={data()} />);
     expect(screen.queryByText(/Aligned findings:/)).not.toBeInTheDocument();
     expect(
       screen.queryByText(/Advisory recommendations:/),
@@ -666,8 +564,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.queryByText(/tension\(s\)/)).not.toBeInTheDocument();
@@ -701,8 +597,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.queryByText(/\(s\)|\(ies\)/)).not.toBeInTheDocument();
@@ -734,8 +628,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -761,8 +653,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -787,8 +677,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -814,8 +702,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -840,8 +726,6 @@ describe("AlignmentWorkspacePage", () => {
             generated_at: "2026-08-01T00:00:00Z",
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Department Execution")).toBeVisible();
@@ -855,8 +739,6 @@ describe("AlignmentWorkspacePage", () => {
       <AlignmentWorkspacePage
         shotId="s1"
         data={data({ departmentExecutionOverview: null })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.queryByText("Department Execution")).not.toBeInTheDocument();
@@ -866,14 +748,7 @@ describe("AlignmentWorkspacePage", () => {
   });
 
   it("keeps the Production Facts / AI Proposal / Human Decision separation: the executive summary is Agent-authored (AI interpretation), and the honest no-direct-decision statement stays distinct from it", () => {
-    render(
-      <AlignmentWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<AlignmentWorkspacePage shotId="s1" data={data()} />);
     const signal = screen
       .getByText("The Version stays close to the confirmed Core Anchor.")
       .closest("section") as HTMLElement;
@@ -925,8 +800,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -940,26 +813,12 @@ describe("AlignmentWorkspacePage", () => {
   });
 
   it("never fabricates a percentage or numeric alignment score", () => {
-    render(
-      <AlignmentWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<AlignmentWorkspacePage shotId="s1" data={data()} />);
     expect(screen.queryByText(/%/)).not.toBeInTheDocument();
   });
 
   it("shows the real human-review-required state honestly, from the real Intent Signal", () => {
-    render(
-      <AlignmentWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<AlignmentWorkspacePage shotId="s1" data={data()} />);
     expect(
       screen.getByText(
         "Human review is required -- the VFX Supervisor should interpret these findings.",
@@ -986,8 +845,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -1022,8 +879,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -1037,14 +892,7 @@ describe("AlignmentWorkspacePage", () => {
   });
 
   it("shows an honest absence line when no Re-anchor Proposal exists for the current assessment", () => {
-    render(
-      <AlignmentWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<AlignmentWorkspacePage shotId="s1" data={data()} />);
     expect(
       screen.getByText(
         "No Re-anchor Proposal exists for the current assessment.",
@@ -1053,14 +901,7 @@ describe("AlignmentWorkspacePage", () => {
   });
 
   it("shows the compact human-authority statement that Agent assessment is advisory, inside the Human Attention region", () => {
-    render(
-      <AlignmentWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<AlignmentWorkspacePage shotId="s1" data={data()} />);
     expect(screen.getByText(/advisory only/)).toBeVisible();
   });
 
@@ -1077,8 +918,6 @@ describe("AlignmentWorkspacePage", () => {
       <AlignmentWorkspacePage
         shotId="s1"
         data={data({ assessments: [current, older] })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Assessment history")).toBeVisible();
@@ -1147,8 +986,6 @@ describe("AlignmentWorkspacePage", () => {
             ],
           ]),
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     // The History row shows the historical assessment's own attention,
@@ -1277,8 +1114,6 @@ describe("AlignmentWorkspacePage", () => {
             ],
           ]),
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     // Both assessments have identical 2 tensions / 3 risks / 1 dependency
@@ -1304,14 +1139,7 @@ describe("AlignmentWorkspacePage", () => {
 
   describe("Package C follow-up: reassessment readiness alongside a historical Assessment", () => {
     it("does not offer reassessment when no newer eligible Version/evidence exists", () => {
-      render(
-        <AlignmentWorkspacePage
-          shotId="s1"
-          data={data()}
-          unavailable={false}
-          onExitRole={vi.fn()}
-        />,
-      );
+      render(<AlignmentWorkspacePage shotId="s1" data={data()} />);
       expect(
         screen.queryByText(
           "A newer eligible Version is ready for reassessment",
@@ -1345,8 +1173,6 @@ describe("AlignmentWorkspacePage", () => {
               ],
             ]),
           })}
-          unavailable={false}
-          onExitRole={vi.fn()}
         />,
       );
       expect(
@@ -1386,8 +1212,6 @@ describe("AlignmentWorkspacePage", () => {
               ],
             ]),
           })}
-          unavailable={false}
-          onExitRole={vi.fn()}
         />,
       );
 
@@ -1442,8 +1266,6 @@ describe("AlignmentWorkspacePage", () => {
               ],
             ]),
           })}
-          unavailable={false}
-          onExitRole={vi.fn()}
         />,
       );
       expect(
@@ -1479,8 +1301,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -1520,8 +1340,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -1563,8 +1381,6 @@ describe("AlignmentWorkspacePage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 

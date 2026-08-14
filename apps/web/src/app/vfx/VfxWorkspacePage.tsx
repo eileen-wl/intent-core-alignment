@@ -6,7 +6,6 @@ import type {
 import Link from "next/link";
 
 import {
-  AppShell,
   Breadcrumbs,
   EmptyState,
   ErrorState,
@@ -16,8 +15,7 @@ import {
   Stack,
   SummaryCard,
 } from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
+import { ROLE_LABEL } from "@/lib/demoIdentity";
 import { InboxRow } from "./InboxRow";
 
 const IMPORTANT_SHOT_COUNT = 3;
@@ -36,20 +34,12 @@ const IMPORTANT_SHOT_COUNT = 3;
 export function VfxWorkspacePage({
   inbox,
   anchorActions,
-  onExitRole,
 }: {
   inbox: VfxInboxRead | null;
   anchorActions?: AnchorContextSummaryListRead | null;
-  onExitRole: () => void | Promise<void>;
 }) {
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.vfx_supervisor}
-      role={ROLE_LABEL.vfx_supervisor}
-      onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.vfx_supervisor}
-      currentPath="/vfx"
-    >
+    <>
       <Breadcrumbs items={[{ label: "Workspace Home" }]} />
       <PageHeader
         title="Workspace Home"
@@ -72,7 +62,7 @@ export function VfxWorkspacePage({
           anchorActions={anchorActions}
         />
       )}
-    </AppShell>
+    </>
   );
 }
 

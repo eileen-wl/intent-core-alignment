@@ -1,6 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("./demo/actions", () => ({
   enterDemoRole: vi.fn(),
@@ -8,6 +8,14 @@ vi.mock("./demo/actions", () => ({
 
 import { enterDemoRole } from "./demo/actions";
 import { RoleSelectionHome } from "./RoleSelectionHome";
+
+beforeEach(() => {
+  // `enterDemoRole` is a Server Action and always returns `Promise<void>`
+  // in real usage; `RoleEntryButton` chains `.finally()` off that call,
+  // so the mock must match the real contract rather than `vi.fn()`'s bare
+  // `undefined` default.
+  vi.mocked(enterDemoRole).mockResolvedValue(undefined);
+});
 
 afterEach(() => {
   cleanup();

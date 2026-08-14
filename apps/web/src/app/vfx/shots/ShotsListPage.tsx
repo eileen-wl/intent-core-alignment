@@ -7,15 +7,7 @@ import type {
   VfxInboxRead,
 } from "@intent-core/contracts";
 
-import {
-  AppShell,
-  Breadcrumbs,
-  EmptyState,
-  ErrorState,
-  PageHeader,
-} from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
+import { Breadcrumbs, EmptyState, ErrorState, PageHeader } from "@/design";
 import { coreAnchorStateLabel } from "../vfxWording";
 import { ShotRow } from "./ShotRow";
 import styles from "./ShotsListPage.module.css";
@@ -39,20 +31,12 @@ const CORE_ANCHOR_STATES: VfxInboxItemRead["core_anchor_state"][] = [
 export function ShotsListPage({
   inbox,
   anchorContexts = {},
-  onExitRole,
 }: {
   inbox: VfxInboxRead | null;
   anchorContexts?: Record<string, AnchorContextSummaryRead | null>;
-  onExitRole: () => void | Promise<void>;
 }) {
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.vfx_supervisor}
-      role={ROLE_LABEL.vfx_supervisor}
-      onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.vfx_supervisor}
-      currentPath="/vfx/shots"
-    >
+    <>
       <Breadcrumbs items={[{ label: "Shots" }]} />
       <PageHeader title="Shots" description="Browse and open any Shot." />
 
@@ -69,7 +53,7 @@ export function ShotsListPage({
       ) : (
         <ShotsListContent items={inbox.items} anchorContexts={anchorContexts} />
       )}
-    </AppShell>
+    </>
   );
 }
 

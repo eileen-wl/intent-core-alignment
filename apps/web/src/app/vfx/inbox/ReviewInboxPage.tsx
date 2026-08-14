@@ -9,15 +9,12 @@ import type {
 import Link from "next/link";
 
 import {
-  AppShell,
   Breadcrumbs,
   EmptyState,
   ErrorState,
   Icon,
   PageHeader,
 } from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import {
   adaptCurrentFocusToWorkItems,
   adaptEscalationWorkItems,
@@ -59,11 +56,9 @@ const CORE_ANCHOR_STATES: VfxInboxItemRead["core_anchor_state"][] = [
 export function ReviewInboxPage({
   inbox,
   anchorContexts = {},
-  onExitRole,
 }: {
   inbox: VfxInboxRead | null;
   anchorContexts?: Record<string, AnchorContextSummaryRead | null>;
-  onExitRole: () => void | Promise<void>;
 }) {
   const workItems = inbox
     ? [
@@ -74,13 +69,7 @@ export function ReviewInboxPage({
     : null;
 
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.vfx_supervisor}
-      role={ROLE_LABEL.vfx_supervisor}
-      onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.vfx_supervisor}
-      currentPath="/vfx/inbox"
-    >
+    <>
       <Breadcrumbs items={[{ label: "Review Inbox" }]} />
       <PageHeader
         title="Review Inbox"
@@ -104,7 +93,7 @@ export function ReviewInboxPage({
           anchorContexts={anchorContexts}
         />
       )}
-    </AppShell>
+    </>
   );
 }
 

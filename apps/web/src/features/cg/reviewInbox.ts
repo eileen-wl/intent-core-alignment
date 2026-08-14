@@ -3,6 +3,8 @@ import type {
   CgInboxItemRead,
 } from "@intent-core/contracts";
 
+import type { IconName } from "@/design";
+
 /** CG Review Inbox work-item model (Step 7C-4) -- mirrors
  * `features/vfx/review-inbox/workItem.ts`'s *shape* (work-item-first,
  * not a Task-led list), a smaller, CG-owned model: today's only real
@@ -43,6 +45,12 @@ export interface CgReviewWorkItem {
   shot: CgReviewWorkItemShot;
   task: CgReviewWorkItemTask;
   executionAnchorState: CgInboxItemRead["execution_anchor_state"];
+  /** Real, already-persisted aggregate count (`CgInboxItemRead`'s own
+   * accurate `sum()` over open `TaskDependency` rows, never a boolean
+   * masquerading as a count) -- the row-level semantic-status
+   * correction's source fact for "Dependency review" items, where
+   * `executionAnchorState` is not the item's real subject. */
+  openDependencyCount: number;
   route: string;
 }
 
@@ -63,6 +71,30 @@ function categoryForFocusType(focusType: CgCurrentFocusType): string {
       throw new Error(
         'focus_type "none" is never actionable and must never become a work item',
       );
+  }
+}
+
+/** Worklist archetype family consistency (mirrors
+ * `features/vfx/review-inbox/workItem.ts`'s `workItemIcon`): a compact
+ * type marker for the group heading, keyed by the same honest
+ * `category` string the adapter above already produces. An
+ * unrecognised category renders without one rather than guessing.
+ * Presentation-only -- never used by the adapter itself. "Draft
+ * review" and "Execution Anchor confirmation" both concern the same
+ * real object (the Execution Anchor, at different lifecycle stages),
+ * so both map to `execution-anchor`, mirroring how VFX's own "Draft
+ * review" (Core Anchor's draft stage) maps to `core-anchor`. */
+export function cgWorkItemIcon(category: string): IconName | null {
+  switch (category) {
+    case "Execution Anchor confirmation":
+    case "Draft review":
+      return "execution-anchor";
+    case "Dependency review":
+      return "coordination";
+    case "Version review":
+      return "version";
+    default:
+      return null;
   }
 }
 
@@ -96,6 +128,7 @@ export function adaptCgCurrentFocusToWorkItems(
         department: item.department,
       },
       executionAnchorState: item.execution_anchor_state,
+      openDependencyCount: item.open_dependency_count,
       route: focus.target_route,
     });
   }

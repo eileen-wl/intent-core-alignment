@@ -4,8 +4,7 @@ import type {
   VfxInboxRead,
 } from "@intent-core/contracts";
 import { cleanup, render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { VfxWorkspacePage } from "./VfxWorkspacePage";
 
@@ -86,11 +85,9 @@ function inbox(items: VfxInboxItemRead[]): VfxInboxRead {
 
 describe("VfxWorkspacePage", () => {
   it("renders honest error and empty states", () => {
-    const { rerender } = render(
-      <VfxWorkspacePage inbox={null} onExitRole={vi.fn()} />,
-    );
+    const { rerender } = render(<VfxWorkspacePage inbox={null} />);
     expect(screen.getByText("Workspace Home is unavailable")).toBeVisible();
-    rerender(<VfxWorkspacePage inbox={inbox([])} onExitRole={vi.fn()} />);
+    rerender(<VfxWorkspacePage inbox={inbox([])} />);
     expect(screen.getByText("No Shots exist yet")).toBeVisible();
   });
 
@@ -104,7 +101,6 @@ describe("VfxWorkspacePage", () => {
           total_count: 7,
           limit: 5,
         }}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -136,7 +132,6 @@ describe("VfxWorkspacePage", () => {
           total_count: 1,
           limit: 5,
         }}
-        onExitRole={vi.fn()}
       />,
     );
     const health = within(
@@ -153,19 +148,13 @@ describe("VfxWorkspacePage", () => {
     ).toHaveAttribute("href", "/vfx/shots");
   });
 
-  it("uses the backend action label and wires Exit role view", async () => {
-    const onExitRole = vi.fn();
+  it("uses the backend action label", () => {
     render(
       <VfxWorkspacePage
         inbox={inbox([item("s1")])}
         anchorActions={{ items: [summary("s1")], total_count: 1, limit: 5 }}
-        onExitRole={onExitRole}
       />,
     );
     expect(screen.getByText("Review revision →")).toBeVisible();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Exit role view" }),
-    );
-    expect(onExitRole).toHaveBeenCalledOnce();
   });
 });

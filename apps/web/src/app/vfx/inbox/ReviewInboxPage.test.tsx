@@ -6,7 +6,7 @@ import {
   screen,
   within,
 } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { ReviewInboxPage } from "./ReviewInboxPage";
 
@@ -75,25 +75,14 @@ function buildInbox(items: VfxInboxItemRead[]): VfxInboxRead {
 }
 
 describe("ReviewInboxPage", () => {
-  it("marks Review Inbox current in the sidebar", () => {
-    render(<ReviewInboxPage inbox={buildInbox([])} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "Review Inbox" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
   it("shows an honest error state when the Inbox failed to load", () => {
-    render(<ReviewInboxPage inbox={null} onExitRole={vi.fn()} />);
+    render(<ReviewInboxPage inbox={null} />);
     expect(screen.getByText("Review Inbox is unavailable")).toBeVisible();
   });
 
   it("shows an honest clear-inbox empty state when no work items exist, with a route to Shots", () => {
     render(
-      <ReviewInboxPage
-        inbox={buildInbox([inactiveItem({ shot_id: "s2" })])}
-        onExitRole={vi.fn()}
-      />,
+      <ReviewInboxPage inbox={buildInbox([inactiveItem({ shot_id: "s2" })])} />,
     );
     expect(screen.getByText("Review Inbox is clear")).toBeVisible();
     expect(
@@ -113,7 +102,6 @@ describe("ReviewInboxPage", () => {
           buildItem({ shot_id: "s1" }),
           inactiveItem({ shot_id: "s2" }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Showing 1 items requiring review")).toBeVisible();
@@ -124,10 +112,7 @@ describe("ReviewInboxPage", () => {
 
   it("shows the honest category as the group heading and Shot as row-level supporting context, not the primary title", () => {
     render(
-      <ReviewInboxPage
-        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
-        onExitRole={vi.fn()}
-      />,
+      <ReviewInboxPage inbox={buildInbox([buildItem({ shot_id: "s1" })])} />,
     );
     // Category identity lives once, at the group heading -- rows no
     // longer repeat it (consistency correction: same category was
@@ -151,10 +136,7 @@ describe("ReviewInboxPage", () => {
 
   it("never fabricates HumanGate/Assessment/Proposal/Decision language on a work-item row", () => {
     render(
-      <ReviewInboxPage
-        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
-        onExitRole={vi.fn()}
-      />,
+      <ReviewInboxPage inbox={buildInbox([buildItem({ shot_id: "s1" })])} />,
     );
     const row = screen
       .getByText("Core Anchor draft awaiting your confirmation")
@@ -200,7 +182,6 @@ describe("ReviewInboxPage", () => {
             },
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -234,7 +215,6 @@ describe("ReviewInboxPage", () => {
             },
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Some future work").closest("a")).toHaveAttribute(
@@ -254,7 +234,6 @@ describe("ReviewInboxPage", () => {
             latest_version_without_review_number: 2,
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     // The Shot's current_focus item and the new version_review item both
@@ -279,7 +258,6 @@ describe("ReviewInboxPage", () => {
             latest_version_without_review_number: 2,
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -312,7 +290,6 @@ describe("ReviewInboxPage", () => {
             relevant_version_name: "SH010_v001",
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Review Inbox is clear")).toBeVisible();
@@ -348,7 +325,6 @@ describe("ReviewInboxPage", () => {
             },
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Showing 2 items requiring review")).toBeVisible();
@@ -377,7 +353,6 @@ describe("ReviewInboxPage", () => {
             },
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -394,10 +369,7 @@ describe("ReviewInboxPage", () => {
 
   it("always shows the Project filter, even when every work item shares one Project", () => {
     render(
-      <ReviewInboxPage
-        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
-        onExitRole={vi.fn()}
-      />,
+      <ReviewInboxPage inbox={buildInbox([buildItem({ shot_id: "s1" })])} />,
     );
     expect(
       screen.getByRole("combobox", { name: "Project" }),
@@ -406,10 +378,7 @@ describe("ReviewInboxPage", () => {
 
   it("always shows the Core Anchor state filter", () => {
     render(
-      <ReviewInboxPage
-        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
-        onExitRole={vi.fn()}
-      />,
+      <ReviewInboxPage inbox={buildInbox([buildItem({ shot_id: "s1" })])} />,
     );
     expect(
       screen.getByRole("combobox", { name: "Core Anchor state" }),
@@ -434,7 +403,6 @@ describe("ReviewInboxPage", () => {
             },
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Showing 2 items requiring review")).toBeVisible();
@@ -457,7 +425,6 @@ describe("ReviewInboxPage", () => {
           buildItem({ shot_id: "s1", project_id: "p1", project_name: "Alpha" }),
           buildItem({ shot_id: "s2", project_id: "p2", project_name: "Beta" }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Showing 2 items requiring review")).toBeVisible();
@@ -471,10 +438,7 @@ describe("ReviewInboxPage", () => {
 
   it("shows the current worklist state before the filter controls (Worklist archetype target hierarchy)", () => {
     render(
-      <ReviewInboxPage
-        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
-        onExitRole={vi.fn()}
-      />,
+      <ReviewInboxPage inbox={buildInbox([buildItem({ shot_id: "s1" })])} />,
     );
     const state = screen.getByText("Showing 1 items requiring review");
     const projectFilter = screen.getByRole("combobox", { name: "Project" });
@@ -486,10 +450,7 @@ describe("ReviewInboxPage", () => {
 
   it("drops the per-row Anchor Context summary panel (Worklist archetype density: no nested cards, no five-column blocks) while still routing correctly", () => {
     render(
-      <ReviewInboxPage
-        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
-        onExitRole={vi.fn()}
-      />,
+      <ReviewInboxPage inbox={buildInbox([buildItem({ shot_id: "s1" })])} />,
     );
     expect(
       screen.queryByText("Anchor context unavailable"),
@@ -507,7 +468,6 @@ describe("ReviewInboxPage", () => {
         inbox={buildInbox([
           buildItem({ shot_id: "s1", core_anchor_state: "confirmed" }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     const row = screen
@@ -523,7 +483,6 @@ describe("ReviewInboxPage", () => {
         inbox={buildInbox([
           buildItem({ shot_id: "s1", core_anchor_state: "draft_pending" }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     const row = screen
@@ -534,10 +493,7 @@ describe("ReviewInboxPage", () => {
 
   it("renders the work-item type icon once, on the group heading, and no longer repeats a category kicker/icon on every row underneath (consistency correction: the list is already grouped by category)", () => {
     render(
-      <ReviewInboxPage
-        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
-        onExitRole={vi.fn()}
-      />,
+      <ReviewInboxPage inbox={buildInbox([buildItem({ shot_id: "s1" })])} />,
     );
     const row = screen
       .getByText("Core Anchor draft awaiting your confirmation")
@@ -553,10 +509,7 @@ describe("ReviewInboxPage", () => {
 
   it("normalizes production context to a single Project · Shot · Task · Version order with one consistent separator", () => {
     render(
-      <ReviewInboxPage
-        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
-        onExitRole={vi.fn()}
-      />,
+      <ReviewInboxPage inbox={buildInbox([buildItem({ shot_id: "s1" })])} />,
     );
     const row = screen
       .getByText("Core Anchor draft awaiting your confirmation")
@@ -570,10 +523,7 @@ describe("ReviewInboxPage", () => {
 
   it("shows ftrack linkage as quiet plain text, not a strong-cyan integration badge", () => {
     render(
-      <ReviewInboxPage
-        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
-        onExitRole={vi.fn()}
-      />,
+      <ReviewInboxPage inbox={buildInbox([buildItem({ shot_id: "s1" })])} />,
     );
     const row = screen
       .getByText("Core Anchor draft awaiting your confirmation")
@@ -626,7 +576,6 @@ describe("ReviewInboxPage", () => {
             },
           },
         }}
-        onExitRole={vi.fn()}
       />,
     );
     const versionRow = screen

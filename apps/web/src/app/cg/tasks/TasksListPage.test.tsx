@@ -1,6 +1,6 @@
 import type { CgInboxItemRead, CgInboxRead } from "@intent-core/contracts";
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { TasksListPage } from "./TasksListPage";
 
@@ -44,23 +44,13 @@ function buildInbox(items: CgInboxItemRead[]): CgInboxRead {
 }
 
 describe("TasksListPage", () => {
-  it("marks Tasks current in the sidebar", () => {
-    render(
-      <TasksListPage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />,
-    );
-    expect(screen.getByRole("link", { name: "Tasks" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
   it("shows an honest error state when Tasks failed to load", () => {
-    render(<TasksListPage inbox={null} onExitRole={vi.fn()} />);
+    render(<TasksListPage inbox={null} />);
     expect(screen.getByText("Tasks is unavailable")).toBeVisible();
   });
 
   it("shows an honest empty state when no Tasks exist", () => {
-    render(<TasksListPage inbox={buildInbox([])} onExitRole={vi.fn()} />);
+    render(<TasksListPage inbox={buildInbox([])} />);
     expect(screen.getByText("No Tasks exist yet")).toBeVisible();
   });
 
@@ -71,7 +61,6 @@ describe("TasksListPage", () => {
           buildItem({ task_id: "t1", task_name: "Lighting Pass" }),
           buildItem({ task_id: "t2", task_name: "Comp" }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Showing 2 of 2 Tasks")).toBeVisible();
@@ -97,7 +86,6 @@ describe("TasksListPage", () => {
             task_name: "Other Task",
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     await userEvent.selectOptions(
@@ -111,9 +99,7 @@ describe("TasksListPage", () => {
 
   it("shows an honest no-match state when filters exclude every Task", async () => {
     const { default: userEvent } = await import("@testing-library/user-event");
-    render(
-      <TasksListPage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />,
-    );
+    render(<TasksListPage inbox={buildInbox([buildItem()])} />);
     await userEvent.click(screen.getByLabelText("Requiring attention only"));
     expect(screen.getByText("No Tasks match these filters")).toBeVisible();
   });

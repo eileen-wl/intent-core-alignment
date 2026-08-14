@@ -9,7 +9,6 @@ import {
   fetchVfxAnchorContextSummaries,
   fetchVfxInbox,
 } from "@/features/vfx/api";
-import { exitRoleView } from "../../demo/actions";
 import { ShotsListPage } from "./ShotsListPage";
 
 /** The middleware (src/middleware.ts) is the authoritative route
@@ -36,11 +35,5 @@ export default async function Page() {
     inbox = null;
   }
 
-  return (
-    <ShotsListPage
-      inbox={inbox}
-      anchorContexts={anchorContexts}
-      onExitRole={exitRoleView}
-    />
-  );
+  return <ShotsListPage inbox={inbox} anchorContexts={anchorContexts} />;
 }

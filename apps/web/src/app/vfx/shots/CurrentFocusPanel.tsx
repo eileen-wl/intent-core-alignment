@@ -1,7 +1,7 @@
 import type { VfxInboxCurrentFocusRead } from "@intent-core/contracts";
 import Link from "next/link";
 
-import { Panel, StatusBadge } from "@/design";
+import { Panel, PendingLinkContent, StatusBadge } from "@/design";
 import styles from "./CurrentFocusPanel.module.css";
 
 /** Exactly one Current focus (Step 7C-1; docs/step-7/16_STEP_7C0D_...md
@@ -35,6 +35,7 @@ export function CurrentFocusPanel({
         <div className={styles.actionRow}>
           <Link href={focus.target_route} className={styles.action}>
             {focus.primary_action_label}
+            <PendingLinkContent label={focus.primary_action_label} />
           </Link>
         </div>
       )}

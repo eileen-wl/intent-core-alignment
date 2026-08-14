@@ -99,6 +99,12 @@ function revalidateTaskRoutes(taskId: string): void {
   revalidatePath(`/artist/tasks/${taskId}`);
   revalidatePath(`/artist/tasks/${taskId}/current-version`);
   revalidatePath(`/artist/tasks/${taskId}/feedback-history`);
+  // Also revalidate the persistent Task layout segment itself (Navigation
+  // Responsiveness Fix, Phase 2): the page-type calls above refresh only
+  // leaf routes, but `app/artist/tasks/[taskId]/layout.tsx` now owns its
+  // own `fetchArtistAnchorContextOrNull` fetch and is a distinct cached
+  // segment that a page-type revalidation does not reach.
+  revalidatePath(`/artist/tasks/${taskId}`, "layout");
   revalidatePath("/artist");
   revalidatePath("/artist/inbox");
 }

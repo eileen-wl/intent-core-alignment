@@ -168,92 +168,13 @@ function artistAnchorContext(missing = false): AnchorContextRead {
 }
 
 describe("TaskOverviewPage", () => {
-  it("renders Project > Shot > Task > Task Overview breadcrumbs and all three real Context Tabs, Task Overview active", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByRole("link", { name: "D1 Demo Project" }),
-    ).toHaveAttribute("href", "/artist/tasks");
-    for (const [label, href] of [
-      ["Current Version", "/artist/tasks/t1/current-version"],
-      ["Feedback History", "/artist/tasks/t1/feedback-history"],
-    ] as const) {
-      expect(screen.getByRole("link", { name: label })).toHaveAttribute(
-        "href",
-        href,
-      );
-    }
-    expect(screen.getByRole("link", { name: "Task Overview" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
-  it("does not render Intent, Execution, Dependencies, or Activity tabs", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.queryByRole("link", { name: "Intent" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Execution" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Dependencies" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Activity" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("Tasks stays the active sidebar item, never Review Inbox", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByRole("link", { name: "Tasks" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
-  it("shows an honest unavailable state when the API could not be reached", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={null}
-        unavailable
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("This Task is unavailable")).toBeVisible();
+  it("shows an honest unavailable state when the page-specific data failed to load", () => {
+    render(<TaskOverviewPage taskId="t1" data={null} anchorContext={null} />);
+    expect(screen.getByText("This page is unavailable")).toBeVisible();
   });
 
   it("renders exactly one Current focus with its real primary action", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<TaskOverviewPage taskId="t1" data={data()} />);
     expect(screen.getByText("New Artist guidance is available")).toBeVisible();
     expect(
       screen.getByRole("link", { name: "Review guidance" }),
@@ -298,8 +219,6 @@ describe("TaskOverviewPage", () => {
             open_questions: [],
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.queryByText("Why: Creative Intent")).not.toBeInTheDocument();
@@ -308,16 +227,8 @@ describe("TaskOverviewPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not add a second missing Core Anchor summary", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("Anchor context unavailable")).toBeVisible();
+  it("does not add a second missing Core Anchor summary (the persistent Task layout's AnchorContextLayer owns the honest-unavailable state)", () => {
+    render(<TaskOverviewPage taskId="t1" data={data()} />);
     expect(
       screen.queryByText("No Core Anchor is confirmed for this Shot yet."),
     ).not.toBeInTheDocument();
@@ -328,8 +239,6 @@ describe("TaskOverviewPage", () => {
       <TaskOverviewPage
         taskId="t1"
         data={data({ item: item({ execution_anchor_state: "none" }) })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -338,14 +247,7 @@ describe("TaskOverviewPage", () => {
   });
 
   it("honestly states no Artist guidance has been generated yet, with no fabricated content", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<TaskOverviewPage taskId="t1" data={data()} />);
     expect(
       screen.getByText(
         "No Artist guidance has been generated for this Task yet.",
@@ -354,14 +256,7 @@ describe("TaskOverviewPage", () => {
   });
 
   it("shows a disabled Guidance state when there is no latest Version", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<TaskOverviewPage taskId="t1" data={data()} />);
     expect(
       screen.getByRole("button", { name: /generate guidance/i }),
     ).toBeDisabled();
@@ -376,8 +271,6 @@ describe("TaskOverviewPage", () => {
           item: item({ latest_version_id: "v1", latest_version_name: "v001" }),
         })}
         anchorContext={artistAnchorContext()}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -397,8 +290,6 @@ describe("TaskOverviewPage", () => {
           }),
         })}
         anchorContext={artistAnchorContext(true)}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -472,8 +363,6 @@ describe("TaskOverviewPage", () => {
           },
         })}
         anchorContext={artistAnchorContext()}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -509,8 +398,6 @@ describe("TaskOverviewPage", () => {
             ],
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Current Working Direction")).toBeVisible();
@@ -528,28 +415,14 @@ describe("TaskOverviewPage", () => {
   });
 
   it("renders nothing extra when workingDirection has no items (honest empty state)", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<TaskOverviewPage taskId="t1" data={data()} />);
     expect(
       screen.queryByText("Current Working Direction"),
     ).not.toBeInTheDocument();
   });
 
   it("honestly states no dependencies have been recorded for a genuinely bare Task", async () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<TaskOverviewPage taskId="t1" data={data()} />);
     expect(
       screen.getByText("No dependencies have been recorded for this Task yet."),
     ).toBeInTheDocument();
@@ -567,8 +440,6 @@ describe("TaskOverviewPage", () => {
           item: item({ latest_version_id: "v1", latest_version_name: "v001" }),
         })}
         anchorContext={artistAnchorContext()}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     // Step 9B-1 owner-validation correction: the Guidance action is a

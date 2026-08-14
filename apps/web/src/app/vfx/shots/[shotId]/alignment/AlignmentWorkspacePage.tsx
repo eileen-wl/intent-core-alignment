@@ -1,7 +1,6 @@
 "use client";
 
 import type {
-  AnchorContextRead,
   CoreAnchorRevisionRead,
   CrossRoleAssessmentRead,
   CrossRoleFinding,
@@ -10,6 +9,7 @@ import type {
 
 import {
   AuthorityLabel,
+  ErrorState,
   EvidenceProvenanceDrawer,
   Icon,
   MetadataRow,
@@ -22,7 +22,6 @@ import {
 import { humanRoleLabel } from "@/lib/humanRoleLabel";
 import type { AlignmentWorkspaceData } from "@/features/vfx/alignment-workspace/data";
 import type { EvidenceReferenceLike } from "@/design";
-import { VfxShotWorkspaceFrame } from "../VfxShotWorkspaceFrame";
 import { DepartmentExecutionStrip } from "./DepartmentExecutionStrip";
 import { HumanAttentionAction } from "./HumanAttentionAction";
 import styles from "./AlignmentWorkspacePage.module.css";
@@ -369,15 +368,9 @@ function FindingGroup({
 export function AlignmentWorkspacePage({
   shotId,
   data,
-  anchorContext,
-  unavailable,
-  onExitRole,
 }: {
   shotId: string;
   data: AlignmentWorkspaceData | null;
-  anchorContext?: AnchorContextRead | null;
-  unavailable: boolean;
-  onExitRole: () => void | Promise<void>;
 }) {
   const current =
     data && data.assessments.length > 0 ? data.assessments[0] : null;
@@ -387,297 +380,292 @@ export function AlignmentWorkspacePage({
     data?.item.generation_ready_version_id,
   );
 
+  if (!data) {
+    return (
+      <ErrorState
+        title="This page is unavailable"
+        description="The ICAS service could not be reached. Try refreshing the page."
+      />
+    );
+  }
+
   return (
-    <VfxShotWorkspaceFrame
-      item={data?.item ?? null}
-      anchorContext={anchorContext}
-      activeTab="alignment"
-      unavailable={unavailable}
-      onExitRole={onExitRole}
-    >
-      {data && (
+    <>
+      {current && (
+        <div className={styles.assessmentIdentity}>
+          <span>
+            Core Anchor used:{" "}
+            {revisionLabel(
+              data.revisionsById.get(current.core_anchor_revision_id),
+            )}
+          </span>
+          <span className={styles.assessmentIdentityMeta}>
+            Assessed {new Date(current.created_at).toLocaleString()}
+          </span>
+        </div>
+      )}
+
+      {current === null ? (
+        <HumanAttentionAction
+          shotId={shotId}
+          item={data.item}
+          current={null}
+          versionsById={data.versionsById}
+        />
+      ) : (
         <>
-          {current && (
-            <div className={styles.assessmentIdentity}>
-              <span>
-                Core Anchor used:{" "}
-                {revisionLabel(
-                  data.revisionsById.get(current.core_anchor_revision_id),
+          <section
+            className={styles.alignmentSignal}
+            aria-label="Alignment Signal"
+          >
+            <span className={styles.regionHeading}>
+              <Icon name="agent" size="region" />
+              Alignment Signal
+            </span>
+            <div className={styles.signalCanvas}>
+              <div className={styles.signalLeft}>
+                <div className={styles.signalHeader}>
+                  <AuthorityLabel variant="ai-interpretation" />
+                  <StatusBadge
+                    status={
+                      ATTENTION_BADGE_STATUS[
+                        current.intent_signal.attention_level
+                      ]
+                    }
+                    label={
+                      ATTENTION_LABEL[current.intent_signal.attention_level]
+                    }
+                  />
+                </div>
+                {reassessmentReady && (
+                  <p className={styles.staleness}>Historical assessment</p>
                 )}
-              </span>
-              <span className={styles.assessmentIdentityMeta}>
-                Assessed {new Date(current.created_at).toLocaleString()}
-              </span>
-            </div>
-          )}
-
-          {current === null ? (
-            <HumanAttentionAction
-              shotId={shotId}
-              item={data.item}
-              current={null}
-              versionsById={data.versionsById}
-            />
-          ) : (
-            <>
-              <section
-                className={styles.alignmentSignal}
-                aria-label="Alignment Signal"
-              >
-                <span className={styles.regionHeading}>
-                  <Icon name="agent" size="region" />
-                  Alignment Signal
-                </span>
-                <div className={styles.signalCanvas}>
-                  <div className={styles.signalLeft}>
-                    <div className={styles.signalHeader}>
-                      <AuthorityLabel variant="ai-interpretation" />
-                      <StatusBadge
-                        status={
-                          ATTENTION_BADGE_STATUS[
-                            current.intent_signal.attention_level
-                          ]
-                        }
-                        label={
-                          ATTENTION_LABEL[current.intent_signal.attention_level]
-                        }
-                      />
-                    </div>
-                    {reassessmentReady && (
-                      <p className={styles.staleness}>Historical assessment</p>
-                    )}
-                    <p className={styles.executiveSummary}>
-                      {currentDiagnosisText(
-                        current.assessment_output.executive_summary,
-                        current.assessment_output,
-                      )}
-                    </p>
-                  </div>
-                  <div className={styles.signalRight}>
-                    <span className={styles.signalRightHeading}>
-                      Cross-role signal
-                    </span>
-                    <SignalStrip
-                      items={alignmentSignalStripItems(
-                        current.assessment_output,
-                      )}
-                    />
-                  </div>
-                </div>
-                <p className={styles.advisoryNote}>
-                  Advisory interpretation only; the VFX Supervisor decides
-                  whether to create or revise a Core Anchor.
+                <p className={styles.executiveSummary}>
+                  {currentDiagnosisText(
+                    current.assessment_output.executive_summary,
+                    current.assessment_output,
+                  )}
                 </p>
-              </section>
-
-              <DepartmentExecutionStrip
-                shotId={shotId}
-                overview={data.departmentExecutionOverview}
-              />
-
-              <div className={styles.decisionWorkspace}>
-                <div className={styles.assessmentArea}>
-                  <h2 className={styles.regionHeading}>
-                    <Icon name="review" size="region" />
-                    Current Assessment
-                  </h2>
-                  {(() => {
-                    const output = current.assessment_output;
-                    const revision = data.revisionsById.get(
-                      current.core_anchor_revision_id,
-                    );
-                    const driftRisks = revision?.drift_risks ?? [];
-                    const decisionRelevant = decisionRelevantFindings(output);
-
-                    return (
-                      <>
-                        <div className={styles.decisionRelevant}>
-                          <h3 className={styles.decisionRelevantTitle}>
-                            Most decision-relevant findings
-                          </h3>
-                          {decisionRelevant.length > 0 ? (
-                            <ol className={styles.previewList}>
-                              {decisionRelevant.map((finding, index) => (
-                                // eslint-disable-next-line react/no-array-index-key -- an assessment's findings are an immutable, unindexed array with no id of their own
-                                <li key={index} className={styles.previewItem}>
-                                  <span
-                                    className={styles.previewIndexFocus}
-                                    aria-hidden="true"
-                                  >
-                                    {String(index + 1).padStart(2, "0")}
-                                  </span>
-                                  <div className={styles.previewHead}>
-                                    <p className={styles.previewSummary}>
-                                      {stripGeneratorLabel(finding.summary)}
-                                    </p>
-                                    <span
-                                      className={`${styles.priority} ${PRIORITY_CLASS[finding.priority]}`}
-                                    >
-                                      {finding.priority}
-                                    </span>
-                                  </div>
-                                </li>
-                              ))}
-                            </ol>
-                          ) : (
-                            <p className={styles.previewEmpty}>
-                              No attention-relevant findings in this assessment.
-                            </p>
-                          )}
-                        </div>
-
-                        <details className={styles.disclosure}>
-                          <summary className={styles.disclosureSummary}>
-                            <span className={styles.disclosureLabelClosed}>
-                              View detailed assessment →
-                            </span>
-                            <span className={styles.disclosureLabelOpen}>
-                              Collapse detailed assessment ↑
-                            </span>
-                          </summary>
-                          <div className={styles.disclosureContent}>
-                            <FindingGroup
-                              title="Aligned findings"
-                              findings={output.agreements}
-                            />
-                            <FindingGroup
-                              title="Cross-role tensions"
-                              findings={output.cross_role_tensions}
-                            />
-                            <FindingGroup
-                              title="Local-optimum risks"
-                              findings={output.local_optimum_risks}
-                            />
-                            <FindingGroup
-                              title="Open questions"
-                              findings={output.unresolved_dependencies}
-                            />
-                            <FindingGroup
-                              title="Advisory recommendations"
-                              findings={output.human_coordination_priorities}
-                            />
-                            {driftRisks.length > 0 && (
-                              <section className={styles.findingGroup}>
-                                <h3 className={styles.findingGroupTitle}>
-                                  Drift risks on the active Core Anchor (
-                                  {driftRisks.length})
-                                </h3>
-                                <ul className={styles.plainList}>
-                                  {driftRisks.map((risk) => (
-                                    <li key={risk.id}>{risk.description}</li>
-                                  ))}
-                                </ul>
-                              </section>
-                            )}
-                          </div>
-                        </details>
-                      </>
-                    );
-                  })()}
-                </div>
-
-                <div className={styles.contextInspector}>
-                  <h2 className={styles.regionHeading}>
-                    <Icon name="evidence" size="region" />
-                    Context
-                  </h2>
-                  <div className={styles.inspectorGroup}>
-                    <h3 className={styles.inspectorGroupTitle}>Core Intent</h3>
-                    <p className={styles.inspectorText}>
-                      {revisionLabel(
-                        data.revisionsById.get(current.core_anchor_revision_id),
-                      )}
-                    </p>
-                  </div>
-                  <div className={styles.inspectorGroup}>
-                    <h3 className={styles.inspectorGroupTitle}>
-                      Current Production Context
-                    </h3>
-                    <MetadataRow
-                      items={[
-                        {
-                          label: "Assessed Version",
-                          value: versionLabel(
-                            data.versionsById.get(current.version_id),
-                          ),
-                        },
-                        {
-                          label: "Task",
-                          value:
-                            data.item.relevant_task_name ??
-                            "No Task recorded yet",
-                        },
-                      ]}
-                    />
-                  </div>
-                  <div className={styles.inspectorGroup}>
-                    <h3 className={styles.inspectorGroupTitle}>
-                      Evidence and provenance
-                    </h3>
-                    {(() => {
-                      const evidence: EvidenceReferenceLike[] =
-                        current.assessment_output.shared_intent_read.evidence.map(
-                          (item, index) => ({
-                            source_type: item.source_type,
-                            source_id: item.source_id,
-                            label: `Assessment evidence ${index + 1}`,
-                          }),
-                        );
-                      if (
-                        data.currentRun ||
-                        data.currentSnapshot ||
-                        evidence.length > 0
-                      ) {
-                        return (
-                          <EvidenceProvenanceDrawer
-                            evidence={evidence}
-                            run={data.currentRun ?? null}
-                            snapshot={data.currentSnapshot ?? null}
-                          />
-                        );
-                      }
-                      return (
-                        <p className={styles.empty}>
-                          Detailed Agent provenance is unavailable for this
-                          output.
-                        </p>
-                      );
-                    })()}
-                  </div>
-                </div>
               </div>
+              <div className={styles.signalRight}>
+                <span className={styles.signalRightHeading}>
+                  Cross-role signal
+                </span>
+                <SignalStrip
+                  items={alignmentSignalStripItems(current.assessment_output)}
+                />
+              </div>
+            </div>
+            <p className={styles.advisoryNote}>
+              Advisory interpretation only; the VFX Supervisor decides whether
+              to create or revise a Core Anchor.
+            </p>
+          </section>
 
-              <HumanAttentionAction
-                shotId={shotId}
-                item={data.item}
-                current={current}
-                versionsById={data.versionsById}
-              />
+          <DepartmentExecutionStrip
+            shotId={shotId}
+            overview={data.departmentExecutionOverview}
+          />
 
-              {history.length > 0 && (
-                <section className={styles.historySection}>
-                  <h2 className={styles.historySectionTitle}>
-                    <Icon name="history" size="standard" />
-                    Assessment history
-                  </h2>
-                  <ul className={styles.historyList}>
-                    {history.map((assessment) => (
-                      <li key={assessment.id} className={styles.historyItem}>
-                        <span className={styles.historyTime}>
-                          {new Date(assessment.created_at).toLocaleString()}
+          <div className={styles.decisionWorkspace}>
+            <div className={styles.assessmentArea}>
+              <h2 className={styles.regionHeading}>
+                <Icon name="review" size="region" />
+                Current Assessment
+              </h2>
+              {(() => {
+                const output = current.assessment_output;
+                const revision = data.revisionsById.get(
+                  current.core_anchor_revision_id,
+                );
+                const driftRisks = revision?.drift_risks ?? [];
+                const decisionRelevant = decisionRelevantFindings(output);
+
+                return (
+                  <>
+                    <div className={styles.decisionRelevant}>
+                      <h3 className={styles.decisionRelevantTitle}>
+                        Most decision-relevant findings
+                      </h3>
+                      {decisionRelevant.length > 0 ? (
+                        <ol className={styles.previewList}>
+                          {decisionRelevant.map((finding, index) => (
+                            // eslint-disable-next-line react/no-array-index-key -- an assessment's findings are an immutable, unindexed array with no id of their own
+                            <li key={index} className={styles.previewItem}>
+                              <span
+                                className={styles.previewIndexFocus}
+                                aria-hidden="true"
+                              >
+                                {String(index + 1).padStart(2, "0")}
+                              </span>
+                              <div className={styles.previewHead}>
+                                <p className={styles.previewSummary}>
+                                  {stripGeneratorLabel(finding.summary)}
+                                </p>
+                                <span
+                                  className={`${styles.priority} ${PRIORITY_CLASS[finding.priority]}`}
+                                >
+                                  {finding.priority}
+                                </span>
+                              </div>
+                            </li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <p className={styles.previewEmpty}>
+                          No attention-relevant findings in this assessment.
+                        </p>
+                      )}
+                    </div>
+
+                    <details className={styles.disclosure}>
+                      <summary className={styles.disclosureSummary}>
+                        <span className={styles.disclosureLabelClosed}>
+                          View detailed assessment →
                         </span>
-                        <span className={styles.historySummary}>
-                          {historySummaryText(assessment, data.versionsById)}
+                        <span className={styles.disclosureLabelOpen}>
+                          Collapse detailed assessment ↑
                         </span>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-            </>
+                      </summary>
+                      <div className={styles.disclosureContent}>
+                        <FindingGroup
+                          title="Aligned findings"
+                          findings={output.agreements}
+                        />
+                        <FindingGroup
+                          title="Cross-role tensions"
+                          findings={output.cross_role_tensions}
+                        />
+                        <FindingGroup
+                          title="Local-optimum risks"
+                          findings={output.local_optimum_risks}
+                        />
+                        <FindingGroup
+                          title="Open questions"
+                          findings={output.unresolved_dependencies}
+                        />
+                        <FindingGroup
+                          title="Advisory recommendations"
+                          findings={output.human_coordination_priorities}
+                        />
+                        {driftRisks.length > 0 && (
+                          <section className={styles.findingGroup}>
+                            <h3 className={styles.findingGroupTitle}>
+                              Drift risks on the active Core Anchor (
+                              {driftRisks.length})
+                            </h3>
+                            <ul className={styles.plainList}>
+                              {driftRisks.map((risk) => (
+                                <li key={risk.id}>{risk.description}</li>
+                              ))}
+                            </ul>
+                          </section>
+                        )}
+                      </div>
+                    </details>
+                  </>
+                );
+              })()}
+            </div>
+
+            <div className={styles.contextInspector}>
+              <h2 className={styles.regionHeading}>
+                <Icon name="evidence" size="region" />
+                Context
+              </h2>
+              <div className={styles.inspectorGroup}>
+                <h3 className={styles.inspectorGroupTitle}>Core Intent</h3>
+                <p className={styles.inspectorText}>
+                  {revisionLabel(
+                    data.revisionsById.get(current.core_anchor_revision_id),
+                  )}
+                </p>
+              </div>
+              <div className={styles.inspectorGroup}>
+                <h3 className={styles.inspectorGroupTitle}>
+                  Current Production Context
+                </h3>
+                <MetadataRow
+                  items={[
+                    {
+                      label: "Assessed Version",
+                      value: versionLabel(
+                        data.versionsById.get(current.version_id),
+                      ),
+                    },
+                    {
+                      label: "Task",
+                      value:
+                        data.item.relevant_task_name ?? "No Task recorded yet",
+                    },
+                  ]}
+                />
+              </div>
+              <div className={styles.inspectorGroup}>
+                <h3 className={styles.inspectorGroupTitle}>
+                  Evidence and provenance
+                </h3>
+                {(() => {
+                  const evidence: EvidenceReferenceLike[] =
+                    current.assessment_output.shared_intent_read.evidence.map(
+                      (item, index) => ({
+                        source_type: item.source_type,
+                        source_id: item.source_id,
+                        label: `Assessment evidence ${index + 1}`,
+                      }),
+                    );
+                  if (
+                    data.currentRun ||
+                    data.currentSnapshot ||
+                    evidence.length > 0
+                  ) {
+                    return (
+                      <EvidenceProvenanceDrawer
+                        evidence={evidence}
+                        run={data.currentRun ?? null}
+                        snapshot={data.currentSnapshot ?? null}
+                      />
+                    );
+                  }
+                  return (
+                    <p className={styles.empty}>
+                      Detailed Agent provenance is unavailable for this output.
+                    </p>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+
+          <HumanAttentionAction
+            shotId={shotId}
+            item={data.item}
+            current={current}
+            versionsById={data.versionsById}
+          />
+
+          {history.length > 0 && (
+            <section className={styles.historySection}>
+              <h2 className={styles.historySectionTitle}>
+                <Icon name="history" size="standard" />
+                Assessment history
+              </h2>
+              <ul className={styles.historyList}>
+                {history.map((assessment) => (
+                  <li key={assessment.id} className={styles.historyItem}>
+                    <span className={styles.historyTime}>
+                      {new Date(assessment.created_at).toLocaleString()}
+                    </span>
+                    <span className={styles.historySummary}>
+                      {historySummaryText(assessment, data.versionsById)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
         </>
       )}
-    </VfxShotWorkspaceFrame>
+    </>
   );
 }

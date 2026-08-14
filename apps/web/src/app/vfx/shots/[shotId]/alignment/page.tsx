@@ -1,55 +1,35 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
   loadAlignmentWorkspaceData,
   type AlignmentWorkspaceData,
 } from "@/features/vfx/alignment-workspace/data";
-import { fetchVfxAnchorContextOrNull } from "@/features/vfx/api";
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
-import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
-import { exitRoleView } from "../../../../demo/actions";
 import { AlignmentWorkspacePage } from "./AlignmentWorkspacePage";
 
 /** `/vfx/shots/:shotId/alignment` (Step 7C-3) -- whether the reviewed
- * production work aligns with the active Core Anchor. Same defence-in-
- * depth route guard and honest not-found/unavailable distinction as
- * every other Step 7C Shot route. */
+ * production work aligns with the active Core Anchor. The role gate
+ * itself already ran in `app/vfx/layout.tsx`; this repeats the same
+ * defensive, unreachable-in-practice check purely so `identity` narrows
+ * to non-null for `actorHeaders` (`fetchDepartmentExecutionOverview` is
+ * role-gated server-side). */
 export default async function Page({
   params,
 }: {
   params: Promise<{ shotId: string }>;
 }) {
-  const store = await cookies();
-  if (store.get(DEMO_ROLE_COOKIE)?.value !== "vfx_supervisor") {
+  const { shotId } = await params;
+  const identity = await resolveIdentity();
+  if (identity?.role !== "vfx_supervisor") {
     redirect("/demo");
   }
 
-  const { shotId } = await params;
-
   let data: AlignmentWorkspaceData | null = null;
-  let anchorContext: Awaited<ReturnType<typeof fetchVfxAnchorContextOrNull>> =
-    null;
-  let unavailable = false;
   try {
-    const identity = await resolveIdentity();
-    if (identity === null) redirect("/demo");
-    const headers = actorHeaders(identity);
-    [data, anchorContext] = await Promise.all([
-      loadAlignmentWorkspaceData(shotId, headers),
-      fetchVfxAnchorContextOrNull(shotId, headers),
-    ]);
+    data = await loadAlignmentWorkspaceData(shotId, actorHeaders(identity));
   } catch {
-    unavailable = true;
+    data = null;
   }
 
-  return (
-    <AlignmentWorkspacePage
-      shotId={shotId}
-      data={data}
-      anchorContext={anchorContext}
-      unavailable={unavailable}
-      onExitRole={exitRoleView}
-    />
-  );
+  return <AlignmentWorkspacePage shotId={shotId} data={data} />;
 }

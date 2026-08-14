@@ -9,7 +9,6 @@ import {
   fetchArtistInbox,
 } from "@/features/artist/api";
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
-import { exitRoleView } from "../demo/actions";
 import { ArtistWorkspacePage } from "./ArtistWorkspacePage";
 
 /** The middleware (src/middleware.ts) is the authoritative route
@@ -45,7 +44,6 @@ export default async function Page() {
       inbox={inbox}
       readyTasks={readyTasks}
       waitingTasks={waitingTasks}
-      onExitRole={exitRoleView}
     />
   );
 }

@@ -6,7 +6,6 @@ import type {
 import Link from "next/link";
 
 import {
-  AppShell,
   Breadcrumbs,
   EmptyState,
   ErrorState,
@@ -16,8 +15,7 @@ import {
   Stack,
   SummaryCard,
 } from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
+import { ROLE_LABEL } from "@/lib/demoIdentity";
 import { CgTaskRow } from "./CgTaskRow";
 
 const IMPORTANT_TASK_COUNT = 3;
@@ -32,20 +30,12 @@ const IMPORTANT_TASK_COUNT = 3;
 export function CgWorkspacePage({
   inbox,
   anchorActions,
-  onExitRole,
 }: {
   inbox: CgInboxRead | null;
   anchorActions?: AnchorContextSummaryListRead | null;
-  onExitRole: () => void | Promise<void>;
 }) {
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.cg_supervisor}
-      role={ROLE_LABEL.cg_supervisor}
-      onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.cg_supervisor}
-      currentPath="/cg"
-    >
+    <>
       <Breadcrumbs items={[{ label: "Workspace Home" }]} />
       <PageHeader
         title="Workspace Home"
@@ -68,7 +58,7 @@ export function CgWorkspacePage({
           anchorActions={anchorActions}
         />
       )}
-    </AppShell>
+    </>
   );
 }
 

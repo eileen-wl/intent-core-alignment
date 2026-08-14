@@ -1,0 +1,50 @@
+/* Deliberately `position: absolute` with every inset left `auto`: per
+ * the CSS Flexbox spec, an out-of-flow (absolutely positioned) child is
+ * excluded from flex-item generation entirely, and an abspos element
+ * never contributes to another box's intrinsic/inline width -- so this
+ * can never grow a flex row's item count (`gap` no longer inserts an
+ * extra space for it) or widen an inline-block button when pending
+ * begins. With no explicit inset, the browser falls back to the
+ * element's own "static position" (in this markup, that's the spot
+ * a same-size in-flow node would have occupied, right after the
+ * action's own content) -- so the dot still appears in essentially the
+ * same place as the earlier in-flow version, without requiring every
+ * consumer's own CSS to add a `position: relative` anchor. */
+.pendingDot {
+  position: absolute;
+  width: 0.32rem;
+  height: 0.32rem;
+  margin-left: 0.4rem;
+  background: var(--text-muted);
+  border-radius: 50%;
+  animation: pendingLinkPulse 900ms ease-in-out infinite;
+}
+
+@keyframes pendingLinkPulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pendingDot {
+    animation: none;
+    opacity: 0.6;
+  }
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

@@ -1,7 +1,11 @@
 import Link from "next/link";
 import type { AnchorContextSummaryRead } from "@intent-core/contracts";
 
-import { StatusBadge, type StatusBadgeStatus } from "@/design";
+import {
+  PendingLinkContent,
+  StatusBadge,
+  type StatusBadgeStatus,
+} from "@/design";
 import type { ReviewWorkItem } from "@/features/vfx/review-inbox/workItem";
 import styles from "./WorkItemRow.module.css";
 
@@ -138,6 +142,7 @@ export function WorkItemRow({
       <span className={styles.open} aria-hidden="true">
         {actionLabel} →
       </span>
+      <PendingLinkContent label={item.title} />
     </Link>
   );
 }

@@ -1,6 +1,5 @@
 import Link from "next/link";
 import type {
-  AnchorContextRead,
   ArtistFeedbackTranslation,
   ArtistGuidanceItem,
 } from "@intent-core/contracts";
@@ -8,6 +7,7 @@ import type {
 import {
   AuthorityLabel,
   EmptyState,
+  ErrorState,
   FtrackLinkageBadge,
   Icon,
   MetadataRow,
@@ -16,7 +16,6 @@ import {
 } from "@/design";
 import { getAuthorDisplayText } from "@/lib/authorProvenance";
 import type { CurrentVersionData } from "@/features/artist/current-version/data";
-import { ArtistTaskWorkspaceFrame } from "../ArtistTaskWorkspaceFrame";
 import { GenerateArtistGuidanceButton } from "../GenerateArtistGuidanceButton";
 import { PublishResolvedVersionButton } from "./PublishResolvedVersionButton";
 import styles from "./CurrentVersionPage.module.css";
@@ -179,9 +178,10 @@ function FeedbackTranslationGroup({
  * specific heading pattern. The former "Human Decision and Provenance"
  * section (a bare "Confirmed under {role} authority" / "not exposed in
  * the Artist role view" restatement of Core/Execution Anchor state) is
- * dropped entirely rather than restyled: `ArtistTaskWorkspaceFrame`
- * already renders the shared `AnchorContextLayer` above every tab,
- * including this one, and its Artist-role branch already states the
+ * dropped entirely rather than restyled: the persistent Task workspace
+ * chrome (`app/artist/tasks/[taskId]/layout.tsx`) already renders the
+ * shared `AnchorContextLayer` above every tab, including this one, and
+ * its Artist-role branch already states the
  * same real Core/Execution Anchor identity and state -- concisely, and
  * as the one persistent guardrail rather than a second, page-local
  * copy. Artist still never sees Decision actor/rationale/timestamp
@@ -201,344 +201,329 @@ function FeedbackTranslationGroup({
 export function CurrentVersionPage({
   taskId,
   data,
-  anchorContext,
-  unavailable,
-  onExitRole,
 }: {
   taskId: string;
   data: CurrentVersionData | null;
-  anchorContext?: AnchorContextRead | null;
-  unavailable: boolean;
-  onExitRole: () => void | Promise<void>;
 }) {
+  if (!data) {
+    return (
+      <ErrorState
+        title="This page is unavailable"
+        description="The ICAS service could not be reached. Try refreshing the page."
+      />
+    );
+  }
+
   return (
-    <ArtistTaskWorkspaceFrame
-      item={data?.item ?? null}
-      anchorContext={anchorContext}
-      activeTab="current-version"
-      unavailable={unavailable}
-      onExitRole={onExitRole}
-    >
-      {data && (
-        <>
-          {data.versions.length === 0 ? (
-            <EmptyState
-              title="No Production Version is available"
-              description="A Production Version is required before feedback, Guidance, and cross-role assessment can refer to this Task. It must arrive from the production workflow; there is no local upload action here."
-            />
-          ) : (
-            <div className={styles.grid}>
-              <div className={styles.listColumn}>
-                {/* Work archetype correction: a secondary switcher, not
-                 * a second strongly-weighted object display -- a
-                 * standard-size icon (not the region-size icon Current
-                 * Version's own heading uses below) keeps this
-                 * visually quieter, matching its role as navigation
-                 * into the primary work object rather than a second
-                 * copy of it. */}
-                <h2 className={styles.regionHeadingSecondary}>
-                  <Icon name="version" size="standard" />
-                  Production Versions
-                </h2>
-                {data.canPublishResolvedVersion &&
-                  data.publishableExecutionAnchorRevision && (
-                    <PublishResolvedVersionButton
-                      taskId={taskId}
-                      nextRevisionNumber={
-                        data.publishableExecutionAnchorRevision.revision_number
-                      }
-                    />
-                  )}
-                <div className={styles.list}>
-                  {data.versions.map((version) => {
-                    const isActive = data.selectedVersion?.id === version.id;
-                    return (
-                      <Link
-                        key={version.id}
-                        href={`/artist/tasks/${taskId}/current-version?version=${version.id}`}
-                        className={
-                          isActive
-                            ? `${styles.row} ${styles.rowActive}`
-                            : styles.row
-                        }
-                        aria-current={isActive || undefined}
-                      >
-                        <span
-                          className={`${styles.iconTile} ${styles.iconTileSmall}`}
-                          aria-hidden="true"
-                        >
-                          <Icon name="version" size="standard" />
-                        </span>
-                        <span className={styles.rowBody}>
-                          <span className={styles.rowName}>
-                            {version.name}
-                            {version.version_number
-                              ? ` (v${version.version_number})`
-                              : ""}
-                          </span>
-                          <span className={styles.rowMeta}>
-                            <FtrackLinkageBadge source={version.source} />
-                            <span>
-                              {new Date(version.created_at).toLocaleString()}
-                            </span>
-                          </span>
-                        </span>
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-
-              <div className={styles.detailColumn}>
-                {data.selectedVersion && (
-                  <>
-                    {/* Current Version -- the primary work object. A
-                     * raised object surface (matching the same
-                     * treatment CG Version Review uses for its own
-                     * selected Version), distinct from the working
-                     * regions below it. */}
-                    <section
-                      className={styles.currentVersionSurface}
-                      aria-label="Current Version"
+    <>
+      {data.versions.length === 0 ? (
+        <EmptyState
+          title="No Production Version is available"
+          description="A Production Version is required before feedback, Guidance, and cross-role assessment can refer to this Task. It must arrive from the production workflow; there is no local upload action here."
+        />
+      ) : (
+        <div className={styles.grid}>
+          <div className={styles.listColumn}>
+            {/* Work archetype correction: a secondary switcher, not
+             * a second strongly-weighted object display -- a
+             * standard-size icon (not the region-size icon Current
+             * Version's own heading uses below) keeps this
+             * visually quieter, matching its role as navigation
+             * into the primary work object rather than a second
+             * copy of it. */}
+            <h2 className={styles.regionHeadingSecondary}>
+              <Icon name="version" size="standard" />
+              Production Versions
+            </h2>
+            {data.canPublishResolvedVersion &&
+              data.publishableExecutionAnchorRevision && (
+                <PublishResolvedVersionButton
+                  taskId={taskId}
+                  nextRevisionNumber={
+                    data.publishableExecutionAnchorRevision.revision_number
+                  }
+                />
+              )}
+            <div className={styles.list}>
+              {data.versions.map((version) => {
+                const isActive = data.selectedVersion?.id === version.id;
+                return (
+                  <Link
+                    key={version.id}
+                    href={`/artist/tasks/${taskId}/current-version?version=${version.id}`}
+                    className={
+                      isActive
+                        ? `${styles.row} ${styles.rowActive}`
+                        : styles.row
+                    }
+                    aria-current={isActive || undefined}
+                  >
+                    <span
+                      className={`${styles.iconTile} ${styles.iconTileSmall}`}
+                      aria-hidden="true"
                     >
-                      <h2 className={styles.regionHeading}>
-                        <Icon name="version" size="region" />
-                        Current Version
-                      </h2>
-                      <div className={styles.versionObjectRow}>
-                        <span
-                          className={`${styles.iconTile} ${styles.iconTileLarge}`}
-                          aria-hidden="true"
-                        >
-                          <Icon name="version" size="region" />
+                      <Icon name="version" size="standard" />
+                    </span>
+                    <span className={styles.rowBody}>
+                      <span className={styles.rowName}>
+                        {version.name}
+                        {version.version_number
+                          ? ` (v${version.version_number})`
+                          : ""}
+                      </span>
+                      <span className={styles.rowMeta}>
+                        <FtrackLinkageBadge source={version.source} />
+                        <span>
+                          {new Date(version.created_at).toLocaleString()}
                         </span>
-                        <div className={styles.versionObjectBody}>
-                          <h3 className={styles.detailHeading}>
-                            {data.selectedVersion.name}
-                            {data.selectedVersion.version_number
-                              ? ` (v${data.selectedVersion.version_number})`
-                              : ""}
-                          </h3>
-                          <MetadataRow
-                            items={[
-                              {
-                                label: "Created",
-                                value: `${new Date(data.selectedVersion.created_at).toLocaleString()} · ${getAuthorDisplayText(
-                                  data.selectedVersion,
-                                )}`,
-                              },
-                              {
-                                label: "Source",
-                                value: data.selectedVersion.source,
-                              },
-                              { label: "Task", value: data.item.task_name },
-                              { label: "Shot", value: data.item.shot_name },
-                            ]}
-                          />
-                        </div>
-                      </div>
-                      <VersionMediaPanel media={data.media} />
-                    </section>
+                      </span>
+                    </span>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
 
-                    {/* Feedback -- Human Supervisor input, the
-                     * actionable work input this Version must respond
-                     * to. Reuses the same Review Note object grammar
-                     * already validated in CG Version Review (icon
-                     * tile + content + author/timestamp) -- the same
-                     * real `ReviewNoteRead` object, never called an
-                     * "Agent finding". Ordered, and visually
-                     * outranking, Agent guidance below it. */}
-                    <section
-                      className={styles.section}
-                      aria-label="Supervisor feedback"
+          <div className={styles.detailColumn}>
+            {data.selectedVersion && (
+              <>
+                {/* Current Version -- the primary work object. A
+                 * raised object surface (matching the same
+                 * treatment CG Version Review uses for its own
+                 * selected Version), distinct from the working
+                 * regions below it. */}
+                <section
+                  className={styles.currentVersionSurface}
+                  aria-label="Current Version"
+                >
+                  <h2 className={styles.regionHeading}>
+                    <Icon name="version" size="region" />
+                    Current Version
+                  </h2>
+                  <div className={styles.versionObjectRow}>
+                    <span
+                      className={`${styles.iconTile} ${styles.iconTileLarge}`}
+                      aria-hidden="true"
                     >
-                      <h2 className={styles.regionHeading}>
-                        <Icon name="review-note" size="region" />
-                        Supervisor feedback
-                      </h2>
-                      {data.reviewNotes.length === 0 ? (
-                        <p className={styles.empty}>
-                          No Review Notes have been recorded for this Production
-                          Version yet.
-                        </p>
-                      ) : (
-                        <ul className={styles.noteList}>
-                          {data.reviewNotes.map((note) => (
-                            <li key={note.id} className={styles.note}>
-                              <span
-                                className={`${styles.iconTile} ${styles.iconTileSmall}`}
-                                aria-hidden="true"
-                              >
-                                <Icon name="review-note" size="standard" />
-                              </span>
-                              <div>
-                                <p className={styles.noteContent}>
-                                  {note.content}
-                                </p>
-                                <p className={styles.noteMeta}>
-                                  {getAuthorDisplayText(note)} ·{" "}
-                                  {new Date(note.created_at).toLocaleString()}
-                                </p>
-                              </div>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </section>
-
-                    {/* Artist guidance -- advisory, steel/cool identity,
-                     * never purple, and never a hero. A concise
-                     * work-relevant takeaway (not the long raw
-                     * executive_summary) followed by the real
-                     * structured guidance rows -- that is the "full
-                     * guidance" representation now, not a Signal
-                     * Strip. Historical guidance and the generation
-                     * action live in the same region since both are
-                     * about the same real object. */}
-                    <section
-                      className={styles.section}
-                      aria-label="Artist guidance"
-                    >
-                      <h2 className={styles.regionHeading}>
-                        <Icon name="agent" size="region" />
-                        Artist guidance
-                      </h2>
-                      <AuthorityLabel variant="ai-interpretation" />
-                      {data.currentGuidance ? (
-                        <>
-                          <p className={styles.guidanceTakeaway}>
-                            {buildGuidanceTakeaway(
-                              data.currentGuidance.guidance_output,
-                            )}
-                          </p>
-                          <IterationPriorityGroup
-                            items={
-                              data.currentGuidance.guidance_output
-                                .iteration_priorities
-                            }
-                          />
-                          <FeedbackTranslationGroup
-                            items={
-                              data.currentGuidance.guidance_output
-                                .feedback_translations
-                            }
-                          />
-                        </>
-                      ) : (
-                        <p className={styles.empty}>
-                          {data.executionAnchorRevision
-                            ? `No current Artist guidance has been generated for Execution Anchor R${data.executionAnchorRevision.revision_number} yet.`
-                            : "No Artist guidance has been generated for this Version yet."}
-                        </p>
-                      )}
-                      {data.guidancesWithProvenance.some(
-                        (entry) => !entry.isCurrent,
-                      ) && (
-                        <div className={styles.historicalGuidance}>
-                          <h4 className={styles.subheading}>
-                            Historical guidance
-                          </h4>
-                          <ul className={styles.noteList}>
-                            {data.guidancesWithProvenance
-                              .filter((entry) => !entry.isCurrent)
-                              .map((entry) => (
-                                <li
-                                  key={entry.guidance.id}
-                                  className={styles.note}
-                                >
-                                  <span className={styles.historicalLabel}>
-                                    Historical
-                                  </span>
-                                  <p className={styles.noteMeta}>
-                                    {entry.executionAnchorRevisionNumber !==
-                                    null
-                                      ? `Execution Anchor R${entry.executionAnchorRevisionNumber}`
-                                      : "Execution Anchor revision unavailable"}{" "}
-                                    ·{" "}
-                                    {new Date(
-                                      entry.guidance.created_at,
-                                    ).toLocaleString()}
-                                  </p>
-                                  <p className={styles.noteContent}>
-                                    {stripGeneratorLabel(
-                                      entry.guidance.guidance_output
-                                        .executive_summary,
-                                    )}
-                                  </p>
-                                </li>
-                              ))}
-                          </ul>
-                        </div>
-                      )}
-                      <GenerateArtistGuidanceButton
-                        taskId={taskId}
-                        versionId={data.selectedVersion.id}
-                        disabledReasons={[
-                          ...(data.coreAnchorRevision
-                            ? []
-                            : ["Core Anchor confirmation is required."]),
-                          ...(data.executionAnchorRevision
-                            ? []
-                            : ["Execution Anchor confirmation is required."]),
+                      <Icon name="version" size="region" />
+                    </span>
+                    <div className={styles.versionObjectBody}>
+                      <h3 className={styles.detailHeading}>
+                        {data.selectedVersion.name}
+                        {data.selectedVersion.version_number
+                          ? ` (v${data.selectedVersion.version_number})`
+                          : ""}
+                      </h3>
+                      <MetadataRow
+                        items={[
+                          {
+                            label: "Created",
+                            value: `${new Date(data.selectedVersion.created_at).toLocaleString()} · ${getAuthorDisplayText(
+                              data.selectedVersion,
+                            )}`,
+                          },
+                          {
+                            label: "Source",
+                            value: data.selectedVersion.source,
+                          },
+                          { label: "Task", value: data.item.task_name },
+                          { label: "Shot", value: data.item.shot_name },
                         ]}
-                        label={
-                          data.currentGuidance
-                            ? "Regenerate guidance"
-                            : "Generate guidance"
+                      />
+                    </div>
+                  </div>
+                  <VersionMediaPanel media={data.media} />
+                </section>
+
+                {/* Feedback -- Human Supervisor input, the
+                 * actionable work input this Version must respond
+                 * to. Reuses the same Review Note object grammar
+                 * already validated in CG Version Review (icon
+                 * tile + content + author/timestamp) -- the same
+                 * real `ReviewNoteRead` object, never called an
+                 * "Agent finding". Ordered, and visually
+                 * outranking, Agent guidance below it. */}
+                <section
+                  className={styles.section}
+                  aria-label="Supervisor feedback"
+                >
+                  <h2 className={styles.regionHeading}>
+                    <Icon name="review-note" size="region" />
+                    Supervisor feedback
+                  </h2>
+                  {data.reviewNotes.length === 0 ? (
+                    <p className={styles.empty}>
+                      No Review Notes have been recorded for this Production
+                      Version yet.
+                    </p>
+                  ) : (
+                    <ul className={styles.noteList}>
+                      {data.reviewNotes.map((note) => (
+                        <li key={note.id} className={styles.note}>
+                          <span
+                            className={`${styles.iconTile} ${styles.iconTileSmall}`}
+                            aria-hidden="true"
+                          >
+                            <Icon name="review-note" size="standard" />
+                          </span>
+                          <div>
+                            <p className={styles.noteContent}>{note.content}</p>
+                            <p className={styles.noteMeta}>
+                              {getAuthorDisplayText(note)} ·{" "}
+                              {new Date(note.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+
+                {/* Artist guidance -- advisory, steel/cool identity,
+                 * never purple, and never a hero. A concise
+                 * work-relevant takeaway (not the long raw
+                 * executive_summary) followed by the real
+                 * structured guidance rows -- that is the "full
+                 * guidance" representation now, not a Signal
+                 * Strip. Historical guidance and the generation
+                 * action live in the same region since both are
+                 * about the same real object. */}
+                <section
+                  className={styles.section}
+                  aria-label="Artist guidance"
+                >
+                  <h2 className={styles.regionHeading}>
+                    <Icon name="agent" size="region" />
+                    Artist guidance
+                  </h2>
+                  <AuthorityLabel variant="ai-interpretation" />
+                  {data.currentGuidance ? (
+                    <>
+                      <p className={styles.guidanceTakeaway}>
+                        {buildGuidanceTakeaway(
+                          data.currentGuidance.guidance_output,
+                        )}
+                      </p>
+                      <IterationPriorityGroup
+                        items={
+                          data.currentGuidance.guidance_output
+                            .iteration_priorities
                         }
                       />
-                      <p className={styles.advisoryNote}>
-                        Advisory execution guidance; the Artist may act within
-                        the confirmed boundaries, but cannot edit or confirm
-                        either Anchor or approve the Version.
-                      </p>
-                    </section>
-
-                    {/* Related context -- real counts only, no
-                     * dashboard signal matrix, quiet secondary
-                     * treatment. Full detail on each event already
-                     * lives in Feedback History, reachable from the
-                     * tab above; no second link is added here since
-                     * that destination is already one click away. */}
-                    <div className={styles.secondaryContext}>
-                      <span className={styles.secondaryContextLabel}>
-                        Related context
-                      </span>
-                      {data.cgSupervisorReviews.length === 0 ? (
-                        <p className={styles.empty}>
-                          No Agent Execution Review has been generated for the
-                          active Execution Anchor yet.
-                        </p>
-                      ) : (
-                        <p className={styles.contextText}>
-                          {data.cgSupervisorReviews.length} Agent{" "}
-                          {data.cgSupervisorReviews.length === 1
-                            ? "review"
-                            : "reviews"}{" "}
-                          recorded.
-                        </p>
-                      )}
-                      {data.crossRoleAssessments.length === 0 ? (
-                        <p className={styles.empty}>
-                          No Cross-role Assessment involves this Version yet.
-                        </p>
-                      ) : (
-                        <p className={styles.contextText}>
-                          {data.crossRoleAssessments.length} Cross-role{" "}
-                          {data.crossRoleAssessments.length === 1
-                            ? "Assessment"
-                            : "Assessments"}{" "}
-                          recorded.
-                        </p>
-                      )}
+                      <FeedbackTranslationGroup
+                        items={
+                          data.currentGuidance.guidance_output
+                            .feedback_translations
+                        }
+                      />
+                    </>
+                  ) : (
+                    <p className={styles.empty}>
+                      {data.executionAnchorRevision
+                        ? `No current Artist guidance has been generated for Execution Anchor R${data.executionAnchorRevision.revision_number} yet.`
+                        : "No Artist guidance has been generated for this Version yet."}
+                    </p>
+                  )}
+                  {data.guidancesWithProvenance.some(
+                    (entry) => !entry.isCurrent,
+                  ) && (
+                    <div className={styles.historicalGuidance}>
+                      <h4 className={styles.subheading}>Historical guidance</h4>
+                      <ul className={styles.noteList}>
+                        {data.guidancesWithProvenance
+                          .filter((entry) => !entry.isCurrent)
+                          .map((entry) => (
+                            <li key={entry.guidance.id} className={styles.note}>
+                              <span className={styles.historicalLabel}>
+                                Historical
+                              </span>
+                              <p className={styles.noteMeta}>
+                                {entry.executionAnchorRevisionNumber !== null
+                                  ? `Execution Anchor R${entry.executionAnchorRevisionNumber}`
+                                  : "Execution Anchor revision unavailable"}{" "}
+                                ·{" "}
+                                {new Date(
+                                  entry.guidance.created_at,
+                                ).toLocaleString()}
+                              </p>
+                              <p className={styles.noteContent}>
+                                {stripGeneratorLabel(
+                                  entry.guidance.guidance_output
+                                    .executive_summary,
+                                )}
+                              </p>
+                            </li>
+                          ))}
+                      </ul>
                     </div>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </>
+                  )}
+                  <GenerateArtistGuidanceButton
+                    taskId={taskId}
+                    versionId={data.selectedVersion.id}
+                    disabledReasons={[
+                      ...(data.coreAnchorRevision
+                        ? []
+                        : ["Core Anchor confirmation is required."]),
+                      ...(data.executionAnchorRevision
+                        ? []
+                        : ["Execution Anchor confirmation is required."]),
+                    ]}
+                    label={
+                      data.currentGuidance
+                        ? "Regenerate guidance"
+                        : "Generate guidance"
+                    }
+                  />
+                  <p className={styles.advisoryNote}>
+                    Advisory execution guidance; the Artist may act within the
+                    confirmed boundaries, but cannot edit or confirm either
+                    Anchor or approve the Version.
+                  </p>
+                </section>
+
+                {/* Related context -- real counts only, no
+                 * dashboard signal matrix, quiet secondary
+                 * treatment. Full detail on each event already
+                 * lives in Feedback History, reachable from the
+                 * tab above; no second link is added here since
+                 * that destination is already one click away. */}
+                <div className={styles.secondaryContext}>
+                  <span className={styles.secondaryContextLabel}>
+                    Related context
+                  </span>
+                  {data.cgSupervisorReviews.length === 0 ? (
+                    <p className={styles.empty}>
+                      No Agent Execution Review has been generated for the
+                      active Execution Anchor yet.
+                    </p>
+                  ) : (
+                    <p className={styles.contextText}>
+                      {data.cgSupervisorReviews.length} Agent{" "}
+                      {data.cgSupervisorReviews.length === 1
+                        ? "review"
+                        : "reviews"}{" "}
+                      recorded.
+                    </p>
+                  )}
+                  {data.crossRoleAssessments.length === 0 ? (
+                    <p className={styles.empty}>
+                      No Cross-role Assessment involves this Version yet.
+                    </p>
+                  ) : (
+                    <p className={styles.contextText}>
+                      {data.crossRoleAssessments.length} Cross-role{" "}
+                      {data.crossRoleAssessments.length === 1
+                        ? "Assessment"
+                        : "Assessments"}{" "}
+                      recorded.
+                    </p>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       )}
-    </ArtistTaskWorkspaceFrame>
+    </>
   );
 }

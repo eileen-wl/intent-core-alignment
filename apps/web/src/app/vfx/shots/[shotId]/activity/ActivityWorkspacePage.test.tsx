@@ -3,7 +3,7 @@ import type {
   VfxInboxItemRead,
 } from "@intent-core/contracts";
 import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import type { ActivityWorkspaceData } from "@/features/vfx/activity-workspace/data";
 import { ActivityWorkspacePage } from "./ActivityWorkspacePage";
@@ -78,54 +78,15 @@ function data(
 }
 
 describe("ActivityWorkspacePage", () => {
-  it("renders Project > Shot > Activity breadcrumbs and all five real Context Tabs, Activity active", () => {
-    render(
-      <ActivityWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByRole("link", { name: "D1 Demo Project" }),
-    ).toHaveAttribute("href", "/vfx/shots");
-    for (const [label, href] of [
-      ["Overview", "/vfx/shots/s1"],
-      ["Intent", "/vfx/shots/s1/intent"],
-      ["Versions", "/vfx/shots/s1/versions"],
-      ["Alignment", "/vfx/shots/s1/alignment"],
-    ] as const) {
-      expect(screen.getByRole("link", { name: label })).toHaveAttribute(
-        "href",
-        href,
-      );
-    }
-    expect(screen.getByRole("link", { name: "Activity" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
-  it("shows an honest unavailable state when the API could not be reached", () => {
-    render(
-      <ActivityWorkspacePage
-        shotId="s1"
-        data={null}
-        unavailable
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("This Shot is unavailable")).toBeVisible();
+  it("shows an honest unavailable state when the page-specific data failed to load", () => {
+    render(<ActivityWorkspacePage data={null} />);
+    expect(screen.getByText("This page is unavailable")).toBeVisible();
   });
 
   it("shows the honest empty state when no activity has ever been recorded", () => {
     render(
       <ActivityWorkspacePage
-        shotId="s1"
         data={data({ activity: { shot_id: "s1", events: [] } })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -150,10 +111,7 @@ describe("ActivityWorkspacePage", () => {
     ];
     render(
       <ActivityWorkspacePage
-        shotId="s1"
         data={data({ activity: { shot_id: "s1", events } })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     const timeline = screen.getByRole("list", {
@@ -167,14 +125,7 @@ describe("ActivityWorkspacePage", () => {
   });
 
   it("shows actor/time/object links for each event", () => {
-    render(
-      <ActivityWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<ActivityWorkspacePage data={data()} />);
     expect(screen.getByText("vfx_supervisor")).toBeVisible();
     expect(screen.getByText("Revision 1 draft created")).toBeVisible();
     expect(screen.getByRole("link", { name: "Open →" })).toHaveAttribute(
@@ -186,7 +137,6 @@ describe("ActivityWorkspacePage", () => {
   it("shows real Human Decisions in the Activity timeline", () => {
     render(
       <ActivityWorkspacePage
-        shotId="s1"
         data={data({
           activity: {
             shot_id: "s1",
@@ -201,8 +151,6 @@ describe("ActivityWorkspacePage", () => {
             ],
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Core Anchor confirmed")).toBeVisible();
@@ -214,7 +162,6 @@ describe("ActivityWorkspacePage", () => {
   it("shows a separate Decision recorded event, distinct from and alongside Core Anchor confirmed, linked to Intent", () => {
     render(
       <ActivityWorkspacePage
-        shotId="s1"
         data={data({
           activity: {
             shot_id: "s1",
@@ -241,8 +188,6 @@ describe("ActivityWorkspacePage", () => {
             ],
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Core Anchor confirmed")).toBeVisible();
@@ -262,7 +207,6 @@ describe("ActivityWorkspacePage", () => {
   it("still renders the Open action for an event with no actor (the case that previously broke right-alignment)", () => {
     render(
       <ActivityWorkspacePage
-        shotId="s1"
         data={data({
           activity: {
             shot_id: "s1",
@@ -278,8 +222,6 @@ describe("ActivityWorkspacePage", () => {
             ],
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     // No actor text renders (honestly absent) -- this is exactly the
@@ -295,7 +237,6 @@ describe("ActivityWorkspacePage", () => {
   it("routes a Production Version event to Versions and an Alignment event to Alignment", () => {
     render(
       <ActivityWorkspacePage
-        shotId="s1"
         data={data({
           activity: {
             shot_id: "s1",
@@ -318,8 +259,6 @@ describe("ActivityWorkspacePage", () => {
             ],
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     const links = screen.getAllByRole("link", { name: "Open →" });

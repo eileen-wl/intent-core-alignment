@@ -7,15 +7,7 @@ import type {
   ArtistInboxRead,
 } from "@intent-core/contracts";
 
-import {
-  AppShell,
-  Breadcrumbs,
-  EmptyState,
-  ErrorState,
-  PageHeader,
-} from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
+import { Breadcrumbs, EmptyState, ErrorState, PageHeader } from "@/design";
 import { guidanceStateLabel } from "../artistWording";
 import { ArtistTaskListRow } from "./ArtistTaskListRow";
 import styles from "./TasksListPage.module.css";
@@ -39,20 +31,12 @@ const GUIDANCE_STATES: ArtistInboxItemRead["guidance_state"][] = [
 export function TasksListPage({
   inbox,
   anchorContexts = {},
-  onExitRole,
 }: {
   inbox: ArtistInboxRead | null;
   anchorContexts?: Record<string, AnchorContextSummaryRead | null>;
-  onExitRole: () => void | Promise<void>;
 }) {
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.artist}
-      role={ROLE_LABEL.artist}
-      onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.artist}
-      currentPath="/artist/tasks"
-    >
+    <>
       <Breadcrumbs items={[{ label: "Tasks" }]} />
       <PageHeader title="Tasks" description="Browse and open any Task." />
 
@@ -69,7 +53,7 @@ export function TasksListPage({
       ) : (
         <TasksListContent items={inbox.items} anchorContexts={anchorContexts} />
       )}
-    </AppShell>
+    </>
   );
 }
 

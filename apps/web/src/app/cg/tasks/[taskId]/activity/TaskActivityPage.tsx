@@ -1,12 +1,8 @@
 import Link from "next/link";
-import type {
-  AnchorContextRead,
-  TaskActivityEventType,
-} from "@intent-core/contracts";
+import type { TaskActivityEventType } from "@intent-core/contracts";
 
-import { EmptyState } from "@/design";
+import { EmptyState, ErrorState } from "@/design";
 import type { TaskActivityWorkspaceData } from "@/features/cg/activity-workspace/data";
-import { CgTaskWorkspaceFrame } from "../CgTaskWorkspaceFrame";
 import styles from "./TaskActivityPage.module.css";
 
 const EVENT_TYPE_LABEL: Record<TaskActivityEventType, string> = {
@@ -30,57 +26,45 @@ const EVENT_TYPE_LABEL: Record<TaskActivityEventType, string> = {
  * layout, including the right-aligned "Open ->" action on every row. */
 export function TaskActivityPage({
   data,
-  anchorContext,
-  unavailable,
-  onExitRole,
 }: {
-  taskId: string;
   data: TaskActivityWorkspaceData | null;
-  anchorContext?: AnchorContextRead | null;
-  unavailable: boolean;
-  onExitRole: () => void | Promise<void>;
 }) {
-  return (
-    <CgTaskWorkspaceFrame
-      item={data?.item ?? null}
-      anchorContext={anchorContext}
-      activeTab="activity"
-      unavailable={unavailable}
-      onExitRole={onExitRole}
-    >
-      {data && (
-        <>
-          {data.activity.events.length === 0 ? (
-            <EmptyState title="No recorded activity exists for this Task yet." />
-          ) : (
-            <ol className={styles.timeline} aria-label="Task activity timeline">
-              {data.activity.events.map((event) => (
-                <li key={event.id} className={styles.event}>
-                  <div className={styles.eventMain}>
-                    <span className={styles.eventType}>
-                      {EVENT_TYPE_LABEL[event.event_type]}
-                    </span>
-                    <span className={styles.eventTime}>
-                      {new Date(event.occurred_at).toLocaleString()}
-                    </span>
-                  </div>
-                  <p className={styles.eventSummary}>{event.summary}</p>
-                  <div className={styles.eventFooter}>
-                    {(event.actor_human_role || event.actor_kind) && (
-                      <span className={styles.eventActor}>
-                        {event.actor_human_role ?? event.actor_kind}
-                      </span>
-                    )}
-                    <Link href={event.route} className={styles.eventLink}>
-                      Open →
-                    </Link>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-        </>
-      )}
-    </CgTaskWorkspaceFrame>
+  if (!data) {
+    return (
+      <ErrorState
+        title="This page is unavailable"
+        description="The ICAS service could not be reached. Try refreshing the page."
+      />
+    );
+  }
+
+  return data.activity.events.length === 0 ? (
+    <EmptyState title="No recorded activity exists for this Task yet." />
+  ) : (
+    <ol className={styles.timeline} aria-label="Task activity timeline">
+      {data.activity.events.map((event) => (
+        <li key={event.id} className={styles.event}>
+          <div className={styles.eventMain}>
+            <span className={styles.eventType}>
+              {EVENT_TYPE_LABEL[event.event_type]}
+            </span>
+            <span className={styles.eventTime}>
+              {new Date(event.occurred_at).toLocaleString()}
+            </span>
+          </div>
+          <p className={styles.eventSummary}>{event.summary}</p>
+          <div className={styles.eventFooter}>
+            {(event.actor_human_role || event.actor_kind) && (
+              <span className={styles.eventActor}>
+                {event.actor_human_role ?? event.actor_kind}
+              </span>
+            )}
+            <Link href={event.route} className={styles.eventLink}>
+              Open →
+            </Link>
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }

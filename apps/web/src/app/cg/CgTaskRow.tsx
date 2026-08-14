@@ -4,7 +4,11 @@ import type {
 } from "@intent-core/contracts";
 import Link from "next/link";
 
-import { AnchorContextSummary, FtrackLinkageBadge } from "@/design";
+import {
+  AnchorContextSummary,
+  FtrackLinkageBadge,
+  PendingLinkContent,
+} from "@/design";
 import { versionDisplayText } from "./cgWording";
 import styles from "./CgTaskRow.module.css";
 
@@ -43,6 +47,7 @@ export function CgTaskRow({
       <span className={styles.open} aria-hidden="true">
         {anchorContext?.next_action.action_label ?? "Open Task"} →
       </span>
+      <PendingLinkContent label={item.task_name} />
     </Link>
   );
 }

@@ -182,55 +182,20 @@ function data(
 }
 
 describe("VersionReviewPage", () => {
-  it("renders Project > Shot > Task > Version Review breadcrumbs, tab active", () => {
-    render(
-      <VersionReviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByRole("link", { name: "Version Review" }),
-    ).toHaveAttribute("aria-current", "page");
-  });
-
-  it("shows an honest unavailable state when the API could not be reached", () => {
-    render(
-      <VersionReviewPage
-        taskId="t1"
-        data={null}
-        unavailable
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("This Task is unavailable")).toBeVisible();
+  it("shows an honest unavailable state when the page-specific data failed to load", () => {
+    render(<VersionReviewPage taskId="t1" data={null} />);
+    expect(screen.getByText("This page is unavailable")).toBeVisible();
   });
 
   it("shows the honest empty state when no Production Version exists for this Task's Shot", () => {
-    render(
-      <VersionReviewPage
-        taskId="t1"
-        data={data({ versions: [] })}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<VersionReviewPage taskId="t1" data={data({ versions: [] })} />);
     expect(
       screen.getByText("No Production Version is available"),
     ).toBeVisible();
   });
 
   it("renders real Production Versions, never confusing them with a Core/Execution Anchor Revision", () => {
-    render(
-      <VersionReviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<VersionReviewPage taskId="t1" data={data()} />);
     expect(
       screen.getByRole("button", { name: /SH010_v001 \(v1\)/ }),
     ).toBeVisible();
@@ -241,14 +206,7 @@ describe("VersionReviewPage", () => {
   });
 
   it("shows the selected Version's real Review Notes", () => {
-    render(
-      <VersionReviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<VersionReviewPage taskId="t1" data={data()} />);
     expect(screen.getByText("Contrast reads slightly hot.")).toBeVisible();
   });
 
@@ -275,8 +233,6 @@ describe("VersionReviewPage", () => {
             },
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.queryByText("Note on v1 only")).not.toBeInTheDocument();
@@ -285,14 +241,7 @@ describe("VersionReviewPage", () => {
   });
 
   it("shows the selected Version as the review object with its real name, department/Task/Shot context, and honest review state (Review Workspace pass)", () => {
-    render(
-      <VersionReviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<VersionReviewPage taskId="t1" data={data()} />);
     const versionRegion = screen.getByRole("region", {
       name: "Version under review",
     });
@@ -331,8 +280,6 @@ describe("VersionReviewPage", () => {
             { version: versionB, reviewNotes: [] },
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     // Default selection is the first entry in `versions` (oldest-first
@@ -372,8 +319,6 @@ describe("VersionReviewPage", () => {
             review({ execution_anchor_revision_id: "ea1" }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Agent review current")).toBeVisible();
@@ -388,22 +333,13 @@ describe("VersionReviewPage", () => {
             review({ execution_anchor_revision_id: "ea1" }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Agent review outdated")).toBeVisible();
   });
 
   it("groups Production Evidence and the Agent Review Summary as clearly separate regions, and shows an honest Human Response state without manufacturing a Decision (Review Workspace pass)", () => {
-    render(
-      <VersionReviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<VersionReviewPage taskId="t1" data={data()} />);
     const evidenceRegion = screen.getByRole("region", {
       name: "Production Evidence",
     });
@@ -434,8 +370,6 @@ describe("VersionReviewPage", () => {
       <VersionReviewPage
         taskId="t1"
         data={data({ activeExecutionRevision })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     const evidenceRegion = screen.getByRole("region", {
@@ -481,8 +415,6 @@ describe("VersionReviewPage", () => {
           activeExecutionRevision,
           cgSupervisorReviews: [review()],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -494,14 +426,7 @@ describe("VersionReviewPage", () => {
   });
 
   it("honestly shows no Agent Execution Review has been generated yet", () => {
-    render(
-      <VersionReviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<VersionReviewPage taskId="t1" data={data()} />);
     expect(
       screen.getByText(
         "No Execution Review has been generated for this selected Version yet.",
@@ -535,8 +460,6 @@ describe("VersionReviewPage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -582,8 +505,6 @@ describe("VersionReviewPage", () => {
           activeExecutionRevision,
           cgSupervisorReviews: [review()],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -622,8 +543,6 @@ describe("VersionReviewPage", () => {
           activeExecutionRevision,
           cgSupervisorReviews: [review()],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     fireEvent.click(screen.getByText("View detailed Agent review →"));
@@ -675,8 +594,6 @@ describe("VersionReviewPage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     // The current review's own structured takeaway (1 real technical
@@ -715,8 +632,6 @@ describe("VersionReviewPage", () => {
             },
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText(/Source author: Jamie Lin/)).toBeVisible();
@@ -743,8 +658,6 @@ describe("VersionReviewPage", () => {
             },
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText(/^system ·/)).toBeVisible();
@@ -784,8 +697,6 @@ describe("VersionReviewPage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -846,8 +757,6 @@ describe("VersionReviewPage", () => {
             { version: versionB, reviewNotes: [] },
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -888,14 +797,7 @@ describe("VersionReviewPage", () => {
         },
       });
 
-      render(
-        <VersionReviewPage
-          taskId="t1"
-          data={data()}
-          unavailable={false}
-          onExitRole={vi.fn()}
-        />,
-      );
+      render(<VersionReviewPage taskId="t1" data={data()} />);
 
       expect(resolveVersionMediaAction).toHaveBeenCalledWith("t1", "v1");
       await waitFor(() => {
@@ -929,14 +831,7 @@ describe("VersionReviewPage", () => {
         },
       });
 
-      render(
-        <VersionReviewPage
-          taskId="t1"
-          data={data()}
-          unavailable={false}
-          onExitRole={vi.fn()}
-        />,
-      );
+      render(<VersionReviewPage taskId="t1" data={data()} />);
 
       await waitFor(() => expect(document.querySelector("img")).toBeTruthy());
 
@@ -956,14 +851,7 @@ describe("VersionReviewPage", () => {
         message: "The ICAS service is unavailable.",
       });
 
-      render(
-        <VersionReviewPage
-          taskId="t1"
-          data={data()}
-          unavailable={false}
-          onExitRole={vi.fn()}
-        />,
-      );
+      render(<VersionReviewPage taskId="t1" data={data()} />);
 
       await waitFor(() => {
         expect(screen.getByRole("alert")).toHaveTextContent(
@@ -992,14 +880,7 @@ describe("VersionReviewPage", () => {
         },
       });
 
-      render(
-        <VersionReviewPage
-          taskId="t1"
-          data={data()}
-          unavailable={false}
-          onExitRole={vi.fn()}
-        />,
-      );
+      render(<VersionReviewPage taskId="t1" data={data()} />);
 
       await waitFor(() => expect(document.querySelector("video")).toBeTruthy());
       expect(

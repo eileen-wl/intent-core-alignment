@@ -3,7 +3,7 @@ import type {
   ArtistInboxItemRead,
 } from "@intent-core/contracts";
 import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import type { FeedbackHistoryData } from "@/features/artist/feedback-history/data";
 import { FeedbackHistoryPage } from "./FeedbackHistoryPage";
@@ -77,53 +77,15 @@ function data(
 }
 
 describe("FeedbackHistoryPage", () => {
-  it("renders Project > Shot > Task > Feedback History breadcrumbs, tab active", () => {
-    render(
-      <FeedbackHistoryPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByRole("link", { name: "Feedback History" }),
-    ).toHaveAttribute("aria-current", "page");
-  });
-
-  it("does not appear as its own tab labeled Activity", () => {
-    render(
-      <FeedbackHistoryPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.queryByRole("link", { name: "Activity" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("shows an honest unavailable state when the API could not be reached", () => {
-    render(
-      <FeedbackHistoryPage
-        taskId="t1"
-        data={null}
-        unavailable
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("This Task is unavailable")).toBeVisible();
+  it("shows an honest unavailable state when the page-specific data failed to load", () => {
+    render(<FeedbackHistoryPage data={null} />);
+    expect(screen.getByText("This page is unavailable")).toBeVisible();
   });
 
   it("shows the honest empty state when no feedback has ever been recorded", () => {
     render(
       <FeedbackHistoryPage
-        taskId="t1"
         data={data({ history: { task_id: "t1", events: [] } })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -148,10 +110,7 @@ describe("FeedbackHistoryPage", () => {
     ];
     render(
       <FeedbackHistoryPage
-        taskId="t1"
         data={data({ history: { task_id: "t1", events } })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     const timeline = screen.getByRole("list", {
@@ -167,7 +126,6 @@ describe("FeedbackHistoryPage", () => {
   it("routes a Review Note event to Current Version and a dependency event to Task Overview", () => {
     render(
       <FeedbackHistoryPage
-        taskId="t1"
         data={data({
           history: {
             task_id: "t1",
@@ -190,8 +148,6 @@ describe("FeedbackHistoryPage", () => {
             ],
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     const links = screen.getAllByRole("link", { name: "Open →" });
@@ -234,10 +190,7 @@ describe("FeedbackHistoryPage", () => {
     ];
     render(
       <FeedbackHistoryPage
-        taskId="t1"
         data={data({ history: { task_id: "t1", events } })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     const timeline = screen.getByRole("list", {
@@ -269,7 +222,6 @@ describe("FeedbackHistoryPage", () => {
   it("formats a human actor's role as a human-readable label, never the raw enum (Step 9B-2 correction)", () => {
     render(
       <FeedbackHistoryPage
-        taskId="t1"
         data={data({
           history: {
             task_id: "t1",
@@ -281,8 +233,6 @@ describe("FeedbackHistoryPage", () => {
             ],
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("CG Supervisor")).toBeVisible();
@@ -292,7 +242,6 @@ describe("FeedbackHistoryPage", () => {
   it("composes a human-readable Execution Anchor confirmation description from structured fields, never the raw enum embedded in the server summary (Step 9B-2 correction)", () => {
     render(
       <FeedbackHistoryPage
-        taskId="t1"
         data={data({
           history: {
             task_id: "t1",
@@ -317,8 +266,6 @@ describe("FeedbackHistoryPage", () => {
             ],
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -340,14 +287,7 @@ describe("FeedbackHistoryPage", () => {
   });
 
   it("does not fabricate a read or resolved state anywhere on the page", () => {
-    render(
-      <FeedbackHistoryPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<FeedbackHistoryPage data={data()} />);
     expect(screen.queryByText(/\bread\b/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/\bresolved\b/i)).not.toBeInTheDocument();
   });

@@ -1,7 +1,7 @@
 import type { VfxInboxItemRead, VfxInboxRead } from "@intent-core/contracts";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { ShotsListPage } from "./ShotsListPage";
 
@@ -53,21 +53,13 @@ function buildInbox(items: VfxInboxItemRead[]): VfxInboxRead {
 }
 
 describe("ShotsListPage", () => {
-  it("marks Shots current in the sidebar", () => {
-    render(<ShotsListPage inbox={buildInbox([])} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "Shots" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
   it("shows an honest error state when the Inbox failed to load", () => {
-    render(<ShotsListPage inbox={null} onExitRole={vi.fn()} />);
+    render(<ShotsListPage inbox={null} />);
     expect(screen.getByText("Shots is unavailable")).toBeVisible();
   });
 
   it("shows an honest empty state when there are no Shots at all", () => {
-    render(<ShotsListPage inbox={buildInbox([])} onExitRole={vi.fn()} />);
+    render(<ShotsListPage inbox={buildInbox([])} />);
     expect(screen.getByText("No Shots exist yet")).toBeVisible();
   });
 
@@ -83,7 +75,6 @@ describe("ShotsListPage", () => {
             relevant_task_id: null,
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -109,7 +100,6 @@ describe("ShotsListPage", () => {
             shot_name: "Shot B",
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Showing 2 of 2 Shots")).toBeVisible();
@@ -137,7 +127,6 @@ describe("ShotsListPage", () => {
             core_anchor_state: "none",
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -155,7 +144,6 @@ describe("ShotsListPage", () => {
         inbox={buildInbox([
           buildItem({ shot_id: "s1", project_name: "D1 Demo Project" }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     const projectSelect = screen.getByLabelText("Project");
@@ -168,10 +156,7 @@ describe("ShotsListPage", () => {
 
   it("opening a row goes to the Shot's own Overview", () => {
     render(
-      <ShotsListPage
-        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
-        onExitRole={vi.fn()}
-      />,
+      <ShotsListPage inbox={buildInbox([buildItem({ shot_id: "s1" })])} />,
     );
     const links = screen.getAllByRole("link");
     expect(

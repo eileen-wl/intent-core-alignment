@@ -40,7 +40,7 @@
   margin-left: 0.3rem;
 }
 
-.button:hover {
+.button:hover:not(:disabled) {
   background: var(--accent-agent-surface);
   border-color: var(--accent-agent-border);
   box-shadow: var(--shadow-sm);
@@ -56,7 +56,7 @@
   box-shadow: var(--shadow-md);
 }
 
-.primaryButton:hover {
+.primaryButton:hover:not(:disabled) {
   background: var(--accent-agent-text);
   border-color: var(--accent-agent-text);
   box-shadow: var(--shadow-md);
@@ -66,6 +66,13 @@
 .button:active,
 .primaryButton:active {
   transform: translateY(0);
+}
+
+.button:disabled,
+.primaryButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 @media (max-width: 720px) {

@@ -1,5 +1,10 @@
 import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+let mockPathname = "/vfx/shots/s1";
+vi.mock("next/navigation", () => ({
+  usePathname: () => mockPathname,
+}));
 
 import { ContextTabs } from "./ContextTabs";
 
@@ -15,7 +20,8 @@ const TABS = [
 
 describe("ContextTabs", () => {
   it("renders every tab as a route-backed link", () => {
-    render(<ContextTabs tabs={TABS} activeTabId="overview" />);
+    mockPathname = "/vfx/shots/s1";
+    render(<ContextTabs tabs={TABS} />);
     for (const tab of TABS) {
       expect(screen.getByRole("link", { name: tab.label })).toHaveAttribute(
         "href",
@@ -24,8 +30,9 @@ describe("ContextTabs", () => {
     }
   });
 
-  it("marks only the active tab as current", () => {
-    render(<ContextTabs tabs={TABS} activeTabId="intent" />);
+  it("marks only the active tab as current, derived from the real pathname", () => {
+    mockPathname = "/vfx/shots/s1/intent";
+    render(<ContextTabs tabs={TABS} />);
     expect(screen.getByRole("link", { name: "Intent" })).toHaveAttribute(
       "aria-current",
       "page",
@@ -39,11 +46,13 @@ describe("ContextTabs", () => {
   });
 
   it("exposes an accessible section navigation landmark", () => {
-    render(<ContextTabs tabs={TABS} activeTabId="overview" />);
+    mockPathname = "/vfx/shots/s1";
+    render(<ContextTabs tabs={TABS} />);
     expect(screen.getByRole("navigation", { name: "Section" })).toBeVisible();
   });
 
   it("renders an unimplemented tab as a disabled, non-navigable 'Upcoming' placeholder", () => {
+    mockPathname = "/vfx/shots/s1";
     const tabs = [
       ...TABS,
       {
@@ -53,7 +62,7 @@ describe("ContextTabs", () => {
         implemented: false,
       },
     ];
-    render(<ContextTabs tabs={tabs} activeTabId="overview" />);
+    render(<ContextTabs tabs={tabs} />);
     expect(
       screen.queryByRole("link", { name: "Activity" }),
     ).not.toBeInTheDocument();

@@ -9,7 +9,6 @@ import {
   fetchArtistInbox,
 } from "@/features/artist/api";
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
-import { exitRoleView } from "../../demo/actions";
 import { TasksListPage } from "./TasksListPage";
 
 export default async function Page() {
@@ -33,11 +32,5 @@ export default async function Page() {
     inbox = null;
   }
 
-  return (
-    <TasksListPage
-      inbox={inbox}
-      anchorContexts={anchorContexts}
-      onExitRole={exitRoleView}
-    />
-  );
+  return <TasksListPage inbox={inbox} anchorContexts={anchorContexts} />;
 }

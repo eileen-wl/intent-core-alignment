@@ -38,3 +38,21 @@ export function versionDisplayText(item: ArtistInboxItemRead): string {
     ? `${item.latest_version_name} (v${item.latest_version_number})`
     : item.latest_version_name;
 }
+
+/** Mirrors `app/cg/cgWording.ts`'s `dependencyCountLabel` exactly --
+ * same real `open_dependency_count` shape, same grammar. */
+export function dependencyCountLabel(count: number): string {
+  if (count === 0) return "No open dependencies";
+  return `${count} open ${count === 1 ? "dependency" : "dependencies"}`;
+}
+
+/** `open_review_note_count` is presence-derived server-side (an
+ * existence check, `1` if any real Review Note exists on the latest
+ * Version, never a true count of every one) -- "recorded" (not
+ * "unread": no read/unread tracking exists anywhere in the Review Note
+ * domain model) stays accurate whether the count is exactly 1 today or
+ * a real multi-note count in a future backend revision. */
+export function reviewNoteCountLabel(count: number): string {
+  if (count === 0) return "No Review Notes recorded";
+  return `${count} Review ${count === 1 ? "Note" : "Notes"} recorded`;
+}

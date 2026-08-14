@@ -1,6 +1,10 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/vfx",
+}));
+
 import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import { AppShell } from "./AppShell";
 
@@ -16,7 +20,6 @@ describe("AppShell", () => {
         role="VFX Supervisor"
         onExitRole={vi.fn()}
         sidebarItems={ROLE_SIDEBAR_ITEMS.vfx_supervisor}
-        currentPath="/vfx"
       >
         <h1>Workspace Home</h1>
       </AppShell>,
@@ -42,7 +45,6 @@ describe("AppShell", () => {
         role="VFX Supervisor"
         onExitRole={vi.fn()}
         sidebarItems={ROLE_SIDEBAR_ITEMS.vfx_supervisor}
-        currentPath="/vfx"
       >
         <p>Content</p>
       </AppShell>,

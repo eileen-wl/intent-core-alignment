@@ -197,30 +197,9 @@ function data(overrides: Partial<CurrentVersionData> = {}): CurrentVersionData {
 }
 
 describe("CurrentVersionPage", () => {
-  it("renders Project > Shot > Task > Current Version breadcrumbs, tab active", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByRole("link", { name: "Current Version" }),
-    ).toHaveAttribute("aria-current", "page");
-  });
-
-  it("shows an honest unavailable state when the API could not be reached", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={null}
-        unavailable
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("This Task is unavailable")).toBeVisible();
+  it("shows an honest unavailable state when the page-specific data failed to load", () => {
+    render(<CurrentVersionPage taskId="t1" data={null} />);
+    expect(screen.getByText("This page is unavailable")).toBeVisible();
   });
 
   it("shows the honest empty state when no Production Version exists for this Task's Shot", () => {
@@ -228,8 +207,6 @@ describe("CurrentVersionPage", () => {
       <CurrentVersionPage
         taskId="t1"
         data={data({ versions: [], selectedVersion: null })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -238,14 +215,7 @@ describe("CurrentVersionPage", () => {
   });
 
   it("renders real Production Versions, never confusing them with a Core/Execution Anchor Revision", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<CurrentVersionPage taskId="t1" data={data()} />);
     expect(
       screen.getByRole("link", { name: /SH010_v001 \(v1\)/ }),
     ).toBeVisible();
@@ -265,8 +235,6 @@ describe("CurrentVersionPage", () => {
       <CurrentVersionPage
         taskId="t1"
         data={data({ versions: [version(), versionB] })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -275,26 +243,12 @@ describe("CurrentVersionPage", () => {
   });
 
   it("shows the selected Version's real Review Notes", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<CurrentVersionPage taskId="t1" data={data()} />);
     expect(screen.getByText("Contrast reads slightly hot.")).toBeVisible();
   });
 
   it("shows an honest empty state when no Review Notes exist for the selected Version", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data({ reviewNotes: [] })}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<CurrentVersionPage taskId="t1" data={data({ reviewNotes: [] })} />);
     expect(
       screen.getByText(
         "No Review Notes have been recorded for this Production Version yet.",
@@ -324,8 +278,6 @@ describe("CurrentVersionPage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getAllByText(/Source author: Jamie Lin/).length).toBe(2);
@@ -347,8 +299,6 @@ describe("CurrentVersionPage", () => {
           }),
           reviewNotes: [],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText(/· system$/)).toBeVisible();
@@ -357,28 +307,14 @@ describe("CurrentVersionPage", () => {
   });
 
   it("shows the manual Human-role author as a human-readable label when no ftrack provenance exists (Step 9B-2 correction)", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<CurrentVersionPage taskId="t1" data={data()} />);
     expect(screen.getByText(/· Artist$/)).toBeVisible();
     expect(screen.queryByText(/· artist$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Source author:/)).not.toBeInTheDocument();
   });
 
   it("groups the page into named Current Version, Supervisor feedback, and Artist guidance regions (Work archetype visual-language pass), each with its own semantic icon heading", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<CurrentVersionPage taskId="t1" data={data()} />);
     expect(
       screen.getByRole("heading", { name: "Current Version" }),
     ).toBeVisible();
@@ -402,8 +338,6 @@ describe("CurrentVersionPage", () => {
       <CurrentVersionPage
         taskId="t1"
         data={data({ coreAnchorRevision: null, executionAnchorRevision: null })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -486,8 +420,6 @@ describe("CurrentVersionPage", () => {
             updated_at: "2026-01-02T00:00:00Z",
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -508,14 +440,7 @@ describe("CurrentVersionPage", () => {
   });
 
   it("honestly shows no Agent Execution Review has been generated yet", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<CurrentVersionPage taskId="t1" data={data()} />);
     expect(
       screen.getByText(
         "No Agent Execution Review has been generated for the active Execution Anchor yet.",
@@ -524,14 +449,7 @@ describe("CurrentVersionPage", () => {
   });
 
   it("honestly shows no Cross-role Assessment involves this Version yet", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<CurrentVersionPage taskId="t1" data={data()} />);
     expect(
       screen.getByText("No Cross-role Assessment involves this Version yet."),
     ).toBeVisible();
@@ -601,22 +519,13 @@ describe("CurrentVersionPage", () => {
       <CurrentVersionPage
         taskId="t1"
         data={data({ crossRoleAssessments: [assessment] })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("1 Cross-role Assessment recorded.")).toBeVisible();
   });
 
   it("honestly shows no Artist guidance has been generated for this Version yet", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<CurrentVersionPage taskId="t1" data={data()} />);
     expect(
       screen.getByText(
         "No Artist guidance has been generated for this Version yet.",
@@ -676,8 +585,6 @@ describe("CurrentVersionPage", () => {
           ],
           currentGuidance,
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -725,8 +632,6 @@ describe("CurrentVersionPage", () => {
           ],
           currentGuidance: null,
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -784,8 +689,6 @@ describe("CurrentVersionPage", () => {
           ],
           currentGuidance,
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -824,8 +727,6 @@ describe("CurrentVersionPage", () => {
           ],
           currentGuidance,
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -877,8 +778,6 @@ describe("CurrentVersionPage", () => {
           ],
           currentGuidance,
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -924,8 +823,6 @@ describe("CurrentVersionPage", () => {
           ],
           currentGuidance,
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -973,8 +870,6 @@ describe("CurrentVersionPage", () => {
           ],
           currentGuidance,
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -1031,8 +926,6 @@ describe("CurrentVersionPage", () => {
           ],
           currentGuidance,
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -1049,14 +942,7 @@ describe("CurrentVersionPage", () => {
   });
 
   it("does not invent an upload/submit/approve/complete action anywhere on the page", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<CurrentVersionPage taskId="t1" data={data()} />);
     expect(
       screen.queryByRole("button", { name: /upload/i }),
     ).not.toBeInTheDocument();
@@ -1092,8 +978,6 @@ describe("CurrentVersionPage", () => {
               unavailable_reason: null,
             },
           })}
-          unavailable={false}
-          onExitRole={vi.fn()}
         />,
       );
       const videoEl = document.querySelector("video") as HTMLVideoElement;
@@ -1103,14 +987,7 @@ describe("CurrentVersionPage", () => {
     });
 
     it("shows an honest unavailable state, not a fake frame, when no media is resolved", () => {
-      render(
-        <CurrentVersionPage
-          taskId="t1"
-          data={data({ media: null })}
-          unavailable={false}
-          onExitRole={vi.fn()}
-        />,
-      );
+      render(<CurrentVersionPage taskId="t1" data={data({ media: null })} />);
       expect(document.querySelector("video")).toBeNull();
       expect(screen.getByText("No media context is available.")).toBeVisible();
     });
@@ -1135,8 +1012,6 @@ describe("CurrentVersionPage", () => {
               unavailable_reason: null,
             },
           })}
-          unavailable={false}
-          onExitRole={vi.fn()}
         />,
       );
       expect(
@@ -1189,8 +1064,6 @@ describe("CurrentVersionPage", () => {
             canPublishResolvedVersion: true,
             publishableExecutionAnchorRevision: executionAnchorRevision(),
           })}
-          unavailable={false}
-          onExitRole={vi.fn()}
         />,
       );
       expect(
@@ -1208,8 +1081,6 @@ describe("CurrentVersionPage", () => {
             canPublishResolvedVersion: false,
             publishableExecutionAnchorRevision: null,
           })}
-          unavailable={false}
-          onExitRole={vi.fn()}
         />,
       );
       expect(
@@ -1229,8 +1100,6 @@ describe("CurrentVersionPage", () => {
             canPublishResolvedVersion: true,
             publishableExecutionAnchorRevision: executionAnchorRevision(),
           })}
-          unavailable={false}
-          onExitRole={vi.fn()}
         />,
       );
 
@@ -1260,8 +1129,6 @@ describe("CurrentVersionPage", () => {
             canPublishResolvedVersion: true,
             publishableExecutionAnchorRevision: executionAnchorRevision(),
           })}
-          unavailable={false}
-          onExitRole={vi.fn()}
         />,
       );
 

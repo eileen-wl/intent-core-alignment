@@ -4,7 +4,11 @@ import type {
 } from "@intent-core/contracts";
 import Link from "next/link";
 
-import { AnchorContextSummary, FtrackLinkageBadge } from "@/design";
+import {
+  AnchorContextSummary,
+  FtrackLinkageBadge,
+  PendingLinkContent,
+} from "@/design";
 import styles from "./InboxRow.module.css";
 import {
   signalStateLabel,
@@ -51,6 +55,7 @@ export function InboxRow({
       <span className={styles.open} aria-hidden="true">
         {anchorContext?.next_action.action_label ?? "Open Shot"} →
       </span>
+      <PendingLinkContent label={item.shot_name} />
     </Link>
   );
 }

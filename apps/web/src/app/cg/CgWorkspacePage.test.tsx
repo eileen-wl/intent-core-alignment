@@ -4,7 +4,7 @@ import type {
   CgInboxRead,
 } from "@intent-core/contracts";
 import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { CgWorkspacePage } from "./CgWorkspacePage";
 
@@ -78,11 +78,9 @@ function inbox(items: CgInboxItemRead[]): CgInboxRead {
 
 describe("CgWorkspacePage", () => {
   it("renders honest error and empty states", () => {
-    const { rerender } = render(
-      <CgWorkspacePage inbox={null} onExitRole={vi.fn()} />,
-    );
+    const { rerender } = render(<CgWorkspacePage inbox={null} />);
     expect(screen.getByText("Workspace Home is unavailable")).toBeVisible();
-    rerender(<CgWorkspacePage inbox={inbox([])} onExitRole={vi.fn()} />);
+    rerender(<CgWorkspacePage inbox={inbox([])} />);
     expect(screen.getByText("No Tasks exist yet")).toBeVisible();
   });
 
@@ -96,7 +94,6 @@ describe("CgWorkspacePage", () => {
           total_count: 7,
           limit: 5,
         }}
-        onExitRole={vi.fn()}
       />,
     );
     const actions = screen.getByRole("region", {
@@ -126,7 +123,6 @@ describe("CgWorkspacePage", () => {
       <CgWorkspacePage
         inbox={inbox([item("t1")])}
         anchorActions={{ items: [summary("t1")], total_count: 1, limit: 5 }}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -150,7 +146,6 @@ describe("CgWorkspacePage", () => {
       <CgWorkspacePage
         inbox={inbox([item("t1")])}
         anchorActions={{ items: [high], total_count: 1, limit: 5 }}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText(/high · action required/)).toBeVisible();

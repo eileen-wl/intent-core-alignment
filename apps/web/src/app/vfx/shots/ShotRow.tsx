@@ -4,7 +4,11 @@ import type {
 } from "@intent-core/contracts";
 import Link from "next/link";
 
-import { AnchorContextSummary, FtrackLinkageBadge } from "@/design";
+import {
+  AnchorContextSummary,
+  FtrackLinkageBadge,
+  PendingLinkContent,
+} from "@/design";
 import {
   coreAnchorStateLabel,
   signalStateLabel,
@@ -53,6 +57,7 @@ export function ShotRow({
       <span className={styles.open} aria-hidden="true">
         {anchorContext?.next_action.action_label ?? "Open Shot"} →
       </span>
+      <PendingLinkContent label={item.shot_name} />
     </Link>
   );
 }

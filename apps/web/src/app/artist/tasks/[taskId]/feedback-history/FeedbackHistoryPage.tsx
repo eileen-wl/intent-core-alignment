@@ -1,20 +1,17 @@
 import Link from "next/link";
-import type {
-  AnchorContextRead,
-  ArtistFeedbackEventType,
-} from "@intent-core/contracts";
+import type { ArtistFeedbackEventType } from "@intent-core/contracts";
 
 import {
   AuthorityLabel,
   type AuthorityLabelVariant,
   EmptyState,
+  ErrorState,
   type EvidenceLayerKind,
 } from "@/design";
 import { feedbackEventLayer } from "@/lib/feedbackEventLayer";
 import { feedbackEventSummary } from "@/lib/feedbackEventSummary";
 import { humanRoleLabel } from "@/lib/humanRoleLabel";
 import type { FeedbackHistoryData } from "@/features/artist/feedback-history/data";
-import { ArtistTaskWorkspaceFrame } from "../ArtistTaskWorkspaceFrame";
 import styles from "./FeedbackHistoryPage.module.css";
 
 /** Step 9B-2: reuses the exact Step 9B-1 `AuthorityLabel` vocabulary --
@@ -54,68 +51,52 @@ const EVENT_TYPE_LABEL: Record<ArtistFeedbackEventType, string> = {
  * exactly as delivered (already real, newest-first). */
 export function FeedbackHistoryPage({
   data,
-  anchorContext,
-  unavailable,
-  onExitRole,
 }: {
-  taskId: string;
   data: FeedbackHistoryData | null;
-  anchorContext?: AnchorContextRead | null;
-  unavailable: boolean;
-  onExitRole: () => void | Promise<void>;
 }) {
-  return (
-    <ArtistTaskWorkspaceFrame
-      item={data?.item ?? null}
-      anchorContext={anchorContext}
-      activeTab="feedback-history"
-      unavailable={unavailable}
-      onExitRole={onExitRole}
-    >
-      {data && (
-        <>
-          {data.history.events.length === 0 ? (
-            <EmptyState title="No feedback has been recorded for this Task yet." />
-          ) : (
-            <ol className={styles.timeline} aria-label="Task feedback history">
-              {data.history.events.map((event) => (
-                <li key={event.id} className={styles.event}>
-                  <div className={styles.eventMain}>
-                    <span className={styles.eventType}>
-                      {EVENT_TYPE_LABEL[event.event_type]}
-                    </span>
-                    <span className={styles.eventTime}>
-                      {new Date(event.occurred_at).toLocaleString()}
-                    </span>
-                  </div>
-                  <AuthorityLabel
-                    variant={
-                      LAYER_AUTHORITY_VARIANT[
-                        feedbackEventLayer(event.event_type)
-                      ]
-                    }
-                  />
-                  <p className={styles.eventSummary}>
-                    {feedbackEventSummary(event)}
-                  </p>
-                  <div className={styles.eventFooter}>
-                    {(event.actor_human_role || event.actor_kind) && (
-                      <span className={styles.eventActor}>
-                        {event.actor_human_role
-                          ? humanRoleLabel(event.actor_human_role)
-                          : event.actor_kind}
-                      </span>
-                    )}
-                    <Link href={event.route} className={styles.eventLink}>
-                      Open →
-                    </Link>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-        </>
-      )}
-    </ArtistTaskWorkspaceFrame>
+  if (!data) {
+    return (
+      <ErrorState
+        title="This page is unavailable"
+        description="The ICAS service could not be reached. Try refreshing the page."
+      />
+    );
+  }
+
+  return data.history.events.length === 0 ? (
+    <EmptyState title="No feedback has been recorded for this Task yet." />
+  ) : (
+    <ol className={styles.timeline} aria-label="Task feedback history">
+      {data.history.events.map((event) => (
+        <li key={event.id} className={styles.event}>
+          <div className={styles.eventMain}>
+            <span className={styles.eventType}>
+              {EVENT_TYPE_LABEL[event.event_type]}
+            </span>
+            <span className={styles.eventTime}>
+              {new Date(event.occurred_at).toLocaleString()}
+            </span>
+          </div>
+          <AuthorityLabel
+            variant={
+              LAYER_AUTHORITY_VARIANT[feedbackEventLayer(event.event_type)]
+            }
+          />
+          <p className={styles.eventSummary}>{feedbackEventSummary(event)}</p>
+          <div className={styles.eventFooter}>
+            {(event.actor_human_role || event.actor_kind) && (
+              <span className={styles.eventActor}>
+                {event.actor_human_role
+                  ? humanRoleLabel(event.actor_human_role)
+                  : event.actor_kind}
+              </span>
+            )}
+            <Link href={event.route} className={styles.eventLink}>
+              Open →
+            </Link>
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }

@@ -6,7 +6,6 @@ import type {
 import Link from "next/link";
 
 import {
-  AppShell,
   Breadcrumbs,
   EmptyState,
   ErrorState,
@@ -16,8 +15,7 @@ import {
   Stack,
   SummaryCard,
 } from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
+import { ROLE_LABEL } from "@/lib/demoIdentity";
 import { ArtistTaskRow } from "./ArtistTaskRow";
 
 /** `/artist` -- the Artist Workspace Home (Step 7C-5), mirroring
@@ -33,21 +31,13 @@ export function ArtistWorkspacePage({
   inbox,
   readyTasks,
   waitingTasks,
-  onExitRole,
 }: {
   inbox: ArtistInboxRead | null;
   readyTasks?: AnchorContextSummaryListRead | null;
   waitingTasks?: AnchorContextSummaryListRead | null;
-  onExitRole: () => void | Promise<void>;
 }) {
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.artist}
-      role={ROLE_LABEL.artist}
-      onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.artist}
-      currentPath="/artist"
-    >
+    <>
       <Breadcrumbs items={[{ label: "Workspace Home" }]} />
       <PageHeader
         title="Workspace Home"
@@ -71,7 +61,7 @@ export function ArtistWorkspacePage({
           waitingTasks={waitingTasks}
         />
       )}
-    </AppShell>
+    </>
   );
 }
 

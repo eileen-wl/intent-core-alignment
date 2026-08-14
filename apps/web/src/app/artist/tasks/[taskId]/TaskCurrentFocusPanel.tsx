@@ -1,7 +1,7 @@
 import type { ArtistInboxCurrentFocusRead } from "@intent-core/contracts";
 import Link from "next/link";
 
-import { Panel, StatusBadge } from "@/design";
+import { Panel, PendingLinkContent, StatusBadge } from "@/design";
 import styles from "./TaskCurrentFocusPanel.module.css";
 
 /** Exactly one Current focus (Step 7C-5), mirroring
@@ -29,6 +29,7 @@ export function TaskCurrentFocusPanel({
         <div className={styles.actionRow}>
           <Link href={focus.target_route} className={styles.action}>
             {focus.primary_action_label}
+            <PendingLinkContent label={focus.primary_action_label} />
           </Link>
         </div>
       )}

@@ -1,12 +1,8 @@
 import Link from "next/link";
-import type {
-  AnchorContextRead,
-  ShotActivityEventType,
-} from "@intent-core/contracts";
+import type { ShotActivityEventType } from "@intent-core/contracts";
 
-import { EmptyState } from "@/design";
+import { EmptyState, ErrorState } from "@/design";
 import type { ActivityWorkspaceData } from "@/features/vfx/activity-workspace/data";
-import { VfxShotWorkspaceFrame } from "../VfxShotWorkspaceFrame";
 import styles from "./ActivityWorkspacePage.module.css";
 
 const EVENT_TYPE_LABEL: Record<ShotActivityEventType, string> = {
@@ -29,57 +25,45 @@ const EVENT_TYPE_LABEL: Record<ShotActivityEventType, string> = {
  * beyond the fixed vocabulary above, or invents an entry. */
 export function ActivityWorkspacePage({
   data,
-  anchorContext,
-  unavailable,
-  onExitRole,
 }: {
-  shotId: string;
   data: ActivityWorkspaceData | null;
-  anchorContext?: AnchorContextRead | null;
-  unavailable: boolean;
-  onExitRole: () => void | Promise<void>;
 }) {
-  return (
-    <VfxShotWorkspaceFrame
-      item={data?.item ?? null}
-      anchorContext={anchorContext}
-      activeTab="activity"
-      unavailable={unavailable}
-      onExitRole={onExitRole}
-    >
-      {data && (
-        <>
-          {data.activity.events.length === 0 ? (
-            <EmptyState title="No recorded activity exists for this Shot yet." />
-          ) : (
-            <ol className={styles.timeline} aria-label="Shot activity timeline">
-              {data.activity.events.map((event) => (
-                <li key={event.id} className={styles.event}>
-                  <div className={styles.eventMain}>
-                    <span className={styles.eventType}>
-                      {EVENT_TYPE_LABEL[event.event_type]}
-                    </span>
-                    <span className={styles.eventTime}>
-                      {new Date(event.occurred_at).toLocaleString()}
-                    </span>
-                  </div>
-                  <p className={styles.eventSummary}>{event.summary}</p>
-                  <div className={styles.eventFooter}>
-                    {(event.actor_human_role || event.actor_kind) && (
-                      <span className={styles.eventActor}>
-                        {event.actor_human_role ?? event.actor_kind}
-                      </span>
-                    )}
-                    <Link href={event.route} className={styles.eventLink}>
-                      Open →
-                    </Link>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          )}
-        </>
-      )}
-    </VfxShotWorkspaceFrame>
+  if (!data) {
+    return (
+      <ErrorState
+        title="This page is unavailable"
+        description="The ICAS service could not be reached. Try refreshing the page."
+      />
+    );
+  }
+
+  return data.activity.events.length === 0 ? (
+    <EmptyState title="No recorded activity exists for this Shot yet." />
+  ) : (
+    <ol className={styles.timeline} aria-label="Shot activity timeline">
+      {data.activity.events.map((event) => (
+        <li key={event.id} className={styles.event}>
+          <div className={styles.eventMain}>
+            <span className={styles.eventType}>
+              {EVENT_TYPE_LABEL[event.event_type]}
+            </span>
+            <span className={styles.eventTime}>
+              {new Date(event.occurred_at).toLocaleString()}
+            </span>
+          </div>
+          <p className={styles.eventSummary}>{event.summary}</p>
+          <div className={styles.eventFooter}>
+            {(event.actor_human_role || event.actor_kind) && (
+              <span className={styles.eventActor}>
+                {event.actor_human_role ?? event.actor_kind}
+              </span>
+            )}
+            <Link href={event.route} className={styles.eventLink}>
+              Open →
+            </Link>
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }

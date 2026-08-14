@@ -3,7 +3,7 @@ import type {
   TaskActivityEventRead,
 } from "@intent-core/contracts";
 import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import type { TaskActivityWorkspaceData } from "@/features/cg/activity-workspace/data";
 import { TaskActivityPage } from "./TaskActivityPage";
@@ -72,40 +72,15 @@ function data(
 }
 
 describe("TaskActivityPage", () => {
-  it("renders Project > Shot > Task > Activity breadcrumbs, tab active", () => {
-    render(
-      <TaskActivityPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByRole("link", { name: "Activity" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
-  it("shows an honest unavailable state when the API could not be reached", () => {
-    render(
-      <TaskActivityPage
-        taskId="t1"
-        data={null}
-        unavailable
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("This Task is unavailable")).toBeVisible();
+  it("shows an honest unavailable state when the page-specific data failed to load", () => {
+    render(<TaskActivityPage data={null} />);
+    expect(screen.getByText("This page is unavailable")).toBeVisible();
   });
 
   it("shows the honest empty state when no activity has ever been recorded", () => {
     render(
       <TaskActivityPage
-        taskId="t1"
         data={data({ activity: { task_id: "t1", events: [] } })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -129,12 +104,7 @@ describe("TaskActivityPage", () => {
       }),
     ];
     render(
-      <TaskActivityPage
-        taskId="t1"
-        data={data({ activity: { task_id: "t1", events } })}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
+      <TaskActivityPage data={data({ activity: { task_id: "t1", events } })} />,
     );
     const timeline = screen.getByRole("list", {
       name: "Task activity timeline",
@@ -151,7 +121,6 @@ describe("TaskActivityPage", () => {
   it("shows real Human Decisions in the Activity timeline, distinct from the Execution Anchor event", () => {
     render(
       <TaskActivityPage
-        taskId="t1"
         data={data({
           activity: {
             task_id: "t1",
@@ -172,8 +141,6 @@ describe("TaskActivityPage", () => {
             ],
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Execution Anchor confirmed")).toBeVisible();
@@ -183,7 +150,6 @@ describe("TaskActivityPage", () => {
   it("routes a dependency event to Dependencies and a CG review event to Version Review", () => {
     render(
       <TaskActivityPage
-        taskId="t1"
         data={data({
           activity: {
             task_id: "t1",
@@ -206,8 +172,6 @@ describe("TaskActivityPage", () => {
             ],
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     const links = screen.getAllByRole("link", { name: "Open →" });

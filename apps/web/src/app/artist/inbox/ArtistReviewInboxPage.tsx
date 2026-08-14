@@ -9,16 +9,15 @@ import type {
 import Link from "next/link";
 
 import {
-  AppShell,
   Breadcrumbs,
   EmptyState,
   ErrorState,
+  Icon,
   PageHeader,
 } from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import {
   adaptArtistCurrentFocusToWorkItems,
+  artistWorkItemIcon,
   type ArtistReviewWorkItem,
 } from "@/features/artist/reviewInbox";
 import { groupByCategory } from "@/lib/workItemGrouping";
@@ -47,24 +46,16 @@ const GUIDANCE_STATES: ArtistInboxItemRead["guidance_state"][] = [
 export function ArtistReviewInboxPage({
   inbox,
   anchorContexts = {},
-  onExitRole,
 }: {
   inbox: ArtistInboxRead | null;
   anchorContexts?: Record<string, AnchorContextSummaryRead | null>;
-  onExitRole: () => void | Promise<void>;
 }) {
   const workItems = inbox
     ? adaptArtistCurrentFocusToWorkItems(inbox.items)
     : null;
 
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.artist}
-      role={ROLE_LABEL.artist}
-      onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.artist}
-      currentPath="/artist/inbox"
-    >
+    <>
       <Breadcrumbs items={[{ label: "Review Inbox" }]} />
       <PageHeader
         title="Review Inbox"
@@ -88,7 +79,7 @@ export function ArtistReviewInboxPage({
           anchorContexts={anchorContexts}
         />
       )}
-    </AppShell>
+    </>
   );
 }
 
@@ -150,6 +141,13 @@ function ArtistReviewInboxContent({
 
   return (
     <div>
+      {/* Worklist archetype family consistency (matches the locked VFX
+       * Review Inbox, ICAS_DESIGN.md §6.1): current worklist state
+       * before filter/scope controls, before the work-item list. */}
+      <p className={styles.worklistState}>
+        Showing {filtered.length} items requiring review
+      </p>
+
       <div className={styles.filters}>
         <label className={styles.filterLabel}>
           Project
@@ -202,32 +200,34 @@ function ArtistReviewInboxContent({
         )}
       </div>
 
-      <p>Showing {filtered.length} items requiring review</p>
-
       {filtered.length === 0 ? (
         <EmptyState title="No items match this filter" />
       ) : (
-        groups.map((group) => (
-          <section
-            key={group.category || group.items[0].id}
-            className={styles.group}
-          >
-            <h2 className={styles.groupHeading}>
-              {group.category} — {group.items.length}{" "}
-              {group.items.length === 1 ? "item" : "items"}
-            </h2>
-            <div role="list">
-              {group.items.map((item) => (
-                <div role="listitem" key={item.id}>
-                  <ArtistTaskWorkItemRow
-                    item={item}
-                    anchorContext={anchorContexts[item.task.id]}
-                  />
-                </div>
-              ))}
-            </div>
-          </section>
-        ))
+        groups.map((group) => {
+          const icon = artistWorkItemIcon(group.category);
+          return (
+            <section
+              key={group.category || group.items[0].id}
+              className={styles.group}
+            >
+              <h2 className={styles.groupHeading}>
+                {icon && <Icon name={icon} size="micro" />}
+                {group.category} — {group.items.length}{" "}
+                {group.items.length === 1 ? "item" : "items"}
+              </h2>
+              <div role="list">
+                {group.items.map((item) => (
+                  <div role="listitem" key={item.id}>
+                    <ArtistTaskWorkItemRow
+                      item={item}
+                      anchorContext={anchorContexts[item.task.id]}
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })
       )}
     </div>
   );

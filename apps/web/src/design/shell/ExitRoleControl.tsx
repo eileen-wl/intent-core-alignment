@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+
 import styles from "./ExitRoleControl.module.css";
 
 function ExitIcon() {
@@ -12,21 +14,36 @@ function ExitIcon() {
   );
 }
 
+/** Full-screen-skeleton removal pass: `onExit` (`exitRoleView`) is a
+ * redirect-based Server Action, same shape as `enterDemoRole` --
+ * `RoleEntryButton`'s own doc comment explains why a plain `useState`
+ * pending flag, not `useTransition`, is correct on this project's
+ * pinned React 18.3. Root `app/loading.tsx` is gone, so this click
+ * previously had zero feedback until the redirect landed; now the
+ * button disables and relabels immediately, the same acknowledgement
+ * Role Entry already gives. */
 export function ExitRoleControl({
   onExit,
 }: {
   onExit: () => void | Promise<void>;
 }) {
+  const [isPending, setIsPending] = useState(false);
+
   return (
     <button
       type="button"
       className={styles.button}
+      disabled={isPending}
+      aria-busy={isPending}
       onClick={() => {
-        void onExit();
+        setIsPending(true);
+        void Promise.resolve(onExit()).finally(() => {
+          setIsPending(false);
+        });
       }}
     >
       <ExitIcon />
-      <span>Exit role view</span>
+      <span>{isPending ? "Exiting…" : "Exit role view"}</span>
     </button>
   );
 }

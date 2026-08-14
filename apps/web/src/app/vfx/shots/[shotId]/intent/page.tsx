@@ -1,14 +1,10 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import {
   loadIntentWorkspaceData,
   type IntentWorkspaceData,
 } from "@/features/vfx/intent-workspace/data";
-import { fetchVfxAnchorContextOrNull } from "@/features/vfx/api";
-import { actorHeaders, resolveIdentity } from "@/features/session/identity";
-import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
-import { exitRoleView } from "../../../../demo/actions";
+import { resolveIdentity } from "@/features/session/identity";
 import { IntentWorkspacePage } from "./IntentWorkspacePage";
 
 /** `/vfx/shots/:shotId/intent` -- the VFX Intent Workspace (Step 7C-2;
@@ -35,27 +31,18 @@ export default async function Page({
   params: Promise<{ shotId: string }>;
   searchParams: Promise<{ justConfirmed?: string }>;
 }) {
-  const store = await cookies();
-  if (store.get(DEMO_ROLE_COOKIE)?.value !== "vfx_supervisor") {
+  const { shotId } = await params;
+  const { justConfirmed: justConfirmedRevisionId } = await searchParams;
+  const identity = await resolveIdentity();
+  if (identity?.role !== "vfx_supervisor") {
     redirect("/demo");
   }
 
-  const { shotId } = await params;
-  const { justConfirmed: justConfirmedRevisionId } = await searchParams;
-
   let data: IntentWorkspaceData | null = null;
-  let anchorContext: Awaited<ReturnType<typeof fetchVfxAnchorContextOrNull>> =
-    null;
-  let unavailable = false;
   try {
-    const identity = await resolveIdentity();
-    if (identity === null) redirect("/demo");
-    [data, anchorContext] = await Promise.all([
-      loadIntentWorkspaceData(shotId),
-      fetchVfxAnchorContextOrNull(shotId, actorHeaders(identity)),
-    ]);
+    data = await loadIntentWorkspaceData(shotId);
   } catch {
-    unavailable = true;
+    data = null;
   }
 
   const justConfirmed =
@@ -66,10 +53,7 @@ export default async function Page({
     <IntentWorkspacePage
       shotId={shotId}
       data={data}
-      anchorContext={anchorContext}
-      unavailable={unavailable}
       justConfirmed={justConfirmed}
-      onExitRole={exitRoleView}
     />
   );
 }

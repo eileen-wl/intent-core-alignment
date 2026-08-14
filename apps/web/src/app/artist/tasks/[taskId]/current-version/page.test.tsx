@@ -20,10 +20,6 @@ vi.mock("@/features/artist/current-version/data", () => ({
   loadCurrentVersionData: loadCurrentVersionDataMock,
 }));
 
-vi.mock("../../../../demo/actions", () => ({
-  exitRoleView: vi.fn(),
-}));
-
 import { CurrentVersionPage } from "./CurrentVersionPage";
 import Page from "./page";
 
@@ -37,6 +33,11 @@ const searchParams = Promise.resolve({});
 
 const ACTOR_HEADERS = { "X-Actor-Role": "artist", "X-Actor-Id": "artist-1" };
 
+/** The role gate itself now runs in `app/artist/layout.tsx`; this
+ * defensive, unreachable-in-practice check exists purely as a
+ * fallback. Its redirect target stays `/demo` (a permanent,
+ * deterministic redirect to `/`), matching the pre-refactor behavior of
+ * this leaf-page check exactly. */
 describe("/artist/tasks/:taskId/current-version page", () => {
   it("redirects to /demo when the demo role cookie is not artist", async () => {
     cookieStore.get.mockReturnValue(undefined);
@@ -66,7 +67,6 @@ describe("/artist/tasks/:taskId/current-version page", () => {
     expect(result.type).toBe(CurrentVersionPage);
     expect(result.props.taskId).toBe("t1");
     expect(result.props.data).toBe(data);
-    expect(result.props.unavailable).toBe(false);
   });
 
   it("passes the ?version= query param and trusted actor headers through to loadCurrentVersionData", async () => {
@@ -92,12 +92,11 @@ describe("/artist/tasks/:taskId/current-version page", () => {
     );
   });
 
-  it("marks the page unavailable, rather than throwing, when the API call fails", async () => {
+  it("passes a null data prop, rather than throwing, when the API call fails", async () => {
     loadCurrentVersionDataMock.mockRejectedValue(new Error("boom"));
 
     const result = await Page({ params, searchParams });
 
     expect(result.props.data).toBeNull();
-    expect(result.props.unavailable).toBe(true);
   });
 });
