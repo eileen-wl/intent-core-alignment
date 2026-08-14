@@ -13,6 +13,7 @@ import {
   Breadcrumbs,
   EmptyState,
   ErrorState,
+  Icon,
   PageHeader,
 } from "@/design";
 import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
@@ -22,6 +23,7 @@ import {
   adaptEscalationWorkItems,
   adaptVersionReviewWorkItems,
   type ReviewWorkItem,
+  workItemIcon,
 } from "@/features/vfx/review-inbox/workItem";
 import { groupByCategory } from "@/lib/workItemGrouping";
 import { coreAnchorStateLabel } from "../vfxWording";
@@ -153,6 +155,15 @@ function ReviewInboxContent({
 
   return (
     <div>
+      {/* Worklist archetype target hierarchy (ICAS_DESIGN.md §6.1):
+       * current worklist state before filter/scope controls, before the
+       * work-item list. Same real count/wording as before, just
+       * reordered and given a touch more weight than ordinary body
+       * text -- not a dashboard KPI. */}
+      <p className={styles.worklistState}>
+        Showing {filtered.length} items requiring review
+      </p>
+
       <div className={styles.filters}>
         <label className={styles.filterLabel}>
           Project
@@ -187,34 +198,36 @@ function ReviewInboxContent({
         </label>
       </div>
 
-      <p>Showing {filtered.length} items requiring review</p>
-
       {filtered.length === 0 ? (
         <EmptyState title="No items match this filter" />
       ) : (
-        groups.map((group) => (
-          <section
-            key={group.category || group.items[0].id}
-            className={styles.group}
-          >
-            <h2 className={styles.groupHeading}>
-              {group.category} — {group.items.length}{" "}
-              {group.items.length === 1 ? "item" : "items"}
-            </h2>
-            <div role="list">
-              {group.items.map((item) => (
-                <div role="listitem" key={item.id}>
-                  <WorkItemRow
-                    item={item}
-                    anchorContext={
-                      item.shot ? anchorContexts[item.shot.id] : null
-                    }
-                  />
-                </div>
-              ))}
-            </div>
-          </section>
-        ))
+        groups.map((group) => {
+          const icon = workItemIcon(group.category);
+          return (
+            <section
+              key={group.category || group.items[0].id}
+              className={styles.group}
+            >
+              <h2 className={styles.groupHeading}>
+                {icon && <Icon name={icon} size="micro" />}
+                {group.category} — {group.items.length}{" "}
+                {group.items.length === 1 ? "item" : "items"}
+              </h2>
+              <div role="list">
+                {group.items.map((item) => (
+                  <div role="listitem" key={item.id}>
+                    <WorkItemRow
+                      item={item}
+                      anchorContext={
+                        item.shot ? anchorContexts[item.shot.id] : null
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })
       )}
     </div>
   );

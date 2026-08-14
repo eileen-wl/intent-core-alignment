@@ -200,23 +200,56 @@ describe("AnchorContextLayer", () => {
     ).toBeGreaterThan(0);
   });
 
-  it("uses content-first WHY / HOW / WHAT TO DO NOW and secondary Anchor metadata for Artists", () => {
-    render(
+  it("presents Core Anchor, Execution Anchor, and Readiness as three compact semantic reading blocks for Artists, never the old per-field narrative-row grammar or the older three-column grid", () => {
+    const { container } = render(
       <AnchorContextLayer context={contextFor("artist")} defaultExpanded />,
     );
 
-    expect(screen.getByText("Why")).toBeInTheDocument();
-    expect(screen.getByText("How")).toBeInTheDocument();
-    expect(screen.getByText("What to do now")).toBeInTheDocument();
-    expect(screen.getByText("Guidance outdated")).toBeInTheDocument();
+    // Core Anchor block: identity, creative-intent body, inline "Must
+    // preserve —" clause, draft distinction as quiet metadata.
+    expect(screen.getByText(/Core Anchor R2.*confirmed/)).toBeVisible();
     expect(
       screen.getByText("Keep the hero silhouette readable."),
     ).toBeVisible();
-    expect(
-      screen.getAllByText("Preserve the readable turn in blocking.").length,
-    ).toBeGreaterThan(0);
-    expect(screen.getByText(/Core Anchor R2.*confirmed/)).toBeVisible();
+    expect(screen.getByText(/Must preserve —/)).toBeVisible();
+    expect(screen.getByText(/The turn lands on the music cue\./)).toBeVisible();
+    expect(screen.getByText(/remains authoritative/)).toBeVisible();
+
+    // Execution Anchor block: identity, current-direction body, inline
+    // "Allowed to vary —"/"Boundary —" clauses.
     expect(screen.getByText(/Execution Anchor R1.*outdated/)).toBeVisible();
+    expect(
+      screen.getAllByText(/Preserve the readable turn in blocking\./).length,
+    ).toBeGreaterThan(0);
+    expect(screen.getByText(/Allowed to vary —/)).toBeVisible();
+    expect(screen.getByText(/Boundary —/)).toBeVisible();
+    expect(
+      screen.getByText(/Do not shift the final pose timing\./),
+    ).toBeVisible();
+
+    // Readiness block: title, why-now, attention/downstream clauses.
+    expect(
+      screen.getByText("Review the outdated execution direction"),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Core Anchor R2 supersedes the department direction."),
+    ).toBeVisible();
+    expect(screen.getByText(/Attention —/)).toBeVisible();
+    expect(screen.getByText(/Downstream —/)).toBeVisible();
+
+    // Supporting footer: Guidance state.
+    expect(screen.getByText("Guidance outdated")).toBeInTheDocument();
+
+    // Compact semantic-block correction: the old per-field narrative
+    // rows (and the older three-column `artistChain` grid) are both
+    // gone -- exactly three `.semanticBlock` reading blocks exist.
+    expect(container.querySelector('[class*="artistChain"]')).toBeNull();
+    expect(container.querySelectorAll('[class*="narrativeRow"]')).toHaveLength(
+      0,
+    );
+    expect(container.querySelectorAll('[class*="semanticBlock"]').length).toBe(
+      3,
+    );
   });
 
   it("renders attention and readiness as separate compact-row meanings", () => {
@@ -354,7 +387,7 @@ describe("AnchorContextLayer", () => {
     ).toBeVisible();
   });
 
-  it("omits the Related context heading entirely when no link actually applies to this role", () => {
+  it("reserves no empty space for Related Context in the supporting footer when no link actually applies to this role", () => {
     const context = contextFor("artist");
     render(
       <AnchorContextLayer
@@ -366,32 +399,232 @@ describe("AnchorContextLayer", () => {
       />,
     );
 
-    expect(screen.queryByText("Related context")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Open Alignment →" }),
+    ).not.toBeInTheDocument();
   });
 
-  it("shows the Related context heading when a link applies to this role", () => {
+  it("shows the Related Context link in the supporting footer when a link applies to this role", () => {
     render(
       <AnchorContextLayer context={contextFor("artist")} defaultExpanded />,
     );
 
-    expect(screen.getByText("Related context")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Open Alignment →" }),
     ).toBeInTheDocument();
   });
 
-  it("keeps the Artist header groups and disclosure control as distinct wrapping regions once expanded", () => {
+  it("keeps the Artist Core Anchor, Execution Anchor, and Readiness content, plus the disclosure control, inside one region once expanded", () => {
     render(
       <AnchorContextLayer context={contextFor("artist")} defaultExpanded />,
     );
 
     const section = screen.getByRole("region", { name: "Anchor context" });
-    for (const label of ["Why", "How", "What to do now", "Current direction"]) {
-      expect(section).toHaveTextContent(label);
+    for (const content of [
+      "Keep the hero silhouette readable.",
+      "Must preserve —",
+      "Preserve the readable turn in blocking.",
+      "Allowed to vary —",
+      "Review the outdated execution direction",
+    ]) {
+      expect(section).toHaveTextContent(content);
     }
     expect(
       screen.getByRole("button", { name: "Collapse anchor context" }),
     ).toBeVisible();
+  });
+
+  it("does not repeat the real readiness statement verbatim in both 'What to do now' and a secondary 'Readiness / next action' row (row-grammar correction: the title/why-now/link now live only in the primary row; the secondary row keeps only the real downstream_effect fact, which was not shown anywhere else)", () => {
+    const context = contextFor("artist");
+    render(
+      <AnchorContextLayer
+        context={{
+          ...context,
+          next_action: {
+            ...context.next_action,
+            title: "Review the outdated execution direction",
+            why_now: "Core Anchor R2 supersedes the department direction.",
+            downstream_effect: "Confirmation will unlock regenerated guidance.",
+          },
+        }}
+        defaultExpanded
+      />,
+    );
+
+    // The real statement, its supporting explanation, and the real
+    // downstream fact are all still visible -- once each.
+    expect(
+      screen.getAllByText("Review the outdated execution direction").length,
+    ).toBe(1);
+    expect(
+      screen.getAllByText("Core Anchor R2 supersedes the department direction.")
+        .length,
+    ).toBe(1);
+    expect(
+      screen.getByText("Confirmation will unlock regenerated guidance."),
+    ).toBeVisible();
+  });
+
+  it("attaches each real status to the semantic block it qualifies (Execution state to the Execution Anchor identity, attention to the Readiness header, Guidance state to the supporting footer), never as a floating header badge cluster", () => {
+    const context = contextFor("artist");
+    const { container } = render(
+      <AnchorContextLayer
+        context={{
+          ...context,
+          execution_anchor: {
+            ...context.execution_anchor!,
+            context_state: "current",
+          },
+          guidance_state: "current",
+        }}
+        defaultExpanded
+      />,
+    );
+
+    const header = container.querySelector(
+      '[class*="artistCompactHeader"]',
+    ) as HTMLElement;
+    expect(header).toBeTruthy();
+    expect(within(header).queryByText(/attention/i)).not.toBeInTheDocument();
+    expect(within(header).queryByText(/Guidance/i)).not.toBeInTheDocument();
+    expect(
+      within(header).getByRole("button", { name: "Collapse anchor context" }),
+    ).toBeVisible();
+
+    expect(screen.getByText(/Execution Anchor R1.*current/)).toBeVisible();
+    expect(screen.getByText("High attention")).toBeVisible();
+    expect(screen.getByText("Guidance current")).toBeVisible();
+  });
+
+  it("strips the verified real CG D1 implementation label from the Artist-facing standard Anchor's Current direction / Allowed to vary / Execution boundary / Intent attention fields (owner-reported product bug: the label was visibly leaking there, though already fixed on the 'review' variant)", () => {
+    const context = contextFor("artist");
+    render(
+      <AnchorContextLayer
+        context={{
+          ...context,
+          execution_anchor: {
+            ...context.execution_anchor!,
+            direction_summary:
+              "[CG Agent execution anchor draft - D1 combined-intensity ceiling translation] Preserve the readable turn in blocking.",
+            allowed_refinement:
+              "[CG Agent execution anchor draft - D1 combined-intensity ceiling translation] Polish arcs without changing the beat.",
+            execution_boundary:
+              "[CG Agent execution anchor draft - D1 combined-intensity ceiling translation] Do not shift the final pose timing.",
+          },
+          attention: {
+            ...context.attention,
+            summary:
+              "[CG Agent execution anchor draft - D1 combined-intensity ceiling translation] The current Version diverges from the confirmed intent.",
+          },
+        }}
+        defaultExpanded
+      />,
+    );
+
+    expect(
+      screen.getByText("Preserve the readable turn in blocking."),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Polish arcs without changing the beat."),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Do not shift the final pose timing."),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "The current Version diverges from the confirmed intent.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/D1 combined-intensity ceiling translation/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("states the Execution Anchor's own context state as part of its own identity line for Artists (owner-reported bug: a bare 'current' badge is ambiguous about which real object it describes), while leaving CG's own established bare label unchanged", () => {
+    const artistContext = contextFor("artist");
+    const { unmount } = render(
+      <AnchorContextLayer
+        context={{
+          ...artistContext,
+          execution_anchor: {
+            ...artistContext.execution_anchor!,
+            context_state: "current",
+          },
+        }}
+        defaultExpanded
+      />,
+    );
+    expect(screen.getByText(/Execution Anchor R1 · current/)).toBeVisible();
+    expect(screen.queryByText(/^current$/)).not.toBeInTheDocument();
+    unmount();
+
+    // CG's own bare label is untouched -- same real underlying state,
+    // same badge color/status logic, only the Artist-facing text changed.
+    render(
+      <AnchorContextLayer
+        context={contextFor("cg_supervisor")}
+        defaultExpanded
+      />,
+    );
+    expect(screen.getByText("outdated")).toBeVisible();
+    expect(screen.queryByText("Execution outdated")).not.toBeInTheDocument();
+  });
+
+  it("shows the real Guidance state once, as the 'Guidance current' supporting-footer badge, never repeated as 'Guidance: Guidance current' prose alongside the current production context fact", () => {
+    const context = contextFor("artist");
+    render(
+      <AnchorContextLayer
+        context={{ ...context, guidance_state: "current" }}
+        defaultExpanded
+      />,
+    );
+    expect(screen.getByText("Guidance current")).toBeVisible();
+    expect(screen.queryByText(/Guidance: Guidance/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Guidance:")).not.toBeInTheDocument();
+    expect(screen.queryByText("Guidance · current")).not.toBeInTheDocument();
+  });
+
+  it("shows the real upstream state exactly once (compact semantic-block correction: the audit-confirmed duplicate -- an identical header badge plus a secondary row repeating the same sentence -- is removed)", () => {
+    const context = contextFor("artist");
+    const upstreamContext: AnchorContextRead = {
+      ...context,
+      core_anchor: { ...context.core_anchor, lifecycle_state: "draft" },
+    };
+    render(<AnchorContextLayer context={upstreamContext} defaultExpanded />);
+
+    expect(
+      screen.getAllByText("VFX Core Anchor confirmation is required.").length,
+    ).toBe(1);
+  });
+
+  it("shows the Intent attention requirement exactly once when no AI/rule summary is present, instead of repeating the same sentence as both the primary clause and its sub-text", () => {
+    const context = contextFor("artist");
+    render(
+      <AnchorContextLayer
+        context={{
+          ...context,
+          attention: { ...context.attention, summary: null },
+        }}
+        defaultExpanded
+      />,
+    );
+
+    expect(
+      screen.getAllByText("VFX Supervisor review is required.").length,
+    ).toBe(1);
+  });
+
+  it("keeps the Artist expanded Anchor entirely read-only -- no edit, confirm, approve, or re-anchor control anywhere in the region", () => {
+    render(
+      <AnchorContextLayer context={contextFor("artist")} defaultExpanded />,
+    );
+
+    const section = screen.getByRole("region", { name: "Anchor context" });
+    const buttons = within(section).getAllByRole("button");
+    for (const button of buttons) {
+      expect(button).toHaveAccessibleName("Collapse anchor context");
+    }
+    expect(within(section).queryByRole("textbox")).not.toBeInTheDocument();
   });
 
   it("shows 'Confirmed by VFX Supervisor' without the internal actor id -- 'vfx-1' is a session/audit identifier, never a real display name", () => {

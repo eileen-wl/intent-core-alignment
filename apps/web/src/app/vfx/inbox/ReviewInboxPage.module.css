@@ -1,3 +1,15 @@
+/* Worklist archetype (ICAS_DESIGN.md §6.1): current worklist state,
+ * shown before filter/scope controls. Deliberately just text at a
+ * slightly stronger weight than the filters below it -- not a
+ * dashboard KPI card, no icon (there is no single semantic object this
+ * summary line represents). */
+.worklistState {
+  margin: 0 0 var(--space-3);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
 .filters {
   display: flex;
   flex-wrap: wrap;
@@ -32,11 +44,18 @@
   margin-top: var(--space-3);
 }
 
+/* ICAS Visual Language v1 §7.2 Level B: sentence case, compact,
+ * paired with its real count -- not uppercase, and not the large
+ * region-icon treatment Level A regions use. The optional micro icon
+ * (same mapping as each row's own type marker) communicates the one
+ * real category this group shares; an unrecognised category renders
+ * without one rather than guessing. */
 .groupHeading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   margin: 0 0 var(--space-2);
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.02em;
 }

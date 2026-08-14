@@ -1,9 +1,13 @@
+/* Work archetype correction: Current Version is the primary work
+ * object -- the selector column's real share of the row is reduced
+ * further (was a near-even 42/58 split) so the object it selects
+ * visibly owns the main work area. */
 .grid {
   max-width: var(--content-width-comparison);
   margin: var(--space-5) auto 0;
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.6fr);
   gap: var(--space-4);
   align-items: start;
 }
@@ -22,13 +26,34 @@
   gap: var(--space-3);
 }
 
-.columnHeading {
-  margin: 0;
+/* ICAS Visual Language v1 §7.1 Level A: semantic icon + sentence-case
+ * region title, shared by the primary named regions on this page
+ * (Current Version, Supervisor feedback, Artist guidance) --
+ * replaces the previous tiny uppercase column headings. */
+.regionHeading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  color: var(--text-primary);
   font-size: var(--font-size-sm);
   font-weight: 700;
+}
+
+/* Work archetype correction: Production Versions is a secondary
+ * switcher into the primary work object, not a second same-weight
+ * region -- smaller, muted, matching Level-B/C weight rather than
+ * `.regionHeading`'s Level-A treatment. */
+.regionHeadingSecondary {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
   color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.03em;
 }
 
 .list {
@@ -41,13 +66,15 @@
 .row {
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  align-items: center;
+  gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   background: var(--surface-panel);
   text-align: left;
+  text-decoration: none;
+  color: inherit;
   cursor: pointer;
 }
 
@@ -55,9 +82,25 @@
   background: var(--surface-elevated);
 }
 
+.row:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+/* Restrained ICAS-purple "current selection" treatment -- the same
+ * tokens CG Version Review's Version chips and every other
+ * current/selected object marker use. Purple here identifies the
+ * current work object, never Agent advice. */
 .rowActive {
-  border-color: var(--accent-agent-border);
-  background: var(--accent-agent-surface);
+  border-color: var(--accent-selected-border);
+  background: var(--accent-selected-surface);
+}
+
+.rowBody {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
 }
 
 .rowName {
@@ -74,31 +117,81 @@
   font-size: var(--font-size-xs);
 }
 
-.detail {
-  min-width: 0;
-  padding: var(--space-5);
-  border: 1px solid var(--border-subtle);
+/* Owner-approved reference: restrained tinted object tiles for
+ * important production objects (Version, Review Note) -- the same
+ * purple-for-Version-identity / neutral-for-object-marker grammar
+ * already validated on CG Version Review, not a generic colourful
+ * SaaS tile. */
+.iconTile {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--accent-selected-surface);
+  border: 1px solid var(--accent-selected-border);
+  color: var(--accent-selected-text);
+}
+
+.iconTileSmall {
+  width: 2rem;
+  height: 2rem;
+}
+
+.iconTileLarge {
+  width: 4rem;
+  height: 4rem;
+  border-radius: var(--radius-md);
+}
+
+.iconTileLarge svg {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+/* Current Version -- the primary work object gets the one raised
+ * surface on this page (matching CG's own selected-Version object
+ * surface), so it reads as visually distinct from the working regions
+ * (Feedback, Artist Agent guidance) below it. */
+.currentVersionSurface {
+  padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-lg);
-  background: var(--surface-panel);
+  background: var(--surface-elevated);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.versionObjectRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.versionObjectBody {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .detailHeading {
-  margin: 0 0 var(--space-4) 0;
+  margin: 0;
   font-size: var(--font-size-lg);
-  color: var(--text-primary);
-}
-
-.section {
-  margin-top: var(--space-5);
-  padding-top: var(--space-4);
-  border-top: 1px solid var(--border-subtle);
-}
-
-.sectionHeading {
-  margin: 0 0 var(--space-3) 0;
-  font-size: var(--font-size-sm);
   font-weight: 700;
   color: var(--text-primary);
+}
+
+/* Working regions (Feedback, Artist Agent guidance) -- a restrained
+ * top divider, not another raised card, so Current Version stays the
+ * one visually strongest object on the page. */
+.section {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .empty {
@@ -113,6 +206,112 @@
   font-size: var(--font-size-sm);
 }
 
+/* Work archetype correction: a restrained advisory work-input, not a
+ * hero statement -- secondary color and body-scale size (matching
+ * `.noteContent`'s own scale) so Supervisor feedback above it
+ * continues to read as the visually stronger, primary-color content. */
+.guidanceTakeaway {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+}
+
+/* Numbered actionable-row grammar (matching VFX Alignment's own
+ * Detailed Assessment finding rows): a neutral index box, never the
+ * purple selection/focus tint, since Agent guidance is advisory, not
+ * a current-selection object. */
+.findingGroup {
+  margin-top: var(--space-3);
+}
+
+.findingGroup + .findingGroup {
+  margin-top: var(--space-4);
+}
+
+.findingList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.finding {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.finding:last-child {
+  border-bottom: none;
+}
+
+.findingIndex {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.findingBody {
+  min-width: 0;
+  flex: 1;
+}
+
+.findingHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.findingSummary {
+  margin: 0;
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.priority {
+  flex: 0 0 auto;
+  padding: 0.1rem var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+}
+
+.priorityMedium {
+  background: var(--state-attention-surface);
+  border: 1px solid var(--state-attention-border);
+  color: var(--state-attention);
+}
+
+.priorityHigh {
+  background: var(--state-error-surface);
+  border: 1px solid var(--state-error-border);
+  color: var(--state-error);
+}
+
+.findingWhy {
+  margin: var(--space-1) 0 0 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
 .noteList {
   margin: 0;
   padding: 0;
@@ -123,14 +322,21 @@
 }
 
 .note {
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--surface-elevated);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.note:last-child {
+  border-bottom: none;
 }
 
 .noteContent {
   margin: 0 0 var(--space-1) 0;
   color: var(--text-primary);
+  font-size: var(--font-size-sm);
   white-space: pre-wrap;
 }
 
@@ -140,8 +346,17 @@
   font-size: var(--font-size-xs);
 }
 
+/* ICAS Visual Language v1 §7.2 Level B: sentence case, compact,
+ * visually lighter than Level A -- not uppercase, no large icon. */
+.subheading {
+  margin: var(--space-2) 0 var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
 .historicalGuidance {
-  margin-top: var(--space-3);
+  margin-top: var(--space-1);
 }
 
 .historicalLabel {
@@ -149,7 +364,39 @@
   margin-bottom: var(--space-1);
   padding: 0 var(--space-2);
   border-radius: var(--radius-sm);
-  background: var(--surface-elevated);
+  background: var(--surface-muted);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Compact footer statement, matching the same restrained
+ * advisory-note grammar used on CG Version Review / VFX Alignment --
+ * the real Human/Agent authority boundary stays visible without
+ * another full section. */
+.advisoryNote {
+  margin: 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* Secondary/related cross-role context -- muted, compact, no
+ * headings or icons per line (History grammar: lower contrast than
+ * current work, no large repeated cards). */
+.secondaryContext {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.secondaryContextLabel {
+  margin-bottom: var(--space-1);
   color: var(--text-muted);
   font-size: var(--font-size-xs);
   font-weight: 700;

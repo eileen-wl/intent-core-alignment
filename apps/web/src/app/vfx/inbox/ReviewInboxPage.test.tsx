@@ -1,5 +1,11 @@
 import type { VfxInboxItemRead, VfxInboxRead } from "@intent-core/contracts";
-import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ReviewInboxPage } from "./ReviewInboxPage";
@@ -116,14 +122,19 @@ describe("ReviewInboxPage", () => {
     ).toBeVisible();
   });
 
-  it("shows the honest category and Shot as supporting context, not the primary title", () => {
+  it("shows the honest category as the group heading and Shot as row-level supporting context, not the primary title", () => {
     render(
       <ReviewInboxPage
         inbox={buildInbox([buildItem({ shot_id: "s1" })])}
         onExitRole={vi.fn()}
       />,
     );
-    expect(screen.getByText("Core Anchor confirmation")).toBeVisible();
+    // Category identity lives once, at the group heading -- rows no
+    // longer repeat it (consistency correction: same category was
+    // previously duplicated on every row underneath).
+    expect(
+      screen.getByRole("heading", { name: /Core Anchor confirmation/ }),
+    ).toBeVisible();
     const title = screen.getByText(
       "Core Anchor draft awaiting your confirmation",
     );
@@ -272,7 +283,9 @@ describe("ReviewInboxPage", () => {
       />,
     );
 
-    expect(screen.getByText("Version review blocked")).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: /Version review blocked/ }),
+    ).toBeVisible();
     expect(
       screen.getByText("Core Anchor required before Version review"),
     ).toBeVisible();
@@ -454,5 +467,175 @@ describe("ReviewInboxPage", () => {
     });
 
     expect(screen.getByText("Showing 1 items requiring review")).toBeVisible();
+  });
+
+  it("shows the current worklist state before the filter controls (Worklist archetype target hierarchy)", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const state = screen.getByText("Showing 1 items requiring review");
+    const projectFilter = screen.getByRole("combobox", { name: "Project" });
+    expect(
+      state.compareDocumentPosition(projectFilter) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("drops the per-row Anchor Context summary panel (Worklist archetype density: no nested cards, no five-column blocks) while still routing correctly", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    expect(
+      screen.queryByText("Anchor context unavailable"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Readiness")).not.toBeInTheDocument();
+    // The row itself is unaffected: title, category, and route remain.
+    expect(
+      screen.getByText("Core Anchor draft awaiting your confirmation"),
+    ).toBeVisible();
+  });
+
+  it("shows the real Core Anchor state as a compact status badge on the row, with the object made explicit so it cannot be misread as the work item or Version itself being confirmed", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([
+          buildItem({ shot_id: "s1", core_anchor_state: "confirmed" }),
+        ])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const row = screen
+      .getByText("Core Anchor draft awaiting your confirmation")
+      .closest("a") as HTMLElement;
+    expect(within(row).getByText("Core Anchor confirmed")).toBeVisible();
+    expect(within(row).queryByText("Confirmed")).not.toBeInTheDocument();
+  });
+
+  it("labels each real Core Anchor state explicitly, never a bare ambiguous word", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([
+          buildItem({ shot_id: "s1", core_anchor_state: "draft_pending" }),
+        ])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const row = screen
+      .getByText("Core Anchor draft awaiting your confirmation")
+      .closest("a") as HTMLElement;
+    expect(within(row).getByText("Core Anchor draft pending")).toBeVisible();
+  });
+
+  it("renders the work-item type icon once, on the group heading, and no longer repeats a category kicker/icon on every row underneath (consistency correction: the list is already grouped by category)", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const row = screen
+      .getByText("Core Anchor draft awaiting your confirmation")
+      .closest("a") as HTMLElement;
+    expect(row.querySelector("svg")).toBeNull();
+    expect(within(row).queryByText("Core Anchor confirmation")).toBeNull();
+
+    const heading = screen.getByRole("heading", {
+      name: "Core Anchor confirmation — 1 item",
+    });
+    expect(heading.querySelector("svg")).toBeTruthy();
+  });
+
+  it("normalizes production context to a single Project · Shot · Task · Version order with one consistent separator", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const row = screen
+      .getByText("Core Anchor draft awaiting your confirmation")
+      .closest("a") as HTMLElement;
+    expect(
+      within(row).getByText(
+        "D1 Demo Project · Shot 010 — Final confrontation · Compositing Review · D1_STEP3_VFX_REVIEW_001 (v1)",
+      ),
+    ).toBeVisible();
+  });
+
+  it("shows ftrack linkage as quiet plain text, not a strong-cyan integration badge", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const row = screen
+      .getByText("Core Anchor draft awaiting your confirmation")
+      .closest("a") as HTMLElement;
+    expect(within(row).getByText("No linked ftrack entity")).toBeVisible();
+    // The Core Anchor badge is still a real StatusBadge (it must
+    // outrank ftrack metadata); ftrack no longer shares that treatment.
+    expect(
+      within(row).getByText("No linked ftrack entity").closest("span")
+        ?.className,
+    ).not.toMatch(/badge/);
+  });
+
+  it("uses the work item's own real action label for a Version review item, never a different Shot concern's Anchor Context hint (e.g. 'Review alignment')", () => {
+    render(
+      <ReviewInboxPage
+        inbox={buildInbox([
+          buildItem({
+            shot_id: "s1",
+            latest_version_without_review_id: "v9",
+            latest_version_without_review_name: "SH010_v002",
+            latest_version_without_review_number: 2,
+          }),
+        ])}
+        anchorContexts={{
+          s1: {
+            role: "vfx_supervisor",
+            shot_id: "s1",
+            task_id: null,
+            core_anchor_revision_number: 1,
+            core_anchor_state: "confirmed",
+            core_direction: null,
+            execution_context_state: null,
+            execution_anchor_revision_number: null,
+            execution_direction: null,
+            based_on_core_anchor_revision_number: null,
+            attention_level: "high",
+            attention_summary: null,
+            guidance_state: "current",
+            readiness_state: "action_required",
+            readiness_detail: "",
+            open_vfx_escalation: false,
+            next_action: {
+              title: "Interpret the cross-role assessment",
+              why_now: "",
+              downstream_effect: "",
+              target_route: "/vfx/shots/s1/alignment",
+              action_label: "Review alignment",
+              executable: true,
+            },
+          },
+        }}
+        onExitRole={vi.fn()}
+      />,
+    );
+    const versionRow = screen
+      .getByText("New Production Version awaiting review")
+      .closest("a") as HTMLElement;
+    expect(within(versionRow).getByText(/Review Version/)).toBeVisible();
+    expect(
+      within(versionRow).queryByText(/Review alignment/),
+    ).not.toBeInTheDocument();
+    expect(versionRow).toHaveAttribute("href", "/vfx/shots/s1/versions");
   });
 });

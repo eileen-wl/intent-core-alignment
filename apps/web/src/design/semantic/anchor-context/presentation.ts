@@ -31,6 +31,20 @@ const GENERATOR_LABELS = [
   "[ICAS Demo — D1]",
 ] as const;
 
+/** The Artist D1 Golden Journey's R2+ combined-intensity-boundary label
+ * carries a real variable part -- the Execution Anchor revision number
+ * that gated the D1-specific Artist guidance generator override (same
+ * shape as the already-verified CG D1 compliance label). Verified by
+ * direct inspection of a persisted `ArtistAgentGuidance` row -- the
+ * current `DeterministicD1ArtistGuidanceGenerator` no longer emits a
+ * bracket label in its present source form (its `executive_summary`/
+ * `task_goal` overrides are plain sentences), so this label only
+ * exists in already-persisted rows, not in any current source string.
+ * `ArtistAgentGuidance` rows are immutable and append-only, so an
+ * older row carrying this label stays real history forever. */
+const ARTIST_D1_BOUNDARY_LABEL =
+  /\[Artist D1 deterministic - R\d+ combined-intensity ceiling boundary\]/g;
+
 /** Removes any verified generator label wherever it occurs in `text`
  * (a leading prefix, or embedded mid-sentence if a caller ever
  * composes one field's text into another), then normalizes the
@@ -48,6 +62,11 @@ export function stripGeneratorLabel(text: string): string {
       result = result.split(label).join(" ");
       changed = true;
     }
+  }
+  const withoutArtistD1Boundary = result.replace(ARTIST_D1_BOUNDARY_LABEL, " ");
+  if (withoutArtistD1Boundary !== result) {
+    result = withoutArtistD1Boundary;
+    changed = true;
   }
   return changed ? result.replace(/\s+/g, " ").trim() : result;
 }

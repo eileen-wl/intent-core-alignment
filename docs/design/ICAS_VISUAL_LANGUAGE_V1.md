@@ -2,7 +2,7 @@
 
 > **Intent Core Alignment System — Shared Visual Language Implementation Layer**
 >
-> **Status:** Visual-language implementation baseline for representative archetype refinement  
+> **Status:** All four representative archetypes (Worklist, Decision, Review, Work) are owner-approved and locked. The shared visual language layer is complete for this representative set — see §24 for the final per-archetype reference, §23 for the final Artist Anchor Context grammar, and §26 for the full-product migration plan that follows next.  
 > **Parent authority:** `docs/design/ICAS_DESIGN.md`  
 > **Purpose:** Define the reusable visual grammar that turns structurally-correct ICAS pages into a coherent professional production workspace without changing domain logic, information architecture, authority semantics, or workflow behavior.
 >
@@ -669,6 +669,86 @@ Prefer rows over repeated cards.
 
 ---
 
+## 9.5 Narrative composition
+
+Established and revised during the Artist Current Version Work
+-archetype correction (expanded Anchor Context passes). An earlier
+version of this rule recommended a `[stable label column][fluid
+content column]` repeated row, implemented once per domain field. That
+pattern was built, browser-reviewed by the Owner, and **rejected**: it
+read as a settings/database table once every field had its own
+full-width row and divider, not as a coherent reading surface. It is
+**no longer the approved default** and must not be reintroduced.
+
+### The rule
+
+> **Semantic siblings do not automatically become equal-width columns
+> — and they do not automatically become one full-width UI row per
+> field either.**
+
+Both are the same underlying mistake: mechanically translating a list
+of domain fields into a layout, instead of composing a layout from
+what the content actually is and how it behaves.
+
+Do not mechanically translate domain fields into:
+
+- equal-width narrative columns;
+- label/value database rows;
+- one full-width UI row per field;
+- one card per field.
+
+### When equal-width columns (or grids) remain appropriate
+
+- short, comparable, predictable metadata or metrics;
+- content whose length does not vary meaningfully between siblings;
+- genuine side-by-side comparison is the point (e.g. Core Anchor vs.
+  Execution Anchor identity nodes).
+
+### What to do instead for variable-length narrative content
+
+- Group content according to meaningful semantic objects or reading
+  tasks, not by enumerating fields.
+- Multiple closely-related facts about the same semantic object may
+  live inside one coherent reading block — an identity line, a primary
+  statement, then inline "Lead-in — text" clauses in the same flow —
+  distinguished by typography and spacing, not by separate rows,
+  label columns, or containers.
+- Narrative text should normally use the available production
+  -workspace width. Do not impose arbitrary `ch` (or similar)
+  reading-width caps on narrative prose when they cause premature
+  wrapping and leave the workspace visibly empty on one side — this
+  was tried and reverted during the Artist Anchor correction (see
+  §23).
+- Never use fixed heights, internal scrolling, or truncation merely to
+  make a narrative layout fit a visual target. Content length must be
+  allowed to vary naturally, in both directions.
+
+### Layout proportion follows content behavior
+
+Layout proportion — columns vs. one coherent reading block, equal
+-width vs. grouped — must be chosen from the information type and how
+its real content behaves (short and predictable vs. long and
+variable), not merely from how many fields happen to exist.
+
+### Reference implementation
+
+§23 documents the Artist Anchor Context's final compact-semantic-block
+composition as the validated example of this rule. It is a
+**role-specific implementation**, not a universal template — do not
+turn it into a mandatory layout for every other narrative surface in
+ICAS.
+
+### Migration note
+
+This rule is locked. The full-product Visual Language migration phase
+(§26) should audit existing long-form equal-width column layouts *and*
+any label/value-per-field row grammar elsewhere in ICAS for these two
+related anti-patterns, and correct them using the semantic-block
+approach where applicable — without forcing every page into an
+identical layout.
+
+---
+
 # 10. Icon placement rules
 
 Icons must communicate semantic value.
@@ -983,6 +1063,11 @@ Do not add icons to every history row unless the row represents a distinct event
 
 # 15. Future archetype reuse
 
+> This section was written while only CG Version Review had validated
+> Visual Language v1. All four archetypes are now locked — §24 is the
+> accurate, current reference; this section is preserved for
+> historical record.
+
 Once CG Version Review validates Visual Language v1:
 
 ## Review Archetype
@@ -1096,6 +1181,11 @@ Visual Language implementation must not silently reopen previously approved IA o
 ---
 
 # 19. Implementation strategy
+
+> Written before implementation began. All phases below (VL-1 through
+> VL-5) are now complete and owner-approved — §24 documents the final
+> outcome; this section is preserved for historical record of how the
+> work was sequenced.
 
 Visual Language v1 should be implemented in controlled phases.
 
@@ -1269,3 +1359,314 @@ placed everywhere
 The intended result is:
 
 > ICAS should stop reading as “well-formatted reports inside a dark UI” and begin reading as a coherent visual production system where objects, authority, state, and evidence can be scanned before every sentence is read.
+
+---
+
+# 23. Artist Anchor Context — final role-specific grammar (Work Archetype)
+
+This section documents the Artist expanded Anchor Context as a
+**role-specific implementation example** of the Narrative composition
+rule (§9.5), validated through several owner browser-review correction
+passes. It is not a universal template. VFX and CG Anchor Context
+presentation were not changed by this work and remain documented in
+their own sections above (§13 for CG, §14 for VFX).
+
+## 23.1 Collapsed state (shared across all three roles)
+
+The collapsed Artist Anchor is the same shared markup as VFX's and
+CG's own collapsed state — one shared component branch, not an
+Artist-specific composition. It remains a thin first-reading summary:
+
+- real attention state (omitted, not shown as a placeholder, when not
+  yet assessed);
+- Core Anchor revision/state identity;
+- Execution-preferred, Core-fallback concise direction text;
+- the disclosure control ("Show anchor context").
+
+The collapsed state was not changed by any of the expanded-state
+correction passes below.
+
+## 23.2 Expanded Artist composition
+
+ONE coherent Anchor surface, using the full available production
+-workspace width, made of three compact semantic reading blocks plus
+one supporting-context footer:
+
+```text
+Core Anchor
+→ Execution Anchor
+→ Readiness / next step
+→ compact supporting-context footer
+```
+
+A compact header (semantic kicker + collapse control only — no status
+badge cluster) precedes the blocks. Each status attaches to the
+semantic block it actually qualifies, never to a floating header
+cluster. This is exactly one collapse/expand disclosure — no
+additional disclosure layer was added inside the expanded state.
+
+### Core Anchor block
+
+- Core Anchor revision/state identity line, with a restrained
+  Intent/selected-purple icon tint (object recognition only — never a
+  tile/card, never the heading text color itself);
+- Core direction ("Why") as the primary prose statement;
+- `Must preserve —` as an inline semantic clause in the same block, not
+  a separate labelled row;
+- conditional draft distinction as quiet supporting metadata, shown
+  only when a newer draft or pending Human Gate genuinely exists.
+
+### Execution Anchor block
+
+- Execution Anchor revision/state identity line, with a restrained
+  steel/cool advisory icon tint;
+- current direction as the primary prose statement, at normal
+  (non-bold) reading weight — deliberately quieter than Core Anchor's
+  and Readiness's own primary statements, so Execution does not
+  visually outweigh its siblings;
+- `Allowed to vary —` as an inline clause;
+- conditional `Boundary —` as an inline clause;
+- conditional draft source as quiet supporting metadata.
+
+Core Anchor and Execution Anchor authority are never merged into one
+fact or one block. `Must preserve` (Core, creative) and `Boundary`
+(Execution, technical/production) remain semantically distinct and are
+never combined or treated as duplicates of each other.
+
+### Readiness / next-step block
+
+- the real attention state, shown as a status badge in this block's
+  own header (not a floating cluster);
+- `next_action.title` as the block's strongest statement;
+- `why_now` as its supporting explanation;
+- the real navigation action, when the underlying next action is
+  genuinely executable;
+- a visually secondary supporting tier — attention reasoning, the
+  `review_requirement` (only shown as distinct text when it says
+  something the AI/rule summary doesn't already say), the downstream
+  consequence, and a conditional upstream explanation — demoted in
+  weight/tone/spacing below the block's primary statement, with no
+  content removed.
+
+No fact repeats:
+
+- the real upstream state, when it exists, renders in exactly one
+  place inside this block — not also as a separate header badge;
+- the attention `review_requirement` renders once, not twice, when no
+  AI/rule summary exists or the summary would otherwise duplicate it
+  verbatim.
+
+### Supporting-context footer
+
+One quiet compact metadata rail, not a section with its own heading:
+
+- current Production Version identity;
+- Guidance state, as plain toned inline text (confirmed/attention
+  /unavailable semantics), never a strong pill/chip;
+- Related Context, rendered only when a real Artist-accessible route
+  exists — no reserved empty space when it does not. The capability
+  stays in code for when a real route applies; it must not be deleted
+  merely because it is not reachable under today's backend contract.
+
+## 23.3 Non-negotiable content/authority facts
+
+- Artist remains fully read-only throughout the expanded Anchor: no
+  edit, confirm, approve, or re-anchor control anywhere in the region.
+- Core Anchor and Execution Anchor facts are never merged or treated
+  as interchangeable.
+- No real content-contract fact may be silently dropped for visual
+  compactness — compaction is achieved through grouping, typography,
+  and tone, never through deletion, truncation, or hidden disclosure.
+
+---
+
+# 24. Final four-archetype reference (locked)
+
+The four representative ICAS archetypes are now owner-approved and
+locked. This section is the accurate, implementation-level reference
+for each. The phased plan in §19–21 and the earlier reuse sketch in
+§15 are preserved for historical record; this section is the current
+source of truth.
+
+Shared grammar should be reused across archetypes. Archetype
+composition should remain task-specific — these four pages do **not**
+use identical layouts, and future pages mapped to these archetypes are
+not expected to either.
+
+## 24.1 Worklist — VFX Review Inbox
+
+**Primary purpose:** Human triage / work-item-first entry.
+
+Approved grammar:
+
+- dense continuous list;
+- grouped real work items;
+- work-item title → reason → production context → action;
+- type identity belongs primarily at the group level where grouped;
+- compact object-specific state wording;
+- tertiary integration metadata;
+- Human-required action outranks integration/provenance;
+- no dashboard KPIs;
+- no card soup.
+
+## 24.2 Decision — VFX Alignment
+
+**Primary purpose:** cross-role interpretation and Human
+decision/attention.
+
+Approved grammar:
+
+- Anchor guardrail;
+- current Alignment Signal;
+- Department Execution;
+- Current Assessment + Context Inspector;
+- strongest Human-owned action/intent region;
+- muted History;
+- Agent advisory remains below Human authority;
+- SignalStrip may be used for genuine structured decision signals;
+- evidence remains neutral.
+
+## 24.3 Review — CG Version Review
+
+**Primary purpose:** review one Version against Execution/Intent
+context.
+
+Approved grammar:
+
+- Version relationship / rail;
+- selected Version as primary review object;
+- Production Evidence;
+- concise Agent Review;
+- structured Review Signal;
+- top findings;
+- Human Authority;
+- detailed review via consistent disclosure;
+- Human response outranks Agent advisory.
+
+## 24.4 Work — Artist Current Version
+
+**Primary purpose:** active execution work.
+
+Approved grammar:
+
+- Production Versions = secondary selector;
+- Current Version = primary work object;
+- Supervisor Feedback > Agent Guidance;
+- Agent Guidance is actionable work input, not an analytics surface;
+- structured iteration priorities / feedback translations are shown as
+  real actionable rows;
+- no count-only SignalStrip for Artist work guidance;
+- Regenerate Guidance is a secondary Agent-support action;
+- related context remains quiet.
+
+See §23 for the Artist Anchor Context's own final grammar, which
+applies within this archetype's frame.
+
+---
+
+# 25. Shared grammar validated across the four representative pages
+
+## Authority
+
+Human > Agent > Evidence > History.
+
+## Purple
+
+Purple means:
+
+- current selection;
+- Intent;
+- primary Human focus/action.
+
+Purple does **not** mean Agent.
+
+## Agent
+
+Steel/cool advisory identity (`--accent-advisory-*`). Never purple,
+never "AI-themed" decoration.
+
+## Attention / status
+
+- neutral = low/unavailable/general;
+- amber = medium attention;
+- red = high/blocked;
+- green = confirmed/current/completed where semantically true.
+
+Status labels should be object-specific where ambiguity exists — e.g.
+`Core Anchor confirmed`, `Execution current`, not a bare `confirmed` /
+`current` that could describe more than one real object on the same
+surface.
+
+## Semantic icons
+
+- use icons at meaningful object/region identity level;
+- do not add icons to every field;
+- omit an icon rather than use a semantically incorrect one — a
+  missing icon communicates nothing false; a borrowed icon from an
+  unrelated concept (e.g. using the Human Authority icon to mean
+  "workflow readiness") does.
+
+## Surface discipline
+
+- avoid card soup;
+- semantic surfaces should correspond to real work objects / authority
+  boundaries;
+- do not create containers only to make the page feel designed.
+
+## Findings / feedback
+
+- compact numbered row grammar is valid where the content is genuinely
+  a list of review/guidance items;
+- category structure may remain archetype-specific;
+- not every textual statement should become a numbered finding.
+
+## Disclosures
+
+The same control should retain the same location/identity across
+collapsed and expanded states. Use truthful `View ... →` / `Collapse
+... ↑`-style grammar where applicable. Expanding a region should never
+introduce a different heading/identity than what was visible while
+collapsed.
+
+## Internal implementation labels
+
+Known generator/demo prefixes must be removed presentation-only,
+through verified allowlisted logic — an explicit, exact-string
+allowlist, never a generic "strip any bracketed content" pattern,
+which would also silently remove legitimate product copy that happens
+to start with a bracket.
+
+## Text wrapping
+
+Do not add arbitrary character-width caps that cause premature
+wrapping in production-workspace surfaces. Narrative prose should use
+the naturally available container width; wrapping should occur because
+the container is genuinely narrow, not because of an arbitrary
+internal cap.
+
+---
+
+# 26. Full-product migration note (next phase)
+
+The four representative archetypes above are the validated visual
+-language reference set, not the finished product. Full-product
+migration is the next phase and must:
+
+- inventory all remaining routes/pages;
+- preserve existing page responsibility and role permissions;
+- map each page to the closest archetype/shared grammar where useful;
+- reuse visual primitives without forcing every page into one layout;
+- audit long-form equal-column narrative anti-patterns (§9.5);
+- audit stale icon/status grammar;
+- audit Human/Agent/Evidence/History hierarchy;
+- audit disclosure consistency;
+- audit internal-label leakage;
+- avoid changing domain/IA merely for visual convenience.
+
+After migration:
+
+- run a global consistency audit;
+- then perform a final polish pass.
+
+This phase has not started. Nothing in this document should be read as
+implying otherwise.

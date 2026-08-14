@@ -134,14 +134,12 @@
   gap: var(--space-1);
 }
 .authorityGroup,
-.direction,
-.artistChain > div {
+.direction {
   min-width: 0;
   overflow-wrap: anywhere;
 }
 .authorityGroup,
-.chain,
-.artistChain {
+.chain {
   grid-area: authority;
 }
 .direction {
@@ -159,20 +157,10 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.chain,
-.artistChain {
+.chain {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-}
-.artistChain > div {
-  display: grid;
-  gap: var(--space-1);
-}
-.artistChain {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
-  min-width: 0;
 }
 .chainArrow {
   color: var(--text-muted);
@@ -265,6 +253,200 @@
   gap: var(--space-2);
 }
 
+/* Compact semantic-block correction (Artist-only): the previous
+ * per-field row grammar read as a settings/database table once every
+ * domain field had its own full-width row and divider. The header is
+ * now a single compact, tightened line -- kicker and collapse control
+ * only, no status badge cluster (each status now attaches to the
+ * semantic block it actually qualifies). Visual-polish pass: vertical
+ * padding tightened (was `--space-3`) now that the header carries no
+ * badge cluster of its own. */
+.artistCompactHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+}
+
+/* Three compact reading blocks (Core Anchor / Execution Anchor /
+ * Readiness): related facts about the same semantic object read as
+ * one continuous block -- an identity line, a primary paragraph, then
+ * inline "Lead-in — text" clauses in the same flow -- distinguished by
+ * typography and paragraph spacing, not by separate rows, label
+ * columns, or containers. Only one divider between each pair of
+ * blocks (the first block sits directly under the compact header,
+ * with no divider of its own, and a tightened top gap instead of the
+ * other blocks' full top padding). */
+.artistBlocks {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Proportion correction: the reading-width constraint moved off the
+ * block itself (which was stopping the major dividers early and
+ * leaving the right side of the Anchor surface empty) and onto the
+ * narrative prose elements only, below. Blocks and their dividers now
+ * use the full available Anchor content width. */
+.semanticBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.artistBlocks > .semanticBlock:first-child {
+  border-top: none;
+  padding-top: var(--space-2);
+}
+
+.semanticBlock a {
+  font-weight: 650;
+}
+
+.blockIdentity {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+/* Object-recognition tint (restrained -- the icon glyph only, never a
+ * background/tile, never the heading text itself): Core Anchor uses
+ * the same Intent/selected-purple family as current-selection/primary
+ * -Human-action treatments elsewhere; Execution Anchor uses the
+ * steel/cool advisory family. Readiness intentionally has no icon --
+ * no existing shared icon accurately communicates a workflow/attention
+ * state without borrowing `human` (Human Authority, a different
+ * concept) or `risk` (which would overstate danger whenever attention
+ * is genuinely low), so it is correctly omitted rather than misused. */
+.blockIconCore {
+  display: inline-flex;
+  color: var(--accent-selected-text);
+}
+
+.blockIconExecution {
+  display: inline-flex;
+  color: var(--accent-advisory-text);
+}
+
+.blockBody {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* Visual-polish pass: the Execution Anchor's own current-direction
+ * paragraph read as an over-dominant "wall of bold text" next to the
+ * Core Anchor and Readiness blocks' primary statements -- normal
+ * readable body weight restores a balanced Core/Execution/Readiness
+ * hierarchy without touching the identity line's own strength. */
+.blockBodyQuiet {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.blockClause {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.clauseLead {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.blockMeta {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.readinessHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* Readiness internal hierarchy: the next action's title/why-now and
+ * its action link are the block's strongest tier (plain
+ * `.blockBody`/`.blockClause`, unchanged). The Attention-reasoning,
+ * review-requirement, Downstream-consequence, and Upstream clauses are
+ * one level quieter still than the base muted/xs treatment -- reduced
+ * opacity on top of the already-muted color, plus a slightly larger
+ * top gap -- scoped to `.readinessSupporting` only so Core/Execution's
+ * own (unrelated) use of `.blockMeta` for draft notices is untouched.
+ * No real content (review_requirement, attention summary,
+ * downstream_effect, upstream state) is removed, only demoted. */
+.readinessSupporting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.readinessSupporting .blockMeta {
+  opacity: 0.85;
+}
+
+.blockClauseQuiet {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+  opacity: 0.85;
+}
+
+/* Compact supporting-context footer: short inline metadata after the
+ * final restrained divider, read as one quiet metadata rail rather
+ * than a strong badge -- Guidance state keeps its real semantic color
+ * (`data-tone`, same tone mapping `StatusBadge` uses) but as plain
+ * inline text, not a pill/chip. */
+.supportingFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--border-strong);
+}
+
+.footerFact {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.footerState {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.footerState[data-tone="confirmed"] {
+  color: var(--state-success);
+}
+
+.footerState[data-tone="attention"] {
+  color: var(--state-attention);
+}
+
+.footerState[data-tone="unavailable"] {
+  color: var(--text-muted);
+}
+
 @media (max-width: 1200px) {
   .summary {
     grid-template-columns: 1fr;
@@ -279,13 +461,9 @@
   .expanded {
     grid-template-columns: 1fr 1fr;
   }
-  .artistChain,
   .chain {
     align-items: flex-start;
     flex-direction: column;
-  }
-  .artistChain {
-    grid-template-columns: 1fr;
   }
   .chainArrow {
     display: none;
