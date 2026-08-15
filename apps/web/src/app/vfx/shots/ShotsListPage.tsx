@@ -1,13 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import type {
-  AnchorContextSummaryRead,
-  VfxInboxItemRead,
-  VfxInboxRead,
-} from "@intent-core/contracts";
+import type { VfxInboxItemRead, VfxInboxRead } from "@intent-core/contracts";
 
-import { Breadcrumbs, EmptyState, ErrorState, PageHeader } from "@/design";
+import {
+  Breadcrumbs,
+  EmptyState,
+  ErrorState,
+  Grid,
+  PageHeader,
+} from "@/design";
 import { coreAnchorStateLabel } from "../vfxWording";
 import { ShotRow } from "./ShotRow";
 import styles from "./ShotsListPage.module.css";
@@ -19,22 +21,18 @@ const CORE_ANCHOR_STATES: VfxInboxItemRead["core_anchor_state"][] = [
   "confirmed",
 ];
 
-/** `/vfx/shots` -- Shots (Step 7C-1 locked IA §9). Browsing and opening
- * Shots, not reviewing action items -- every normally-seeded Shot
- * appears here, including the generic development seed's uninitialized
- * Shot (never hidden). Filters operate only on fields the existing
- * `VfxInboxItemRead` already returns (Project, Core Anchor state,
- * Task), client-side, over the already-loaded dataset -- no widened
- * backend scope, no backend pagination. `inbox` is `null` only when the
- * real `GET /vfx/inbox` call failed, distinct from a real empty
- * portfolio. */
-export function ShotsListPage({
-  inbox,
-  anchorContexts = {},
-}: {
-  inbox: VfxInboxRead | null;
-  anchorContexts?: Record<string, AnchorContextSummaryRead | null>;
-}) {
+/** `/vfx/shots` -- Shots (Object Browser / Catalogue Archetype,
+ * `ICAS_DESIGN.md` §6.3). A production-object catalogue: recognize,
+ * compare, and open Shots, never a second Review Inbox or a second
+ * Workspace Home -- every normally-seeded Shot appears here, including
+ * the generic development seed's uninitialized Shot (never hidden).
+ * Filters describe real Shot properties only (Project, Core Anchor
+ * state, Task), client-side, over the already-loaded dataset -- no
+ * widened backend scope, no backend pagination, no actionability-only
+ * filter (that is Review Inbox's job, not a browse property). `inbox`
+ * is `null` only when the real `GET /vfx/inbox` call failed, distinct
+ * from a real empty portfolio. */
+export function ShotsListPage({ inbox }: { inbox: VfxInboxRead | null }) {
   return (
     <>
       <Breadcrumbs items={[{ label: "Shots" }]} />
@@ -51,19 +49,13 @@ export function ShotsListPage({
           description="Shots will appear here once they exist."
         />
       ) : (
-        <ShotsListContent items={inbox.items} anchorContexts={anchorContexts} />
+        <ShotsListContent items={inbox.items} />
       )}
     </>
   );
 }
 
-function ShotsListContent({
-  items,
-  anchorContexts,
-}: {
-  items: VfxInboxItemRead[];
-  anchorContexts: Record<string, AnchorContextSummaryRead | null>;
-}) {
+function ShotsListContent({ items }: { items: VfxInboxItemRead[] }) {
   const [projectFilter, setProjectFilter] = useState(ALL_VALUE);
   const [stateFilter, setStateFilter] = useState(ALL_VALUE);
   const [taskFilter, setTaskFilter] = useState(ALL_VALUE);
@@ -155,16 +147,13 @@ function ShotsListContent({
       {filtered.length === 0 ? (
         <EmptyState title="No Shots match these filters" />
       ) : (
-        <div role="list">
+        <Grid role="list" minColumnWidth="30rem" gap={3}>
           {filtered.map((item) => (
             <div role="listitem" key={item.shot_id}>
-              <ShotRow
-                item={item}
-                anchorContext={anchorContexts[item.shot_id]}
-              />
+              <ShotRow item={item} />
             </div>
           ))}
-        </div>
+        </Grid>
       )}
     </div>
   );

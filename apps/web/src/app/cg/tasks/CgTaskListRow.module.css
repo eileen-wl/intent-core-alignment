@@ -1,21 +1,16 @@
 .row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-5);
-  padding: var(--space-4) var(--space-2);
-  border-bottom: 1px solid var(--border-subtle);
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
   text-decoration: none;
   color: inherit;
 }
 
-.row:first-child {
-  border-top: 1px solid var(--border-subtle);
-}
-
 .row:hover,
 .row:focus-visible {
-  background: var(--surface-muted);
+  background: var(--surface-elevated);
 }
 
 .row:focus-visible {
@@ -23,22 +18,15 @@
   outline-offset: -2px;
 }
 
-.main {
-  flex: 1;
+.identity {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+  flex: 1 1 12rem;
   min-width: 0;
 }
 
-.taskLine {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-3);
-}
-
 .taskName {
-  margin: 0;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -48,42 +36,48 @@
   color: var(--text-muted);
 }
 
-.focusTitle {
-  margin: 0;
-  color: var(--text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.secondaryLine {
+.stateRow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--space-2) var(--space-3);
+  gap: var(--space-2);
+  flex: 0 0 auto;
+}
+
+.dependency {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.version {
+  flex: 0 0 auto;
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.tertiary {
+  flex: 0 0 auto;
   font-size: var(--font-size-xs);
   color: var(--text-muted);
 }
-.secondaryLine::before {
-  content: "Production context";
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
 
 .open {
-  flex-shrink: 0;
+  flex: 0 0 auto;
+  margin-left: auto;
   font-size: var(--font-size-sm);
   font-weight: 600;
   color: var(--accent-fact-text);
 }
 
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .row {
     flex-direction: column;
     align-items: flex-start;
-    gap: var(--space-2);
   }
 
   .open {
     align-self: flex-end;
+    margin-left: 0;
   }
 }

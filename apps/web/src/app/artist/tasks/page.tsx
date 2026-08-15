@@ -1,16 +1,14 @@
 import { redirect } from "next/navigation";
-import type {
-  AnchorContextSummaryRead,
-  ArtistInboxRead,
-} from "@intent-core/contracts";
+import type { ArtistInboxRead } from "@intent-core/contracts";
 
-import {
-  fetchArtistAnchorContextSummaries,
-  fetchArtistInbox,
-} from "@/features/artist/api";
-import { actorHeaders, resolveIdentity } from "@/features/session/identity";
+import { fetchArtistInbox } from "@/features/artist/api";
+import { resolveIdentity } from "@/features/session/identity";
 import { TasksListPage } from "./TasksListPage";
 
+/** The Tasks catalogue is an object browser -- it no longer needs the
+ * Anchor Context Summary fetch Home/Inbox still use for Human-action
+ * routing; every field the catalogue shows lives directly on
+ * `ArtistInboxRead`. */
 export default async function Page() {
   const identity = await resolveIdentity();
   if (identity?.role !== "artist") {
@@ -18,19 +16,11 @@ export default async function Page() {
   }
 
   let inbox: ArtistInboxRead | null;
-  let anchorContexts: Record<string, AnchorContextSummaryRead | null> = {};
   try {
-    const [inboxResult, summaryResult] = await Promise.all([
-      fetchArtistInbox(),
-      fetchArtistAnchorContextSummaries(actorHeaders(identity)),
-    ]);
-    inbox = inboxResult;
-    anchorContexts = Object.fromEntries(
-      summaryResult.items.map((item) => [item.task_id ?? "", item]),
-    );
+    inbox = await fetchArtistInbox();
   } catch {
     inbox = null;
   }
 
-  return <TasksListPage inbox={inbox} anchorContexts={anchorContexts} />;
+  return <TasksListPage inbox={inbox} />;
 }

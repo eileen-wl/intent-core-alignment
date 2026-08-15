@@ -1,13 +1,14 @@
 import { redirect } from "next/navigation";
-import type {
-  AnchorContextSummaryRead,
-  CgInboxRead,
-} from "@intent-core/contracts";
+import type { CgInboxRead } from "@intent-core/contracts";
 
-import { fetchCgAnchorContextSummaries, fetchCgInbox } from "@/features/cg/api";
-import { actorHeaders, resolveIdentity } from "@/features/session/identity";
+import { fetchCgInbox } from "@/features/cg/api";
+import { resolveIdentity } from "@/features/session/identity";
 import { TasksListPage } from "./TasksListPage";
 
+/** The Tasks catalogue is an object browser -- it no longer needs the
+ * Anchor Context Summary fetch Home/Inbox still use for Human-action
+ * routing; every field the catalogue shows lives directly on
+ * `CgInboxRead`. */
 export default async function Page() {
   const identity = await resolveIdentity();
   if (identity?.role !== "cg_supervisor") {
@@ -15,19 +16,11 @@ export default async function Page() {
   }
 
   let inbox: CgInboxRead | null;
-  let anchorContexts: Record<string, AnchorContextSummaryRead | null> = {};
   try {
-    const [inboxResult, summaryResult] = await Promise.all([
-      fetchCgInbox(),
-      fetchCgAnchorContextSummaries(actorHeaders(identity)),
-    ]);
-    inbox = inboxResult;
-    anchorContexts = Object.fromEntries(
-      summaryResult.items.map((item) => [item.task_id ?? "", item]),
-    );
+    inbox = await fetchCgInbox();
   } catch {
     inbox = null;
   }
 
-  return <TasksListPage inbox={inbox} anchorContexts={anchorContexts} />;
+  return <TasksListPage inbox={inbox} />;
 }

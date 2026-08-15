@@ -1,13 +1,10 @@
-import type {
-  AnchorContextSummaryRead,
-  VfxInboxItemRead,
-} from "@intent-core/contracts";
+import type { VfxInboxItemRead } from "@intent-core/contracts";
 import Link from "next/link";
 
 import {
-  AnchorContextSummary,
-  FtrackLinkageBadge,
   PendingLinkContent,
+  StatusBadge,
+  type StatusBadgeStatus,
 } from "@/design";
 import {
   coreAnchorStateLabel,
@@ -15,47 +12,61 @@ import {
   taskDisplayText,
   versionDisplayText,
 } from "../vfxWording";
-import styles from "../InboxRow.module.css";
+import styles from "./ShotRow.module.css";
 
-/** One Shots-list row (Step 7C-1 locked IA §9). Unlike a Review Inbox
- * row, this leads with the Shot's own Core Anchor state (a status/risk
- * marker) rather than a Current-focus action title -- this page's
- * purpose is browsing and opening Shots, not reviewing action items.
- * Reuses `InboxRow`'s row layout/CSS (same visual language, no
- * duplicated stylesheet) and the same shared wording helpers so the
- * two surfaces never describe the same Shot differently. */
-export function ShotRow({
-  item,
-  anchorContext,
-}: {
-  item: VfxInboxItemRead;
-  anchorContext?: AnchorContextSummaryRead | null;
-}) {
+const CORE_ANCHOR_BADGE_STATUS: Record<
+  VfxInboxItemRead["core_anchor_state"],
+  StatusBadgeStatus
+> = {
+  confirmed: "confirmed",
+  draft_pending: "attention",
+  none: "unavailable",
+};
+
+/** Same real `source: "manual" | "ftrack"` field, same two real
+ * wordings `WorkItemRow.tsx`'s `ftrackText` already established --
+ * plain tertiary text, not a competing colored badge, since linkage is
+ * supporting integration metadata here, not a status. */
+function ftrackText(source: VfxInboxItemRead["shot_source"]): string {
+  return source === "ftrack" ? "Linked to ftrack" : "No linked ftrack entity";
+}
+
+/** One Shot Board tile (Object Browser / Catalogue Archetype,
+ * `ICAS_DESIGN.md` §6.3). Object-first, Shot-identity-led: a Shot's
+ * own real textual identity (name + current Version) fills a distinct
+ * plate region -- never a fake frame, but shaped and proportioned so a
+ * future real ftrack thumbnail can drop into that exact region without
+ * redesigning the catalogue. Supporting facts (Project, Task, Core
+ * Anchor state, attention) sit beside it; a null attention level is
+ * never rendered as a hollow "No signal" line. Always routes to the
+ * Shot's own Overview and always reads "Open Shot". */
+export function ShotRow({ item }: { item: VfxInboxItemRead }) {
+  const hasAttention = item.latest_signal_attention_level !== null;
+
   return (
-    <Link
-      href={
-        anchorContext?.next_action.target_route ?? `/vfx/shots/${item.shot_id}`
-      }
-      className={styles.row}
-    >
-      <span className={styles.main}>
-        <span className={styles.shotLine}>
-          <span className={styles.shotName}>{item.shot_name}</span>
-          <span className={styles.projectName}>{item.project_name}</span>
-        </span>
-        <span className={styles.focusTitle}>
-          {coreAnchorStateLabel(item.core_anchor_state)}
-        </span>
-        <AnchorContextSummary context={anchorContext} />
-        <span className={styles.secondaryLine} aria-label="Production context">
-          <span>{signalStateLabel(item.latest_signal_attention_level)}</span>
-          <span>{taskDisplayText(item)}</span>
-          <span>{versionDisplayText(item)}</span>
-          <FtrackLinkageBadge source={item.shot_source} />
-        </span>
+    <Link href={`/vfx/shots/${item.shot_id}`} className={styles.tile}>
+      <span className={styles.slate}>
+        <span className={styles.slateShotName}>{item.shot_name}</span>
+        <span className={styles.slateVersion}>{versionDisplayText(item)}</span>
       </span>
-      <span className={styles.open} aria-hidden="true">
-        {anchorContext?.next_action.action_label ?? "Open Shot"} →
+      <span className={styles.details}>
+        <span className={styles.projectName}>{item.project_name}</span>
+        <span className={styles.stateRow}>
+          <StatusBadge
+            status={CORE_ANCHOR_BADGE_STATUS[item.core_anchor_state]}
+            label={coreAnchorStateLabel(item.core_anchor_state)}
+          />
+          {hasAttention && (
+            <span className={styles.attention}>
+              {signalStateLabel(item.latest_signal_attention_level)}
+            </span>
+          )}
+        </span>
+        <span className={styles.taskName}>{taskDisplayText(item)}</span>
+        <span className={styles.tertiary}>{ftrackText(item.shot_source)}</span>
+        <span className={styles.open} aria-hidden="true">
+          Open Shot →
+        </span>
       </span>
       <PendingLinkContent label={item.shot_name} />
     </Link>
