@@ -1,6 +1,6 @@
 # ICAS Full-Product Visual Migration — Page Inventory & Migration Map
 
-> **Status:** Read-only planning deliverable for Phase 2 (Full-Product Visual Language Migration) — the inventory and batch plan below is otherwise unmodified from when it was written. **Update (checkpoint):** Batch C's Worklist-family Inbox verification sub-scope (`/cg/inbox`, `/artist/inbox`) has since been implemented and owner-accepted, confirming the migration-goal expectation in §Batch C ("expected outcome for 7 of 8 pages: no change needed") for those two; the checklist in §L is left unchecked as originally written rather than edited here. Batch C's `/artist` Workspace Home item remains **not** implemented — the one prior visual-migration attempt on it was browser-rejected and reverted, and it is the next page targeted by this plan. The rest of Batch C, and Batches A/B/D/E in full, remain not started.
+> **Status:** Read-only planning deliverable for Phase 2 (Full-Product Visual Language Migration) — the inventory and batch plan below is otherwise unmodified from when it was written. **Update (checkpoint):** the CG/Artist Review Inbox verification sub-scope of Batch C (`/cg/inbox`, `/artist/inbox`) has since been implemented and owner-accepted. **Update (archetype-system reconciliation):** the three Workspace Homes and three Shots/Tasks catalogues, previously bundled into Batch C as mostly "no change needed," are now `TARGET`ed under the new Workspace/Orientation and Object Browser/Catalogue archetypes (§A, §B, §H) — none of the six are implemented yet, and the prior "no change needed" conclusion for that sub-scope no longer applies; the `/artist` Workspace Home's one prior visual-migration attempt was browser-rejected and reverted and remains not implemented. The checklist in §L is left unchecked as originally written rather than edited here. Batches A/B/D/E remain not started.
 > **Parent authority:** `docs/design/ICAS_DESIGN.md`, `docs/design/ICAS_VISUAL_LANGUAGE_V1.md` (see its §26 "Full-product migration note")
 > **Purpose:** Build a complete route/page inventory, cross-check it against the approved IA, classify every remaining page, map shared-component regression risk against the four locked archetypes, and organize the remaining work into controlled, risk-graduated implementation batches.
 > **Scope note:** This document describes a plan. It does not itself change page responsibilities, role permissions, route semantics, or any domain/API contract.
@@ -18,17 +18,20 @@
 | Total real `page.tsx` routes | 30 |
 | Locked reference archetypes (no redesign) | 4 |
 | Real product surfaces (non-locked, non-root, non-legacy/dev/demo) | 18 |
-| — of which **implementation targets** (concrete finding, real change expected) | 8 |
-| — of which **verification-only** (no concrete finding, confirm only) | 10 |
+| — of which **implementation targets** (concrete finding, real change expected) | 13 |
+| — of which **verification-only** (no concrete finding, confirm only) | 5 |
 | Root entry surface (real, but architecturally outside the shell — verification-only) | 1 |
 | Legacy/pre-role-split routes (`/shots/**`, not migration targets) | 3 |
 | Dev-only surfaces (`/dev/**`, not migration targets) | 3 |
 | Demo redirect stub (`/demo`, not a migration target) | 1 |
 | — Implementation-target severity: light | 2 (VFX Shot Overview, Artist Task Overview) |
-| — Implementation-target severity: standard | 4 (VFX Versions, CG Task Overview, CG Dependencies, Artist Workspace Home — conditional) |
+| — Implementation-target severity: standard | 3 (VFX Versions, CG Task Overview, CG Dependencies) |
 | — Implementation-target severity: **heavy/gated** | 2 (VFX Intent, CG Execution) |
+| — Implementation-target severity: **not yet sized** | 6 (VFX/CG/Artist Workspace Home + VFX Shots/CG Tasks/Artist Tasks, retargeted under the new archetype system per `ICAS_WORKSPACE_HOME_RESPONSIBILITY_AUDIT.md`/`ICAS_TOP_LEVEL_SURFACE_DIFFERENTIATION_AUDIT.md`; Artist Workspace Home's prior "standard/conditional" sizing no longer applies under its new scope; effort sizing not yet done for any of the 6) |
 
-18 = 8 implementation targets + 10 verification-only. This reconciles exactly with the route table in §B.
+18 = 13 implementation targets + 5 verification-only. This reconciles exactly with the route table in §B.
+
+> **Archetype-system update:** the three Workspace Homes and the three Shots/Tasks catalogues below were re-audited (see the two documents cited above) and moved from `VERIFY` to `TARGET` — their prior `Worklist (object-row reuse)` grammar is superseded by `ICAS_DESIGN.md` §6.2 (Workspace / Orientation Archetype) and §6.3 (Object Browser / Catalogue Archetype) respectively. The Review Inbox family's status is unchanged (accepted/frozen). Selected Shot/Task pages are unchanged by this update.
 
 ---
 
@@ -42,25 +45,25 @@
 | `/demo` | none | Permanent redirect to `/` | none | Compatibility only | Legacy-transitional (redirect stub) | NOT A MIGRATION TARGET | — | — | — |
 | `/dev`, `/dev/semantic-components`, `/dev/ui-foundation` | none | Engineering component/token catalogues | none | Not in role nav | Dev-smoke-test surface | NOT A MIGRATION TARGET | — | — | — |
 | `/shots`, `/shots/[shotId]`, `/shots/[shotId]/versions/[versionId]` | none (pre-role-split) | Legacy Shot/Anchor/Version CRUD console | Shot/Anchor/Version | Nav-orphaned (only linked from unreachable `/dev`) | Legacy-transitional | NOT A MIGRATION TARGET (see §G) | — | — | — |
-| `/vfx` | VFX Sup. | Workspace Home overview | Work item (aggregate) | Primary nav | Real product surface | VERIFY — no concrete finding | Worklist (object-row reuse) | LOW | — |
-| `/vfx/shots` | VFX Sup. | Shots catalogue/browse | Shot | Primary nav | Real product surface | VERIFY — no concrete finding | Worklist (object-list rows) | LOW | — |
+| `/vfx` | VFX Sup. | Workspace Home overview | Cross-object signal (role synthesis) | Primary nav | Real product surface | **TARGET** — current implementation too list-like / duplicates object-browser information hierarchy | Workspace / Orientation (§6.2) | LOW | — |
+| `/vfx/shots` | VFX Sup. | Shots catalogue/browse | Shot | Primary nav | Real product surface | **TARGET** — current rows expose too much Anchor/action grammar, need object-first catalogue treatment | Object Browser / Catalogue (§6.3) | LOW | — |
 | `/vfx/shots/[shotId]` | VFX Sup. | Shot Overview | Shot | Tab (shared frame) | Real product surface | **TARGET** — light | Work (current-object + guardrail) | LOW | S–M |
 | `/vfx/shots/[shotId]/intent` | VFX Sup. | Core Anchor authoring workspace | Anchor (Core) | Tab (shared frame) | Real product surface | **TARGET** — heavy, gated | Decision (Human action + Agent + Evidence disclosure) | **HIGH** | **L** |
 | `/vfx/shots/[shotId]/versions` | VFX Sup. | Production Version + review-note workspace | Version | Tab (shared frame) | Real product surface | **TARGET** — standard | Review (object + evidence + agent) | MEDIUM | M |
 | `/vfx/shots/[shotId]/activity` | VFX Sup. | Shot activity timeline | Activity event | Tab (shared frame) | Real product surface | VERIFY — no concrete finding | History sub-pattern | LOW | — |
 | `/vfx/inbox` | VFX Sup. | **LOCKED** — Worklist reference | Work item | Primary nav | Locked | — | — | — | — |
 | `/vfx/shots/[shotId]/alignment` | VFX Sup. | **LOCKED** — Decision reference | Cross-role Assessment | Tab (shared frame) | Locked | — | — | — | — |
-| `/cg` | CG Sup. | Workspace Home overview | Work item (aggregate) | Primary nav | Real product surface | VERIFY — no concrete finding | Worklist (object-row reuse) | LOW | — |
+| `/cg` | CG Sup. | Workspace Home overview | Cross-object signal (role synthesis) | Primary nav | Real product surface | **TARGET** — current implementation too list-like / duplicates object-browser information hierarchy | Workspace / Orientation (§6.2) | LOW | — |
 | `/cg/inbox` | CG Sup. | Review Inbox | Work item | Primary nav | Real product surface | VERIFY — no concrete finding beyond confirming its architecture already parallels the locked VFX inbox | Worklist (near-identical composition already) | LOW | — |
-| `/cg/tasks` | CG Sup. | Tasks catalogue/browse | Task | Primary nav | Real product surface | VERIFY — no concrete finding | Worklist (object-list rows) | LOW | — |
+| `/cg/tasks` | CG Sup. | Tasks catalogue/browse | Task | Primary nav | Real product surface | **TARGET** — current rows expose too much Anchor/action grammar, need object-first catalogue treatment | Object Browser / Catalogue (§6.3) | LOW | — |
 | `/cg/tasks/[taskId]` | CG Sup. | Task Overview | Task | Tab (shared frame) | Real product surface | **TARGET** — standard | Work (current-object + guardrail) | LOW–MEDIUM | M |
 | `/cg/tasks/[taskId]/execution` | CG Sup. | Execution Anchor authoring workspace | Anchor (Execution) | Tab (shared frame) | Real product surface | **TARGET** — heavy, gated | Decision (Human action + Agent + Evidence disclosure) | **HIGH** | **L** |
 | `/cg/tasks/[taskId]/dependencies` | CG Sup. | Dependency/coordination workspace | Dependency | Tab (shared frame) | Real product surface | **TARGET** — standard–heavy | Worklist-adjacent (row list) + Decision (Human action) | MEDIUM | M–L |
 | `/cg/tasks/[taskId]/activity` | CG Sup. | Task activity timeline | Activity event | Tab (shared frame) | Real product surface | VERIFY — no concrete finding | History sub-pattern | LOW | — |
 | `/cg/tasks/[taskId]/version-review` | CG Sup. | **LOCKED** — Review reference | Version | Tab (shared frame) | Locked | — | — | — | — |
-| `/artist` | Artist | Workspace Home overview | Work item (aggregate) | Primary nav | Real product surface | **TARGET** — light, conditional on §E confirming real content-length variability | Worklist (object-row reuse) + long-form audit (§E) | LOW | S–M |
+| `/artist` | Artist | Workspace Home overview | Cross-object signal (role synthesis) | Primary nav | Real product surface | **TARGET** — current implementation too list-like / duplicates object-browser information hierarchy (supersedes the prior light/conditional §E framing) | Workspace / Orientation (§6.2) | LOW | — |
 | `/artist/inbox` | Artist | Review Inbox | Work item | Primary nav | Real product surface | VERIFY — no concrete finding beyond confirming its architecture already parallels the locked VFX inbox | Worklist (near-identical composition already) | LOW | — |
-| `/artist/tasks` | Artist | Tasks catalogue/browse | Task | Primary nav | Real product surface | VERIFY — no concrete finding | Worklist (object-list rows) | LOW | — |
+| `/artist/tasks` | Artist | Tasks catalogue/browse | Task | Primary nav | Real product surface | **TARGET** — current rows expose too much Anchor/action grammar, need object-first catalogue treatment | Object Browser / Catalogue (§6.3) | LOW | — |
 | `/artist/tasks/[taskId]` | Artist | Task Overview | Task | Tab (shared frame) | Real product surface | **TARGET** — standard | Work-adjacent — composition to be derived from this page's own content, not copied from the Artist Anchor (see §6/Batch D) | LOW–MEDIUM | M |
 | `/artist/tasks/[taskId]/feedback-history` | Artist | Feedback History timeline | Review Note event | Tab (shared frame) | Real product surface | VERIFY — no concrete finding | History sub-pattern | LOW | — |
 | `/artist/tasks/[taskId]/current-version` | Artist | **LOCKED** — Work reference | Version | Tab (shared frame) | Locked | — | — | — | — |
@@ -167,19 +170,19 @@ These are flagged, not resolved or silently folded into the visual plan.
 
 **Prerequisite (not a batch, fold into whichever batch touches these files):** the two confirmed token issues — `--state-danger*` undefined in `ReanchorProposalReview.module.css`, and stale `--accent-agent-*` (should be `--accent-selected-*`) in `ExecutionAnchorEditor.module.css`/`DependencyRow.module.css`/`RecordDependencyForm.module.css` — are trivial, zero-visual-risk token hygiene, not migration work. Fix them as part of Batch A/B when those specific files are touched anyway.
 
-### Batch C — Worklist-family consistency (do first)
+### Batch C — Review Inbox family consistency (do first)
 
-- **Pages, split by role (item 4 of this reconciliation pass):**
-  - **VERIFICATION ONLY** (no concrete finding — confirm in browser, do not invent work): `/vfx`, `/cg` (Workspace Homes), `/cg/inbox`, `/artist/inbox`, `/vfx/shots`, `/cg/tasks`, `/artist/tasks` (list pages) — 7 pages.
-  - **IMPLEMENTATION TARGET, conditional:** `/artist` (Workspace Home) — the Why/How/What card grid flagged in §E. Before doing any work, first inspect the real card content lengths; only proceed with a semantic-block-style fix if the content genuinely varies in length the way §E suspects. If the content turns out to be short/predictable, reclassify this page VERIFICATION ONLY too and do nothing.
-- **Shared components involved:** `SummaryCard`, `Grid`, `AnchorContextSummary`, row components (`InboxRow`, `CgTaskRow`, `ArtistTaskRow`, list-row variants)
-- **Migration goal:** confirm the already-locked Worklist archetype grammar (VFX Review Inbox) is already consistently expressed across its CG/Artist siblings (expected outcome for 7 of 8 pages: no change needed); resolve the Artist Workspace Home's card grid only if inspection confirms it's a real instance of the anti-pattern.
+> **Superseded in part (archetype-system update):** this batch originally bundled the three Workspace Homes and the three Shots/Tasks catalogues in with Review Inbox under one "Worklist-family" umbrella and concluded "no change needed" for 7 of the 8 pages. That conclusion no longer holds — those six pages are now `TARGET`ed under the new Workspace/Orientation and Object Browser/Catalogue archetypes (§A, §B). Only Review Inbox itself (`/vfx/inbox`, `/cg/inbox`, `/artist/inbox`) remains correctly scoped as Worklist-family verification below; the other six pages' redesign is tracked as unsized work (§A) and is not re-sequenced into a batch here.
+
+- **Pages:** `/cg/inbox`, `/artist/inbox` — **VERIFICATION ONLY** (no concrete finding — confirm in browser, do not invent work), confirming they already parallel the locked `/vfx/inbox` grammar.
+- **Shared components involved:** row components (`WorkItemRow`, `CgTaskWorkItemRow`, `ArtistTaskWorkItemRow`), `AnchorContextSummary`
+- **Migration goal:** confirm the already-locked Worklist archetype grammar (VFX Review Inbox) is already consistently expressed across its CG/Artist siblings.
 - **Grammar reference:** `ICAS_VISUAL_LANGUAGE_V1.md` §24.1 Worklist grammar
-- **Product-risk:** LOW throughout
-- **Effort:** none for the 7 verification-only pages; S–M for Artist Workspace Home, only if confirmed
+- **Product-risk:** LOW
+- **Effort:** none — verification only
 - **Prerequisites:** none
-- **Acceptance screenshots:** 1 confirmation screenshot per verification-only page (7 pages, "looks consistent, no change made"); for Artist Workspace Home, 1 default view + (if changed) 1 populated-multi-item view
-- **Locked pages needing regression review:** none — `AnchorContextSummary` no longer touches any locked page (§F correction); listed here only because this batch is where its 8 real consumers live, should Batch E later find something to fix
+- **Acceptance screenshots:** 1 confirmation screenshot per page (2 pages, "looks consistent, no change made")
+- **Locked pages needing regression review:** none
 
 ### Batch D — Artist Task Overview
 
@@ -308,14 +311,20 @@ These are collected into one pass after Batch E, not mixed into per-page migrati
 - [x] CG Version Review
 - [x] Artist Current Version
 
-**Batch C:**
+**Workspace / Orientation Archetype (§6.2) — retargeted, not yet sized:**
 
-- [ ] `[V]` `/vfx` Workspace Home
-- [ ] `[V]` `/cg` Workspace Home
-- [ ] `[T]` `/artist` Workspace Home — conditional on §E confirming real content-length variability; reclassify `[V]` if not confirmed
-- [ ] `[V]` `/vfx/shots` list
-- [ ] `[V]` `/cg/tasks` list
-- [ ] `[V]` `/artist/tasks` list
+- [ ] `[T]` `/vfx` Workspace Home
+- [ ] `[T]` `/cg` Workspace Home
+- [ ] `[T]` `/artist` Workspace Home — prior "conditional on §E" framing superseded by the archetype reconciliation; unconditionally targeted
+
+**Object Browser / Catalogue Archetype (§6.3) — retargeted, not yet sized:**
+
+- [ ] `[T]` `/vfx/shots` list
+- [ ] `[T]` `/cg/tasks` list
+- [ ] `[T]` `/artist/tasks` list
+
+**Review Inbox family (Worklist Archetype, §6.1) — accepted/frozen:**
+
 - [ ] `[V]` `/cg/inbox`
 - [ ] `[V]` `/artist/inbox`
 

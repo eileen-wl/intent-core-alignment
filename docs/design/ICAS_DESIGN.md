@@ -335,7 +335,7 @@ Provenance should remain available without becoming a primary page section unles
 
 # 6. Page archetype system
 
-ICAS should be treated as **four structural page families plus one history sub-pattern**, not as a collection of unrelated pages.
+ICAS should be treated as **six structural page families plus one history sub-pattern**, not as a collection of unrelated pages.
 
 These archetypes define the user's primary task and information hierarchy. They do **not** prescribe identical layouts.
 
@@ -346,9 +346,6 @@ These archetypes define the user's primary task and information hierarchy. They 
 ### Representative pages
 
 - Review Inbox
-- Shots
-- Tasks
-- Workspace Home
 
 ### User goal
 
@@ -386,7 +383,62 @@ Detailed Anchor/Version metadata can be expanded or shown as secondary content.
 
 ---
 
-## 6.2 Decision Archetype
+## 6.2 Workspace / Orientation Archetype
+
+### Representative pages
+
+- Workspace Home (VFX, CG, Artist)
+
+### User goal
+
+> Understand the current state of my role's work, identify the most important focus, and enter the right work surface.
+
+### Core principles
+
+- synthesis before enumeration;
+- cross-object state, not deep object detail;
+- maximum 1 Primary Focus + up to 2 secondary named objects;
+- remaining work represented as aggregate state + routes, never a full queue;
+- no full queue;
+- no full object catalogue;
+- no full Anchor / Version / Guidance / Dependency detail;
+- role-specific primary surface: VFX = creative attention; CG = execution readiness; Artist = personal execution orientation.
+
+---
+
+## 6.3 Object Browser / Catalogue Archetype
+
+### Representative pages
+
+- VFX Shots
+- CG Tasks
+- Artist Tasks
+
+### User goal
+
+> Recognize, compare, filter, and enter production objects.
+
+### Priority order
+
+1. Object identity
+2. Comparable object state
+3. Production context
+4. Neutral enter-object affordance
+
+### Design principles
+
+- object-first, never reason/action-first;
+- no "why this needs you" framing;
+- no full `AnchorContextSummary`;
+- no deep Overview content;
+- compact states/counts are allowed;
+- neutral affordance wording (e.g. "Open Shot" / "Open Task");
+- role-specific grammar is allowed;
+- do not force identical cards/rows across Shot and Task types.
+
+---
+
+## 6.4 Decision Archetype
 
 ### Representative pages
 
@@ -418,7 +470,7 @@ Detailed Anchor/Version metadata can be expanded or shown as secondary content.
 
 ---
 
-## 6.3 Review Archetype
+## 6.5 Review Archetype
 
 ### Representative pages
 
@@ -452,7 +504,7 @@ Avoid turning review pages into long documents.
 
 ---
 
-## 6.4 Work Archetype
+## 6.6 Work Archetype
 
 ### Representative pages
 
@@ -494,7 +546,7 @@ It should not force the Artist to read the entire intent hierarchy before they c
 
 ---
 
-## 6.5 History Sub-pattern
+## 6.7 History Sub-pattern
 
 ### Representative pages/sections
 
@@ -516,7 +568,7 @@ It should not force the Artist to read the entire intent hierarchy before they c
 - show meaningful transitions rather than every fact with equal weight;
 - support drill-down into evidence/provenance.
 
-History is a supporting pattern, not a fifth main workspace type.
+History is a supporting pattern, not a main workspace type of its own.
 
 ---
 
@@ -1310,6 +1362,8 @@ The first representative page for each archetype is:
 | Archetype | Representative page |
 |---|---|
 | Worklist | VFX Review Inbox |
+| Workspace / Orientation | VFX Workspace Home |
+| Object Browser / Catalogue | VFX Shots |
 | Decision | VFX Alignment |
 | Review | CG Version Review |
 | Work | Artist Current Version |
@@ -1382,7 +1436,7 @@ The following are considered locked for this implementation phase:
 6. Provenance is available on demand.
 7. The product targets medium-high information density.
 8. Complexity is managed through hierarchy and progressive disclosure, not destructive simplification.
-9. The system uses four page archetypes: Worklist, Decision, Review, Work.
+9. The system uses six page archetypes: Worklist, Workspace / Orientation, Object Browser / Catalogue, Decision, Review, Work.
 10. Different archetypes may use different page structures.
 11. Shared semantics should use shared visual components.
 12. Purple is reserved for current/selected/Intent/primary Human action, not generic AI decoration.

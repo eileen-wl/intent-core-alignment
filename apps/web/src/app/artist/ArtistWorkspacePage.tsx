@@ -1,5 +1,6 @@
 import type {
   AnchorContextSummaryListRead,
+  AnchorContextSummaryRead,
   ArtistInboxItemRead,
   ArtistInboxRead,
 } from "@intent-core/contracts";
@@ -15,18 +16,74 @@ import {
   Stack,
   SummaryCard,
 } from "@/design";
+import { conciseDirection } from "@/design/semantic/anchor-context/presentation";
 import { ROLE_LABEL } from "@/lib/demoIdentity";
-import { ArtistTaskRow } from "./ArtistTaskRow";
+import styles from "./ArtistWorkspacePage.module.css";
 
-/** `/artist` -- the Artist Workspace Home (Step 7C-5), mirroring
- * `app/cg/CgWorkspacePage.tsx`'s shape exactly: a small, real production
- * overview ("what is assigned to me, what changed, what should I work
- * on next"), a small number of real Priority actions (work items, not
- * Tasks) using the same priority ordering as the Artist Review Inbox,
- * and a small, clearly secondary Important-Tasks section routing into
- * the full Tasks catalogue. `inbox` is `null` only when the real
- * `GET /artist/inbox` call failed, distinct from a real empty
- * portfolio. */
+/** Reduces a real Core/Execution Anchor direction string to the
+ * shortest faithful Home-level summary: `conciseDirection` first
+ * strips any verified generator/source label (e.g. "[CG Agent
+ * execution anchor draft -- deterministic placeholder, review
+ * required]") the same way `AnchorContextLayer` already does
+ * everywhere else this field is shown, then this keeps only the
+ * direction's own first complete clause -- both `core_direction` and
+ * `execution_direction` are written as one direction sentence
+ * optionally followed by a longer supporting explanation (e.g.
+ * "Preserve the combined-intensity ceiling. Stronger bloom, brighter
+ * particles... locally defensible refinements..."), and that longer
+ * explanation is exactly the Task Workspace's own job (Anchor Context
+ * panel, Task Overview), not Home's. Stripping a label that sat
+ * directly before the direction's own trailing period can otherwise
+ * leave an orphaned `" ."` behind (`.replace` below removes any
+ * leftover whitespace immediately before a punctuation mark). */
+function homeDirectionSummary(value: string | null | undefined): string | null {
+  const direction = conciseDirection(value);
+  if (!direction) return null;
+  const [firstClause] = direction.match(/[^.!?]+[.!?]*/g) ?? [direction];
+  return (firstClause ?? direction).replace(/\s+([.!?,;:])/g, "$1").trim();
+}
+
+const SECONDARY_FOCUS_COUNT = 2;
+
+/** Short, state-only phrasing for the Up Next signal line -- keyed by
+ * the Task's own `current_focus.focus_type` (the real reason it's
+ * ready), not `next_action.title`/`action_label`, which is written as
+ * an imperative instruction ("Continue within current Guidance")
+ * appropriate for a Human action link, not a compact status signal. */
+const FOCUS_TYPE_SIGNAL_LABEL: Partial<
+  Record<ArtistInboxItemRead["current_focus"]["focus_type"], string>
+> = {
+  guidance_outdated: "Guidance outdated",
+  review_note_needs_response: "Feedback awaiting response",
+  dependency_needs_attention: "Open dependency",
+  guidance_available: "Guidance available",
+};
+
+/** `current_focus.focus_type` is `"none"` for many ready Tasks that
+ * still have a real, honest reason to be in Up Next -- they're part
+ * of the same real, backend-priority-ordered ready-Task queue Current
+ * Work's own primary Task comes from, so that readiness is the real
+ * signal, not a false "No open signal". */
+function secondarySignalLabel(item: ArtistInboxItemRead): string {
+  const focusLabel = FOCUS_TYPE_SIGNAL_LABEL[item.current_focus.focus_type];
+  if (focusLabel) return focusLabel;
+  return "Ready to work";
+}
+
+/** `/artist` -- the Artist Workspace Home (Workspace / Orientation
+ * Archetype, `ICAS_DESIGN.md` §6.2; content model per
+ * `ICAS_WORKSPACE_HOME_RESPONSIBILITY_AUDIT.md` §9/§15). Answers "what
+ * should I work on now" -- never a second Review Inbox or a second
+ * Tasks catalogue, and deliberately not a copy of the VFX/CG
+ * supervisor dashboard shape. Content ceiling: exactly one Current
+ * Work Task, up to two lighter Up Next Tasks, everything else
+ * expressed as an aggregate count or a route. Ready-Task priority
+ * ordering reuses the same real, backend-priority-ordered `readyTasks`
+ * feed the previous "Ready to work" section already consumed (single-
+ * Task and multi-Task cases now share this one presentation, not two
+ * unrelated layouts); Waiting Tasks are never individually enumerated,
+ * only counted. `inbox` is `null` only when the real `GET
+ * /artist/inbox` call failed, distinct from a real empty portfolio. */
 export function ArtistWorkspacePage({
   inbox,
   readyTasks,
@@ -41,7 +98,7 @@ export function ArtistWorkspacePage({
       <Breadcrumbs items={[{ label: "Workspace Home" }]} />
       <PageHeader
         title="Workspace Home"
-        description={`${ROLE_LABEL.artist} · what is assigned to you, what changed, and what to work on next.`}
+        description={`${ROLE_LABEL.artist} · what is assigned to you and what to work on next.`}
       />
 
       {inbox === null ? (
@@ -55,7 +112,7 @@ export function ArtistWorkspacePage({
           description="Tasks will appear here once they exist."
         />
       ) : (
-        <WorkspaceHomeContent
+        <ArtistHomeContent
           items={inbox.items}
           readyTasks={readyTasks}
           waitingTasks={waitingTasks}
@@ -65,7 +122,7 @@ export function ArtistWorkspacePage({
   );
 }
 
-function WorkspaceHomeContent({
+function ArtistHomeContent({
   items,
   readyTasks,
   waitingTasks,
@@ -74,10 +131,6 @@ function WorkspaceHomeContent({
   readyTasks?: AnchorContextSummaryListRead | null;
   waitingTasks?: AnchorContextSummaryListRead | null;
 }) {
-  const totalTasks = items.length;
-  const requiringAttention = items.filter(
-    (item) => item.current_focus.actionable,
-  ).length;
   const newOrUpdatedGuidance = items.filter((item) =>
     ["guidance_outdated", "guidance_available"].includes(
       item.current_focus.focus_type,
@@ -89,121 +142,156 @@ function WorkspaceHomeContent({
   const blockedTasks = items.filter(
     (item) => item.open_dependency_count > 0,
   ).length;
+  const readyCount = readyTasks?.total_count ?? 0;
+  const waitingCount = waitingTasks?.total_count ?? 0;
+
+  // Reuses the same real, backend-priority-ordered `readyTasks` feed
+  // the prior "Ready to work" section already consumed -- Current Work
+  // is simply its first entry, Up Next its next two. The single-ready
+  // and multi-ready cases now share this one presentation.
   const itemsById = new Map(items.map((item) => [item.task_id, item]));
-  const ready = (readyTasks?.items ?? []).flatMap((summary) => {
+  const readyEntries = (readyTasks?.items ?? []).flatMap((summary) => {
     const item = summary.task_id ? itemsById.get(summary.task_id) : undefined;
     return item ? [{ item, summary }] : [];
   });
-  const waiting = (waitingTasks?.items ?? []).flatMap((summary) => {
-    const item = summary.task_id ? itemsById.get(summary.task_id) : undefined;
-    return item ? [{ item, summary }] : [];
-  });
-  const singleReady = readyTasks?.total_count === 1 ? ready[0] : undefined;
+  const primary = readyEntries[0];
+  const secondary = readyEntries.slice(1, 1 + SECONDARY_FOCUS_COUNT);
 
   return (
     <Stack gap={6}>
-      <div role="region" aria-label="Ready to work">
+      <p className={styles.pulse}>
+        {readyCount === 0
+          ? "Nothing is ready for you to work on right now."
+          : `${readyCount} Task${readyCount === 1 ? " is" : "s are"} ready for you to work on.`}
+      </p>
+
+      <div role="region" aria-label="Current work">
         <SectionHeader
-          title="Ready to work"
-          description="Tasks with confirmed Core and Execution direction, an executable next step, and no recorded blocker."
+          title="Current work"
+          description="The Task to work on right now, and why."
         />
-        {singleReady ? (
-          <>
-            <p>
-              <strong>{singleReady.item.task_name}</strong> ·{" "}
-              {singleReady.item.shot_name}
-            </p>
-            <Grid minColumnWidth="15rem" gap={4}>
-              <SummaryCard
-                label="Why"
-                value={
-                  singleReady.summary.core_direction ??
-                  "Confirmed Core direction is unavailable."
-                }
-                description={`Core Anchor R${singleReady.summary.core_anchor_revision_number}`}
-              />
-              <SummaryCard
-                label="How"
-                value={
-                  singleReady.summary.execution_direction ??
-                  "Confirmed execution direction is unavailable."
-                }
-                description={`Execution Anchor R${singleReady.summary.execution_anchor_revision_number}`}
-              />
-              <SummaryCard
-                label="What to do now"
-                value={singleReady.summary.next_action.title}
-                description={`Guidance: ${singleReady.summary.guidance_state.replaceAll("_", " ")}`}
-              />
-            </Grid>
-          </>
-        ) : ready.length === 0 ? (
-          <EmptyState
-            title="No Tasks are ready to work"
-            description="Tasks waiting for confirmed direction or unblocked Guidance are grouped below."
+        {primary ? (
+          <CurrentWork item={primary.item} summary={primary.summary} />
+        ) : (
+          <EmptyState title="Nothing is ready to work on right now" />
+        )}
+      </div>
+
+      {secondary.length > 0 && (
+        <div role="region" aria-label="Up next">
+          <SectionHeader
+            title="Up next"
+            description="A small number of other Tasks that are also ready."
           />
-        ) : (
-          <div role="list">
-            {ready.map(({ item, summary }) => (
+          <div role="list" className={styles.secondaryList}>
+            {secondary.map(({ item, summary }) => (
               <div role="listitem" key={item.task_id}>
-                <ArtistTaskRow item={item} anchorContext={summary} />
+                <SecondaryFocus item={item} summary={summary} />
               </div>
             ))}
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div role="region" aria-label="Waiting for upstream direction">
+      <div role="region" aria-label="Work state">
         <SectionHeader
-          title="Waiting for upstream direction"
-          description="Tasks blocked by missing or outdated direction, Guidance, or Dependencies, with the owning next step made explicit."
-          actions={<Link href="/artist/inbox">Go to Review Inbox →</Link>}
-        />
-        {waiting.length === 0 ? (
-          <EmptyState title="No Tasks are waiting upstream" />
-        ) : (
-          <div role="list">
-            {waiting.map(({ item, summary }) => (
-              <div role="listitem" key={item.task_id}>
-                <ArtistTaskRow item={item} anchorContext={summary} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div role="region" aria-label="Task overview">
-        <SectionHeader
-          title="Task overview"
-          description="Scope-level counts follow the executable and waiting work groups."
-          actions={<Link href="/artist/tasks">View all Tasks →</Link>}
+          title="Work state"
+          description="Readiness and guidance state across your Tasks."
+          actions={
+            <span className={styles.scopeRoutes}>
+              <Link href="/artist/inbox">Go to Review Inbox →</Link>
+              <Link href="/artist/tasks">View all Tasks →</Link>
+            </span>
+          }
         />
         <Grid minColumnWidth="13rem" gap={4}>
-          <SummaryCard label="Total Tasks" value={totalTasks} />
-          <SummaryCard
-            label="Ready to work"
-            value={readyTasks?.total_count ?? 0}
-          />
-          <SummaryCard
-            label="Waiting upstream"
-            value={waitingTasks?.total_count ?? 0}
-          />
-          <SummaryCard
-            label="Requiring attention"
-            value={requiringAttention}
-            description="Tasks with an actionable Current focus"
-          />
-          <SummaryCard
-            label="New or updated guidance"
-            value={newOrUpdatedGuidance}
-          />
-          <SummaryCard
-            label="Feedback requiring response"
-            value={feedbackRequiringResponse}
-          />
-          <SummaryCard label="Blocked Tasks" value={blockedTasks} />
+          <SummaryCard label="Ready to work" value={readyCount} />
+          <SummaryCard label="Waiting upstream" value={waitingCount} />
         </Grid>
+        <SupportingMetrics
+          items={[
+            { label: "New or updated guidance", value: newOrUpdatedGuidance },
+            {
+              label: "Feedback requiring response",
+              value: feedbackRequiringResponse,
+            },
+            { label: "Blocked Tasks", value: blockedTasks },
+          ]}
+        />
       </div>
     </Stack>
+  );
+}
+
+function focusRoute(
+  item: ArtistInboxItemRead,
+  summary: AnchorContextSummaryRead,
+) {
+  return summary.next_action.target_route ?? `/artist/tasks/${item.task_id}`;
+}
+
+function CurrentWork({
+  item,
+  summary,
+}: {
+  item: ArtistInboxItemRead;
+  summary: AnchorContextSummaryRead;
+}) {
+  return (
+    <Link href={focusRoute(item, summary)} className={styles.currentWork}>
+      <span className={styles.currentWorkIdentity}>
+        {item.task_name} · {item.shot_name}
+      </span>
+      <span className={styles.currentWorkClause}>
+        <span className={styles.currentWorkLabel}>Why —</span>{" "}
+        {homeDirectionSummary(summary.core_direction) ??
+          "Confirmed Core direction is unavailable."}
+      </span>
+      <span className={styles.currentWorkClause}>
+        <span className={styles.currentWorkLabel}>How —</span>{" "}
+        {homeDirectionSummary(summary.execution_direction) ??
+          "Confirmed execution direction is unavailable."}
+      </span>
+      <span className={styles.currentWorkNextAction}>
+        <span className={styles.currentWorkLabel}>What to do now —</span>{" "}
+        {summary.next_action.title}
+      </span>
+      <span className={styles.currentWorkAction} aria-hidden="true">
+        {summary.next_action.action_label ?? "Open Task"} →
+      </span>
+    </Link>
+  );
+}
+
+function SecondaryFocus({
+  item,
+  summary,
+}: {
+  item: ArtistInboxItemRead;
+  summary: AnchorContextSummaryRead;
+}) {
+  return (
+    <Link href={focusRoute(item, summary)} className={styles.secondaryFocus}>
+      <span className={styles.secondaryFocusIdentity}>{item.task_name}</span>
+      <span className={styles.secondaryFocusSignal}>
+        {secondarySignalLabel(item)}
+      </span>
+    </Link>
+  );
+}
+
+function SupportingMetrics({
+  items,
+}: {
+  items: { label: string; value: number }[];
+}) {
+  return (
+    <div className={styles.supportingMetrics}>
+      {items.map(({ label, value }) => (
+        <span key={label} className={styles.supportingMetric}>
+          <span className={styles.supportingMetricValue}>{value}</span> {label}
+        </span>
+      ))}
+    </div>
   );
 }
