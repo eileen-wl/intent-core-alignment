@@ -53,6 +53,7 @@ class D1ScenarioResultRead(BaseModel):
 async def ensure_d1_scenario_endpoint(
     session: AsyncSession = Depends(get_session),
 ) -> D1ScenarioResultRead:
+    _require_d1_journey_tools_enabled()
     result = await ensure_d1_scenario(session)
     return D1ScenarioResultRead(
         project_id=result.project_id,
@@ -83,6 +84,7 @@ async def reset_uninitialized_shot_endpoint(
     prior browser session has moved it past it (e.g. by starting a
     draft). Never adds a product-facing page -- this is scaffolding at the
     same trust boundary as `/ensure-d1-scenario` (see module docstring)."""
+    _require_d1_journey_tools_enabled()
     shot_id = await reset_uninitialized_shot_core_anchor_state(session)
     return ResetUninitializedShotResultRead(
         shot_id=shot_id, intent_url=f"/vfx/shots/{shot_id}/intent"
@@ -106,6 +108,7 @@ async def reset_cg_demo_task_endpoint(
     -- this is scaffolding at the same trust boundary as
     `/ensure-d1-scenario`/`/reset-uninitialized-shot` (see module
     docstring)."""
+    _require_d1_journey_tools_enabled()
     task_id = await reset_cg_demo_task_execution_anchor_state(session)
     return ResetCgDemoTaskResultRead(
         task_id=task_id, execution_url=f"/cg/tasks/{task_id}/execution"

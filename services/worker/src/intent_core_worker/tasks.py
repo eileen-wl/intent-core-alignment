@@ -61,6 +61,7 @@ async def ping(ctx: dict[str, Any], heartbeat_name: str) -> None:
                 "name": heartbeat_name,
                 "pinged_at": datetime.now(UTC).isoformat(),
             },
+            headers={"X-Internal-Sync-Token": settings.internal_sync_token},
         )
         response.raise_for_status()
 

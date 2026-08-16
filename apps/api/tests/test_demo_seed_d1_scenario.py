@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import pytest
 from httpx import AsyncClient
+from intent_core_api.config import get_settings
 from intent_core_api.cross_department.models import TaskDependency
 from intent_core_api.demo_seed.d1_scenario import (
     _CG_DEMO_EXECUTION_DRAFT_CONTENT,
@@ -913,3 +914,26 @@ async def test_cg_demo_reset_endpoint_returns_the_task_id_and_its_exact_executio
     body = response.json()
     assert body["task_id"]
     assert body["execution_url"] == f"/cg/tasks/{body['task_id']}/execution"
+
+
+# --- Production hardening regression: ensure-d1-scenario, reset-uninitialized
+# -shot, and reset-cg-demo-task now share the same `_require_d1_journey_tools_
+# enabled()` production gate as their four d1/* siblings ------------------
+
+
+async def test_ensure_and_reset_endpoints_404_when_app_env_is_production(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("APP_ENV", "production")
+    get_settings.cache_clear()
+    try:
+        ensure_response = await client.post("/internal/demo/ensure-d1-scenario")
+        assert ensure_response.status_code == 404
+
+        reset_shot_response = await client.post("/internal/demo/reset-uninitialized-shot")
+        assert reset_shot_response.status_code == 404
+
+        reset_cg_response = await client.post("/internal/demo/reset-cg-demo-task")
+        assert reset_cg_response.status_code == 404
+    finally:
+        get_settings.cache_clear()
