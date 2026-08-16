@@ -20,6 +20,7 @@ import httpx
 import pytest
 
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
+INTERNAL_HEADERS = {"X-Internal-Sync-Token": os.environ.get("INTERNAL_SYNC_TOKEN", "")}
 
 
 def _api_reachable() -> bool:
@@ -37,11 +38,13 @@ pytestmark = pytest.mark.skipif(
 
 async def test_ping_worker_updates_heartbeat() -> None:
     async with httpx.AsyncClient(base_url=API_BASE_URL) as client:
-        enqueue_response = await client.post("/internal/ping-worker")
+        enqueue_response = await client.post("/internal/ping-worker", headers=INTERNAL_HEADERS)
         assert enqueue_response.status_code == 202
 
         for _ in range(20):
-            read_back = await client.get("/internal/worker-heartbeat/worker-ping")
+            read_back = await client.get(
+                "/internal/worker-heartbeat/worker-ping", headers=INTERNAL_HEADERS
+            )
             if read_back.status_code == 200:
                 return
             await asyncio.sleep(0.5)

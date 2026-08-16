@@ -12,11 +12,14 @@ from intent_core_worker import tasks
 
 
 async def test_ping_calls_worker_heartbeat_endpoint(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("INTERNAL_SYNC_TOKEN", "test-token")
+    tasks.get_settings.cache_clear()
     captured: dict[str, Any] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
         captured["url"] = str(request.url)
         captured["body"] = json.loads(request.content)
+        captured["headers"] = request.headers
         return httpx.Response(
             200, json={"name": "worker-ping", "last_ping_at": "2026-07-13T00:00:00Z"}
         )
@@ -35,6 +38,7 @@ async def test_ping_calls_worker_heartbeat_endpoint(monkeypatch: pytest.MonkeyPa
     assert captured["url"].endswith("/internal/worker-heartbeat")
     assert captured["body"]["name"] == "worker-ping"
     assert "pinged_at" in captured["body"]
+    assert captured["headers"]["x-internal-sync-token"] == "test-token"
 
 
 class _FakeFtrackConnector:

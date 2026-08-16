@@ -1,5 +1,7 @@
 from httpx import AsyncClient
 
+INTERNAL_HEADERS = {"X-Internal-Sync-Token": "test-internal-sync-token"}
+
 
 async def test_worker_heartbeat_round_trip(client: AsyncClient) -> None:
     """Covers the callback the worker makes after processing a job.
@@ -7,16 +9,25 @@ async def test_worker_heartbeat_round_trip(client: AsyncClient) -> None:
     The enqueue endpoint (`POST /internal/ping-worker`) needs a live
     Redis connection and is covered by tests/integration instead.
     """
-    missing = await client.get("/internal/worker-heartbeat/worker-ping")
+    missing = await client.get("/internal/worker-heartbeat/worker-ping", headers=INTERNAL_HEADERS)
     assert missing.status_code == 404
 
     upsert = await client.post(
         "/internal/worker-heartbeat",
         json={"name": "worker-ping", "pinged_at": "2026-07-13T00:00:00Z"},
+        headers=INTERNAL_HEADERS,
     )
     assert upsert.status_code == 200
     assert upsert.json()["name"] == "worker-ping"
 
-    read_back = await client.get("/internal/worker-heartbeat/worker-ping")
+    read_back = await client.get("/internal/worker-heartbeat/worker-ping", headers=INTERNAL_HEADERS)
     assert read_back.status_code == 200
     assert read_back.json()["name"] == "worker-ping"
+
+
+async def test_worker_heartbeat_rejects_missing_token(client: AsyncClient) -> None:
+    response = await client.post(
+        "/internal/worker-heartbeat",
+        json={"name": "worker-ping", "pinged_at": "2026-07-13T00:00:00Z"},
+    )
+    assert response.status_code == 401

@@ -7,14 +7,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from intent_core_api.config import get_settings
 from intent_core_api.db import get_session
+from intent_core_api.ftrack_version_note_sync.auth import require_internal_sync_token
 from intent_core_api.ops.models import WorkerHeartbeat
 from intent_core_api.ops.schemas import WorkerHeartbeatRead, WorkerHeartbeatUpsert
 
-# NOTE: these endpoints are not permission- or network-boundary-protected.
-# That is acceptable for local/dev scaffolding only, where api and worker
-# run on a trusted docker-compose network. Do not expose this router
-# beyond that boundary without adding an internal-only auth mechanism.
-router = APIRouter(prefix="/internal", tags=["ops"])
+# Protected by the same trusted-internal-caller mechanism as
+# ftrack_version_note_sync/router.py (X-Internal-Sync-Token). Reused here
+# rather than a second auth concept -- see auth.py's module docstring.
+router = APIRouter(
+    prefix="/internal", tags=["ops"], dependencies=[Depends(require_internal_sync_token)]
+)
 
 PING_HEARTBEAT_NAME = "worker-ping"
 
