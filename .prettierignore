@@ -3,3 +3,4 @@ pnpm-lock.yaml
 packages/contracts/ts/src/generated/
 .next/
 node_modules/
+.claude/skills/
