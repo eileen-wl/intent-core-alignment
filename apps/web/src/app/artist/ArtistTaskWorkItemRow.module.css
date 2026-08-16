@@ -1,9 +1,13 @@
+/* Worklist archetype family consistency: matches the locked VFX
+ * `WorkItemRow.module.css` exactly (padding, line-clamp, rail
+ * treatment) -- see that file's own comments for the "denser than
+ * Alignment/CG Review" rationale. */
 .row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-5);
-  padding: var(--space-4) var(--space-2);
+  padding: var(--space-3) var(--space-2);
   border-bottom: 1px solid var(--border-subtle);
   text-decoration: none;
   color: inherit;
@@ -31,22 +35,20 @@
   min-width: 0;
 }
 
-.category {
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--accent-agent-text);
-}
-
 .title {
   margin: 0;
   font-weight: 600;
   color: var(--text-primary);
 }
 
+/* Presentation-only clamp: the real free-text `explanation` string is
+ * unchanged and the destination page shows it in full. */
 .explanation {
   margin: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
 }
@@ -56,14 +58,9 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2) var(--space-3);
+  margin-top: var(--space-1);
   font-size: var(--font-size-xs);
   color: var(--text-muted);
-}
-.secondaryLine::before {
-  content: "Production context";
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
 }
 
 .open {

@@ -4,13 +4,16 @@ import type {
   ArtistInboxRead,
 } from "@intent-core/contracts";
 import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { ArtistWorkspacePage } from "./ArtistWorkspacePage";
 
 afterEach(cleanup);
 
-function item(id: string): ArtistInboxItemRead {
+function item(
+  id: string,
+  focusType: ArtistInboxItemRead["current_focus"]["focus_type"] = "none",
+): ArtistInboxItemRead {
   return {
     task_id: id,
     task_name: `Compositing ${id}`,
@@ -31,7 +34,7 @@ function item(id: string): ArtistInboxItemRead {
     open_review_note_count: 0,
     open_dependency_count: 0,
     current_focus: {
-      focus_type: "none",
+      focus_type: focusType,
       title: "Nothing requires your attention on this Task right now",
       explanation: "No review action.",
       target_route: `/artist/tasks/${id}`,
@@ -91,15 +94,255 @@ function inbox(items: ArtistInboxItemRead[]): ArtistInboxRead {
 
 describe("ArtistWorkspacePage", () => {
   it("renders honest error and empty states", () => {
-    const { rerender } = render(
-      <ArtistWorkspacePage inbox={null} onExitRole={vi.fn()} />,
-    );
+    const { rerender } = render(<ArtistWorkspacePage inbox={null} />);
     expect(screen.getByText("Workspace Home is unavailable")).toBeVisible();
-    rerender(<ArtistWorkspacePage inbox={inbox([])} onExitRole={vi.fn()} />);
+    rerender(<ArtistWorkspacePage inbox={inbox([])} />);
     expect(screen.getByText("No Tasks exist yet")).toBeVisible();
   });
 
-  it("separates ready work from waiting upstream and puts counts below", () => {
+  it("shows an honest empty state when nothing is ready, and still counts Waiting", () => {
+    render(
+      <ArtistWorkspacePage
+        inbox={inbox([item("unready")])}
+        readyTasks={{ items: [], total_count: 0, limit: 5 }}
+        waitingTasks={{
+          items: [summary("unready", "waiting_upstream")],
+          total_count: 1,
+          limit: 5,
+        }}
+      />,
+    );
+    const current = screen.getByRole("region", { name: "Current work" });
+    expect(
+      within(current).getByText("Nothing is ready to work on right now"),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("region", { name: "Up next" }),
+    ).not.toBeInTheDocument();
+    // Waiting Tasks are never individually enumerated -- only counted.
+    expect(screen.queryByText("Shot unready")).not.toBeInTheDocument();
+    const workState = within(
+      screen.getByRole("region", { name: "Work state" }),
+    );
+    expect(
+      workState.getByText("Waiting upstream").closest("div"),
+    ).toHaveTextContent("1");
+  });
+
+  it("uses the same Why/How/What-to-do-now presentation for exactly one ready Task", () => {
+    render(
+      <ArtistWorkspacePage
+        inbox={inbox([item("one")])}
+        readyTasks={{
+          items: [summary("one", "ready_to_work")],
+          total_count: 1,
+          limit: 5,
+        }}
+        waitingTasks={{ items: [], total_count: 0, limit: 5 }}
+      />,
+    );
+    const current = within(
+      screen.getByRole("region", { name: "Current work" }),
+    );
+    expect(current.getByText(/Why —/)).toBeVisible();
+    expect(current.getByText(/How —/)).toBeVisible();
+    expect(current.getByText(/What to do now —/)).toBeVisible();
+    expect(current.getByText("Open Current Version →")).toBeVisible();
+    expect(
+      screen.queryByRole("region", { name: "Up next" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("uses the identical Current Work presentation and enforces the ceiling when multiple Tasks are ready", () => {
+    const items = Array.from({ length: 4 }, (_, index) => item(`r${index}`));
+    render(
+      <ArtistWorkspacePage
+        inbox={inbox(items)}
+        readyTasks={{
+          items: items.map((row) => summary(row.task_id, "ready_to_work")),
+          total_count: 4,
+          limit: 5,
+        }}
+        waitingTasks={{ items: [], total_count: 0, limit: 5 }}
+      />,
+    );
+
+    // Same Why/How/What-to-do-now presentation as the single-ready case
+    // -- not a different layout.
+    const current = within(
+      screen.getByRole("region", { name: "Current work" }),
+    );
+    expect(current.getByText(/Why —/)).toBeVisible();
+    expect(current.getByText(/How —/)).toBeVisible();
+    expect(current.getByText(/What to do now —/)).toBeVisible();
+
+    const upNext = screen.getByRole("region", { name: "Up next" });
+    const upNextItems = within(upNext).getAllByRole("listitem");
+    expect(upNextItems).toHaveLength(2);
+    expect(within(upNext).getByText("Compositing r1")).toBeVisible();
+    expect(within(upNext).getByText("Compositing r2")).toBeVisible();
+    expect(
+      within(upNext).queryByText("Compositing r3"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("strips internal generator/source labels and keeps only the direction's own first clause", () => {
+    render(
+      <ArtistWorkspacePage
+        inbox={inbox([item("one")])}
+        readyTasks={{
+          items: [
+            {
+              ...summary("one", "ready_to_work"),
+              core_direction:
+                "[Core Agent draft - deterministic placeholder, review required] Keep the confrontation restrained. A longer explanation of local department nuance follows here.",
+              execution_direction:
+                "[CG Agent execution anchor draft - deterministic placeholder, review required] Keep faces readable without a heroic lift. Stronger bloom and brighter particles are each locally defensible refinements.",
+            },
+          ],
+          total_count: 1,
+          limit: 5,
+        }}
+        waitingTasks={{ items: [], total_count: 0, limit: 5 }}
+      />,
+    );
+    const current = within(
+      screen.getByRole("region", { name: "Current work" }),
+    );
+    expect(
+      screen.queryByText(/deterministic placeholder/),
+    ).not.toBeInTheDocument();
+    expect(
+      current.getByText(/Keep the confrontation restrained\./),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/local department nuance/),
+    ).not.toBeInTheDocument();
+    expect(
+      current.getByText(/Keep faces readable without a heroic lift\./),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/locally defensible refinements/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("cleans up an orphaned punctuation artifact left behind by generator-label stripping", () => {
+    render(
+      <ArtistWorkspacePage
+        inbox={inbox([item("one")])}
+        readyTasks={{
+          items: [
+            {
+              ...summary("one", "ready_to_work"),
+              execution_direction:
+                'Avoid heroic spectacle." [CG Agent execution anchor draft - D1 combined-intensity ceiling translation].',
+            },
+          ],
+          total_count: 1,
+          limit: 5,
+        }}
+        waitingTasks={{ items: [], total_count: 0, limit: 5 }}
+      />,
+    );
+    const current = within(
+      screen.getByRole("region", { name: "Current work" }),
+    );
+    expect(screen.queryByText(/\.\s+\./)).not.toBeInTheDocument();
+    expect(current.getByText(/Avoid heroic spectacle\./)).toBeVisible();
+  });
+
+  it("does not claim an unsupported 'what changed' capability in the header", () => {
+    render(
+      <ArtistWorkspacePage
+        inbox={inbox([item("one")])}
+        readyTasks={{ items: [], total_count: 0, limit: 5 }}
+        waitingTasks={{ items: [], total_count: 0, limit: 5 }}
+      />,
+    );
+    expect(screen.queryByText(/what changed/i)).not.toBeInTheDocument();
+  });
+
+  it("shows a compact, non-imperative state signal for each Up Next Task instead of the imperative next-action title", () => {
+    render(
+      <ArtistWorkspacePage
+        inbox={inbox([
+          item("r0"),
+          item("r1", "guidance_available"),
+          item("r2", "dependency_needs_attention"),
+        ])}
+        readyTasks={{
+          items: [
+            summary("r0", "ready_to_work"),
+            summary("r1", "ready_to_work"),
+            summary("r2", "ready_to_work"),
+          ],
+          total_count: 3,
+          limit: 5,
+        }}
+        waitingTasks={{ items: [], total_count: 0, limit: 5 }}
+      />,
+    );
+    const upNext = screen.getByRole("region", { name: "Up next" });
+    expect(within(upNext).getByText("Guidance available")).toBeVisible();
+    expect(within(upNext).getByText("Open dependency")).toBeVisible();
+    expect(
+      within(upNext).queryByText("Continue within current Guidance"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("falls back to the real 'Ready to work' state, never a false 'No open signal', when current focus is none", () => {
+    render(
+      <ArtistWorkspacePage
+        inbox={inbox([item("r0"), item("r1"), item("r2")])}
+        readyTasks={{
+          items: [
+            summary("r0", "ready_to_work"),
+            summary("r1", "ready_to_work"),
+            summary("r2", "ready_to_work"),
+          ],
+          total_count: 3,
+          limit: 5,
+        }}
+        waitingTasks={{ items: [], total_count: 0, limit: 5 }}
+      />,
+    );
+    const upNext = screen.getByRole("region", { name: "Up next" });
+    expect(within(upNext).getAllByText("Ready to work")).toHaveLength(2);
+    expect(
+      within(upNext).queryByText("No open signal"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("visually splits primary role-state metrics from supporting metrics without dropping any aggregate fact", () => {
+    render(
+      <ArtistWorkspacePage
+        inbox={inbox([
+          item("ready", "guidance_available"),
+          item("waiting", "review_note_needs_response"),
+        ])}
+        readyTasks={{
+          items: [summary("ready", "ready_to_work")],
+          total_count: 1,
+          limit: 5,
+        }}
+        waitingTasks={{
+          items: [summary("waiting", "waiting_upstream")],
+          total_count: 1,
+          limit: 5,
+        }}
+      />,
+    );
+    const workState = within(
+      screen.getByRole("region", { name: "Work state" }),
+    );
+    expect(workState.getByText("Ready to work")).toBeVisible();
+    expect(workState.getByText("Waiting upstream")).toBeVisible();
+    expect(workState.getByText(/New or updated guidance/)).toBeVisible();
+    expect(workState.getByText(/Feedback requiring response/)).toBeVisible();
+    expect(workState.getByText(/Blocked Tasks/)).toBeVisible();
+  });
+
+  it("keeps the Work state counts and routes present", () => {
     render(
       <ArtistWorkspacePage
         inbox={inbox([item("ready"), item("waiting")])}
@@ -113,78 +356,22 @@ describe("ArtistWorkspacePage", () => {
           total_count: 1,
           limit: 5,
         }}
-        onExitRole={vi.fn()}
       />,
     );
-    const ready = screen.getByRole("region", { name: "Ready to work" });
-    const waiting = screen.getByRole("region", {
-      name: "Waiting for upstream direction",
-    });
-    const counts = screen.getByRole("region", { name: "Task overview" });
-    expect(within(ready).getByText("Why")).toBeVisible();
-    expect(
-      within(waiting).getAllByText("Core Anchor confirmation is required")
-        .length,
-    ).toBeGreaterThan(0);
-    expect(within(waiting).getByLabelText("Production context")).toBeVisible();
-    expect(
-      ready.compareDocumentPosition(counts) & Node.DOCUMENT_POSITION_FOLLOWING,
-    ).toBeTruthy();
-  });
-
-  it("shows the large WHY HOW WHAT briefing only for exactly one proven ready Task", () => {
-    const readySummary = summary("one", "ready_to_work");
-    const { rerender } = render(
-      <ArtistWorkspacePage
-        inbox={inbox([item("one"), item("two")])}
-        readyTasks={{ items: [readySummary], total_count: 1, limit: 5 }}
-        waitingTasks={{ items: [], total_count: 0, limit: 5 }}
-        onExitRole={vi.fn()}
-      />,
+    const workState = within(
+      screen.getByRole("region", { name: "Work state" }),
     );
-    expect(screen.getByText("What to do now")).toBeVisible();
-
-    rerender(
-      <ArtistWorkspacePage
-        inbox={inbox([item("one"), item("two")])}
-        readyTasks={{
-          items: [readySummary, summary("two", "ready_to_work")],
-          total_count: 2,
-          limit: 5,
-        }}
-        waitingTasks={{ items: [], total_count: 0, limit: 5 }}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.queryByText("What to do now")).not.toBeInTheDocument();
     expect(
-      within(
-        screen.getByRole("region", { name: "Ready to work" }),
-      ).getAllByRole("listitem"),
-    ).toHaveLength(2);
-  });
-
-  it("never promotes a ranked but unready first Task as current direction", () => {
-    render(
-      <ArtistWorkspacePage
-        inbox={inbox([item("unready")])}
-        readyTasks={{ items: [], total_count: 0, limit: 5 }}
-        waitingTasks={{
-          items: [summary("unready", "waiting_upstream")],
-          total_count: 1,
-          limit: 5,
-        }}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("No Tasks are ready to work")).toBeVisible();
+      workState.getByText("Ready to work").closest("div"),
+    ).toHaveTextContent("1");
     expect(
-      screen.queryByText("My current working direction"),
-    ).not.toBeInTheDocument();
+      workState.getByText("Waiting upstream").closest("div"),
+    ).toHaveTextContent("1");
     expect(
-      screen.queryByText(
-        "Nothing requires your attention on this Task right now",
-      ),
-    ).not.toBeInTheDocument();
+      screen.getByRole("link", { name: "View all Tasks →" }),
+    ).toHaveAttribute("href", "/artist/tasks");
+    expect(
+      screen.getByRole("link", { name: "Go to Review Inbox →" }),
+    ).toHaveAttribute("href", "/artist/inbox");
   });
 });

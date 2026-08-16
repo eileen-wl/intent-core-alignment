@@ -1,115 +1,381 @@
-.grid {
+/* Owner correction: a permanent left Version column left a large empty
+ * vertical area and forced the Review Workspace into a narrow column.
+ * The selector is now a compact horizontal row above the workspace,
+ * which uses the full content width below it. */
+.workspace {
   max-width: var(--content-width-comparison);
   margin: var(--space-5) auto 0;
   width: 100%;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  display: flex;
+  flex-direction: column;
   gap: var(--space-4);
-  align-items: start;
 }
 
-@media (max-width: 900px) {
-  .grid {
-    grid-template-columns: 1fr;
-  }
+.selectorSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
-.listColumn,
-.detailColumn {
+.reviewColumn {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 .columnHeading {
   margin: 0;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   font-weight: 700;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
 
-.list {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-
-.row {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--surface-panel);
-  text-align: left;
-  cursor: pointer;
-}
-
-.row:hover {
-  background: var(--surface-elevated);
-}
-
-.rowActive {
-  border-color: var(--accent-agent-border);
-  background: var(--accent-agent-surface);
-}
-
-.rowName {
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.rowMeta {
+.selectorList {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--space-2);
+}
+
+/* Owner correction: the connector read as too weak against the now
+ * larger Version objects -- a thicker line and a bigger arrowhead
+ * give the rail relationship real visible presence, still without
+ * absolute-positioned line-drawing across the whole (possibly
+ * wrapping) row. */
+.railConnector {
+  flex: 0 0 auto;
+  align-self: center;
+  position: relative;
+  width: 2.5rem;
+  height: 2px;
+  background: var(--border-strong);
+}
+
+.railConnector::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  right: -1px;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid var(--border-strong);
+  border-bottom: 2px solid var(--border-strong);
+  transform: translateY(-50%) rotate(-45deg);
+}
+
+/* Owner correction: icon + name + ftrack badge + note count all sat on
+ * one same-weight pill row, reading as "a long chain of same-weight
+ * pills" rather than distinct production objects. The Version name is
+ * now the primary label on its own line; ftrack/note-count state
+ * moves to a visually secondary line beneath it. Owner correction
+ * (reference-delta): each Version object now claims a real, stable
+ * ~35-40% share of the rail's width (`flex-grow: 0` on a percentage
+ * basis, not shrink-wrapped to content) instead of reading as a small
+ * chip. */
+.chip {
+  position: relative;
+  flex: 0 1 40%;
+  min-width: 16rem;
+  max-width: 28rem;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-panel);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.chip:hover {
+  background: var(--surface-muted);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+/* Same restrained "current selection" treatment used for active
+ * navigation (RoleSidebar) -- a background/border tint, not a filled
+ * card, per the frozen ICAS purple = selection semantic. */
+.chipActive {
+  background: var(--accent-selected-surface);
+  border-color: var(--accent-selected-border);
+}
+
+.chipPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.chipName {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.chipPill {
+  flex: none;
+  padding: 0.05rem var(--space-2);
+  border-radius: var(--radius-pill);
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.chipPillActive {
+  background: var(--accent-selected-surface);
+  border: 1px solid var(--accent-selected-border);
+  color: var(--text-primary);
+}
+
+.chipPillLatest {
+  background: var(--surface-muted);
+  border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
+}
+
+.chipSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+}
+
+.chipMeta {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+/* Owner-approved reference: restrained tinted object tiles for
+ * important production objects (Version, Review Note) -- purple,
+ * matching the same Core-Anchor/Intent tinted-tile treatment used by
+ * AnchorContextLayer's "review" variant, not a generic colourful
+ * SaaS tile. */
+.iconTile {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--accent-selected-surface);
+  border: 1px solid var(--accent-selected-border);
+  color: var(--accent-selected-text);
+}
+
+.iconTileSmall {
+  width: 2rem;
+  height: 2rem;
+}
+
+.iconTileLarge {
+  width: 4rem;
+  height: 4rem;
+  border-radius: var(--radius-md);
+}
+
+/* C+E. Selected Version + Production Evidence -- owner-approved
+ * reference: ONE raised review-object surface, not two detached
+ * sections. `.versionHeader`/`.evidenceSection` no longer carry their
+ * own background/radius; this wrapper does, with `.evidenceSection`'s
+ * own top border reading as the internal divider between them. */
+.selectedVersionSurface {
+  border-radius: var(--radius-lg);
+  background: var(--surface-elevated);
+  overflow: hidden;
+}
+
+.versionHeader {
+  padding: var(--space-4) var(--space-5);
+}
+
+.versionObjectRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.versionObjectBody {
+  min-width: 0;
+  flex: 1;
+}
+
+/* ICAS Visual Language v1 §7.1 Level A: semantic icon + sentence-case
+ * region title at real section-title scale, replacing the previous
+ * tiny uppercase kicker -- shared by every Level A region on this page
+ * (Version review, Production evidence, CG Agent review). Owner
+ * correction: `text-secondary` at `font-size-sm` read as a decorative
+ * tick rather than a semantic anchor -- `text-primary` plus a real
+ * section-title size gives the icon+title unit enough contrast to
+ * scan at normal desktop viewing distance. */
+.regionHeading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.versionTitleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.versionTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+/* The large object-marker tile scales its icon up too -- `Icon`'s own
+ * largest size step (`region`, 18px) reads small inside a 4rem tile. */
+.iconTileLarge svg {
+  width: 1.75rem;
+  height: 1.75rem;
+}
+
+.versionMeta {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.versionLatestNote {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: var(--space-2) 0 0;
+}
+
+.versionLatestLabel {
+  color: var(--text-muted);
   font-size: var(--font-size-xs);
 }
 
-.detail {
-  min-width: 0;
-  padding: var(--space-5);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
-  background: var(--surface-panel);
+.versionLatestValue {
+  color: var(--accent-fact-text);
+  font-weight: 700;
+  font-size: var(--font-size-sm);
 }
 
-.detailHeading {
-  margin: 0 0 var(--space-4) 0;
-  font-size: var(--font-size-lg);
-  color: var(--text-primary);
-}
-
-.section {
-  margin-top: var(--space-5);
-  padding-top: var(--space-4);
+/* E. Production Evidence -- Owner correction: a filled panel with its
+ * own border-radius read as an equally-important card next to the
+ * Version/Agent/Human surfaces. ICAS_VISUAL_LANGUAGE_V1 §9.2/§13.3:
+ * Evidence should be an open working surface, not another raised
+ * card -- no background fill or radius, just a top divider and the
+ * same horizontal inset (`--space-5`) the other regions use so its
+ * content still lines up with them. */
+.evidenceSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-5) var(--space-4);
   border-top: 1px solid var(--border-subtle);
 }
 
-.sectionHeading {
-  margin: 0 0 var(--space-3) 0;
+/* Owner correction: label/value pairs wrapped as one continuous
+ * "LABEL value, LABEL value, ..." prose line. A real grid gives each
+ * field its own column with the value clearly beneath its label,
+ * using the section's real width intentionally instead of wrapping
+ * early. */
+.evidenceGrid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-4);
+}
+
+.evidenceField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.evidenceLabel {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.evidenceValue {
+  margin: 0;
+  color: var(--text-secondary);
   font-size: var(--font-size-sm);
-  font-weight: 700;
-  color: var(--text-primary);
+  overflow-wrap: break-word;
+}
+
+/* Review Context's Execution Anchor value only -- the one real,
+ * already-accessible, already-verified-elsewhere-on-this-page route
+ * (`/cg/tasks/:taskId/execution`, same as Anchor Context's own
+ * "Open Execution →" link). Only the value itself is interactive, not
+ * the whole cell; same restrained blue link grammar already used by
+ * `.versionLatestValue`. */
+.evidenceLink {
+  color: var(--accent-fact-text);
+  text-decoration: none;
+}
+
+.evidenceLink:hover {
+  text-decoration: underline;
+}
+
+.evidenceLink:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .evidenceGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Detailed Agent Review's "Review context" -- same compact grid
+ * grammar as Production Evidence's metadata grid, combining the old
+ * separate Inputs + Prerequisites lists into one set of label/value
+ * cells (the value itself carries the confirmation state, e.g.
+ * "Confirmed R2"). */
+.reviewContextGrid {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2) var(--space-4);
+}
+
+@media (max-width: 640px) {
+  .reviewContextGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.subsection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
 }
 
 .empty {
   margin: 0;
   color: var(--text-muted);
-  font-size: var(--font-size-sm);
-}
-
-.contextText {
-  margin: 0;
-  color: var(--text-secondary);
   font-size: var(--font-size-sm);
 }
 
@@ -119,18 +385,29 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
 }
 
 .note {
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--surface-elevated);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.note svg {
+  margin-top: 0.2rem;
+  color: var(--text-muted);
+}
+
+.note:last-child {
+  border-bottom: none;
 }
 
 .noteContent {
   margin: 0 0 var(--space-1) 0;
   color: var(--text-primary);
+  font-size: var(--font-size-sm);
   white-space: pre-wrap;
 }
 
@@ -138,4 +415,493 @@
   margin: 0;
   color: var(--text-muted);
   font-size: var(--font-size-xs);
+}
+
+/* F. Agent Review Summary -- a concise, bespoke first-reading layer
+ * (not the full-report `AgentContributionPanel`, which always showed
+ * Inputs/Prerequisites/Human authority/Next action unconditionally).
+ * Kicker, steel/cool advisory identity, executive summary, Signal
+ * Strip, top-2 decision-relevant preview. Everything else moves to
+ * the detail disclosure below. Owner correction: this surface used
+ * the same `--surface-elevated` tone as the raised Version object and
+ * Human authority surfaces, reading as a third equally-important
+ * card. A working surface one step quieter than "raised" keeps the
+ * Agent region clearly grouped while staying visually below Human
+ * Authority and distinct from the Version object surface. */
+.agentSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: var(--surface-panel);
+}
+
+/* Owner correction: identity/summary and the Signal Strip both sat in
+ * one narrow text column, reading as another paragraph of report
+ * text. A two-column review canvas gives the executive conclusion
+ * (left) and the Signal Strip (right) real, independent width at
+ * desktop size -- alignment and spacing carry the separation, not an
+ * additional border. */
+.agentCanvas {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(300px, 1fr);
+  align-items: start;
+  column-gap: var(--space-6);
+  row-gap: var(--space-3);
+}
+
+.agentLeft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* Owner-approved reference: a restrained vertical separator between
+ * Review Conclusion (`.agentLeft`) and Review Signal, plus a bit more
+ * deliberate internal padding on this side -- the ~55/45
+ * `.agentCanvas` column split and the Signal Strip's own count size
+ * are unchanged. */
+.agentRight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-2) 0 var(--space-2) var(--space-5);
+  border-left: 1px solid var(--border-subtle);
+}
+
+.agentRightHeading {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 860px) {
+  .agentCanvas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.agentGenerated {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* Owner correction: CSS line-clamp on the raw sentence cut it off
+ * mid-thought. `deriveAgentTakeaway` (VersionReviewPage.tsx) now does
+ * the real work -- it derives a complete-sentence, budgeted-length
+ * takeaway from the real review data before this ever renders, so no
+ * CSS-level truncation is applied here. The full original text
+ * remains reachable via Detailed Agent Review. */
+.executiveSummary {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+}
+
+/* Owner-approved visual reference: a compact footer statement rather
+ * than another body paragraph -- a top divider and tighter spacing
+ * separate it from the findings above without a new icon. The
+ * disclosure affordance lives inside this same footer, below the
+ * advisory note.
+ *
+ * Owner correction: this used to be a `flex` ROW with the advisory
+ * note and the `<details>` element as side-by-side items. That put
+ * `.disclosureContent` -- full-height once expanded -- inside the
+ * same row as the note, so opening it made the whole detailed review
+ * render squeezed into whatever width was left in that row, and the
+ * summary/toggle line appeared to "jump" relative to its collapsed
+ * position. A `column` stack means the note and the `<details>`
+ * element are each their own full-width block; the toggle line's own
+ * position (right-aligned, via `.disclosureSummary`'s own
+ * `justify-content`) never moves between collapsed and expanded,
+ * since expanding only adds content BELOW that fixed line, never
+ * beside it. */
+.agentFooter {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.advisoryNote {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.previewList {
+  margin: var(--space-3) 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Owner-approved visual reference: numbered rows (matching the
+ * Detailed Agent Review's own row grammar) rather than a plain bullet
+ * dot -- each finding now shows its real rationale alongside the
+ * summary, with the priority badge aligned right. */
+.previewItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+/* Agent identity stays steel/cool, never purple -- the index box
+ * deliberately does not reuse the ICAS-purple selection treatment. */
+.previewIndex {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+/* Owner-approved reference: the DEFAULT top-2 finding rows only use
+ * the restrained purple selected/focus treatment (matching the
+ * Version object tiles) -- a separate class from `.previewIndex`
+ * above, which stays neutral, since that one is reused by the frozen
+ * Detailed Agent Review's own finding rows (`ReviewItemGroup`/
+ * `GuidanceGroup`). */
+.previewIndexFocus {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent-selected-border);
+  background: var(--accent-selected-surface);
+  color: var(--accent-selected-text);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.previewBody {
+  min-width: 0;
+  flex: 1;
+}
+
+.previewHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+/* Owner-approved reference: presentation-only clamp to one compact
+ * line each (title, then rationale) -- the real `item.summary`/
+ * `item.rationale` strings are unchanged; the full text remains
+ * available in Detailed Agent Review. */
+.previewSummary {
+  margin: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.previewWhy {
+  margin: var(--space-1) 0 0;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.disclosure {
+  margin-top: 0;
+  width: 100%;
+}
+
+/* Owner correction: right-aligned within its own always-full-width
+ * line (the footer is now a column stack, not a row shared with the
+ * advisory note), so this line's position is identical whether the
+ * `<details>` is open or closed -- only `.disclosureContent` below it
+ * appears/disappears. */
+.disclosureSummary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  list-style: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.disclosureSummary::-webkit-details-marker {
+  display: none;
+}
+
+/* Native `<details>`/`<summary>` label swap, no JS state: both labels
+ * (each already carrying the matching directional arrow character,
+ * matching this page's existing "Latest production → X" / "Open
+ * Execution →" arrow grammar) are always in the DOM; the `[open]`
+ * attribute selector shows exactly one. `display: none` content is
+ * excluded from the accessible name, so `<summary>`'s announced text
+ * stays correct in both states. */
+.disclosureLabelOpen {
+  display: none;
+}
+
+.disclosure[open] > .disclosureSummary .disclosureLabelClosed {
+  display: none;
+}
+
+.disclosure[open] > .disclosureSummary .disclosureLabelOpen {
+  display: inline;
+}
+
+.disclosureContent {
+  margin-top: var(--space-4);
+}
+
+.findingGroup {
+  margin-bottom: var(--space-5);
+}
+
+.findingGroup:last-child {
+  margin-bottom: 0;
+}
+
+/* Level-B rhythm: a subtle divider between consecutive subgroups
+ * (Inputs, Prerequisites, Execution direction, Coordination concerns,
+ * etc.) so the detailed disclosure reads as distinct groups rather
+ * than one continuous document -- no icon, no added text. */
+.findingGroup + .findingGroup {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ICAS Visual Language v1 §7.2 Level B: sentence case, compact,
+ * visually lighter than Level A -- not uppercase. */
+.findingGroupTitle {
+  margin: 0 0 var(--space-3) 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.findingList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Owner-approved visual reference: numbered rows (reusing the same
+ * `.previewIndex` treatment as the top-2 findings above) rather than
+ * a plain divided list, so the detailed console reads consistently
+ * with the concise summary above it. */
+.finding {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.finding:last-child {
+  border-bottom: none;
+}
+
+.findingBody {
+  min-width: 0;
+  flex: 1;
+}
+
+/* Owner correction: `justify-content: space-between` on a flex row
+ * whose summary text was itself capped at `60ch` just pushed the
+ * priority badge into the gap that cap opened up, leaving a large
+ * unused middle area instead of letting the text use the row's real
+ * width. A grid gives the text column the remaining space and keeps
+ * the badge pinned right. */
+.findingHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.findingSummary {
+  margin: 0;
+  min-width: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.priority {
+  flex: 0 0 auto;
+  padding: 0.1rem var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+}
+
+.priorityMedium {
+  background: var(--state-attention-surface);
+  border: 1px solid var(--state-attention-border);
+  color: var(--state-attention);
+}
+
+.priorityHigh {
+  background: var(--state-error-surface);
+  border: 1px solid var(--state-error-border);
+  color: var(--state-error);
+}
+
+.findingWhy {
+  margin: var(--space-1) 0 0 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+/* Owner-approved visual reference: Questions and Evidence gaps stay an
+ * inspection/gap list (lighter than the numbered, priority-badged
+ * finding categories above) -- restrained per-row dividers give it
+ * row rhythm without promoting it to finding-row weight. */
+.plainList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.plainList li {
+  padding: var(--space-1) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.plainList li:last-child {
+  border-bottom: none;
+}
+
+/* Detail footer -- compresses Human authority / Next human action /
+ * Evidence and provenance into one compact support rail instead of
+ * three full finding-group sections. */
+.detailFooter {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: var(--space-3) var(--space-5);
+}
+
+.detailFooterItem p {
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+/* H. Earlier Agent Execution Reviews -- muted, compact, chronological
+ * (same divided-row treatment established for VFX Alignment History). */
+.historySection {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.historySectionTitle {
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.historyList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.historyItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: var(--font-size-sm);
+}
+
+.historyItem:last-child {
+  border-bottom: none;
+}
+
+.historyTime {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.historySummary {
+  min-width: 0;
+  flex: 1;
+  color: var(--text-muted);
+}
+
+/* G. Human Response -- the strongest Human-owned surface on the page,
+ * matching Alignment's Human Attention/Action luminance/typography
+ * treatment. AuthorityBoundary renders `flush` inside this surface so
+ * it reads as one region, not a nested card. Owner correction
+ * (reference-delta): padding strengthened to match the other main
+ * surfaces (`.versionHeader`/`.agentSection` both use
+ * `space-4 space-5`) instead of a visibly tighter inset. */
+.humanSection {
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-lg);
+  background: color-mix(
+    in srgb,
+    var(--surface-elevated) 100%,
+    var(--text-primary) 4%
+  );
+  border: 1px solid var(--authority-neutral-border);
+}
+
+/* Owner-approved reference: a distinct, stronger region-heading
+ * treatment for Human Authority only (uppercase + restrained purple
+ * icon tile, matching the reference exactly) -- not the shared
+ * `AuthorityLabel` chip, and not the sentence-case `.regionHeading`
+ * used by the other three regions on this page. VFX Alignment's own
+ * Human Attention/Action treatment is untouched. */
+.humanRegionHeading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }

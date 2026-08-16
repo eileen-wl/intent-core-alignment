@@ -5,13 +5,17 @@ import type {
 } from "@intent-core/contracts";
 import Link from "next/link";
 
-import { DetailedContext, Divider, WorkingDirectionSection } from "@/design";
+import {
+  DetailedContext,
+  Divider,
+  ErrorState,
+  WorkingDirectionSection,
+} from "@/design";
 import type { WorkingDirectionSection as WorkingDirectionSectionModel } from "@/lib/workingDirection";
 import { signalStateLabel } from "../../vfxWording";
 import { CurrentFocusPanel } from "../CurrentFocusPanel";
 import { NextFocusPanel } from "../NextFocusPanel";
 import { DepartmentExecutionOverviewSection } from "./DepartmentExecutionOverviewSection";
-import { VfxShotWorkspaceFrame } from "./VfxShotWorkspaceFrame";
 
 const ALIGNMENT_FOCUS_TYPES = new Set([
   "alignment_not_followed_by_anchor_action",
@@ -35,7 +39,6 @@ export function ShotOverviewPage({
   anchorContext,
   workingDirection,
   departmentExecutionOverview,
-  onExitRole,
 }: {
   item: VfxInboxItemRead | null;
   anchorContext?: AnchorContextRead | null;
@@ -46,80 +49,79 @@ export function ShotOverviewPage({
    * optional (and rendering nothing when `null`/omitted) so every
    * pre-existing caller/test keeps compiling and rendering unchanged. */
   departmentExecutionOverview?: DepartmentExecutionOverviewRead | null;
-  onExitRole: () => void | Promise<void>;
 }) {
   const showPageSpecificFocus =
     !anchorContext ||
     (item?.current_focus.focus_type !== "none" &&
       item?.current_focus.title !== anchorContext.next_action.title);
 
+  if (!item) {
+    return (
+      <ErrorState
+        title="This page is unavailable"
+        description="The ICAS service could not be reached. Try refreshing the page."
+      />
+    );
+  }
+
   return (
-    <VfxShotWorkspaceFrame
-      item={item}
-      anchorContext={anchorContext}
-      activeTab="overview"
-      onExitRole={onExitRole}
-    >
-      {item && (
-        <>
-          {showPageSpecificFocus && (
-            <CurrentFocusPanel focus={item.current_focus} />
-          )}
+    <>
+      {showPageSpecificFocus && (
+        <CurrentFocusPanel focus={item.current_focus} />
+      )}
 
-          <NextFocusPanel items={item.next_candidates ?? []} />
+      <NextFocusPanel items={item.next_candidates ?? []} />
 
-          {!anchorContext && workingDirection && (
-            <WorkingDirectionSection section={workingDirection} />
-          )}
+      {!anchorContext && workingDirection && (
+        <WorkingDirectionSection section={workingDirection} />
+      )}
 
-          <DepartmentExecutionOverviewSection
-            shotId={item.shot_id}
-            overview={departmentExecutionOverview ?? null}
-          />
+      <DepartmentExecutionOverviewSection
+        shotId={item.shot_id}
+        overview={departmentExecutionOverview ?? null}
+      />
 
-          <Divider />
+      <Divider />
 
-          <DetailedContext>
-            <dl>
-              <dt>Latest Version</dt>
+      <DetailedContext>
+        <dl>
+          <dt>Latest Version</dt>
+          <dd>
+            {item.relevant_version_name ? (
+              <Link href={`/vfx/shots/${item.shot_id}/versions`}>
+                {item.relevant_version_number
+                  ? `${item.relevant_version_name} (v${item.relevant_version_number})`
+                  : item.relevant_version_name}
+              </Link>
+            ) : (
+              "No Version recorded yet."
+            )}
+          </dd>
+
+          {!ALIGNMENT_FOCUS_TYPES.has(item.current_focus.focus_type) && (
+            <>
+              <dt>Latest assessment</dt>
               <dd>
-                {item.relevant_version_name ? (
-                  <Link href={`/vfx/shots/${item.shot_id}/versions`}>
-                    {item.relevant_version_number
-                      ? `${item.relevant_version_name} (v${item.relevant_version_number})`
-                      : item.relevant_version_name}
+                {item.latest_signal_id ? (
+                  <Link href={`/vfx/shots/${item.shot_id}/alignment`}>
+                    {signalStateLabel(item.latest_signal_attention_level)} --{" "}
+                    {item.latest_signal_summary}
                   </Link>
                 ) : (
-                  "No Version recorded yet."
+                  "No current Intent Signal. A successful Cross-role Assessment is required."
                 )}
               </dd>
+            </>
+          )}
 
-              {!ALIGNMENT_FOCUS_TYPES.has(item.current_focus.focus_type) && (
-                <>
-                  <dt>Latest assessment</dt>
-                  <dd>
-                    {item.latest_signal_id ? (
-                      <Link href={`/vfx/shots/${item.shot_id}/alignment`}>
-                        {signalStateLabel(item.latest_signal_attention_level)}{" "}
-                        -- {item.latest_signal_summary}
-                      </Link>
-                    ) : (
-                      "No current Intent Signal. A successful Cross-role Assessment is required."
-                    )}
-                  </dd>
-                </>
-              )}
-
-              <dt>Activity</dt>
-              <dd>
-                <Link href={`/vfx/shots/${item.shot_id}/activity`}>
-                  View full activity →
-                </Link>
-              </dd>
-            </dl>
-          </DetailedContext>
-        </>
-      )}
-    </VfxShotWorkspaceFrame>
+          <dt>Activity</dt>
+          <dd>
+            <Link href={`/vfx/shots/${item.shot_id}/activity`}>
+              View full activity →
+            </Link>
+          </dd>
+        </dl>
+      </DetailedContext>
+    </>
   );
 }

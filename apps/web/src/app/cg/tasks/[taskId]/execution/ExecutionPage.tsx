@@ -5,6 +5,7 @@ import type {
 
 import {
   AgentContributionPanel,
+  ErrorState,
   EvidenceLayerSection,
   MetadataRow,
 } from "@/design";
@@ -14,7 +15,6 @@ import {
 } from "@/lib/decisionProvenance";
 import { humanRoleLabel } from "@/lib/humanRoleLabel";
 import type { ExecutionWorkspaceData } from "@/features/cg/execution-workspace/data";
-import { CgTaskWorkspaceFrame } from "../CgTaskWorkspaceFrame";
 import { ExecutionAnchorEditor } from "./ExecutionAnchorEditor";
 import styles from "./ExecutionPage.module.css";
 
@@ -75,190 +75,185 @@ export function ExecutionPage({
   taskId,
   data,
   anchorContext,
-  unavailable,
-  onExitRole,
 }: {
   taskId: string;
   data: ExecutionWorkspaceData | null;
   anchorContext?: AnchorContextRead | null;
-  unavailable: boolean;
-  onExitRole: () => void | Promise<void>;
 }) {
+  if (!data) {
+    return (
+      <ErrorState
+        title="This page is unavailable"
+        description="The ICAS service could not be reached. Try refreshing the page."
+      />
+    );
+  }
+
   return (
-    <CgTaskWorkspaceFrame
-      item={data?.item ?? null}
-      anchorContext={anchorContext}
-      activeTab="execution"
-      unavailable={unavailable}
-      onExitRole={onExitRole}
-    >
-      {data && (
-        <>
-          <EvidenceLayerSection kind="production-evidence">
-            <section className={styles.section}>
-              <h3 className={styles.sectionHeading}>
-                Active Core Anchor (read-only)
-              </h3>
-              <p className={styles.contextText}>
-                {data.coreAnchorConfirmed
-                  ? "A confirmed Core Anchor exists for this Task's Shot."
-                  : "No Core Anchor is confirmed for this Shot yet."}
-              </p>
-            </section>
+    <>
+      <EvidenceLayerSection kind="production-evidence">
+        <section className={styles.section}>
+          <h3 className={styles.sectionHeading}>
+            Active Core Anchor (read-only)
+          </h3>
+          <p className={styles.contextText}>
+            {data.coreAnchorConfirmed
+              ? "A confirmed Core Anchor exists for this Task's Shot."
+              : "No Core Anchor is confirmed for this Shot yet."}
+          </p>
+        </section>
 
-            {data.confirmedRevision && (
-              <section className={styles.section}>
-                <h3 className={styles.sectionHeading}>
-                  Confirmed Execution Anchor (Revision{" "}
-                  {data.confirmedRevision.revision_number})
-                </h3>
-                <dl className={styles.readOnlyFields}>
-                  {contentFieldRows(data.confirmedRevision).map(
-                    ({ key, label, value }) => (
-                      <div key={key}>
-                        <dt>{label}</dt>
-                        <dd>{value}</dd>
-                      </div>
-                    ),
-                  )}
-                </dl>
-              </section>
-            )}
-          </EvidenceLayerSection>
-
-          <AgentContributionPanel
-            agent="CG Supervisor Agent"
-            capability="Execution Anchor Draft"
-            state={
-              data.draftRevision
-                ? "completed"
-                : data.coreAnchorConfirmed
-                  ? "ready"
-                  : "not_ready"
-            }
-            generatedAt={data.draftRevision?.created_at}
-            inputs={[
-              "Confirmed Core Anchor",
-              `${data.item.task_name} task context`,
-            ]}
-            readiness={[
-              {
-                label: "Confirmed Core Anchor",
-                available: data.coreAnchorConfirmed,
-              },
-            ]}
-            output={
-              data.draftRevision ? (
-                <>
-                  <p>
-                    Agent-proposed technical translation is available in the
-                    editable Draft below.
-                  </p>
-                  <p>
-                    Technical boundaries:{" "}
-                    {data.draftRevision.technical_boundaries || "Not recorded"}
-                  </p>
-                </>
-              ) : (
-                <p>No Agent Execution Anchor proposal is available yet.</p>
-              )
-            }
-            authority="Advisory only; the human CG Supervisor edits and confirms the Execution Anchor through the Human Gate."
-            nextAction={
-              data.draftRevision
-                ? "Review and edit the proposal, then submit it through the Human Gate."
-                : data.coreAnchorConfirmed
-                  ? "Generate an Execution Anchor proposal."
-                  : "Open the VFX Intent route and confirm the Core Anchor first."
-            }
-          />
-
-          {data.confirmedRevision && (
-            <EvidenceLayerSection kind="human-decision">
-              {data.confirmDecision ? (
-                <>
-                  <p className={styles.contextText}>
-                    {decisionOutcomeStatement(
-                      data.confirmDecision,
-                      data.confirmedRevision.revision_number,
-                    )}
-                  </p>
-                  <MetadataRow
-                    items={decisionProvenanceItems(data.confirmDecision)}
-                  />
-                </>
-              ) : (
-                // Owner-validation correction: no real Decision record
-                // was found for this confirmed revision -- state the
-                // revision's own recorded confirmation fields honestly
-                // rather than inferring a Decision outcome that was
-                // never actually loaded.
-                <MetadataRow
-                  items={[
-                    {
-                      label: "Confirmed by",
-                      value: humanRoleLabel(
-                        data.confirmedRevision.confirmed_by_human_role,
-                      ),
-                    },
-                    {
-                      label: "Confirmed at",
-                      value: data.confirmedRevision.confirmed_at
-                        ? new Date(
-                            data.confirmedRevision.confirmed_at,
-                          ).toLocaleString()
-                        : "Unknown",
-                    },
-                  ]}
-                />
-              )}
-              {data.confirmedRevision.supersedes_revision_id && (
-                <p className={styles.contextText}>
-                  Supersedes a previous Execution Anchor revision.
-                </p>
-              )}
-            </EvidenceLayerSection>
-          )}
-
+        {data.confirmedRevision && (
           <section className={styles.section}>
             <h3 className={styles.sectionHeading}>
-              {data.draftRevision
-                ? "Draft Execution Anchor"
-                : data.confirmedRevision
-                  ? "Revise Execution Anchor"
-                  : "Start Execution Anchor"}
+              Confirmed Execution Anchor (Revision{" "}
+              {data.confirmedRevision.revision_number})
             </h3>
-            <ExecutionAnchorEditor
-              taskId={taskId}
-              draftRevision={data.draftRevision}
-              draftHumanGateId={
-                data.draftRevision
-                  ? (data.item.pending_human_gate_id ?? null)
-                  : null
-              }
-              coreAnchorConfirmed={data.coreAnchorConfirmed}
-              hasConfirmedRevision={data.confirmedRevision !== null}
-              confirmedRevisionNumber={
-                data.confirmedRevision?.revision_number ?? null
-              }
-              // Owner re-validation correction: once a confirmed
-              // Execution Anchor's own upstream Core Anchor revision has
-              // been superseded (real `execution_anchor.context_state`
-              // from the Anchor Context aggregate -- the same field the
-              // Anchor Context Layer already renders "Outdated" from),
-              // starting a new revision should clearly mean
-              // retranslating from the now-current Core Anchor, not an
-              // ambiguous generic "Create new revision".
-              isOutdated={
-                anchorContext?.execution_anchor?.context_state === "outdated"
-              }
-              coreAnchorRevisionNumber={
-                anchorContext?.core_anchor.confirmed_revision_number ?? null
-              }
-            />
+            <dl className={styles.readOnlyFields}>
+              {contentFieldRows(data.confirmedRevision).map(
+                ({ key, label, value }) => (
+                  <div key={key}>
+                    <dt>{label}</dt>
+                    <dd>{value}</dd>
+                  </div>
+                ),
+              )}
+            </dl>
           </section>
-        </>
+        )}
+      </EvidenceLayerSection>
+
+      <AgentContributionPanel
+        agent="CG Supervisor Agent"
+        capability="Execution Anchor Draft"
+        state={
+          data.draftRevision
+            ? "completed"
+            : data.coreAnchorConfirmed
+              ? "ready"
+              : "not_ready"
+        }
+        generatedAt={data.draftRevision?.created_at}
+        inputs={[
+          "Confirmed Core Anchor",
+          `${data.item.task_name} task context`,
+        ]}
+        readiness={[
+          {
+            label: "Confirmed Core Anchor",
+            available: data.coreAnchorConfirmed,
+          },
+        ]}
+        output={
+          data.draftRevision ? (
+            <>
+              <p>
+                Agent-proposed technical translation is available in the
+                editable Draft below.
+              </p>
+              <p>
+                Technical boundaries:{" "}
+                {data.draftRevision.technical_boundaries || "Not recorded"}
+              </p>
+            </>
+          ) : (
+            <p>No Agent Execution Anchor proposal is available yet.</p>
+          )
+        }
+        authority="Advisory only; the human CG Supervisor edits and confirms the Execution Anchor through the Human Gate."
+        nextAction={
+          data.draftRevision
+            ? "Review and edit the proposal, then submit it through the Human Gate."
+            : data.coreAnchorConfirmed
+              ? "Generate an Execution Anchor proposal."
+              : "Open the VFX Intent route and confirm the Core Anchor first."
+        }
+      />
+
+      {data.confirmedRevision && (
+        <EvidenceLayerSection kind="human-decision">
+          {data.confirmDecision ? (
+            <>
+              <p className={styles.contextText}>
+                {decisionOutcomeStatement(
+                  data.confirmDecision,
+                  data.confirmedRevision.revision_number,
+                )}
+              </p>
+              <MetadataRow
+                items={decisionProvenanceItems(data.confirmDecision)}
+              />
+            </>
+          ) : (
+            // Owner-validation correction: no real Decision record
+            // was found for this confirmed revision -- state the
+            // revision's own recorded confirmation fields honestly
+            // rather than inferring a Decision outcome that was
+            // never actually loaded.
+            <MetadataRow
+              items={[
+                {
+                  label: "Confirmed by",
+                  value: humanRoleLabel(
+                    data.confirmedRevision.confirmed_by_human_role,
+                  ),
+                },
+                {
+                  label: "Confirmed at",
+                  value: data.confirmedRevision.confirmed_at
+                    ? new Date(
+                        data.confirmedRevision.confirmed_at,
+                      ).toLocaleString()
+                    : "Unknown",
+                },
+              ]}
+            />
+          )}
+          {data.confirmedRevision.supersedes_revision_id && (
+            <p className={styles.contextText}>
+              Supersedes a previous Execution Anchor revision.
+            </p>
+          )}
+        </EvidenceLayerSection>
       )}
-    </CgTaskWorkspaceFrame>
+
+      <section className={styles.section}>
+        <h3 className={styles.sectionHeading}>
+          {data.draftRevision
+            ? "Draft Execution Anchor"
+            : data.confirmedRevision
+              ? "Revise Execution Anchor"
+              : "Start Execution Anchor"}
+        </h3>
+        <ExecutionAnchorEditor
+          taskId={taskId}
+          draftRevision={data.draftRevision}
+          draftHumanGateId={
+            data.draftRevision
+              ? (data.item.pending_human_gate_id ?? null)
+              : null
+          }
+          coreAnchorConfirmed={data.coreAnchorConfirmed}
+          hasConfirmedRevision={data.confirmedRevision !== null}
+          confirmedRevisionNumber={
+            data.confirmedRevision?.revision_number ?? null
+          }
+          // Owner re-validation correction: once a confirmed
+          // Execution Anchor's own upstream Core Anchor revision has
+          // been superseded (real `execution_anchor.context_state`
+          // from the Anchor Context aggregate -- the same field the
+          // Anchor Context Layer already renders "Outdated" from),
+          // starting a new revision should clearly mean
+          // retranslating from the now-current Core Anchor, not an
+          // ambiguous generic "Create new revision".
+          isOutdated={
+            anchorContext?.execution_anchor?.context_state === "outdated"
+          }
+          coreAnchorRevisionNumber={
+            anchorContext?.core_anchor.confirmed_revision_number ?? null
+          }
+        />
+      </section>
+    </>
   );
 }

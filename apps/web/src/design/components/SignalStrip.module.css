@@ -1,0 +1,59 @@
+/* Owner-approved visual reference: a structured signal matrix -- a
+ * 3-column grid that naturally rows the 5 real metrics as 3 + 2
+ * (matching the reference exactly, with no per-metric fabricated
+ * data), rather than one horizontal strip. No divider borders --
+ * generous grid gap alone separates items, matching the reference's
+ * whitespace-only separation. */
+.strip {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-5) var(--space-5);
+}
+
+/* Owner correction: cells read as cramped/thin next to the reference
+ * -- more deliberate vertical padding gives each cell real height,
+ * not just bigger text. Each item still stacks a quiet icon+label
+ * identity line over its count, which is deliberately the only large,
+ * bold text in the strip. */
+.item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+  padding: var(--space-1) 0;
+}
+
+.itemHead {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: var(--text-muted);
+}
+
+.label {
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+.count {
+  color: var(--text-primary);
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.countZero {
+  color: var(--text-muted);
+  font-size: 1.75rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+@media (max-width: 420px) {
+  .strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

@@ -2,7 +2,7 @@ import type {
   AnchorContextRead,
   ArtistInboxItemRead,
 } from "@intent-core/contracts";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -168,92 +168,13 @@ function artistAnchorContext(missing = false): AnchorContextRead {
 }
 
 describe("TaskOverviewPage", () => {
-  it("renders Project > Shot > Task > Task Overview breadcrumbs and all three real Context Tabs, Task Overview active", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByRole("link", { name: "D1 Demo Project" }),
-    ).toHaveAttribute("href", "/artist/tasks");
-    for (const [label, href] of [
-      ["Current Version", "/artist/tasks/t1/current-version"],
-      ["Feedback History", "/artist/tasks/t1/feedback-history"],
-    ] as const) {
-      expect(screen.getByRole("link", { name: label })).toHaveAttribute(
-        "href",
-        href,
-      );
-    }
-    expect(screen.getByRole("link", { name: "Task Overview" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
-  it("does not render Intent, Execution, Dependencies, or Activity tabs", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.queryByRole("link", { name: "Intent" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Execution" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Dependencies" }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole("link", { name: "Activity" }),
-    ).not.toBeInTheDocument();
-  });
-
-  it("Tasks stays the active sidebar item, never Review Inbox", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByRole("link", { name: "Tasks" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
-  it("shows an honest unavailable state when the API could not be reached", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={null}
-        unavailable
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("This Task is unavailable")).toBeVisible();
+  it("shows an honest unavailable state when the page-specific data failed to load", () => {
+    render(<TaskOverviewPage taskId="t1" data={null} anchorContext={null} />);
+    expect(screen.getByText("This page is unavailable")).toBeVisible();
   });
 
   it("renders exactly one Current focus with its real primary action", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<TaskOverviewPage taskId="t1" data={data()} />);
     expect(screen.getByText("New Artist guidance is available")).toBeVisible();
     expect(
       screen.getByRole("link", { name: "Review guidance" }),
@@ -298,8 +219,6 @@ describe("TaskOverviewPage", () => {
             open_questions: [],
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.queryByText("Why: Creative Intent")).not.toBeInTheDocument();
@@ -308,16 +227,8 @@ describe("TaskOverviewPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("does not add a second missing Core Anchor summary", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("Anchor context unavailable")).toBeVisible();
+  it("does not add a second missing Core Anchor summary (the persistent Task layout's AnchorContextLayer owns the honest-unavailable state)", () => {
+    render(<TaskOverviewPage taskId="t1" data={data()} />);
     expect(
       screen.queryByText("No Core Anchor is confirmed for this Shot yet."),
     ).not.toBeInTheDocument();
@@ -328,8 +239,6 @@ describe("TaskOverviewPage", () => {
       <TaskOverviewPage
         taskId="t1"
         data={data({ item: item({ execution_anchor_state: "none" }) })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -338,14 +247,7 @@ describe("TaskOverviewPage", () => {
   });
 
   it("honestly states no Artist guidance has been generated yet, with no fabricated content", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<TaskOverviewPage taskId="t1" data={data()} />);
     expect(
       screen.getByText(
         "No Artist guidance has been generated for this Task yet.",
@@ -354,14 +256,7 @@ describe("TaskOverviewPage", () => {
   });
 
   it("shows a disabled Guidance state when there is no latest Version", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<TaskOverviewPage taskId="t1" data={data()} />);
     expect(
       screen.getByRole("button", { name: /generate guidance/i }),
     ).toBeDisabled();
@@ -376,8 +271,6 @@ describe("TaskOverviewPage", () => {
           item: item({ latest_version_id: "v1", latest_version_name: "v001" }),
         })}
         anchorContext={artistAnchorContext()}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -397,8 +290,6 @@ describe("TaskOverviewPage", () => {
           }),
         })}
         anchorContext={artistAnchorContext(true)}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -472,8 +363,6 @@ describe("TaskOverviewPage", () => {
           },
         })}
         anchorContext={artistAnchorContext()}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -509,12 +398,15 @@ describe("TaskOverviewPage", () => {
             ],
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Current Working Direction")).toBeVisible();
-    expect(screen.getByText("AI interpretation")).toBeVisible();
+    const workingDirection = within(
+      screen
+        .getByText("Current Working Direction")
+        .closest("section") as HTMLElement,
+    );
+    expect(workingDirection.getByText("AI interpretation")).toBeVisible();
     expect(
       screen.getByText("Push the rim light slightly warmer."),
     ).toBeVisible();
@@ -528,28 +420,14 @@ describe("TaskOverviewPage", () => {
   });
 
   it("renders nothing extra when workingDirection has no items (honest empty state)", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<TaskOverviewPage taskId="t1" data={data()} />);
     expect(
       screen.queryByText("Current Working Direction"),
     ).not.toBeInTheDocument();
   });
 
   it("honestly states no dependencies have been recorded for a genuinely bare Task", async () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<TaskOverviewPage taskId="t1" data={data()} />);
     expect(
       screen.getByText("No dependencies have been recorded for this Task yet."),
     ).toBeInTheDocument();
@@ -567,8 +445,6 @@ describe("TaskOverviewPage", () => {
           item: item({ latest_version_id: "v1", latest_version_name: "v001" }),
         })}
         anchorContext={artistAnchorContext()}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     // Step 9B-1 owner-validation correction: the Guidance action is a
@@ -577,5 +453,264 @@ describe("TaskOverviewPage", () => {
     expect(
       screen.getByRole("button", { name: "Generate guidance" }),
     ).toBeVisible();
+  });
+
+  it("preserves all four real Guidance categories in the reading hierarchy, marked as advisory AI interpretation", () => {
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data({
+          item: item({ latest_version_id: "v1", latest_version_name: "v001" }),
+          latestGuidance: {
+            id: "g1",
+            project_id: "p1",
+            shot_id: "s1",
+            task_id: "t1",
+            version_id: "v1",
+            execution_anchor_revision_id: "ea1",
+            context_snapshot_id: "cs1",
+            agent_run_id: "run1",
+            guidance_output: {
+              executive_summary: "Push the rim light slightly warmer.",
+              creative_intent_read: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              task_goal: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              current_iteration_read: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              non_negotiables: [
+                {
+                  summary: "Keep the silhouette readable.",
+                  why_it_matters: "w",
+                  priority: "high",
+                  evidence: [],
+                },
+              ],
+              allowed_variations: [
+                {
+                  summary: "Warm tone shift is acceptable.",
+                  why_it_matters: "w",
+                  priority: "low",
+                  evidence: [],
+                },
+              ],
+              feedback_translations: [],
+              iteration_priorities: [
+                {
+                  summary: "Refine the rim highlight next.",
+                  why_it_matters: "w",
+                  priority: "medium",
+                  evidence: [],
+                },
+              ],
+              cross_department_dependencies: [
+                {
+                  summary: "Lighting must confirm before final comp.",
+                  why_it_matters: "w",
+                  priority: "medium",
+                  evidence: [],
+                },
+              ],
+              questions_for_human_supervisor: [
+                "Should the warm shift extend to the background?",
+              ],
+              evidence_gaps: [],
+            },
+            created_at: "2026-07-01T00:00:00Z",
+          },
+        })}
+        anchorContext={artistAnchorContext()}
+      />,
+    );
+
+    expect(screen.getByText("AI interpretation")).toBeVisible();
+    expect(screen.getByText("What must remain fixed")).toBeVisible();
+    expect(screen.getByText("Keep the silhouette readable.")).toBeVisible();
+    expect(screen.getByText("What variation remains allowed")).toBeVisible();
+    expect(screen.getByText("Warm tone shift is acceptable.")).toBeVisible();
+    expect(screen.getByText("Priorities for the next iteration")).toBeVisible();
+    expect(screen.getByText("Refine the rim highlight next.")).toBeVisible();
+    expect(screen.getByText("Risks and when to escalate")).toBeVisible();
+    expect(
+      screen.getByText("Lighting must confirm before final comp."),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Should the warm shift extend to the background?"),
+    ).toBeVisible();
+    // Reading hierarchy, not a dashboard grid: primary guidance
+    // (fixed constraints, next-iteration priorities) is unlabeled;
+    // only the second tier (allowed variation, risks/escalation)
+    // carries the quiet "Supporting guidance" kicker.
+    expect(screen.getByText("Supporting guidance")).toBeVisible();
+  });
+
+  it("strips internal generator labels from the executive summary and every Guidance category, without losing the real text", () => {
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data({
+          item: item({ latest_version_id: "v1", latest_version_name: "v001" }),
+          latestGuidance: {
+            id: "g1",
+            project_id: "p1",
+            shot_id: "s1",
+            task_id: "t1",
+            version_id: "v1",
+            execution_anchor_revision_id: "ea1",
+            context_snapshot_id: "cs1",
+            agent_run_id: "run1",
+            guidance_output: {
+              executive_summary:
+                "[Artist deterministic] Push the rim light slightly warmer.",
+              creative_intent_read: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              task_goal: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              current_iteration_read: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              non_negotiables: [
+                {
+                  summary:
+                    "[Artist deterministic] Keep the silhouette readable.",
+                  why_it_matters: "w",
+                  priority: "high",
+                  evidence: [],
+                },
+              ],
+              allowed_variations: [
+                {
+                  summary:
+                    "[Artist D1 deterministic - R2 combined-intensity ceiling boundary] Warm tone shift is acceptable.",
+                  why_it_matters: "w",
+                  priority: "low",
+                  evidence: [],
+                },
+              ],
+              feedback_translations: [],
+              iteration_priorities: [
+                {
+                  summary:
+                    "[Artist deterministic] Refine the rim highlight next.",
+                  why_it_matters: "w",
+                  priority: "medium",
+                  evidence: [],
+                },
+              ],
+              cross_department_dependencies: [
+                {
+                  summary:
+                    "[Artist deterministic] Lighting must confirm before final comp.",
+                  why_it_matters: "w",
+                  priority: "medium",
+                  evidence: [],
+                },
+              ],
+              questions_for_human_supervisor: [
+                "[Artist deterministic] Should the warm shift extend to the background?",
+              ],
+              evidence_gaps: [],
+            },
+            created_at: "2026-07-01T00:00:00Z",
+          },
+        })}
+        anchorContext={artistAnchorContext()}
+      />,
+    );
+
+    expect(screen.queryByText(/Artist deterministic/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/combined-intensity ceiling boundary/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Push the rim light slightly warmer."),
+    ).toBeVisible();
+    expect(screen.getByText("Keep the silhouette readable.")).toBeVisible();
+    expect(screen.getByText("Warm tone shift is acceptable.")).toBeVisible();
+    expect(screen.getByText("Refine the rim highlight next.")).toBeVisible();
+    expect(
+      screen.getByText("Lighting must confirm before final comp."),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Should the warm shift extend to the background?"),
+    ).toBeVisible();
+  });
+
+  it("renders long real Guidance text in full, with no arbitrary prose-width cap", () => {
+    const longSummary =
+      "The rim light on the antagonist's silhouette should stay warm and controlled through the final confrontation, never spiking into a triumphant or heroic register, and every department's local refinement must remain subordinate to that restrained read across the full duration of the sequence.";
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data({
+          item: item({ latest_version_id: "v1", latest_version_name: "v001" }),
+          latestGuidance: {
+            id: "g1",
+            project_id: "p1",
+            shot_id: "s1",
+            task_id: "t1",
+            version_id: "v1",
+            execution_anchor_revision_id: "ea1",
+            context_snapshot_id: "cs1",
+            agent_run_id: "run1",
+            guidance_output: {
+              executive_summary: longSummary,
+              creative_intent_read: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              task_goal: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              current_iteration_read: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              non_negotiables: [],
+              allowed_variations: [],
+              feedback_translations: [],
+              iteration_priorities: [],
+              cross_department_dependencies: [],
+              questions_for_human_supervisor: [],
+              evidence_gaps: [],
+            },
+            created_at: "2026-07-01T00:00:00Z",
+          },
+        })}
+        anchorContext={artistAnchorContext()}
+      />,
+    );
+
+    expect(screen.getByText(longSummary)).toBeVisible();
   });
 });

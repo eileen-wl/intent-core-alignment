@@ -79,6 +79,12 @@ export async function generateAssessmentAction(
     );
     revalidatePath(`/vfx/shots/${shotId}/alignment`);
     revalidatePath(`/vfx/shots/${shotId}`);
+    // Also revalidate the persistent Shot layout segment itself (Navigation
+    // Responsiveness Fix, Phase 2): a new Assessment can change the Shot's
+    // attention level/next action, which `app/vfx/shots/[shotId]/layout.tsx`
+    // surfaces via its own `fetchVfxAnchorContextOrNull` fetch -- a distinct
+    // cached segment that the page-type call above does not reach.
+    revalidatePath(`/vfx/shots/${shotId}`, "layout");
     revalidatePath("/vfx");
     return { ok: true, assessment };
   } catch (error) {

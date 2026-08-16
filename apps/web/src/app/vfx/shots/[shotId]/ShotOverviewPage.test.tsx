@@ -6,7 +6,7 @@ import type {
 } from "@intent-core/contracts";
 import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { ShotOverviewPage } from "./ShotOverviewPage";
 
@@ -112,7 +112,7 @@ function vfxAnchorContext(): AnchorContextRead {
 
 describe("ShotOverviewPage -- Step 9B-1 Current Creative Direction", () => {
   it("renders nothing extra when workingDirection is not supplied (pre-existing callers keep working unchanged)", () => {
-    render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
+    render(<ShotOverviewPage item={buildItem()} />);
     expect(
       screen.queryByText("Current Creative Direction"),
     ).not.toBeInTheDocument();
@@ -144,7 +144,6 @@ describe("ShotOverviewPage -- Step 9B-1 Current Creative Direction", () => {
             },
           ],
         }}
-        onExitRole={vi.fn()}
       />,
     );
     const heading = screen.getByText("Current Creative Direction");
@@ -178,7 +177,6 @@ describe("ShotOverviewPage -- Step 9B-1 Current Creative Direction", () => {
       <ShotOverviewPage
         item={buildItem()}
         workingDirection={{ title: "Current Creative Direction", items: [] }}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -188,46 +186,9 @@ describe("ShotOverviewPage -- Step 9B-1 Current Creative Direction", () => {
 });
 
 describe("ShotOverviewPage", () => {
-  it("shows an honest not-found state when the Shot could not be resolved", () => {
-    render(<ShotOverviewPage item={null} onExitRole={vi.fn()} />);
-    expect(screen.getByText("This Shot could not be found")).toBeVisible();
-  });
-
-  it("renders the production-context header with independent Task/Version facts", () => {
-    render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
-    expect(screen.getByText(/D1 Demo Project.*Shot 010/)).toBeVisible();
-    expect(screen.getByText("Compositing Review")).toBeVisible();
-    // Appears once in the compact header and once in supporting
-    // context -- distinct UI regions with distinct jobs, not a
-    // forbidden repeated-Signal duplication.
-    expect(
-      screen.getAllByText("D1_STEP3_VFX_REVIEW_001 (v1)").length,
-    ).toBeGreaterThan(0);
-  });
-
-  it("renders all five contextual tabs as real, implemented links, Overview active", () => {
-    render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-    expect(screen.getByRole("link", { name: "Intent" })).toBeVisible();
-    // Step 7C-3: Versions/Alignment/Activity are real, navigable routes
-    // now -- never a disabled "Upcoming" placeholder.
-    const shotId = buildItem().shot_id;
-    expect(screen.getByRole("link", { name: "Versions" })).toHaveAttribute(
-      "href",
-      `/vfx/shots/${shotId}/versions`,
-    );
-    expect(screen.getByRole("link", { name: "Alignment" })).toHaveAttribute(
-      "href",
-      `/vfx/shots/${shotId}/alignment`,
-    );
-    expect(screen.getByRole("link", { name: "Activity" })).toHaveAttribute(
-      "href",
-      `/vfx/shots/${shotId}/activity`,
-    );
-    expect(screen.queryByText("Upcoming")).not.toBeInTheDocument();
+  it("shows an honest unavailable state when the Shot item could not be resolved", () => {
+    render(<ShotOverviewPage item={null} />);
+    expect(screen.getByText("This page is unavailable")).toBeVisible();
   });
 
   const focusTypes: VfxCurrentFocusType[] = [
@@ -249,7 +210,7 @@ describe("ShotOverviewPage", () => {
           title: `Title for ${focusType}`,
         }),
       });
-      render(<ShotOverviewPage item={item} onExitRole={vi.fn()} />);
+      render(<ShotOverviewPage item={item} />);
       expect(screen.getAllByText("Current focus")).toHaveLength(1);
       expect(screen.getByText(`Title for ${focusType}`)).toBeVisible();
     },
@@ -263,7 +224,7 @@ describe("ShotOverviewPage", () => {
         title: "Nothing requires your attention on this Shot right now",
       }),
     });
-    render(<ShotOverviewPage item={item} onExitRole={vi.fn()} />);
+    render(<ShotOverviewPage item={item} />);
     expect(
       screen.queryByRole("link", { name: "Act now" }),
     ).not.toBeInTheDocument();
@@ -276,13 +237,13 @@ describe("ShotOverviewPage", () => {
         target_route: "/vfx/shots/s1/intent",
       }),
     });
-    render(<ShotOverviewPage item={item} onExitRole={vi.fn()} />);
+    render(<ShotOverviewPage item={item} />);
     expect(
       screen.getByRole("link", { name: "Review and confirm" }),
     ).toHaveAttribute("href", "/vfx/shots/s1/intent");
   });
 
-  it("suppresses a duplicate Current Focus card when expanded Anchor Context represents it", () => {
+  it("suppresses its own Current Focus card when the persistent Task layout's Anchor Context already represents it (never a duplicate)", () => {
     const title = "Core Anchor draft awaiting your confirmation";
     render(
       <ShotOverviewPage
@@ -294,15 +255,16 @@ describe("ShotOverviewPage", () => {
           }),
         })}
         anchorContext={vfxAnchorContext()}
-        onExitRole={vi.fn()}
       />,
     );
 
-    expect(screen.getAllByText(title)).toHaveLength(1);
+    // `vfxAnchorContext()`'s `next_action.title` matches `title` exactly,
+    // so `showPageSpecificFocus` suppresses this page's own
+    // `CurrentFocusPanel` entirely -- the persistent Task layout's
+    // `AnchorContextLayer` (not rendered by this component in isolation)
+    // is the one place this now shows.
+    expect(screen.queryByText(title)).not.toBeInTheDocument();
     expect(screen.queryByText("Current focus")).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /Review and confirm/ }),
-    ).toHaveAttribute("href", "/vfx/shots/s1/intent");
   });
 
   it("does not duplicate the Signal message when Current focus is alignment-driven", () => {
@@ -312,7 +274,7 @@ describe("ShotOverviewPage", () => {
           "No newer Core Anchor action has followed this assessment.",
       }),
     });
-    render(<ShotOverviewPage item={item} onExitRole={vi.fn()} />);
+    render(<ShotOverviewPage item={item} />);
     // The Signal explanation appears once (inside Current focus), not
     // again inside supporting context.
     expect(screen.queryByText("Latest assessment")).not.toBeInTheDocument();
@@ -322,14 +284,14 @@ describe("ShotOverviewPage", () => {
     const item = buildItem({
       current_focus: focus("assessment_generation_available"),
     });
-    render(<ShotOverviewPage item={item} onExitRole={vi.fn()} />);
+    render(<ShotOverviewPage item={item} />);
     expect(screen.getByText("Latest assessment")).toBeInTheDocument();
     await userEvent.click(screen.getByText("Detailed context"));
     expect(screen.getByText("Latest assessment")).toBeVisible();
   });
 
   it("does not duplicate the confirmed Core Anchor inside Detailed context", async () => {
-    render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
+    render(<ShotOverviewPage item={buildItem()} />);
     const summary = screen.getByText("Detailed context");
     expect(summary.closest("details")).not.toHaveAttribute("open");
     expect(
@@ -342,18 +304,13 @@ describe("ShotOverviewPage", () => {
   });
 
   it("does not show full Evidence, three role perspectives, or integration metadata", () => {
-    render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
+    render(<ShotOverviewPage item={buildItem()} />);
     expect(screen.queryByText(/role perspective/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/evidence/i)).not.toBeInTheDocument();
   });
 
   it("renders no 'Next in this Shot' heading or list when there are zero next candidates", () => {
-    render(
-      <ShotOverviewPage
-        item={buildItem({ next_candidates: [] })}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<ShotOverviewPage item={buildItem({ next_candidates: [] })} />);
     expect(screen.queryByText("Next in this Shot")).not.toBeInTheDocument();
     expect(
       screen.queryByRole("list", { name: "Next in this Shot" }),
@@ -383,7 +340,7 @@ describe("ShotOverviewPage", () => {
         },
       ],
     });
-    render(<ShotOverviewPage item={item} onExitRole={vi.fn()} />);
+    render(<ShotOverviewPage item={item} />);
     expect(screen.getByText("Next in this Shot")).toBeVisible();
     expect(
       screen.getByText("Cross-role assessment may need your interpretation"),
@@ -419,7 +376,7 @@ describe("ShotOverviewPage", () => {
         },
       ],
     });
-    render(<ShotOverviewPage item={item} onExitRole={vi.fn()} />);
+    render(<ShotOverviewPage item={item} />);
     const list = screen.getByRole("list", { name: "Next in this Shot" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(1);
     expect(
@@ -431,47 +388,9 @@ describe("ShotOverviewPage", () => {
   });
 });
 
-// --- fix: correct shot navigation and confirmation feedback --------------
-// `/vfx/shots` rows and Open actions land here (Shot Overview, never
-// Intent) -- these tests lock in the sidebar active-state and Shot
-// breadcrumb correctness of that real destination page.
-describe("ShotOverviewPage as the real destination of a Shots row/Open action", () => {
-  it("marks Shots (not Workspace Home or Review Inbox) current in the sidebar", () => {
-    render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "Shots" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-    expect(
-      screen.getByRole("link", { name: "Workspace Home" }),
-    ).not.toHaveAttribute("aria-current");
-    expect(
-      screen.getByRole("link", { name: "Review Inbox" }),
-    ).not.toHaveAttribute("aria-current");
-  });
-
-  it("renders the Project -> Shot -> Overview breadcrumb, never Workspace Home or Review Inbox as the structural parent", () => {
-    render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
-    const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
-    expect(
-      within(breadcrumb).getByRole("link", { name: "D1 Demo Project" }),
-    ).toHaveAttribute("href", "/vfx/shots");
-    expect(
-      within(breadcrumb).getByText("Shot 010 — Final confrontation"),
-    ).toBeVisible();
-    expect(within(breadcrumb).getByText("Overview")).toBeVisible();
-    expect(
-      within(breadcrumb).queryByText("Workspace Home"),
-    ).not.toBeInTheDocument();
-    expect(
-      within(breadcrumb).queryByText("Review Inbox"),
-    ).not.toBeInTheDocument();
-  });
-});
-
 describe("ShotOverviewPage -- Step 9B-3 Department Execution Overview", () => {
   it("renders nothing extra when departmentExecutionOverview is not supplied (pre-existing callers keep working unchanged)", () => {
-    render(<ShotOverviewPage item={buildItem()} onExitRole={vi.fn()} />);
+    render(<ShotOverviewPage item={buildItem()} />);
     expect(
       screen.queryByText("Department Execution Overview"),
     ).not.toBeInTheDocument();
@@ -482,7 +401,6 @@ describe("ShotOverviewPage -- Step 9B-3 Department Execution Overview", () => {
       <ShotOverviewPage
         item={buildItem()}
         departmentExecutionOverview={null}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -538,7 +456,6 @@ describe("ShotOverviewPage -- Step 9B-3 Department Execution Overview", () => {
           ],
           generated_at: "2026-08-01T00:00:00Z",
         }}
-        onExitRole={vi.fn()}
       />,
     );
     expect(

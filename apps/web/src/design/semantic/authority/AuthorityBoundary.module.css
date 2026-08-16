@@ -1,20 +1,27 @@
 .boundary {
   padding: var(--space-3) var(--space-4);
-  border-left: 3px solid var(--border-strong);
+  border-radius: var(--radius-md);
   background: var(--surface-panel);
-  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
 .human {
-  border-left-color: var(--authority-neutral-text);
+  background: color-mix(
+    in srgb,
+    var(--authority-neutral-text) 5%,
+    var(--surface-panel)
+  );
 }
 
 .agent {
-  border-left-color: var(--accent-agent);
+  background: color-mix(in srgb, var(--accent-agent) 5%, var(--surface-panel));
 }
 
 .attention {
-  border-left-color: var(--state-attention);
+  background: color-mix(
+    in srgb,
+    var(--state-attention) 7%,
+    var(--surface-panel)
+  );
 }
 
 .kicker {
@@ -38,4 +45,15 @@
   margin-top: var(--space-3);
   padding-top: var(--space-3);
   border-top: 1px solid var(--border-subtle);
+}
+
+/* `flush`: drop this component's own surface so it reads as typography
+ * inside the parent's surface rather than a second nested panel. Higher
+ * specificity than the tone classes above (which stay on the element for
+ * their color-only role elsewhere) so it reliably wins regardless of
+ * source order. */
+.boundary.flush {
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
 }

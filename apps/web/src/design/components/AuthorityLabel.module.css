@@ -57,10 +57,20 @@
   color: var(--authority-neutral-text);
 }
 
+/* Owner correction: the dashed/dotted border used for the "ai-
+ * interpretation"/"ai-proposal" variants (see BORDER_CLASS in
+ * AuthorityLabel.tsx) made this read as an interactive control (input,
+ * dropdown, draggable chip) rather than a quiet identity label. A
+ * transparent border keeps the box model identical to the other
+ * variants (no layout shift) while removing the boxed/dashed look; the
+ * background wash + text color stay identifiable as steel/cool
+ * advisory, at a lighter weight than the bordered variants so it reads
+ * as clearly secondary. */
 .agent {
-  background: var(--accent-agent-surface);
-  border-color: var(--accent-agent-border);
-  color: var(--accent-agent-text);
+  background: var(--accent-advisory-surface);
+  border-color: transparent;
+  color: var(--accent-advisory-text);
+  font-weight: 500;
 }
 
 .attention {

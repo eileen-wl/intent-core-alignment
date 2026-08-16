@@ -20,10 +20,6 @@ vi.mock("@/features/vfx/activity-workspace/data", () => ({
   loadActivityWorkspaceData: loadActivityWorkspaceDataMock,
 }));
 
-vi.mock("../../../../demo/actions", () => ({
-  exitRoleView: vi.fn(),
-}));
-
 import { ActivityWorkspacePage } from "./ActivityWorkspacePage";
 import Page from "./page";
 
@@ -34,6 +30,13 @@ beforeEach(() => {
 
 const params = Promise.resolve({ shotId: "s1" });
 
+/** The role gate itself now runs in `app/vfx/layout.tsx`; this
+ * defensive, unreachable-in-practice check exists purely so `identity`
+ * narrows to non-null. Its redirect target stays `/demo` (a permanent,
+ * deterministic redirect to `/`), matching the pre-refactor behavior of
+ * this leaf-page check exactly -- see
+ * docs/design/ICAS_PERSISTENT_WORKSPACE_ARCHITECTURE_IMPLEMENTATION_REPORT.md's
+ * redirect-scope reconciliation. */
 describe("/vfx/shots/:shotId/activity page", () => {
   it("redirects to /demo when the demo role cookie is not vfx_supervisor", async () => {
     cookieStore.get.mockReturnValue(undefined);
@@ -51,17 +54,14 @@ describe("/vfx/shots/:shotId/activity page", () => {
     const result = await Page({ params });
 
     expect(result.type).toBe(ActivityWorkspacePage);
-    expect(result.props.shotId).toBe("s1");
     expect(result.props.data).toBe(data);
-    expect(result.props.unavailable).toBe(false);
   });
 
-  it("marks the page unavailable, rather than throwing, when the API call fails", async () => {
+  it("passes a null data prop, rather than throwing, when the API call fails", async () => {
     loadActivityWorkspaceDataMock.mockRejectedValue(new Error("boom"));
 
     const result = await Page({ params });
 
     expect(result.props.data).toBeNull();
-    expect(result.props.unavailable).toBe(true);
   });
 });

@@ -242,16 +242,9 @@ function reanchorProposalAssessment(
 }
 
 describe("IntentWorkspacePage", () => {
-  it("shows an honest unavailable state when the API could not be reached", () => {
-    render(
-      <IntentWorkspacePage
-        shotId="s1"
-        data={null}
-        unavailable
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("This Shot is unavailable")).toBeVisible();
+  it("shows an honest unavailable state when the page-specific data failed to load", () => {
+    render(<IntentWorkspacePage shotId="s1" data={null} />);
+    expect(screen.getByText("This page is unavailable")).toBeVisible();
   });
 
   it("keeps Agent generation actions inside the dedicated Client button boundary", () => {
@@ -272,14 +265,7 @@ describe("IntentWorkspacePage", () => {
       currentReanchorProposalAssessment: null,
     };
 
-    render(
-      <IntentWorkspacePage
-        shotId="s1"
-        data={data}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<IntentWorkspacePage shotId="s1" data={data} />);
 
     expect(
       screen.getByRole("button", { name: "Generate decomposition" }),
@@ -287,18 +273,6 @@ describe("IntentWorkspacePage", () => {
     expect(
       screen.getByRole("button", { name: "Generate context reconstruction" }),
     ).toBeVisible();
-  });
-
-  it("shows an honest not-found state, distinct from unavailable, for a real 404", () => {
-    render(
-      <IntentWorkspacePage
-        shotId="s1"
-        data={null}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("This Shot could not be found")).toBeVisible();
   });
 
   it("renders the confirmed-only state with a Create new revision action and no draft column", () => {
@@ -318,14 +292,7 @@ describe("IntentWorkspacePage", () => {
       confirmedDecisionRationale: null,
       currentReanchorProposalAssessment: null,
     };
-    render(
-      <IntentWorkspacePage
-        shotId="s1"
-        data={data}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<IntentWorkspacePage shotId="s1" data={data} />);
     expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Create new revision" }),
@@ -357,14 +324,7 @@ describe("IntentWorkspacePage", () => {
       confirmedDecisionRationale: null,
       currentReanchorProposalAssessment: reanchorProposalAssessment(),
     };
-    render(
-      <IntentWorkspacePage
-        shotId="s1"
-        data={data}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<IntentWorkspacePage shotId="s1" data={data} />);
 
     expect(screen.getByText("Re-anchor Proposal — Human Review")).toBeVisible();
     expect(
@@ -407,14 +367,7 @@ describe("IntentWorkspacePage", () => {
       confirmedDecisionRationale: "Matches the director's note on restraint.",
       currentReanchorProposalAssessment: null,
     };
-    render(
-      <IntentWorkspacePage
-        shotId="s1"
-        data={data}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<IntentWorkspacePage shotId="s1" data={data} />);
     const evidenceHeading = screen.getByText("Production Evidence");
     const humanDecisionHeading = screen.getByText(
       "Human Decision and Provenance",
@@ -466,15 +419,7 @@ describe("IntentWorkspacePage", () => {
       confirmedDecisionRationale: null,
       currentReanchorProposalAssessment: null,
     };
-    render(
-      <IntentWorkspacePage
-        shotId="s1"
-        data={data}
-        unavailable={false}
-        justConfirmed
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<IntentWorkspacePage shotId="s1" data={data} justConfirmed />);
     const returnLink = screen.getByRole("link", {
       name: "Return to Shot Overview",
     });
@@ -499,14 +444,7 @@ describe("IntentWorkspacePage", () => {
       confirmedDecisionRationale: null,
       currentReanchorProposalAssessment: null,
     };
-    render(
-      <IntentWorkspacePage
-        shotId="s1"
-        data={data}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<IntentWorkspacePage shotId="s1" data={data} />);
     expect(
       screen.getByRole("heading", { name: "No Core Anchor yet" }),
     ).toBeVisible();
@@ -529,14 +467,7 @@ describe("IntentWorkspacePage", () => {
       confirmedDecisionRationale: null,
       currentReanchorProposalAssessment: null,
     };
-    render(
-      <IntentWorkspacePage
-        shotId="s1"
-        data={data}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<IntentWorkspacePage shotId="s1" data={data} />);
     expect(
       screen.getByRole("heading", { name: "No Core Anchor yet" }),
     ).toBeVisible();
@@ -605,14 +536,7 @@ describe("IntentWorkspacePage", () => {
       confirmedDecisionRationale: null,
       currentReanchorProposalAssessment: null,
     };
-    render(
-      <IntentWorkspacePage
-        shotId="s1"
-        data={data}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<IntentWorkspacePage shotId="s1" data={data} />);
     expect(screen.getByText("Create the first Core Anchor")).toBeVisible();
     // Locked FIRST DRAFT requirement: no "Current" confirmed-revision
     // column at all, not even a falsely-labelled empty one -- REVISION
@@ -661,14 +585,7 @@ describe("IntentWorkspacePage", () => {
       confirmedDecisionRationale: null,
       currentReanchorProposalAssessment: null,
     };
-    render(
-      <IntentWorkspacePage
-        shotId="s1"
-        data={data}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<IntentWorkspacePage shotId="s1" data={data} />);
     expect(screen.getByText("Current: Revision 1 · Confirmed")).toBeVisible();
     expect(
       screen.getByText("Proposed: Revision 2 · Draft in progress"),
@@ -694,14 +611,7 @@ describe("IntentWorkspacePage", () => {
       confirmedDecisionRationale: null,
       currentReanchorProposalAssessment: null,
     };
-    render(
-      <IntentWorkspacePage
-        shotId="s1"
-        data={data}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<IntentWorkspacePage shotId="s1" data={data} />);
     expect(
       screen.getByRole("heading", { name: "No Core Anchor yet" }),
     ).toBeVisible();
@@ -730,14 +640,7 @@ describe("IntentWorkspacePage", () => {
       confirmedDecisionRationale: null,
       currentReanchorProposalAssessment: null,
     };
-    render(
-      <IntentWorkspacePage
-        shotId="s1"
-        data={data}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<IntentWorkspacePage shotId="s1" data={data} />);
     expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Create new revision" }),
@@ -745,37 +648,6 @@ describe("IntentWorkspacePage", () => {
     expect(screen.queryByText("Proposed draft")).not.toBeInTheDocument();
     // Not the transient success presentation -- Reject never sets it.
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
-  });
-
-  it("renders exactly the 'Intent' tab as active", () => {
-    const data: IntentWorkspaceData = {
-      item: item(),
-      confirmedRevision: revision(),
-      draftRevision: null,
-      draftHumanGate: null,
-      evidenceData: {
-        evidence: [],
-        run: null,
-        snapshot: null,
-        decompositions: [],
-        reconstructions: [],
-      },
-      previousConfirmedRevision: null,
-      confirmedDecisionRationale: null,
-      currentReanchorProposalAssessment: null,
-    };
-    render(
-      <IntentWorkspacePage
-        shotId="s1"
-        data={data}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByRole("link", { name: "Intent" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
   });
 
   it("shows the compact authority line naming the Human VFX Supervisor", () => {
@@ -795,14 +667,7 @@ describe("IntentWorkspacePage", () => {
       confirmedDecisionRationale: null,
       currentReanchorProposalAssessment: null,
     };
-    render(
-      <IntentWorkspacePage
-        shotId="s1"
-        data={data}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<IntentWorkspacePage shotId="s1" data={data} />);
     expect(screen.getByText(/owns Core Anchor confirmation/)).toBeVisible();
   });
 
@@ -824,12 +689,7 @@ describe("IntentWorkspacePage", () => {
       currentReanchorProposalAssessment: null,
     };
     const { container } = render(
-      <IntentWorkspacePage
-        shotId="s1"
-        data={data}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
+      <IntentWorkspacePage shotId="s1" data={data} />,
     );
     const details = container.querySelectorAll("details");
     expect(details.length).toBeGreaterThanOrEqual(2);

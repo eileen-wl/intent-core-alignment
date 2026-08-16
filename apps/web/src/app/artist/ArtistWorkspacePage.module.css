@@ -1,0 +1,115 @@
+.pulse {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.currentWork {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  border-left: 3px solid var(--accent-fact);
+  border-radius: var(--radius-md);
+  padding: var(--space-5);
+  background: var(--surface-panel);
+  text-decoration: none;
+  color: inherit;
+}
+
+.currentWork:hover,
+.currentWork:focus-visible {
+  background: var(--surface-elevated);
+}
+
+.currentWorkIdentity {
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.currentWorkClause {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.currentWorkNextAction {
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: var(--line-height-normal);
+}
+
+.currentWorkLabel {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.currentWorkAction {
+  align-self: flex-end;
+  margin-top: var(--space-1);
+  color: var(--accent-fact-text);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.secondaryList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.secondaryList [role="listitem"] + [role="listitem"] {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.secondaryFocus {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: inherit;
+}
+
+.secondaryFocus:hover,
+.secondaryFocus:focus-visible {
+  background: var(--surface-muted);
+}
+
+.secondaryFocusIdentity {
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.secondaryFocusSignal {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.scopeRoutes {
+  display: flex;
+  gap: var(--space-4);
+}
+
+.supportingMetrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-5);
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.supportingMetric {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.supportingMetricValue {
+  color: var(--text-secondary);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}

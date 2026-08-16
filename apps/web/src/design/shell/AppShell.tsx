@@ -10,25 +10,19 @@ export function AppShell({
   role,
   onExitRole,
   sidebarItems,
-  currentPath,
   children,
 }: {
   name: string;
   role: string;
   onExitRole: () => void | Promise<void>;
   sidebarItems: SidebarNavItem[];
-  currentPath: string;
   children: ReactNode;
 }) {
   return (
     <div className={styles.shell}>
       <TopBar name={name} role={role} onExitRole={onExitRole} />
       <div className={styles.body}>
-        <RoleSidebar
-          items={sidebarItems}
-          currentPath={currentPath}
-          name={name}
-        />
+        <RoleSidebar items={sidebarItems} name={name} />
         <main className={styles.main}>{children}</main>
       </div>
     </div>

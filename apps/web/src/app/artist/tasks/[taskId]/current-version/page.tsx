@@ -1,11 +1,16 @@
 import { redirect } from "next/navigation";
 
 import { loadCurrentVersionData } from "@/features/artist/current-version/data";
-import { fetchArtistAnchorContextOrNull } from "@/features/artist/api";
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
-import { exitRoleView } from "../../../../demo/actions";
 import { CurrentVersionPage } from "./CurrentVersionPage";
 
+/** The role gate itself already ran in `app/artist/layout.tsx`; this
+ * repeats the same defensive, unreachable-in-practice check.
+ * `?version=` selection stays a leaf-page concern -- it is forwarded
+ * into `loadCurrentVersionData` exactly as before, never hoisted to the
+ * persistent Task layout (a layout has no reason to know about a
+ * page-local Version selection, and doing so would only reintroduce
+ * the same coupling this refactor removes elsewhere). */
 export default async function Page({
   params,
   searchParams,
@@ -21,29 +26,13 @@ export default async function Page({
   }
 
   try {
-    const headers = actorHeaders(identity);
-    const [data, anchorContext] = await Promise.all([
-      loadCurrentVersionData(taskId, headers, selectedVersionId),
-      fetchArtistAnchorContextOrNull(taskId, headers),
-    ]);
-    return (
-      <CurrentVersionPage
-        taskId={taskId}
-        data={data}
-        anchorContext={anchorContext}
-        unavailable={false}
-        onExitRole={exitRoleView}
-      />
+    const data = await loadCurrentVersionData(
+      taskId,
+      actorHeaders(identity),
+      selectedVersionId,
     );
+    return <CurrentVersionPage taskId={taskId} data={data} />;
   } catch {
-    return (
-      <CurrentVersionPage
-        taskId={taskId}
-        data={null}
-        anchorContext={null}
-        unavailable
-        onExitRole={exitRoleView}
-      />
-    );
+    return <CurrentVersionPage taskId={taskId} data={null} />;
   }
 }

@@ -20,10 +20,6 @@ vi.mock("@/features/artist/task-overview/data", () => ({
   loadTaskOverviewData: loadTaskOverviewDataMock,
 }));
 
-vi.mock("../../../demo/actions", () => ({
-  exitRoleView: vi.fn(),
-}));
-
 import { TaskOverviewPage } from "./TaskOverviewPage";
 import Page from "./page";
 
@@ -34,6 +30,11 @@ beforeEach(() => {
 
 const params = Promise.resolve({ taskId: "t1" });
 
+/** The role gate itself now runs in `app/artist/layout.tsx`; this
+ * defensive, unreachable-in-practice check exists purely as a
+ * fallback. Its redirect target stays `/demo` (a permanent,
+ * deterministic redirect to `/`), matching the pre-refactor behavior of
+ * this leaf-page check exactly. */
 describe("/artist/tasks/:taskId page", () => {
   it("redirects to /demo when the demo role cookie is not artist", async () => {
     cookieStore.get.mockReturnValue(undefined);
@@ -56,15 +57,13 @@ describe("/artist/tasks/:taskId page", () => {
     expect(result.type).toBe(TaskOverviewPage);
     expect(result.props.taskId).toBe("t1");
     expect(result.props.data).toBe(data);
-    expect(result.props.unavailable).toBe(false);
   });
 
-  it("marks the page unavailable, rather than throwing, when the API call fails", async () => {
+  it("passes a null data prop, rather than throwing, when the API call fails", async () => {
     loadTaskOverviewDataMock.mockRejectedValue(new Error("boom"));
 
     const result = await Page({ params });
 
     expect(result.props.data).toBeNull();
-    expect(result.props.unavailable).toBe(true);
   });
 });

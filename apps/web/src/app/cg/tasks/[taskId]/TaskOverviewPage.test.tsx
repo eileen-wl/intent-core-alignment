@@ -4,7 +4,7 @@ import type {
 } from "@intent-core/contracts";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import type { TaskOverviewData } from "@/features/cg/task-overview/data";
 import { TaskOverviewPage } from "./TaskOverviewPage";
@@ -134,8 +134,6 @@ describe("TaskOverviewPage -- Step 9B-1 Detailed context disclosure", () => {
         data={data({
           coreAnchorSummary: "A restrained dusk confrontation.",
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     const summary = screen.getByText("Detailed context");
@@ -154,71 +152,13 @@ describe("TaskOverviewPage -- Step 9B-1 Detailed context disclosure", () => {
 });
 
 describe("TaskOverviewPage", () => {
-  it("renders Project > Shot > Task > Overview breadcrumbs and all five real Context Tabs, Overview active", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByRole("link", { name: "D1 Demo Project" }),
-    ).toHaveAttribute("href", "/cg/tasks");
-    for (const [label, href] of [
-      ["Execution", "/cg/tasks/t1/execution"],
-      ["Version Review", "/cg/tasks/t1/version-review"],
-      ["Dependencies", "/cg/tasks/t1/dependencies"],
-      ["Activity", "/cg/tasks/t1/activity"],
-    ] as const) {
-      expect(screen.getByRole("link", { name: label })).toHaveAttribute(
-        "href",
-        href,
-      );
-    }
-    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
-  it("Tasks stays the active sidebar item, never Review Inbox", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByRole("link", { name: "Tasks" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
-  it("shows an honest unavailable state when the API could not be reached", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={null}
-        unavailable
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("This Task is unavailable")).toBeVisible();
+  it("shows an honest unavailable state when the page-specific data failed to load", () => {
+    render(<TaskOverviewPage taskId="t1" data={null} anchorContext={null} />);
+    expect(screen.getByText("This page is unavailable")).toBeVisible();
   });
 
   it("renders exactly one Current focus with its real primary action", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<TaskOverviewPage taskId="t1" data={data()} />);
     expect(
       screen.getByText("Execution Anchor draft awaiting your confirmation"),
     ).toBeVisible();
@@ -227,7 +167,7 @@ describe("TaskOverviewPage", () => {
     ).toHaveAttribute("href", "/cg/tasks/t1/execution");
   });
 
-  it("separates no immediate CG action from pending upstream VFX review", () => {
+  it("suppresses its own stale 'nothing requires attention' focus card when Anchor Context already covers pending upstream VFX review (the persistent Task layout's AnchorContextLayer owns that readiness statement)", () => {
     render(
       <TaskOverviewPage
         taskId="t1"
@@ -246,16 +186,9 @@ describe("TaskOverviewPage", () => {
           }),
         })}
         anchorContext={cgAnchorContext()}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
-    expect(screen.getByText("No immediate CG action")).toBeVisible();
-    expect(
-      screen.getAllByText("VFX review pending for the newer Core Anchor draft.")
-        .length,
-    ).toBeGreaterThan(0);
     expect(
       screen.queryByText(
         "Nothing requires your attention on this Task right now",
@@ -268,8 +201,6 @@ describe("TaskOverviewPage", () => {
       <TaskOverviewPage
         taskId="t1"
         data={data({ coreAnchorSummary: "A restrained dusk confrontation." })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -286,8 +217,6 @@ describe("TaskOverviewPage", () => {
         taskId="t1"
         data={data()}
         anchorContext={cgAnchorContext()}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Execution operations")).toBeVisible();
@@ -302,16 +231,8 @@ describe("TaskOverviewPage", () => {
     expect(screen.getByText("Detailed context")).toBeInTheDocument();
   });
 
-  it("uses the Anchor layer unavailable state instead of a second missing-direction summary", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("Anchor context unavailable")).toBeVisible();
+  it("does not render its own second missing-direction summary when Anchor Context is absent (the persistent Task layout's AnchorContextLayer owns that honest-unavailable state)", () => {
+    render(<TaskOverviewPage taskId="t1" data={data()} />);
     expect(
       screen.queryByText("No Core Anchor is confirmed for this Shot yet."),
     ).not.toBeInTheDocument();
@@ -337,8 +258,6 @@ describe("TaskOverviewPage", () => {
             ],
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Current Execution Direction")).toBeVisible();
@@ -352,28 +271,14 @@ describe("TaskOverviewPage", () => {
   });
 
   it("renders nothing extra when workingDirection has no items (honest empty state)", () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<TaskOverviewPage taskId="t1" data={data()} />);
     expect(
       screen.queryByText("Current Execution Direction"),
     ).not.toBeInTheDocument();
   });
 
   it("shows an honest empty Activity state for a genuinely bare Task", async () => {
-    render(
-      <TaskOverviewPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<TaskOverviewPage taskId="t1" data={data()} />);
     await userEvent.click(screen.getByText("Detailed context"));
     expect(
       screen.getByText("No recorded activity exists for this Task yet."),

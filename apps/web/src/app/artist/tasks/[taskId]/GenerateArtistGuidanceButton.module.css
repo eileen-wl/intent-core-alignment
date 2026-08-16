@@ -2,19 +2,26 @@
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
+/* Work archetype correction: Regenerate/Generate Guidance operates the
+ * Agent -- an Agent-support action, not the Artist's own primary work
+ * step -- so it no longer uses the ICAS-purple "selected/primary
+ * Human action" treatment. A neutral outline by default, revealing
+ * its steel/cool advisory identity (the same `--accent-advisory-*`
+ * tokens Agent regions use) on hover/focus, matches "secondary
+ * advisory action" rather than a strong primary button. */
 .button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: var(--space-3);
   padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--accent-agent-border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
-  background: var(--accent-agent-surface);
-  color: var(--text-primary);
+  background: var(--surface-panel);
+  color: var(--accent-advisory-text);
   font-weight: 600;
   transition:
     filter 120ms ease,
@@ -23,7 +30,8 @@
 
 .button:hover:not(:disabled),
 .button:focus-visible {
-  filter: brightness(0.97);
+  background: var(--accent-advisory-surface);
+  border-color: var(--accent-advisory-border);
 }
 
 .button:disabled {
@@ -42,9 +50,18 @@
   max-width: 34rem;
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.unavailable strong {
+  display: block;
+  margin-bottom: var(--space-2);
 }
 
 .unavailable ul {
-  margin-block: var(--space-1) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
   padding-left: var(--space-5);
 }

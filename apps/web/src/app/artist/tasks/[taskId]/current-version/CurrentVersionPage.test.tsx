@@ -197,30 +197,9 @@ function data(overrides: Partial<CurrentVersionData> = {}): CurrentVersionData {
 }
 
 describe("CurrentVersionPage", () => {
-  it("renders Project > Shot > Task > Current Version breadcrumbs, tab active", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByRole("link", { name: "Current Version" }),
-    ).toHaveAttribute("aria-current", "page");
-  });
-
-  it("shows an honest unavailable state when the API could not be reached", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={null}
-        unavailable
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("This Task is unavailable")).toBeVisible();
+  it("shows an honest unavailable state when the page-specific data failed to load", () => {
+    render(<CurrentVersionPage taskId="t1" data={null} />);
+    expect(screen.getByText("This page is unavailable")).toBeVisible();
   });
 
   it("shows the honest empty state when no Production Version exists for this Task's Shot", () => {
@@ -228,8 +207,6 @@ describe("CurrentVersionPage", () => {
       <CurrentVersionPage
         taskId="t1"
         data={data({ versions: [], selectedVersion: null })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -238,14 +215,7 @@ describe("CurrentVersionPage", () => {
   });
 
   it("renders real Production Versions, never confusing them with a Core/Execution Anchor Revision", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<CurrentVersionPage taskId="t1" data={data()} />);
     expect(
       screen.getByRole("link", { name: /SH010_v001 \(v1\)/ }),
     ).toBeVisible();
@@ -265,8 +235,6 @@ describe("CurrentVersionPage", () => {
       <CurrentVersionPage
         taskId="t1"
         data={data({ versions: [version(), versionB] })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -275,26 +243,12 @@ describe("CurrentVersionPage", () => {
   });
 
   it("shows the selected Version's real Review Notes", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<CurrentVersionPage taskId="t1" data={data()} />);
     expect(screen.getByText("Contrast reads slightly hot.")).toBeVisible();
   });
 
   it("shows an honest empty state when no Review Notes exist for the selected Version", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data({ reviewNotes: [] })}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<CurrentVersionPage taskId="t1" data={data({ reviewNotes: [] })} />);
     expect(
       screen.getByText(
         "No Review Notes have been recorded for this Production Version yet.",
@@ -324,8 +278,6 @@ describe("CurrentVersionPage", () => {
             }),
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getAllByText(/Source author: Jamie Lin/).length).toBe(2);
@@ -347,8 +299,6 @@ describe("CurrentVersionPage", () => {
           }),
           reviewNotes: [],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText(/· system$/)).toBeVisible();
@@ -357,111 +307,57 @@ describe("CurrentVersionPage", () => {
   });
 
   it("shows the manual Human-role author as a human-readable label when no ftrack provenance exists (Step 9B-2 correction)", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<CurrentVersionPage taskId="t1" data={data()} />);
     expect(screen.getByText(/· Artist$/)).toBeVisible();
     expect(screen.queryByText(/· artist$/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Source author:/)).not.toBeInTheDocument();
   });
 
-  it("shows Core Anchor and Execution Anchor context as read-only", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data({
-          coreAnchorRevision: {
-            id: "ca1",
-            core_anchor_id: "cap",
-            revision_number: 1,
-            status: "confirmed",
-            shot_objective: null,
-            emotional_tone: null,
-            visual_focus: null,
-            rhythm_intensity: null,
-            character_relationship: null,
-            narrative_priority: null,
-            core_summary: "A restrained dusk confrontation.",
-            created_by_actor_kind: "human",
-            created_by_actor_id: "vfx-1",
-            created_by_human_role: "vfx_supervisor",
-            created_by_agent_type: null,
-            created_by_agent_run_id: null,
-            context_snapshot_id: null,
-            confirmed_by_human_role: "vfx_supervisor",
-            confirmed_by_actor_id: "vfx-1",
-            confirmed_at: "2026-01-01T00:00:00Z",
-            supersedes_revision_id: null,
-            source_intent_decomposition_id: null,
-            created_at: "2026-01-01T00:00:00Z",
-            updated_at: "2026-01-01T00:00:00Z",
-            constraints: [],
-            variation_zones: [],
-            drift_risks: [],
-            references: [],
-            open_questions: [],
-          },
-        })}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("Active Core Anchor (read-only)")).toBeVisible();
+  it("groups the page into named Current Version, Supervisor feedback, and Artist guidance regions (Work archetype visual-language pass), each with its own semantic icon heading", () => {
+    render(<CurrentVersionPage taskId="t1" data={data()} />);
     expect(
-      screen.getByText("Active Execution Anchor (read-only)"),
+      screen.getByRole("heading", { name: "Current Version" }),
     ).toBeVisible();
-    expect(screen.getByText("A restrained dusk confrontation.")).toBeVisible();
-  });
-
-  it("groups Version/Anchor references under Production Evidence, Artist guidance under Agent Interpretation, and confirmed-Anchor authority references under Human Decision without duplicating the full Working Direction (Step 9B-2)", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    const evidenceHeading = screen.getByText("Production Evidence");
-    const agentHeading = screen.getByText("Agent Interpretation");
-    const humanDecisionHeading = screen.getByText(
-      "Human Decision and Provenance",
-    );
-    expect(evidenceHeading).toBeVisible();
-    expect(agentHeading).toBeVisible();
-    expect(humanDecisionHeading).toBeVisible();
-
-    const agentSection = agentHeading.closest(
-      "[data-evidence-layer]",
-    ) as HTMLElement;
     expect(
-      within(agentSection).getByText("Applicable Artist guidance"),
+      screen.getByRole("heading", { name: "Supervisor feedback" }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("heading", { name: "Artist guidance" }),
     ).toBeVisible();
 
-    const humanDecisionSection = humanDecisionHeading.closest(
-      "[data-evidence-layer]",
-    ) as HTMLElement;
+    const guidanceSection = screen
+      .getByLabelText("Artist guidance")
+      .closest("section") as HTMLElement;
     expect(
-      within(humanDecisionSection).getByText("Confirmed authority references"),
-    ).toBeVisible();
-    expect(
-      within(humanDecisionSection).getByText(
-        "No Core Anchor is confirmed for this Shot yet.",
-      ),
-    ).toBeVisible();
-    expect(
-      within(humanDecisionSection).getByText(
-        "No Execution Anchor is confirmed for this Task yet.",
-      ),
+      within(guidanceSection).getByText("AI interpretation"),
     ).toBeVisible();
   });
 
-  it("shows only a confirmed-authority reference for the Artist role, never Decision actor/rationale/timestamp detail, and no confirm/reject/edit control (Step 9B-2 correction)", () => {
+  it("does not duplicate Core/Execution Anchor confirmation status in the page body -- the shared Anchor Context guardrail (rendered once, above every Artist tab) is the one authoritative surface for that real state, never a second page-local copy", () => {
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data({ coreAnchorRevision: null, executionAnchorRevision: null })}
+      />,
+    );
+    expect(
+      screen.queryByText("Human Decision and Provenance"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Confirmed authority references"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText(/Confirmed under/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("No Core Anchor is confirmed for this Shot yet."),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(
+        "Detailed Decision provenance is not exposed in the Artist role view.",
+      ),
+    ).not.toBeInTheDocument();
+  });
+
+  it("never shows Decision actor/rationale/timestamp detail or any confirm/reject/edit Anchor control anywhere on the page (Artist permission boundary)", () => {
     render(
       <CurrentVersionPage
         taskId="t1"
@@ -524,45 +420,15 @@ describe("CurrentVersionPage", () => {
             updated_at: "2026-01-02T00:00:00Z",
           },
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
-    const humanDecisionSection = screen
-      .getByText("Human Decision and Provenance")
-      .closest("[data-evidence-layer]") as HTMLElement;
 
-    expect(
-      within(humanDecisionSection).getByText(
-        "Confirmed under VFX Supervisor authority.",
-      ),
-    ).toBeVisible();
-    expect(
-      within(humanDecisionSection).getByText(
-        "Confirmed under CG Supervisor authority.",
-      ),
-    ).toBeVisible();
-    expect(
-      within(humanDecisionSection).getAllByText(
-        "Detailed Decision provenance is not exposed in the Artist role view.",
-      ).length,
-    ).toBe(2);
-
-    // No Decision actor/rationale/decided-at detail is exposed to Artist
-    // -- unlike CG Execution's Human Decision section, none of these
-    // real Decision-provenance labels ever render here.
-    expect(
-      within(humanDecisionSection).queryByText("Actor role"),
-    ).not.toBeInTheDocument();
-    expect(
-      within(humanDecisionSection).queryByText("Rationale"),
-    ).not.toBeInTheDocument();
-    expect(
-      within(humanDecisionSection).queryByText("Decided at"),
-    ).not.toBeInTheDocument();
-    expect(
-      within(humanDecisionSection).queryByText("2026-01-01T00:00:00Z"),
-    ).not.toBeInTheDocument();
+    // No real Decision-provenance labels ever render here -- unlike CG
+    // Execution's own Human Decision section.
+    expect(screen.queryByText("Actor role")).not.toBeInTheDocument();
+    expect(screen.queryByText("Rationale")).not.toBeInTheDocument();
+    expect(screen.queryByText("Decided at")).not.toBeInTheDocument();
+    expect(screen.queryByText("2026-01-01T00:00:00Z")).not.toBeInTheDocument();
 
     // No Anchor confirm/reject/edit control anywhere on the page.
     expect(
@@ -573,42 +439,8 @@ describe("CurrentVersionPage", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("never describes an unconfirmed Anchor as confirmed under Human Decision and Provenance", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data({ coreAnchorRevision: null, executionAnchorRevision: null })}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    const humanDecisionSection = screen
-      .getByText("Human Decision and Provenance")
-      .closest("[data-evidence-layer]") as HTMLElement;
-    expect(
-      within(humanDecisionSection).queryByText(/Confirmed under/),
-    ).not.toBeInTheDocument();
-    expect(
-      within(humanDecisionSection).getByText(
-        "No Core Anchor is confirmed for this Shot yet.",
-      ),
-    ).toBeVisible();
-    expect(
-      within(humanDecisionSection).getByText(
-        "No Execution Anchor is confirmed for this Task yet.",
-      ),
-    ).toBeVisible();
-  });
-
   it("honestly shows no Agent Execution Review has been generated yet", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<CurrentVersionPage taskId="t1" data={data()} />);
     expect(
       screen.getByText(
         "No Agent Execution Review has been generated for the active Execution Anchor yet.",
@@ -617,14 +449,7 @@ describe("CurrentVersionPage", () => {
   });
 
   it("honestly shows no Cross-role Assessment involves this Version yet", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<CurrentVersionPage taskId="t1" data={data()} />);
     expect(
       screen.getByText("No Cross-role Assessment involves this Version yet."),
     ).toBeVisible();
@@ -694,22 +519,13 @@ describe("CurrentVersionPage", () => {
       <CurrentVersionPage
         taskId="t1"
         data={data({ crossRoleAssessments: [assessment] })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("1 Cross-role Assessment recorded.")).toBeVisible();
   });
 
   it("honestly shows no Artist guidance has been generated for this Version yet", () => {
-    render(
-      <CurrentVersionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<CurrentVersionPage taskId="t1" data={data()} />);
     expect(
       screen.getByText(
         "No Artist guidance has been generated for this Version yet.",
@@ -743,7 +559,10 @@ describe("CurrentVersionPage", () => {
       created_at: "2026-02-02T00:00:00Z",
       guidance_output: {
         ...guidance().guidance_output,
-        executive_summary: "Current guidance for the resolved Version.",
+        task_goal: {
+          ...guidanceItem(),
+          summary: "Resolve the Version against the confirmed R2 boundary.",
+        },
       },
     });
     render(
@@ -766,14 +585,14 @@ describe("CurrentVersionPage", () => {
           ],
           currentGuidance,
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
     expect(
-      screen.getAllByText("Current guidance for the resolved Version.").length,
-    ).toBeGreaterThan(0);
+      screen.getByText(
+        /Resolve the Version against the confirmed R2 boundary\./,
+      ),
+    ).toBeVisible();
     expect(
       screen.getByText("Historical guidance from the R1/conflict era."),
     ).toBeVisible();
@@ -813,8 +632,6 @@ describe("CurrentVersionPage", () => {
           ],
           currentGuidance: null,
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -834,15 +651,298 @@ describe("CurrentVersionPage", () => {
     ).toBeVisible();
   });
 
-  it("does not invent an upload/submit/approve/complete action anywhere on the page", () => {
+  it("strips the verified '[Artist deterministic]' generator label from the historical guidance summary (confirmed present in the real deterministic Artist Agent generator), never touching genuine domain wording", () => {
+    const currentExecutionRevision = executionAnchorRevision({
+      id: "ea2",
+      revision_number: 2,
+    });
+    const historicalGuidance = guidance({
+      id: "g-historical",
+      execution_anchor_revision_id: "ea1",
+      guidance_output: {
+        ...guidance().guidance_output,
+        executive_summary:
+          "[Artist deterministic] 2 non-negotiable(s) considered for Version SH010_v001.",
+      },
+    });
+    const currentGuidance = guidance({
+      id: "g-current",
+      execution_anchor_revision_id: "ea2",
+    });
     render(
       <CurrentVersionPage
         taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
+        data={data({
+          executionAnchorRevision: currentExecutionRevision,
+          guidances: [currentGuidance, historicalGuidance],
+          guidancesWithProvenance: [
+            {
+              guidance: currentGuidance,
+              executionAnchorRevisionNumber: 2,
+              isCurrent: true,
+            },
+            {
+              guidance: historicalGuidance,
+              executionAnchorRevisionNumber: 1,
+              isCurrent: false,
+            },
+          ],
+          currentGuidance,
+        })}
       />,
     );
+
+    expect(
+      screen.getByText(
+        "2 non-negotiable(s) considered for Version SH010_v001.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/Artist deterministic/)).not.toBeInTheDocument();
+  });
+
+  it("strips the verified real Artist D1 deterministic combined-intensity-boundary label (e.g. '[Artist D1 deterministic - R2 combined-intensity ceiling boundary]', a real variable-revision label persisted on older ArtistAgentGuidance rows) from the concise guidance takeaway's task-goal source", () => {
+    const currentGuidance = guidance({
+      id: "g-current",
+      execution_anchor_revision_id: "ea1",
+      guidance_output: {
+        ...guidance().guidance_output,
+        task_goal: {
+          ...guidanceItem(),
+          summary:
+            "[Artist D1 deterministic - R2 combined-intensity ceiling boundary] Comp R2 boundary: preserve the confirmed ceiling.",
+        },
+      },
+    });
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data({
+          guidances: [currentGuidance],
+          guidancesWithProvenance: [
+            {
+              guidance: currentGuidance,
+              executionAnchorRevisionNumber: 1,
+              isCurrent: true,
+            },
+          ],
+          currentGuidance,
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByText(/Comp R2 boundary: preserve the confirmed ceiling\./),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/Artist D1 deterministic/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("never runs the real task-goal summary directly into the actionable-item count sentence when the real summary lacks terminal punctuation (owner-reported regression: the real D1 R2+ boundary override can be cut off mid-sentence by the backend's own bounded-length truncation, producing a run-on like '...current confirmed 2 actionable items are ready to review below.')", () => {
+    const currentGuidance = guidance({
+      id: "g-current",
+      guidance_output: {
+        ...guidance().guidance_output,
+        task_goal: {
+          ...guidanceItem(),
+          summary:
+            "Local refinements to Compositing's own bloom, within its own confirmed range, coordinated against Animation and Lighting's current confirmed",
+        },
+        iteration_priorities: [
+          {
+            summary: "Tighten the silhouette read in the final beat.",
+            why_it_matters: "Keeps the confirmed intent legible at a glance.",
+            priority: "high",
+            evidence: [],
+          },
+          {
+            summary: "Hold the secondary motion inside the allowed range.",
+            why_it_matters: "Prevents drift past the confirmed boundary.",
+            priority: "medium",
+            evidence: [],
+          },
+        ],
+      },
+    });
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data({
+          guidances: [currentGuidance],
+          guidancesWithProvenance: [
+            {
+              guidance: currentGuidance,
+              executionAnchorRevisionNumber: 1,
+              isCurrent: true,
+            },
+          ],
+          currentGuidance,
+        })}
+      />,
+    );
+
+    // The real (truncated) summary text is preserved exactly, honestly
+    // marked as continuing via an ellipsis rather than a fabricated
+    // period, and the count clause starts as its own clearly separate
+    // sentence -- never glued on with just a space.
+    expect(
+      screen.getByText(
+        "Local refinements to Compositing's own bloom, within its own confirmed range, coordinated against Animation and Lighting's current confirmed… 2 actionable items are ready to review below.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText(/confirmed 2 actionable/),
+    ).not.toBeInTheDocument();
+  });
+
+  it("does not add a duplicated or fabricated period when the real task-goal summary already ends with terminal punctuation", () => {
+    const currentGuidance = guidance({
+      id: "g-current",
+      guidance_output: {
+        ...guidance().guidance_output,
+        task_goal: {
+          ...guidanceItem(),
+          summary:
+            "Task Compositing Pass is responsible for the confirmed boundary.",
+        },
+        iteration_priorities: [],
+        feedback_translations: [],
+      },
+    });
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data({
+          guidances: [currentGuidance],
+          guidancesWithProvenance: [
+            {
+              guidance: currentGuidance,
+              executionAnchorRevisionNumber: 1,
+              isCurrent: true,
+            },
+          ],
+          currentGuidance,
+        })}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "Task Compositing Pass is responsible for the confirmed boundary. No specific iteration priorities or translated feedback are recorded yet.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/boundary\.\./)).not.toBeInTheDocument();
+  });
+
+  it("renders real Iteration priorities and Feedback translations as numbered actionable rows instead of a SignalStrip count instrument, and omits a structured group entirely when its real array is empty", () => {
+    const currentGuidance = guidance({
+      id: "g-current",
+      guidance_output: {
+        ...guidance().guidance_output,
+        iteration_priorities: [
+          {
+            summary: "Tighten the silhouette read in the final beat.",
+            why_it_matters: "Keeps the confirmed intent legible at a glance.",
+            priority: "high",
+            evidence: [],
+          },
+          {
+            summary: "Hold the secondary motion inside the allowed range.",
+            why_it_matters: "Prevents drift past the confirmed boundary.",
+            priority: "medium",
+            evidence: [],
+          },
+        ],
+        feedback_translations: [],
+      },
+    });
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data({
+          guidances: [currentGuidance],
+          guidancesWithProvenance: [
+            {
+              guidance: currentGuidance,
+              executionAnchorRevisionNumber: 1,
+              isCurrent: true,
+            },
+          ],
+          currentGuidance,
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Iteration priorities (2)")).toBeVisible();
+    expect(
+      screen.getByText("Tighten the silhouette read in the final beat."),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Keeps the confirmed intent legible at a glance."),
+    ).toBeVisible();
+    expect(screen.getByText("high")).toBeVisible();
+    expect(
+      screen.getByText("Hold the secondary motion inside the allowed range."),
+    ).toBeVisible();
+    // Two real rows, numbered 01/02.
+    expect(screen.getByText("01")).toBeVisible();
+    expect(screen.getByText("02")).toBeVisible();
+
+    // The real array is empty -- no "Feedback translations" group heading
+    // at all, never an empty count instrument.
+    expect(screen.queryByText(/Feedback translations/)).not.toBeInTheDocument();
+  });
+
+  it("renders real Feedback translations as actionable rows using the practical action as the row title and the underlying intent as supporting explanation", () => {
+    const currentGuidance = guidance({
+      id: "g-current",
+      guidance_output: {
+        ...guidance().guidance_output,
+        iteration_priorities: [],
+        feedback_translations: [
+          {
+            feedback_or_issue: "Contrast reads slightly hot.",
+            practical_action: "Pull the highlight rolloff back one stop.",
+            underlying_intent:
+              "The Supervisor wants the confirmed exposure range preserved.",
+            self_check: "Compare against the reference frame before publish.",
+            priority: "medium",
+            evidence: [],
+          },
+        ],
+      },
+    });
+    render(
+      <CurrentVersionPage
+        taskId="t1"
+        data={data({
+          guidances: [currentGuidance],
+          guidancesWithProvenance: [
+            {
+              guidance: currentGuidance,
+              executionAnchorRevisionNumber: 1,
+              isCurrent: true,
+            },
+          ],
+          currentGuidance,
+        })}
+      />,
+    );
+
+    expect(screen.getByText("Feedback translations (1)")).toBeVisible();
+    expect(
+      screen.getByText("Pull the highlight rolloff back one stop."),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "The Supervisor wants the confirmed exposure range preserved.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/Iteration priorities/)).not.toBeInTheDocument();
+  });
+
+  it("does not invent an upload/submit/approve/complete action anywhere on the page", () => {
+    render(<CurrentVersionPage taskId="t1" data={data()} />);
     expect(
       screen.queryByRole("button", { name: /upload/i }),
     ).not.toBeInTheDocument();
@@ -878,8 +978,6 @@ describe("CurrentVersionPage", () => {
               unavailable_reason: null,
             },
           })}
-          unavailable={false}
-          onExitRole={vi.fn()}
         />,
       );
       const videoEl = document.querySelector("video") as HTMLVideoElement;
@@ -889,14 +987,7 @@ describe("CurrentVersionPage", () => {
     });
 
     it("shows an honest unavailable state, not a fake frame, when no media is resolved", () => {
-      render(
-        <CurrentVersionPage
-          taskId="t1"
-          data={data({ media: null })}
-          unavailable={false}
-          onExitRole={vi.fn()}
-        />,
-      );
+      render(<CurrentVersionPage taskId="t1" data={data({ media: null })} />);
       expect(document.querySelector("video")).toBeNull();
       expect(screen.getByText("No media context is available.")).toBeVisible();
     });
@@ -921,8 +1012,6 @@ describe("CurrentVersionPage", () => {
               unavailable_reason: null,
             },
           })}
-          unavailable={false}
-          onExitRole={vi.fn()}
         />,
       );
       expect(
@@ -975,8 +1064,6 @@ describe("CurrentVersionPage", () => {
             canPublishResolvedVersion: true,
             publishableExecutionAnchorRevision: executionAnchorRevision(),
           })}
-          unavailable={false}
-          onExitRole={vi.fn()}
         />,
       );
       expect(
@@ -994,8 +1081,6 @@ describe("CurrentVersionPage", () => {
             canPublishResolvedVersion: false,
             publishableExecutionAnchorRevision: null,
           })}
-          unavailable={false}
-          onExitRole={vi.fn()}
         />,
       );
       expect(
@@ -1015,8 +1100,6 @@ describe("CurrentVersionPage", () => {
             canPublishResolvedVersion: true,
             publishableExecutionAnchorRevision: executionAnchorRevision(),
           })}
-          unavailable={false}
-          onExitRole={vi.fn()}
         />,
       );
 
@@ -1046,8 +1129,6 @@ describe("CurrentVersionPage", () => {
             canPublishResolvedVersion: true,
             publishableExecutionAnchorRevision: executionAnchorRevision(),
           })}
-          unavailable={false}
-          onExitRole={vi.fn()}
         />,
       );
 

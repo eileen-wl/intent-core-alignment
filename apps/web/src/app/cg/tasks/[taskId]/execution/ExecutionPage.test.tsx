@@ -222,41 +222,14 @@ function outdatedAnchorContext(): AnchorContextRead {
 }
 
 describe("ExecutionPage", () => {
-  it("renders Project > Shot > Task > Execution breadcrumbs, Execution tab active", () => {
-    render(
-      <ExecutionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByRole("link", { name: "Execution" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
-  it("shows an honest unavailable state when the API could not be reached", () => {
-    render(
-      <ExecutionPage
-        taskId="t1"
-        data={null}
-        unavailable
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("This Task is unavailable")).toBeVisible();
+  it("shows an honest unavailable state when the page-specific data failed to load", () => {
+    render(<ExecutionPage taskId="t1" data={null} />);
+    expect(screen.getByText("This page is unavailable")).toBeVisible();
   });
 
   it("no Execution Anchor: offers Generate as primary and Start blank draft as secondary when the Core Anchor is confirmed", () => {
     render(
-      <ExecutionPage
-        taskId="t1"
-        data={data({ coreAnchorConfirmed: true })}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
+      <ExecutionPage taskId="t1" data={data({ coreAnchorConfirmed: true })} />,
     );
     expect(
       screen.getByRole("button", { name: "Generate Execution Anchor draft" }),
@@ -268,12 +241,7 @@ describe("ExecutionPage", () => {
 
   it("no Execution Anchor: honestly blocks draft creation when the Core Anchor is not confirmed", () => {
     render(
-      <ExecutionPage
-        taskId="t1"
-        data={data({ coreAnchorConfirmed: false })}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
+      <ExecutionPage taskId="t1" data={data({ coreAnchorConfirmed: false })} />,
     );
     expect(screen.getByText(/requires a confirmed Core Anchor/)).toBeVisible();
     expect(
@@ -286,12 +254,7 @@ describe("ExecutionPage", () => {
 
   it("draft exists: shows the real Human CG Supervisor authority statement and content fields", () => {
     render(
-      <ExecutionPage
-        taskId="t1"
-        data={data({ draftRevision: revision() })}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
+      <ExecutionPage taskId="t1" data={data({ draftRevision: revision() })} />,
     );
     expect(
       screen.getByText(/owns Execution Anchor confirmation/),
@@ -310,8 +273,6 @@ describe("ExecutionPage", () => {
         data={data({
           draftRevision: revision({ technical_boundaries: "   " }),
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -330,8 +291,6 @@ describe("ExecutionPage", () => {
       <ExecutionPage
         taskId="t1"
         data={data({ draftRevision: null, coreAnchorConfirmed: true })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -354,8 +313,6 @@ describe("ExecutionPage", () => {
           }),
           coreAnchorConfirmed: true,
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -380,8 +337,6 @@ describe("ExecutionPage", () => {
           }),
           coreAnchorConfirmed: true,
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText(/Confirmed Execution Anchor/)).toBeVisible();
@@ -412,8 +367,6 @@ describe("ExecutionPage", () => {
           coreAnchorConfirmed: true,
         })}
         anchorContext={outdatedAnchorContext()}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -448,8 +401,6 @@ describe("ExecutionPage", () => {
           coreAnchorConfirmed: true,
         })}
         anchorContext={outdatedAnchorContext()}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -483,8 +434,6 @@ describe("ExecutionPage", () => {
             context_state: "current",
           },
         }}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -509,8 +458,6 @@ describe("ExecutionPage", () => {
           coreAnchorConfirmed: true,
           confirmDecision: decision(),
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     const evidenceHeading = screen.getByText("Production Evidence");
@@ -568,8 +515,6 @@ describe("ExecutionPage", () => {
           coreAnchorConfirmed: true,
           confirmDecision: null,
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     const humanDecisionSection = screen
@@ -605,8 +550,6 @@ describe("ExecutionPage", () => {
           coreAnchorConfirmed: true,
           confirmDecision: decision(),
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     const humanDecisionSection = screen
@@ -625,14 +568,7 @@ describe("ExecutionPage", () => {
   });
 
   it("uses the state-dependent action heading: Start Execution Anchor when none exists, Revise Execution Anchor once one is confirmed", () => {
-    const { rerender } = render(
-      <ExecutionPage
-        taskId="t1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    const { rerender } = render(<ExecutionPage taskId="t1" data={data()} />);
     expect(screen.getByText("Start Execution Anchor")).toBeVisible();
     expect(
       screen.queryByText("Revise Execution Anchor"),
@@ -645,8 +581,6 @@ describe("ExecutionPage", () => {
           confirmedRevision: revision({ status: "confirmed" }),
           coreAnchorConfirmed: true,
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Revise Execution Anchor")).toBeVisible();
@@ -664,8 +598,6 @@ describe("ExecutionPage", () => {
           draftRevision: revision({ id: "r2", status: "draft" }),
           coreAnchorConfirmed: true,
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Draft Execution Anchor")).toBeVisible();

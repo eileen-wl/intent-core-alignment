@@ -1,0 +1,107 @@
+.tile {
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-4);
+  padding: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-panel);
+  text-decoration: none;
+  color: inherit;
+}
+
+.tile:hover,
+.tile:focus-visible {
+  background: var(--surface-elevated);
+}
+
+.tile:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: -2px;
+}
+
+/* The Shot-identity plate -- built only from real textual identity
+   (Shot name + current Version), never a fake frame. Fixed-proportion
+   and image-shaped on purpose: a future real thumbnail can fill this
+   exact region without any surrounding layout change. */
+.slate {
+  display: flex;
+  flex: 0 0 40%;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-2);
+  aspect-ratio: 16 / 10;
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-muted);
+}
+
+.slateShotName {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  line-height: var(--line-height-tight);
+  color: var(--text-primary);
+}
+
+.slateVersion {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.details {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.projectName {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+.stateRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.attention {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.taskName {
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+}
+
+.tertiary {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+}
+
+.open {
+  align-self: flex-end;
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--accent-fact-text);
+}
+
+@media (max-width: 640px) {
+  .tile {
+    flex-direction: column;
+  }
+
+  .slate {
+    flex: none;
+    aspect-ratio: 16 / 7;
+  }
+}

@@ -1,8 +1,8 @@
 .panel {
-  border: 1px solid var(--border-subtle, #d9dce3);
-  border-radius: 12px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
   padding: 1rem;
-  background: var(--surface-raised, #fff);
+  background: var(--surface-elevated);
   display: grid;
   gap: 0.8rem;
 }
@@ -14,7 +14,7 @@
 }
 .eyebrow {
   margin: 0;
-  color: var(--text-muted, #687080);
+  color: var(--text-muted);
   font-size: 0.78rem;
 }
 .title {
@@ -22,35 +22,36 @@
   font-size: 1.05rem;
 }
 .state {
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   padding: 0.2rem 0.55rem;
   font-size: 0.75rem;
   white-space: nowrap;
-  background: #eef0f4;
+  background: var(--surface-muted);
+  color: var(--text-secondary);
 }
 .state_completed {
-  background: #e7f4eb;
-  color: #176534;
+  background: var(--state-success-surface);
+  color: var(--state-success);
 }
 .state_failed,
 .state_stale {
-  background: #fff0e8;
-  color: #8a3b12;
+  background: var(--state-error-surface);
+  color: var(--state-error);
 }
 .state_not_ready {
-  background: #fff7df;
-  color: #765a00;
+  background: var(--state-attention-surface);
+  color: var(--state-attention);
 }
 .generated,
 .muted {
   margin: 0;
-  color: var(--text-muted, #687080);
+  color: var(--text-muted);
   font-size: 0.85rem;
 }
 .section,
 .readiness,
 .nextAction {
-  border-top: 1px solid var(--border-subtle, #e5e7eb);
+  border-top: 1px solid var(--border-subtle);
   padding-top: 0.75rem;
 }
 .section h4,
@@ -68,13 +69,13 @@
   gap: 0.25rem;
 }
 .available {
-  color: #176534;
+  color: var(--state-success);
 }
 .missing {
-  color: #8a3b12;
+  color: var(--state-error);
 }
 .provenance {
-  border-top: 1px solid var(--border-subtle, #e5e7eb);
+  border-top: 1px solid var(--border-subtle);
   padding-top: 0.7rem;
 }
 .provenance summary {

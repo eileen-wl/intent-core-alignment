@@ -1,5 +1,9 @@
-import Link from "next/link";
+"use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+import { PendingLinkContent } from "../components/PendingLinkContent";
 import styles from "./RoleSidebar.module.css";
 import type { SidebarNavItem } from "@/lib/roleNavigation";
 
@@ -82,15 +86,23 @@ function currentItemId(
   return best?.id ?? null;
 }
 
+/** Active-item detection is derived from the real client pathname
+ * (persistent-workspace-architecture refactor) rather than a
+ * `currentPath` prop supplied by the leaf server page -- once `AppShell`
+ * moves into a role-level `layout.tsx`, it no longer remounts on every
+ * navigation, so a prop computed once at the leaf page's own render time
+ * would go stale the moment the user navigates to a sibling route
+ * without this component re-rendering from the layout. `usePathname()`
+ * is the smallest client surface that fixes this: everything else here
+ * -- markup, the `currentItemId` matching rule, styling -- is unchanged. */
 export function RoleSidebar({
   items,
-  currentPath,
   name = "ICAS User",
 }: {
   items: SidebarNavItem[];
-  currentPath: string;
   name?: string;
 }) {
+  const currentPath = usePathname();
   const activeId = currentItemId(items, currentPath);
 
   return (
@@ -127,6 +139,7 @@ export function RoleSidebar({
                 data-current={isCurrent || undefined}
               >
                 {content}
+                <PendingLinkContent label={item.label} />
               </Link>
             </li>
           );

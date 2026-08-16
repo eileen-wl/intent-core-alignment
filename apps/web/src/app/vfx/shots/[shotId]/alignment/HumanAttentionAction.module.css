@@ -1,0 +1,114 @@
+/* Locked hierarchy (dark visual-convergence, hierarchy pass): Human
+ * Attention/Action must read as the strongest HUMAN-owned surface on the
+ * page -- one step above Alignment Signal's `--surface-elevated`, via a
+ * small luminance lift rather than a border or fill. */
+.section {
+  max-width: var(--content-width-comparison);
+  margin: 0 auto var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: color-mix(
+    in srgb,
+    var(--surface-elevated) 100%,
+    var(--text-primary) 4%
+  );
+  border: 1px solid var(--authority-neutral-border);
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* CG-validated Human region-heading grammar (owner-approved, backport
+ * only -- not the shared `AuthorityLabel` chip, which read as an
+ * outlined pill rather than a region heading). "Human intent" is
+ * VFX's own established term (Core Anchor/Intent authority, distinct
+ * from CG's "Human authority" over Review response) -- only the
+ * visual treatment changes here, not the wording. */
+.humanRegionHeading {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.iconTile {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--accent-selected-surface);
+  border: 1px solid var(--accent-selected-border);
+  color: var(--accent-selected-text);
+}
+
+.iconTileSmall {
+  width: 2rem;
+  height: 2rem;
+}
+
+/* Owner correction: the primary Human decision statement is not
+ * ordinary long-form reasoning -- it should use the Decision Workspace's
+ * available width intentionally rather than wrap to the same measure as
+ * supporting prose. .detail keeps a controlled but wider-than-reasoning
+ * measure; .proposalReason (Agent-authored) keeps the narrower ~60ch
+ * reasoning measure used elsewhere on the page. */
+.message {
+  max-width: 80ch;
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+}
+
+.detail {
+  max-width: 70ch;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.proposalCard {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent-advisory-border);
+  background: var(--accent-advisory-surface);
+}
+
+.proposalReason {
+  max-width: 60ch;
+  margin: var(--space-2) 0;
+  color: var(--text-primary);
+}
+
+.reviewProposalLink {
+  display: inline-block;
+  font-weight: 600;
+}
+
+.superseded {
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.supersededLabel {
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.decisionNote {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}

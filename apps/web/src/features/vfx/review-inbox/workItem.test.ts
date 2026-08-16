@@ -9,6 +9,7 @@ import {
   adaptCurrentFocusToWorkItems,
   adaptEscalationWorkItems,
   adaptVersionReviewWorkItems,
+  workItemIcon,
 } from "./workItem";
 
 function focus(
@@ -351,5 +352,21 @@ describe("adaptEscalationWorkItems", () => {
       }),
     ]);
     expect(workItems[0].sortRank).toBe(9);
+  });
+});
+
+describe("workItemIcon", () => {
+  it("maps every real category the current adapters produce to a stable icon", () => {
+    expect(workItemIcon("Core Anchor confirmation")).toBe("core-anchor");
+    expect(workItemIcon("Draft review")).toBe("core-anchor");
+    expect(workItemIcon("Alignment interpretation")).toBe("review");
+    expect(workItemIcon("Attention required")).toBe("review");
+    expect(workItemIcon("Version review")).toBe("version");
+    expect(workItemIcon("Version review blocked")).toBe("version");
+    expect(workItemIcon("CG escalation")).toBe("coordination");
+  });
+
+  it("returns null for an unrecognised category rather than guessing", () => {
+    expect(workItemIcon("Some future category")).toBeNull();
   });
 });

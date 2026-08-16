@@ -107,57 +107,13 @@ function data(
 }
 
 describe("VersionsWorkspacePage", () => {
-  it("renders Project > Shot > Versions breadcrumbs and all five real Context Tabs, Versions active", () => {
-    render(
-      <VersionsWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(
-      screen.getByRole("link", { name: "D1 Demo Project" }),
-    ).toHaveAttribute("href", "/vfx/shots");
-    expect(screen.getByText("Shot 010 — Final confrontation")).toBeVisible();
-    for (const [label, href] of [
-      ["Overview", "/vfx/shots/s1"],
-      ["Intent", "/vfx/shots/s1/intent"],
-      ["Alignment", "/vfx/shots/s1/alignment"],
-      ["Activity", "/vfx/shots/s1/activity"],
-    ] as const) {
-      expect(screen.getByRole("link", { name: label })).toHaveAttribute(
-        "href",
-        href,
-      );
-    }
-    expect(screen.getByRole("link", { name: "Versions" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
-  it("shows an honest unavailable state when the API could not be reached", () => {
-    render(
-      <VersionsWorkspacePage
-        shotId="s1"
-        data={null}
-        unavailable
-        onExitRole={vi.fn()}
-      />,
-    );
-    expect(screen.getByText("This Shot is unavailable")).toBeVisible();
+  it("shows an honest unavailable state when the page-specific data failed to load", () => {
+    render(<VersionsWorkspacePage shotId="s1" data={null} />);
+    expect(screen.getByText("This page is unavailable")).toBeVisible();
   });
 
   it("labels the list and detail area explicitly as Production Versions", () => {
-    render(
-      <VersionsWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<VersionsWorkspacePage shotId="s1" data={data()} />);
     expect(
       screen.getByRole("heading", { name: "Production Versions" }),
     ).toBeVisible();
@@ -168,14 +124,7 @@ describe("VersionsWorkspacePage", () => {
   });
 
   it("renders real Production Versions, newest first, never Core Anchor Revision wording", () => {
-    render(
-      <VersionsWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<VersionsWorkspacePage shotId="s1" data={data()} />);
     expect(
       screen.getByRole("button", { name: /SH010_v001 \(v1\)/ }),
     ).toBeVisible();
@@ -184,14 +133,7 @@ describe("VersionsWorkspacePage", () => {
   });
 
   it("shows the selected Version's real Review Notes with author and timestamp", () => {
-    render(
-      <VersionsWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<VersionsWorkspacePage shotId="s1" data={data()} />);
     expect(
       screen.getByText("Tighten the timing on the push-in."),
     ).toBeVisible();
@@ -204,8 +146,6 @@ describe("VersionsWorkspacePage", () => {
       <VersionsWorkspacePage
         shotId="s1"
         data={data({ versions: [{ version: version(), reviewNotes: [] }] })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -216,14 +156,7 @@ describe("VersionsWorkspacePage", () => {
   });
 
   it("shows the honest empty state when the Shot has no Production Versions at all", () => {
-    render(
-      <VersionsWorkspacePage
-        shotId="s1"
-        data={data({ versions: [] })}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<VersionsWorkspacePage shotId="s1" data={data({ versions: [] })} />);
     expect(
       screen.getByText("No Production Version is available"),
     ).toBeVisible();
@@ -252,8 +185,6 @@ describe("VersionsWorkspacePage", () => {
             },
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.queryByText("Note on v1 only")).not.toBeInTheDocument();
@@ -270,8 +201,6 @@ describe("VersionsWorkspacePage", () => {
       <VersionsWorkspacePage
         shotId="s1"
         data={data({ assessmentsByVersionId: new Map([["v1", [assessment]]]) })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -305,8 +234,6 @@ describe("VersionsWorkspacePage", () => {
             },
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getAllByText(/Source author: Jamie Lin/).length).toBe(2);
@@ -332,8 +259,6 @@ describe("VersionsWorkspacePage", () => {
             },
           ],
         })}
-        unavailable={false}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("system")).toBeVisible();
@@ -342,28 +267,14 @@ describe("VersionsWorkspacePage", () => {
   });
 
   it("shows the manual Human-role author as a human-readable label when no ftrack provenance exists (Step 9B-2 correction)", () => {
-    render(
-      <VersionsWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<VersionsWorkspacePage shotId="s1" data={data()} />);
     expect(screen.getAllByText(/VFX Supervisor/).length).toBeGreaterThan(0);
     expect(screen.queryByText(/vfx_supervisor/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Source author:/)).not.toBeInTheDocument();
   });
 
   it("honestly states no Alignment Assessment exists yet, and does not link, when none does", () => {
-    render(
-      <VersionsWorkspacePage
-        shotId="s1"
-        data={data()}
-        unavailable={false}
-        onExitRole={vi.fn()}
-      />,
-    );
+    render(<VersionsWorkspacePage shotId="s1" data={data()} />);
     expect(
       screen.getByText(
         "No Alignment Assessment has been generated for this Production Version yet.",
@@ -394,14 +305,7 @@ describe("VersionsWorkspacePage", () => {
         },
       });
 
-      render(
-        <VersionsWorkspacePage
-          shotId="s1"
-          data={data()}
-          unavailable={false}
-          onExitRole={vi.fn()}
-        />,
-      );
+      render(<VersionsWorkspacePage shotId="s1" data={data()} />);
 
       expect(resolveVersionMediaAction).toHaveBeenCalledWith("s1", "v1");
       await waitFor(() => {
@@ -415,14 +319,7 @@ describe("VersionsWorkspacePage", () => {
         message: "The ICAS service is unavailable.",
       });
 
-      render(
-        <VersionsWorkspacePage
-          shotId="s1"
-          data={data()}
-          unavailable={false}
-          onExitRole={vi.fn()}
-        />,
-      );
+      render(<VersionsWorkspacePage shotId="s1" data={data()} />);
 
       await waitFor(() => {
         expect(screen.getByRole("alert")).toHaveTextContent(

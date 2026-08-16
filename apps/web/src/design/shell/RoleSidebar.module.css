@@ -6,8 +6,8 @@
   display: flex;
   flex-direction: column;
   padding: 1.25rem 0.9rem 1.35rem;
-  background: rgba(255, 255, 255, 0.82);
-  border-right: 1px solid #eceef3;
+  background: color-mix(in srgb, var(--surface-panel) 82%, transparent);
+  border-right: 1px solid var(--border-subtle);
 }
 
 .list {
@@ -37,7 +37,7 @@
   min-height: 2.65rem;
   padding: 0 0.75rem;
   border-radius: 0.48rem;
-  color: #667184;
+  color: var(--text-secondary);
   font-size: 0.79rem;
   font-weight: 570;
   line-height: 1.15;
@@ -58,16 +58,16 @@
 }
 
 .link:hover {
-  color: #292e39;
-  background: #f5f5fa;
+  color: var(--text-primary);
+  background: var(--surface-muted);
 }
 
 .link[data-current="true"],
 .previewCurrent {
   position: relative;
   margin-right: 0;
-  color: #4f2dca;
-  background: linear-gradient(90deg, #f0ebff, #f5f1ff);
+  color: var(--accent-selected-text);
+  background: var(--accent-selected-surface);
   font-weight: 650;
 }
 
@@ -77,7 +77,7 @@
   position: absolute;
   inset: 0 auto 0 -0.02rem;
   width: 2px;
-  background: #7555ef;
+  background: var(--accent-selected);
   border-radius: 999px;
 }
 
@@ -88,9 +88,9 @@
 .upcoming {
   flex: 0 0 auto;
   padding: 0.25rem 0.5rem;
-  color: #687184;
-  background: #f0f1f5;
-  border: 1px solid #e7e8ed;
+  color: var(--text-muted);
+  background: var(--surface-muted);
+  border: 1px solid var(--border-subtle);
   border-radius: 999px;
   font-size: 0.59rem;
   font-weight: 600;
@@ -111,16 +111,16 @@
   height: 2.5rem;
   display: grid;
   place-items: center;
-  color: #ffffff;
-  background: linear-gradient(145deg, #5f34d9, #4d2cca);
+  color: var(--text-on-accent);
+  background: var(--accent-agent);
   border-radius: 50%;
-  box-shadow: 0 5px 12px rgba(76, 44, 190, 0.15);
+  box-shadow: var(--shadow-sm);
   font-size: 0.78rem;
   font-weight: 650;
 }
 
 .chevron {
-  color: #20242c;
+  color: var(--text-primary);
   font-size: 1.55rem;
   font-weight: 300;
   line-height: 1;
@@ -153,7 +153,7 @@
     height: auto;
     padding: 0.75rem 1rem;
     border-right: 0;
-    border-bottom: 1px solid #eceef3;
+    border-bottom: 1px solid var(--border-subtle);
   }
 
   .list {

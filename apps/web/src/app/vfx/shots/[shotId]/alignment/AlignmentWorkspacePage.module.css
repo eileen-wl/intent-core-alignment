@@ -1,37 +1,285 @@
-.authorityLine {
+.assessmentIdentity {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-3);
   max-width: var(--content-width-comparison);
-  margin: var(--space-5) auto;
+  margin: var(--space-4) auto var(--space-3);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
 }
 
-.summaryCard,
-.findingsSection,
-.nextActionSection,
-.historySection {
+.assessmentIdentityMeta {
+  color: var(--text-muted);
+}
+
+.alignmentSignal {
   max-width: var(--content-width-comparison);
   margin: 0 auto var(--space-5);
-  padding: var(--space-5);
-  border: 1px solid var(--border-subtle);
+  padding: var(--space-4) var(--space-5);
   border-radius: var(--radius-lg);
+  background: var(--surface-elevated);
+}
+
+/* CG-validated Level-A region-heading grammar (icon + sentence case,
+ * real section-title scale) -- shared by every named region on this
+ * page (Alignment Signal, Current Assessment, Context). Replaces the
+ * previous tiny uppercase kickers/section titles. */
+.regionHeading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+/* CG-validated two-column review canvas: the diagnosis (left) and the
+ * Signal Strip (right) each get real, independent width instead of
+ * both living in one narrow text column. */
+.signalCanvas {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(300px, 1fr);
+  align-items: start;
+  column-gap: var(--space-6);
+  row-gap: var(--space-3);
+}
+
+@media (max-width: 860px) {
+  .signalCanvas {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.signalLeft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.signalRight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-2) 0 var(--space-2) var(--space-5);
+  border-left: 1px solid var(--border-subtle);
+}
+
+.signalRightHeading {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.signalHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.staleness {
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  font-style: italic;
+}
+
+/* Owner correction (CG-validated fix): a `60ch` long-form-prose
+ * measure capped this diagnosis well short of `.signalLeft`'s real
+ * available width, wrapping it early. */
+.executiveSummary {
+  margin: 0 0 var(--space-2) 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+}
+
+.advisoryNote {
+  margin: var(--space-3) 0 0;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.decisionWorkspace {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: var(--space-5);
+  max-width: var(--content-width-comparison);
+  margin: 0 auto var(--space-5);
+}
+
+@media (max-width: 900px) {
+  .decisionWorkspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+.assessmentArea {
+  min-width: 0;
+}
+
+.contextInspector {
+  min-width: 0;
+  align-self: start;
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
   background: var(--surface-panel);
 }
 
-.summaryHeader {
+.inspectorGroup {
+  margin-bottom: var(--space-4);
+}
+
+.inspectorGroup:last-child {
+  margin-bottom: 0;
+}
+
+.inspectorGroupTitle {
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+}
+
+.inspectorText {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.decisionRelevant {
+  margin-bottom: var(--space-4);
+}
+
+/* ICAS Visual Language v1 §7.2 Level B (CG-validated): sentence case,
+ * compact, visually lighter than Level A -- not uppercase. */
+.decisionRelevantTitle {
+  margin: 0 0 var(--space-2) 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.previewList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--space-2);
-  margin-bottom: var(--space-3);
 }
 
-.executiveSummary {
-  margin: 0 0 var(--space-4) 0;
-  color: var(--text-primary);
-  font-size: var(--font-size-md);
+.previewItem {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
 }
 
-.sectionTitle {
-  margin: 0 0 var(--space-4) 0;
-  font-size: var(--font-size-lg);
+/* CG-validated default-preview grammar (ICAS Visual Language v1 §8.x):
+ * numbered rows use the restrained purple selected/focus treatment,
+ * matching the Version object tiles -- distinct from the neutral
+ * `.findingIndex` used by the frozen Detailed Assessment findings
+ * below, since only the DEFAULT top-2 preview gets this focus tint. */
+.previewIndexFocus {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent-selected-border);
+  background: var(--accent-selected-surface);
+  color: var(--accent-selected-text);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.previewHead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
+  flex: 1;
+}
+
+/* Presentation-only single-line clamp -- the real `finding.summary`
+ * string is unchanged; the full text remains available in Detailed
+ * Assessment. */
+.previewSummary {
+  margin: 0;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
   color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.previewEmpty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* CG-validated disclosure grammar (ICAS Visual Language v1 §9.x): a
+ * fixed-position, right-aligned footer line whose own position never
+ * moves between collapsed and expanded -- only `.disclosureContent`
+ * below it appears/disappears. */
+.disclosure {
+  margin-top: var(--space-3);
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--border-subtle);
+  width: 100%;
+}
+
+.disclosureSummary {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  list-style: none;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.disclosureSummary::-webkit-details-marker {
+  display: none;
+}
+
+/* Native `<details>`/`<summary>` label swap, no JS state: both labels
+ * are always in the DOM; the `[open]` attribute selector shows exactly
+ * one. `display: none` content is excluded from the accessible name, so
+ * `<summary>`'s announced text stays correct in both states. */
+.disclosureLabelOpen {
+  display: none;
+}
+
+.disclosure[open] > .disclosureSummary .disclosureLabelClosed {
+  display: none;
+}
+
+.disclosure[open] > .disclosureSummary .disclosureLabelOpen {
+  display: inline;
+}
+
+.disclosureContent {
+  margin-top: var(--space-4);
 }
 
 .findingGroup {
@@ -42,9 +290,11 @@
   margin-bottom: 0;
 }
 
+/* ICAS Visual Language v1 §7.2 Level B (CG-validated): sentence case,
+ * compact, visually lighter than Level A -- not uppercase. */
 .findingGroupTitle {
   margin: 0 0 var(--space-3) 0;
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   font-weight: 700;
   color: var(--text-secondary);
 }
@@ -55,25 +305,57 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
 }
 
+/* CG-validated numbered finding-row grammar (ICAS Visual Language v1
+ * §7.3): a neutral index box (never the purple selection/focus tint
+ * used by the default-preview rows above) plus a restrained divider
+ * between findings, replacing the previous heading+paragraph report
+ * block. */
 .finding {
-  padding: var(--space-3) var(--space-4);
-  border-radius: var(--radius-md);
-  background: var(--surface-elevated);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.finding:last-child {
+  border-bottom: none;
+}
+
+.findingIndex {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-muted);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.findingBody {
+  min-width: 0;
+  flex: 1;
 }
 
 .findingHead {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: baseline;
-  justify-content: space-between;
   gap: var(--space-3);
 }
 
 .findingSummary {
   margin: 0;
+  min-width: 0;
   color: var(--text-primary);
+  font-size: var(--font-size-sm);
   font-weight: 600;
 }
 
@@ -87,13 +369,23 @@
   text-transform: uppercase;
 }
 
-.priorityHigh {
+/* Matches the same low/medium/high color tiers as the decision-relevant
+ * preview's priority dots (muted/amber/red) -- previously "high" used
+ * amber here while the preview used red for the same priority value. */
+.priorityMedium {
   background: var(--state-attention-surface);
   border: 1px solid var(--state-attention-border);
   color: var(--state-attention);
 }
 
+.priorityHigh {
+  background: var(--state-error-surface);
+  border: 1px solid var(--state-error-border);
+  color: var(--state-error);
+}
+
 .findingWhy {
+  max-width: 60ch;
   margin: var(--space-1) 0 0 0;
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
@@ -106,38 +398,15 @@
 }
 
 .plainList {
+  max-width: 60ch;
   margin: 0;
-  padding-left: var(--space-5);
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
-}
-
-.nextActionText {
-  margin: 0;
-  color: var(--text-primary);
-}
-
-.nextActionMeta {
-  margin: var(--space-2) 0 var(--space-4) 0;
-  color: var(--text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.proposalCard {
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  border: 1px solid var(--accent-agent-border);
-  background: var(--accent-agent-surface);
-}
-
-.proposalReason {
-  margin: var(--space-2) 0;
-  color: var(--text-primary);
-}
-
-.reviewProposalLink {
-  display: inline-block;
-  font-weight: 600;
 }
 
 .empty {
@@ -146,31 +415,67 @@
   font-size: var(--font-size-sm);
 }
 
+.historySection {
+  max-width: var(--content-width-comparison);
+  margin: 0 auto var(--space-5);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* History stays visually secondary/muted (same small-uppercase
+ * treatment as CG's own Earlier Agent Execution Reviews heading) --
+ * only the region-level icon is new. */
+.historySectionTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-3) 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
 .historyList {
   margin: 0;
   padding: 0;
   list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
 }
 
+/* Owner correction: a filled background stretched to the row's full
+ * width regardless of how little content it held, reading as a large
+ * card. A compact row divider (matching the same restrained-separator
+ * pattern used by Department Execution and the findings list) keeps
+ * History chronological and low-priority without the card feeling. */
 .historyItem {
   display: flex;
   flex-wrap: wrap;
+  align-items: baseline;
   gap: var(--space-3);
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--surface-elevated);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--border-subtle);
   font-size: var(--font-size-sm);
+}
+
+.historyItem:last-child {
+  border-bottom: none;
 }
 
 .historyTime {
   flex: 0 0 auto;
+  white-space: nowrap;
   color: var(--text-muted);
 }
 
+/* Owner correction: a fixed max-width capped the summary well short of
+ * the row's real available width, wrapping the last word onto its own
+ * line while most of the row sat empty. `flex: 1` alone lets it use
+ * whatever width `.historyTime` doesn't need; `.historyItem`'s own
+ * `flex-wrap: wrap` still lets the two columns stack on narrow
+ * viewports. */
 .historySummary {
   min-width: 0;
-  color: var(--text-secondary);
+  flex: 1;
+  color: var(--text-muted);
 }

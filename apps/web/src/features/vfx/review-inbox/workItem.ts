@@ -332,6 +332,44 @@ export function adaptEscalationWorkItems(
   return workItems;
 }
 
+/** Worklist archetype (ICAS Visual Language v1 §15): a compact type
+ * marker helps recognition without inventing a new object -- the exact
+ * three real category families the adapters above produce. Keyed by
+ * `category` (the most granular honest field already real on every
+ * item) rather than `sourceType`, since `current_focus` alone spans two
+ * different real object families (Core Anchor vs. Alignment/Cross-role
+ * Assessment work). An unrecognised future category returns `null`
+ * rather than guessing -- the row's own text remains the source of
+ * truth. Presentation-only: never used by the adapters themselves,
+ * only by `WorkItemRow`/`ReviewInboxPage` for display, so both stay in
+ * agreement without duplicating the mapping.
+ *
+ * Alignment-family categories intentionally use the "review" icon
+ * (the same one VFX Alignment's own "Current Assessment" region uses),
+ * not "agent" -- this is Human-required interpretation of a Cross-role
+ * Assessment, never Agent-output itself, so the steel/cool "agent"
+ * glyph (Agent *authority* identity) would misrepresent who owns the
+ * row. */
+export function workItemIcon(
+  category: string,
+): "core-anchor" | "review" | "version" | "coordination" | null {
+  switch (category) {
+    case "Core Anchor confirmation":
+    case "Draft review":
+      return "core-anchor";
+    case "Alignment interpretation":
+    case "Attention required":
+      return "review";
+    case "Version review":
+    case "Version review blocked":
+      return "version";
+    case "CG escalation":
+      return "coordination";
+    default:
+      return null;
+  }
+}
+
 /** Step 7C-1's one real adapter: every actionable `current_focus`
  * becomes exactly one `ReviewWorkItem`. Non-actionable (`focus_type ===
  * "none"`) Shots contribute nothing -- an honest empty Review Inbox is

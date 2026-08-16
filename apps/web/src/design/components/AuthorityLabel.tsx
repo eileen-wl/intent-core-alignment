@@ -1,13 +1,19 @@
 import styles from "./AuthorityLabel.module.css";
 
 /** The eleven authority labels required by
- * docs/step-7/06_STEP_7_LOCKED_SOURCE_OF_TRUTH.md §10. Label text is
- * fixed per variant (this is the product's authority vocabulary, not
- * free-form caller text) -- callers pass `detail` for supplementary
- * context such as a confirming role or timestamp. */
+ * docs/step-7/06_STEP_7_LOCKED_SOURCE_OF_TRUTH.md §10, plus
+ * `human-authority` (CG Version Review's local Human-owned-region
+ * label -- "Human intent" specifically names Core Anchor/creative
+ * intent, which does not fit a technical Execution Review response;
+ * additive only, every one of the original eleven is unchanged, so
+ * every existing consumer including VFX Alignment is unaffected).
+ * Label text is fixed per variant (this is the product's authority
+ * vocabulary, not free-form caller text) -- callers pass `detail` for
+ * supplementary context such as a confirming role or timestamp. */
 export type AuthorityLabelVariant =
   | "production-fact"
   | "human-intent"
+  | "human-authority"
   | "human-confirmed"
   | "ai-interpretation"
   | "ai-proposal"
@@ -21,6 +27,7 @@ export type AuthorityLabelVariant =
 const LABEL_TEXT: Record<AuthorityLabelVariant, string> = {
   "production-fact": "Production fact",
   "human-intent": "Human intent",
+  "human-authority": "Human authority",
   "human-confirmed": "Human-confirmed",
   "ai-interpretation": "AI interpretation",
   "ai-proposal": "AI proposal",
@@ -35,6 +42,7 @@ const LABEL_TEXT: Record<AuthorityLabelVariant, string> = {
 const TONE_CLASS: Record<AuthorityLabelVariant, string> = {
   "production-fact": styles.fact,
   "human-intent": styles.neutral,
+  "human-authority": styles.neutral,
   "human-confirmed": styles.neutralStrong,
   "ai-interpretation": styles.agent,
   "ai-proposal": styles.agent,
@@ -49,6 +57,7 @@ const TONE_CLASS: Record<AuthorityLabelVariant, string> = {
 const BORDER_CLASS: Record<AuthorityLabelVariant, string> = {
   "production-fact": styles.borderSolid,
   "human-intent": styles.borderSolid,
+  "human-authority": styles.borderSolid,
   "human-confirmed": styles.borderSolid,
   "ai-interpretation": styles.borderDashed,
   "ai-proposal": styles.borderDotted,

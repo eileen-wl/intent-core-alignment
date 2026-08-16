@@ -2,8 +2,8 @@ import type {
   ArtistInboxItemRead,
   ArtistInboxRead,
 } from "@intent-core/contracts";
-import { cleanup, render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { TasksListPage } from "./TasksListPage";
 
@@ -52,23 +52,13 @@ function buildInbox(items: ArtistInboxItemRead[]): ArtistInboxRead {
 }
 
 describe("TasksListPage", () => {
-  it("marks Tasks current in the sidebar", () => {
-    render(
-      <TasksListPage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />,
-    );
-    expect(screen.getByRole("link", { name: "Tasks" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
   it("shows an honest error state when Tasks failed to load", () => {
-    render(<TasksListPage inbox={null} onExitRole={vi.fn()} />);
+    render(<TasksListPage inbox={null} />);
     expect(screen.getByText("Tasks is unavailable")).toBeVisible();
   });
 
   it("shows an honest empty state when no Tasks exist", () => {
-    render(<TasksListPage inbox={buildInbox([])} onExitRole={vi.fn()} />);
+    render(<TasksListPage inbox={buildInbox([])} />);
     expect(screen.getByText("No Tasks exist yet")).toBeVisible();
   });
 
@@ -79,7 +69,6 @@ describe("TasksListPage", () => {
           buildItem({ task_id: "t1", task_name: "Compositing Review" }),
           buildItem({ task_id: "t2", task_name: "Lighting Pass" }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Showing 2 of 2 Tasks")).toBeVisible();
@@ -105,7 +94,6 @@ describe("TasksListPage", () => {
             task_name: "Other Task",
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     await userEvent.selectOptions(
@@ -133,7 +121,6 @@ describe("TasksListPage", () => {
             task_name: "No Guidance Task",
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     await userEvent.selectOptions(
@@ -158,7 +145,6 @@ describe("TasksListPage", () => {
           }),
           buildItem({ task_id: "t2", task_name: "No Version" }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     await userEvent.selectOptions(
@@ -173,9 +159,119 @@ describe("TasksListPage", () => {
   it("shows an honest no-match state when filters exclude every Task", async () => {
     const { default: userEvent } = await import("@testing-library/user-event");
     render(
-      <TasksListPage inbox={buildInbox([buildItem()])} onExitRole={vi.fn()} />,
+      <TasksListPage
+        inbox={buildInbox([buildItem({ guidance_state: "none" })])}
+      />,
     );
-    await userEvent.click(screen.getByLabelText("Requiring attention only"));
+    await userEvent.selectOptions(
+      screen.getByLabelText("Guidance state"),
+      "Guidance outdated",
+    );
     expect(screen.getByText("No Tasks match these filters")).toBeVisible();
+  });
+
+  it("no longer offers the action-queue 'Requiring attention only' filter", () => {
+    render(<TasksListPage inbox={buildInbox([buildItem()])} />);
+    expect(
+      screen.queryByText("Requiring attention only"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("leads with the Task's own real Guidance state, not Execution Anchor state, and never next_action.title or current_focus.title", () => {
+    render(
+      <TasksListPage
+        inbox={buildInbox([
+          buildItem({
+            guidance_state: "outdated",
+            execution_anchor_state: "confirmed",
+            current_focus: {
+              focus_type: "guidance_available",
+              title: "New Guidance is available",
+              explanation: "Confirmed Guidance is ready to read.",
+              target_route: "/artist/tasks/t1",
+              primary_action_label: "Open Task",
+              actionable: true,
+            },
+          }),
+        ])}
+      />,
+    );
+    // Guidance state is the leading badge.
+    const tile = within(
+      screen.getByText("Compositing Review").closest("a") as HTMLElement,
+    );
+    expect(tile.getByText("Guidance outdated")).toBeVisible();
+    // Execution Anchor state is real and present, but only as a
+    // supporting fact -- never the Current-focus reason text.
+    expect(tile.getByText(/Confirmed/)).toBeVisible();
+    expect(
+      screen.queryByText("New Guidance is available"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("omits the meaningless zero-feedback line but shows a real Review Note count", () => {
+    render(
+      <TasksListPage
+        inbox={buildInbox([
+          buildItem({
+            task_id: "t1",
+            task_name: "Quiet Task",
+            open_review_note_count: 0,
+          }),
+          buildItem({
+            task_id: "t2",
+            task_name: "Noted Task",
+            open_review_note_count: 1,
+          }),
+        ])}
+      />,
+    );
+    expect(
+      screen.queryByText("No Review Notes recorded"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("1 Review Note recorded")).toBeVisible();
+  });
+
+  it("renders object-first: no full AnchorContextSummary, no action-oriented CTA", () => {
+    render(<TasksListPage inbox={buildInbox([buildItem()])} />);
+    expect(
+      screen.queryByText("Anchor context unavailable"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText("Open Task →")).toBeVisible();
+  });
+
+  it("groups Tasks by their real parent Shot, identifying each Shot once and listing its own Tasks beneath it", () => {
+    render(
+      <TasksListPage
+        inbox={buildInbox([
+          buildItem({
+            task_id: "t1",
+            task_name: "Comp Pass",
+            shot_id: "s1",
+            shot_name: "Shot 010",
+          }),
+          buildItem({
+            task_id: "t2",
+            task_name: "Lighting Pass",
+            shot_id: "s2",
+            shot_name: "Shot 020",
+          }),
+          buildItem({
+            task_id: "t3",
+            task_name: "Comp Revision",
+            shot_id: "s1",
+            shot_name: "Shot 010",
+          }),
+        ])}
+      />,
+    );
+    expect(screen.getAllByRole("region")).toHaveLength(2);
+    const shot010 = screen.getByRole("region", { name: "Shot 010" });
+    expect(within(shot010).getByText("Comp Pass")).toBeVisible();
+    expect(within(shot010).getByText("Comp Revision")).toBeVisible();
+    expect(within(shot010).getByText("2 Tasks")).toBeVisible();
+    const shot020 = screen.getByRole("region", { name: "Shot 020" });
+    expect(within(shot020).getByText("Lighting Pass")).toBeVisible();
+    expect(within(shot020).queryByText("Comp Pass")).not.toBeInTheDocument();
   });
 });

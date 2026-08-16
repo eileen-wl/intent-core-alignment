@@ -1,49 +1,26 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { loadVersionReviewWorkspaceData } from "@/features/cg/version-review-workspace/data";
-import { fetchCgAnchorContextOrNull } from "@/features/cg/api";
-import { actorHeaders, resolveIdentity } from "@/features/session/identity";
-import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
-import { exitRoleView } from "../../../../demo/actions";
+import { resolveIdentity } from "@/features/session/identity";
 import { VersionReviewPage } from "./VersionReviewPage";
 
+/** The role gate itself already ran in `app/cg/layout.tsx`; this
+ * repeats the same defensive, unreachable-in-practice check. */
 export default async function Page({
   params,
 }: {
   params: Promise<{ taskId: string }>;
 }) {
   const { taskId } = await params;
-  const store = await cookies();
-  if (store.get(DEMO_ROLE_COOKIE)?.value !== "cg_supervisor") {
+  const identity = await resolveIdentity();
+  if (identity?.role !== "cg_supervisor") {
     redirect("/demo");
   }
 
   try {
-    const identity = await resolveIdentity();
-    if (identity === null) redirect("/demo");
-    const [data, anchorContext] = await Promise.all([
-      loadVersionReviewWorkspaceData(taskId),
-      fetchCgAnchorContextOrNull(taskId, actorHeaders(identity)),
-    ]);
-    return (
-      <VersionReviewPage
-        taskId={taskId}
-        data={data}
-        anchorContext={anchorContext}
-        unavailable={false}
-        onExitRole={exitRoleView}
-      />
-    );
+    const data = await loadVersionReviewWorkspaceData(taskId);
+    return <VersionReviewPage taskId={taskId} data={data} />;
   } catch {
-    return (
-      <VersionReviewPage
-        taskId={taskId}
-        data={null}
-        anchorContext={null}
-        unavailable
-        onExitRole={exitRoleView}
-      />
-    );
+    return <VersionReviewPage taskId={taskId} data={null} />;
   }
 }

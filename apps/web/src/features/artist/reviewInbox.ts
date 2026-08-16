@@ -3,6 +3,8 @@ import type {
   ArtistInboxItemRead,
 } from "@intent-core/contracts";
 
+import type { IconName } from "@/design";
+
 /** Artist Review Inbox work-item model (Step 7C-5) -- mirrors
  * `features/cg/reviewInbox.ts`'s shape (work-item-first, not a Task-led
  * list): today's only real source is each Task's already-derived,
@@ -40,6 +42,22 @@ export interface ArtistReviewWorkItem {
   shot: ArtistReviewWorkItemShot;
   task: ArtistReviewWorkItemTask;
   executionAnchorState: ArtistInboxItemRead["execution_anchor_state"];
+  guidanceState: ArtistInboxItemRead["guidance_state"];
+  /** Real, already-persisted aggregate count (`ArtistInboxItemRead`'s
+   * own accurate `sum()` over open `TaskDependency` rows) -- the
+   * row-level semantic-status correction's source fact for "Dependency
+   * review" items, where `guidanceState` is not the item's real
+   * subject. */
+  openDependencyCount: number;
+  /** `ArtistInboxItemRead.open_review_note_count` is presence-derived
+   * (`1 if a Review Note exists else 0`, an existence check, never a
+   * true count of every real Review Note) -- kept as-is rather than
+   * relabelled, so the presentation layer stays honest about what the
+   * number actually represents rather than implying a precision the
+   * backend does not compute. The row-level semantic-status
+   * correction's source fact for "Feedback" items, where
+   * `guidanceState` is not the item's real subject. */
+  openReviewNoteCount: number;
   route: string;
 }
 
@@ -60,6 +78,33 @@ function categoryForFocusType(focusType: ArtistCurrentFocusType): string {
       throw new Error(
         'focus_type "none" is never actionable and must never become a work item',
       );
+  }
+}
+
+/** Worklist archetype family consistency (mirrors
+ * `features/vfx/review-inbox/workItem.ts`'s `workItemIcon`): a compact
+ * type marker for the group heading, keyed by the same honest
+ * `category` string the adapter above already produces. An
+ * unrecognised category renders without one rather than guessing.
+ * Presentation-only -- never used by the adapter itself.
+ *
+ * "Guidance update" and "Guidance available" are intentionally
+ * unmapped (return `null`): Guidance is Agent-authored content, but
+ * this work item represents the Human action of reading/acting on it,
+ * not the Agent's own identity -- using the steel/cool `agent` glyph
+ * here would misrepresent who owns the row, the same reasoning VFX's
+ * own `workItemIcon` documents for why its Alignment-family categories
+ * use `review`, not `agent`. No existing icon accurately represents
+ * "Guidance" as its own object, so it is correctly omitted rather than
+ * assigned an approximate one. */
+export function artistWorkItemIcon(category: string): IconName | null {
+  switch (category) {
+    case "Feedback":
+      return "review-note";
+    case "Dependency review":
+      return "coordination";
+    default:
+      return null;
   }
 }
 
@@ -93,6 +138,9 @@ export function adaptArtistCurrentFocusToWorkItems(
         department: item.department,
       },
       executionAnchorState: item.execution_anchor_state,
+      guidanceState: item.guidance_state,
+      openDependencyCount: item.open_dependency_count,
+      openReviewNoteCount: item.open_review_note_count,
       route: focus.target_route,
     });
   }

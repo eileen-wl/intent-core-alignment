@@ -20,10 +20,6 @@ vi.mock("@/features/cg/version-review-workspace/data", () => ({
   loadVersionReviewWorkspaceData: loadVersionReviewWorkspaceDataMock,
 }));
 
-vi.mock("../../../../demo/actions", () => ({
-  exitRoleView: vi.fn(),
-}));
-
 import { VersionReviewPage } from "./VersionReviewPage";
 import Page from "./page";
 
@@ -34,6 +30,11 @@ beforeEach(() => {
 
 const params = Promise.resolve({ taskId: "t1" });
 
+/** The role gate itself now runs in `app/cg/layout.tsx`; this
+ * defensive, unreachable-in-practice check exists purely as a
+ * fallback. Its redirect target stays `/demo` (a permanent,
+ * deterministic redirect to `/`), matching the pre-refactor behavior of
+ * this leaf-page check exactly. */
 describe("/cg/tasks/:taskId/version-review page", () => {
   it("redirects to /demo when the demo role cookie is not cg_supervisor", async () => {
     cookieStore.get.mockReturnValue(undefined);
@@ -46,6 +47,8 @@ describe("/cg/tasks/:taskId/version-review page", () => {
       item: { task_id: "t1" },
       versions: [],
       coreAnchorSummary: null,
+      coreAnchorRevisionNumber: null,
+      coreAnchorStatus: null,
       activeExecutionRevision: null,
       cgSupervisorReviews: [],
     };
@@ -56,15 +59,13 @@ describe("/cg/tasks/:taskId/version-review page", () => {
     expect(result.type).toBe(VersionReviewPage);
     expect(result.props.taskId).toBe("t1");
     expect(result.props.data).toBe(data);
-    expect(result.props.unavailable).toBe(false);
   });
 
-  it("marks the page unavailable, rather than throwing, when the API call fails", async () => {
+  it("passes a null data prop, rather than throwing, when the API call fails", async () => {
     loadVersionReviewWorkspaceDataMock.mockRejectedValue(new Error("boom"));
 
     const result = await Page({ params });
 
     expect(result.props.data).toBeNull();
-    expect(result.props.unavailable).toBe(true);
   });
 });

@@ -8,58 +8,115 @@
   backdrop-filter: blur(10px);
 }
 
-/* The full Anchor Context block (this rule and everything below, until
- * `.stickySummaryBar`) always participates in normal document flow and
- * scrolls away with the page -- it must never be `position: sticky`,
- * expanded or collapsed. Only `.stickySummaryBar` below is sticky. */
-.stickySummaryBar {
-  position: sticky;
-  top: calc(5.125rem + var(--space-2));
-  z-index: 5;
+/* Owner decision (shared-frame simplification + interaction
+ * refinement): no persistent/sticky bar in either state. `.collapsedRow`
+ * is the only collapsed-state markup -- always in normal document flow,
+ * a compact banded surface (subtle border, flat background, no shadow,
+ * no backdrop blur) so it reads as a recognizable Anchor context layer
+ * without approaching `.layer`'s own weight. */
+.collapsedRow {
   display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-block: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-panel);
+}
+.collapsedHeader {
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: var(--space-3);
-  margin-block: var(--space-2) 0;
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--border-strong);
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--surface-panel) 96%, transparent);
-  box-shadow: var(--shadow-sm);
-  backdrop-filter: blur(10px);
-  font-size: var(--font-size-xs);
+  gap: var(--space-2);
 }
-.stickySummaryText {
+.collapsedBody {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.collapsedText {
+  display: grid;
+  gap: var(--space-1);
   min-width: 0;
+}
+.collapsedIdentity {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+.collapsedDirection {
+  margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: var(--text-secondary);
-  font-weight: 700;
+  font-size: var(--font-size-sm);
 }
-.stickySummaryButton {
+.reopenButton {
   flex: none;
-  padding: var(--space-1) var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--border-strong);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background: var(--surface-panel);
   color: var(--text-primary);
   cursor: pointer;
   font-size: var(--font-size-xs);
   font-weight: 700;
 }
-.stickySummaryButton:hover {
+.reopenButton:hover {
   border-color: var(--focus-ring-color);
   background: var(--surface-muted);
 }
-.stickySummaryButton:focus-visible {
+/* Same disclosure-chevron technique used by DepartmentExecutionStrip,
+ * AlignmentWorkspacePage's "View detailed assessment", and
+ * EvidenceProvenanceDrawer -- one consistent affordance across the page
+ * instead of a different glyph per component. Unrotated points right
+ * ("closed, click to open"); .chevron below rotates it to point down
+ * for the "expanded, click to collapse" state. */
+.reopenChevron {
+  flex: none;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0.3rem 0 0.3rem 0.4rem;
+  border-color: transparent transparent transparent var(--text-muted);
+}
+.reopenButton:focus-visible {
   outline: 2px solid var(--focus-ring-color);
   outline-offset: 2px;
 }
 
-.disclosure {
-  min-width: 0;
+/* Region-identity fix (shared-grammar consistency pass): the expanded
+ * standard-variant state previously had no stable region-level heading
+ * of its own -- the first visible text was `AuthorityChain`'s own
+ * per-role eyebrow (e.g. "Authoritative direction" for the VFX
+ * Supervisor), so expanding read as switching to a different module
+ * instead of showing more of the same Anchor Context. Mirrors the
+ * "review" variant's own `.reviewKicker` grammar (icon + "Anchor
+ * context"), kept as a separate class since `.reviewKicker` stays
+ * scoped to CG Version Review. Applies to every "standard"-variant
+ * consumer (VFX Alignment, Artist, CG's non-review tabs) since the
+ * identity-flip this fixes is not role-specific. */
+.kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: var(--space-3) var(--space-4) 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
+
 .summary {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(12rem, 18rem);
@@ -77,14 +134,12 @@
   gap: var(--space-1);
 }
 .authorityGroup,
-.direction,
-.artistChain > div {
+.direction {
   min-width: 0;
   overflow-wrap: anywhere;
 }
 .authorityGroup,
-.chain,
-.artistChain {
+.chain {
   grid-area: authority;
 }
 .direction {
@@ -102,20 +157,10 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-.chain,
-.artistChain {
+.chain {
   display: flex;
   align-items: center;
   gap: var(--space-3);
-}
-.artistChain > div {
-  display: grid;
-  gap: var(--space-1);
-}
-.artistChain {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
-  min-width: 0;
 }
 .chainArrow {
   color: var(--text-muted);
@@ -166,20 +211,25 @@
   outline-offset: 2px;
 }
 .chevron {
-  display: inline-block;
-  font-size: var(--font-size-md);
-  transition: transform 160ms ease;
+  flex: none;
+  width: 0;
+  height: 0;
+  border-style: solid;
+  border-width: 0.3rem 0 0.3rem 0.4rem;
+  border-color: transparent transparent transparent var(--text-muted);
+  transform: rotate(90deg);
 }
-.layer[data-expanded="true"] .chevron {
-  transform: rotate(180deg);
-}
+/* Anchor Context stays a compact contextual guardrail even when
+ * expanded -- closer to the working surface (--surface-panel) than to a
+ * raised current-state surface, so it reads as quieter than Alignment
+ * Signal rather than matching its luminance. */
 .expanded {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-4);
   padding: var(--space-4);
   border-top: 1px solid var(--border-subtle);
-  background: var(--surface-muted);
+  background: var(--surface-panel);
 }
 .expanded p {
   margin-block: var(--space-1);
@@ -187,18 +237,214 @@
 .expanded a {
   font-weight: 650;
 }
-.authorityNotice {
-  border-left: 3px solid var(--state-attention);
-  padding-left: var(--space-3);
-}
-.upstreamState {
-  border-left: 3px solid var(--state-attention);
-  padding-left: var(--space-3);
+/* Dark visual-convergence pass: replaces the previous side-tab accent
+ * border (a thick colored left border on the block) -- flagged
+ * repeatedly by design review as an overly decorative "AI card" tell.
+ * The attention signal now comes from typography/color on the label
+ * itself, matching the brief's own preference for luminance/typography
+ * over added borders, not from a border shape. */
+.authorityNotice .eyebrow,
+.upstreamState .eyebrow {
+  color: var(--state-attention);
 }
 .contextLinks {
   display: grid;
   align-content: start;
   gap: var(--space-2);
+}
+
+/* Compact semantic-block correction (Artist-only): the previous
+ * per-field row grammar read as a settings/database table once every
+ * domain field had its own full-width row and divider. The header is
+ * now a single compact, tightened line -- kicker and collapse control
+ * only, no status badge cluster (each status now attaches to the
+ * semantic block it actually qualifies). Visual-polish pass: vertical
+ * padding tightened (was `--space-3`) now that the header carries no
+ * badge cluster of its own. */
+.artistCompactHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+}
+
+/* Three compact reading blocks (Core Anchor / Execution Anchor /
+ * Readiness): related facts about the same semantic object read as
+ * one continuous block -- an identity line, a primary paragraph, then
+ * inline "Lead-in — text" clauses in the same flow -- distinguished by
+ * typography and paragraph spacing, not by separate rows, label
+ * columns, or containers. Only one divider between each pair of
+ * blocks (the first block sits directly under the compact header,
+ * with no divider of its own, and a tightened top gap instead of the
+ * other blocks' full top padding). */
+.artistBlocks {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Proportion correction: the reading-width constraint moved off the
+ * block itself (which was stopping the major dividers early and
+ * leaving the right side of the Anchor surface empty) and onto the
+ * narrative prose elements only, below. Blocks and their dividers now
+ * use the full available Anchor content width. */
+.semanticBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.artistBlocks > .semanticBlock:first-child {
+  border-top: none;
+  padding-top: var(--space-2);
+}
+
+.semanticBlock a {
+  font-weight: 650;
+}
+
+.blockIdentity {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+/* Object-recognition tint (restrained -- the icon glyph only, never a
+ * background/tile, never the heading text itself): Core Anchor uses
+ * the same Intent/selected-purple family as current-selection/primary
+ * -Human-action treatments elsewhere; Execution Anchor uses the
+ * steel/cool advisory family. Readiness intentionally has no icon --
+ * no existing shared icon accurately communicates a workflow/attention
+ * state without borrowing `human` (Human Authority, a different
+ * concept) or `risk` (which would overstate danger whenever attention
+ * is genuinely low), so it is correctly omitted rather than misused. */
+.blockIconCore {
+  display: inline-flex;
+  color: var(--accent-selected-text);
+}
+
+.blockIconExecution {
+  display: inline-flex;
+  color: var(--accent-advisory-text);
+}
+
+.blockBody {
+  margin: 0;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+/* Visual-polish pass: the Execution Anchor's own current-direction
+ * paragraph read as an over-dominant "wall of bold text" next to the
+ * Core Anchor and Readiness blocks' primary statements -- normal
+ * readable body weight restores a balanced Core/Execution/Readiness
+ * hierarchy without touching the identity line's own strength. */
+.blockBodyQuiet {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.blockClause {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: 1.5;
+}
+
+.clauseLead {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.blockMeta {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.readinessHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+/* Readiness internal hierarchy: the next action's title/why-now and
+ * its action link are the block's strongest tier (plain
+ * `.blockBody`/`.blockClause`, unchanged). The Attention-reasoning,
+ * review-requirement, Downstream-consequence, and Upstream clauses are
+ * one level quieter still than the base muted/xs treatment -- reduced
+ * opacity on top of the already-muted color, plus a slightly larger
+ * top gap -- scoped to `.readinessSupporting` only so Core/Execution's
+ * own (unrelated) use of `.blockMeta` for draft notices is untouched.
+ * No real content (review_requirement, attention summary,
+ * downstream_effect, upstream state) is removed, only demoted. */
+.readinessSupporting {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.readinessSupporting .blockMeta {
+  opacity: 0.85;
+}
+
+.blockClauseQuiet {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.45;
+  opacity: 0.85;
+}
+
+/* Compact supporting-context footer: short inline metadata after the
+ * final restrained divider, read as one quiet metadata rail rather
+ * than a strong badge -- Guidance state keeps its real semantic color
+ * (`data-tone`, same tone mapping `StatusBadge` uses) but as plain
+ * inline text, not a pill/chip. */
+.supportingFooter {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  border-top: 1px solid var(--border-strong);
+}
+
+.footerFact {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.footerState {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+}
+
+.footerState[data-tone="confirmed"] {
+  color: var(--state-success);
+}
+
+.footerState[data-tone="attention"] {
+  color: var(--state-attention);
+}
+
+.footerState[data-tone="unavailable"] {
+  color: var(--text-muted);
 }
 
 @media (max-width: 1200px) {
@@ -215,13 +461,9 @@
   .expanded {
     grid-template-columns: 1fr 1fr;
   }
-  .artistChain,
   .chain {
     align-items: flex-start;
     flex-direction: column;
-  }
-  .artistChain {
-    grid-template-columns: 1fr;
   }
   .chainArrow {
     display: none;
@@ -237,5 +479,251 @@
 @media (max-width: 640px) {
   .expanded {
     grid-template-columns: 1fr;
+  }
+}
+
+/* CG Version Review "review" variant (owner-approved visual reference,
+ * Visual Recomposition pass) -- entirely separate class names from
+ * `.layer`/`.summary`/`.expanded` above, so every other
+ * AnchorContextLayer consumer (VFX Alignment, Artist, CG's other
+ * tabs) is completely unaffected; only CG Version Review's frame
+ * passes `variant="review"`. */
+.reviewCollapsed,
+.reviewExpanded {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-block: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-panel);
+}
+
+/* Owner correction: the collapsed guardrail read materially taller
+ * than the reference -- a smaller padding step (this pass leaves the
+ * expanded state's own padding/composition untouched) shrinks its
+ * overall height along with the concise direction text above. */
+.reviewCollapsed {
+  padding: var(--space-3);
+}
+
+.reviewExpanded {
+  padding: var(--space-4);
+}
+
+.reviewKicker {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Owner correction: `space-between` let the relationship row's real
+ * content width determine how much space was left for attention,
+ * which could squeeze it into a narrow column. A grid guarantees
+ * attention a real, stable minimum width regardless of relationship
+ * content length. */
+.reviewTopRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(14rem, 20rem);
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.reviewRelationship {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.reviewNode {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+/* Owner-approved reference (explicit correction): restrained tinted
+ * object tiles are approved for this page's Core/Execution Anchor
+ * nodes -- purple for Core Anchor (Intent), blue/teal for Execution
+ * Anchor, matching the screenshot and the existing purple=Intent /
+ * blue=fact color tokens rather than inventing new hues. */
+.reviewNodeIcon {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--radius-md);
+}
+
+.reviewNodeIconCore {
+  background: var(--accent-selected-surface);
+  border: 1px solid var(--accent-selected-border);
+  color: var(--accent-selected-text);
+}
+
+.reviewNodeIconExecution {
+  background: var(--accent-fact-surface);
+  border: 1px solid var(--accent-fact-border);
+  color: var(--accent-fact-text);
+}
+
+.reviewNode strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.reviewNode small {
+  display: block;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  text-transform: capitalize;
+}
+
+.reviewRelationshipArrow {
+  flex: none;
+  color: var(--text-secondary);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+}
+
+.reviewAttention {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  text-align: right;
+}
+
+.reviewAttentionHead {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  color: var(--state-attention);
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+}
+
+.reviewAttentionHead[data-level="high"] {
+  color: var(--state-error);
+}
+
+.reviewAttentionHead[data-level="low"] {
+  color: var(--text-secondary);
+}
+
+.reviewAttentionDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.reviewAttentionDetail {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.reviewDirection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.reviewDirection p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.reviewExpandButton,
+.reviewCollapseButton {
+  align-self: flex-end;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--surface-panel);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+}
+
+.reviewExpandButton:hover,
+.reviewCollapseButton:hover {
+  border-color: var(--focus-ring-color);
+  background: var(--surface-muted);
+}
+
+.reviewExpandButton:focus-visible,
+.reviewCollapseButton:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+.guardrailMatrix {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3) var(--space-5);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.guardrailCell p {
+  margin: var(--space-1) 0 0;
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+.stateRail {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-3) var(--space-5);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.stateRailItem strong {
+  display: block;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.stateRailItem p,
+.stateRailItem small {
+  display: block;
+  margin: var(--space-1) 0 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.stateRailItem a {
+  display: inline-block;
+  margin-top: var(--space-1);
+  font-weight: 650;
+}
+
+@media (max-width: 640px) {
+  .guardrailMatrix {
+    grid-template-columns: 1fr;
+  }
+  .reviewTopRow {
+    grid-template-columns: 1fr;
+  }
+  .reviewAttention {
+    text-align: left;
   }
 }

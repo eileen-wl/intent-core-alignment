@@ -1,33 +1,32 @@
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { loadExecutionWorkspaceData } from "@/features/cg/execution-workspace/data";
 import { fetchCgAnchorContextOrNull } from "@/features/cg/api";
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
-import { DEMO_ROLE_COOKIE } from "@/lib/demoIdentity";
-import { exitRoleView } from "../../../../demo/actions";
 import { ExecutionPage } from "./ExecutionPage";
 
+/** The role gate itself already ran in `app/cg/layout.tsx`; this
+ * repeats the same defensive, unreachable-in-practice check. Step
+ * 9B-2's Execution Anchor Decision read is role-gated server-side
+ * (docs/ROLE_PERMISSIONS.md §2). `anchorContext` is fetched again here
+ * even though the Task layout already fetches it once for the
+ * persistent chrome: `ExecutionPage`'s own body reads
+ * `anchorContext.execution_anchor`/`core_anchor` to determine the
+ * Execution Anchor Editor's outdated/revision-number state -- Next.js
+ * has no mechanism for a layout to pass fetched data down into a
+ * page's props. */
 export default async function Page({
   params,
 }: {
   params: Promise<{ taskId: string }>;
 }) {
   const { taskId } = await params;
-  const store = await cookies();
-  if (store.get(DEMO_ROLE_COOKIE)?.value !== "cg_supervisor") {
+  const identity = await resolveIdentity();
+  if (identity?.role !== "cg_supervisor") {
     redirect("/demo");
   }
 
   try {
-    // Step 9B-2: the Execution Anchor Decision read is role-gated
-    // server-side (Step 9B-1, docs/ROLE_PERMISSIONS.md §2) -- the real,
-    // trusted session identity (already confirmed cg_supervisor above)
-    // is resolved and forwarded, never a client-supplied value.
-    const identity = await resolveIdentity();
-    if (identity === null) {
-      redirect("/demo");
-    }
     const headers = actorHeaders(identity);
     const [data, anchorContext] = await Promise.all([
       loadExecutionWorkspaceData(taskId, headers),
@@ -38,19 +37,9 @@ export default async function Page({
         taskId={taskId}
         data={data}
         anchorContext={anchorContext}
-        unavailable={false}
-        onExitRole={exitRoleView}
       />
     );
   } catch {
-    return (
-      <ExecutionPage
-        taskId={taskId}
-        data={null}
-        anchorContext={null}
-        unavailable
-        onExitRole={exitRoleView}
-      />
-    );
+    return <ExecutionPage taskId={taskId} data={null} anchorContext={null} />;
   }
 }

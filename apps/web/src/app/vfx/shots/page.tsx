@@ -1,20 +1,16 @@
 import { redirect } from "next/navigation";
-import type {
-  AnchorContextSummaryRead,
-  VfxInboxRead,
-} from "@intent-core/contracts";
+import type { VfxInboxRead } from "@intent-core/contracts";
 
-import { actorHeaders, resolveIdentity } from "@/features/session/identity";
-import {
-  fetchVfxAnchorContextSummaries,
-  fetchVfxInbox,
-} from "@/features/vfx/api";
-import { exitRoleView } from "../../demo/actions";
+import { resolveIdentity } from "@/features/session/identity";
+import { fetchVfxInbox } from "@/features/vfx/api";
 import { ShotsListPage } from "./ShotsListPage";
 
 /** The middleware (src/middleware.ts) is the authoritative route
  * guard; this check is a defense-in-depth double check, not the
- * primary gate. */
+ * primary gate. The Shots catalogue is an object browser -- it no
+ * longer needs the Anchor Context Summary fetch Home/Inbox still use
+ * for Human-action routing; every field the catalogue shows lives
+ * directly on `VfxInboxRead`. */
 export default async function Page() {
   const identity = await resolveIdentity();
   if (identity?.role !== "vfx_supervisor") {
@@ -22,25 +18,11 @@ export default async function Page() {
   }
 
   let inbox: VfxInboxRead | null;
-  let anchorContexts: Record<string, AnchorContextSummaryRead | null> = {};
   try {
-    const [inboxResult, summaryResult] = await Promise.all([
-      fetchVfxInbox(),
-      fetchVfxAnchorContextSummaries(actorHeaders(identity)),
-    ]);
-    inbox = inboxResult;
-    anchorContexts = Object.fromEntries(
-      summaryResult.items.map((item) => [item.shot_id, item]),
-    );
+    inbox = await fetchVfxInbox();
   } catch {
     inbox = null;
   }
 
-  return (
-    <ShotsListPage
-      inbox={inbox}
-      anchorContexts={anchorContexts}
-      onExitRole={exitRoleView}
-    />
-  );
+  return <ShotsListPage inbox={inbox} />;
 }

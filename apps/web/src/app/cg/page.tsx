@@ -6,7 +6,6 @@ import type {
 
 import { fetchCgAnchorContextSummaries, fetchCgInbox } from "@/features/cg/api";
 import { actorHeaders, resolveIdentity } from "@/features/session/identity";
-import { exitRoleView } from "../demo/actions";
 import { CgWorkspacePage } from "./CgWorkspacePage";
 
 /** The middleware (src/middleware.ts) is the authoritative route
@@ -32,11 +31,5 @@ export default async function Page() {
     inbox = null;
   }
 
-  return (
-    <CgWorkspacePage
-      inbox={inbox}
-      anchorActions={anchorActions}
-      onExitRole={exitRoleView}
-    />
-  );
+  return <CgWorkspacePage inbox={inbox} anchorActions={anchorActions} />;
 }

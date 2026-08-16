@@ -1,7 +1,5 @@
-import type { AnchorContextRead } from "@intent-core/contracts";
-import { EmptyState } from "@/design";
+import { EmptyState, ErrorState } from "@/design";
 import type { DependenciesWorkspaceData } from "@/features/cg/dependencies-workspace/data";
-import { CgTaskWorkspaceFrame } from "../CgTaskWorkspaceFrame";
 import { DependencyRow } from "./DependencyRow";
 import { RecordDependencyForm } from "./RecordDependencyForm";
 import styles from "./DependenciesPage.module.css";
@@ -16,39 +14,32 @@ import styles from "./DependenciesPage.module.css";
 export function DependenciesPage({
   taskId,
   data,
-  anchorContext,
-  unavailable,
-  onExitRole,
 }: {
   taskId: string;
   data: DependenciesWorkspaceData | null;
-  anchorContext?: AnchorContextRead | null;
-  unavailable: boolean;
-  onExitRole: () => void | Promise<void>;
 }) {
-  return (
-    <CgTaskWorkspaceFrame
-      item={data?.item ?? null}
-      anchorContext={anchorContext}
-      activeTab="dependencies"
-      unavailable={unavailable}
-      onExitRole={onExitRole}
-    >
-      {data && (
-        <>
-          <RecordDependencyForm taskId={taskId} />
+  if (!data) {
+    return (
+      <ErrorState
+        title="This page is unavailable"
+        description="The ICAS service could not be reached. Try refreshing the page."
+      />
+    );
+  }
 
-          {data.dependencies.length === 0 ? (
-            <EmptyState title="No unresolved dependencies have been recorded for this Task." />
-          ) : (
-            <DependenciesSections
-              taskId={taskId}
-              dependencies={data.dependencies}
-            />
-          )}
-        </>
+  return (
+    <>
+      <RecordDependencyForm taskId={taskId} />
+
+      {data.dependencies.length === 0 ? (
+        <EmptyState title="No unresolved dependencies have been recorded for this Task." />
+      ) : (
+        <DependenciesSections
+          taskId={taskId}
+          dependencies={data.dependencies}
+        />
       )}
-    </CgTaskWorkspaceFrame>
+    </>
   );
 }
 

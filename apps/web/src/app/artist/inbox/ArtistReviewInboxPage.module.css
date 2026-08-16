@@ -1,0 +1,61 @@
+/* Worklist archetype (ICAS_DESIGN.md §6.1): current worklist state,
+ * shown before filter/scope controls. Matches the locked VFX Review
+ * Inbox's own `.worklistState` exactly -- deliberately just text at a
+ * slightly stronger weight than the filters below it, not a dashboard
+ * KPI card. */
+.worklistState {
+  margin: 0 0 var(--space-3);
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-4);
+  margin-bottom: var(--space-4);
+}
+
+.filterLabel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}
+
+.filterSelect {
+  padding: var(--space-2) var(--space-3);
+  color: var(--text-primary);
+  background: var(--surface-panel);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+}
+
+.group {
+  margin-top: var(--space-5);
+}
+
+.group:first-of-type {
+  margin-top: var(--space-3);
+}
+
+/* ICAS Visual Language v1 §7.2 Level B: sentence case, compact, paired
+ * with its real count -- matches the locked VFX Review Inbox's own
+ * `.groupHeading` exactly (previously report-style all-caps here). The
+ * optional micro icon (same mapping as each row's own type marker)
+ * communicates the one real category this group shares; an
+ * unrecognised category renders without one rather than guessing. */
+.groupHeading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0 0 var(--space-2);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+}

@@ -8,8 +8,8 @@
   justify-content: space-between;
   gap: 2rem;
   padding: 0 1.9rem;
-  background: rgba(255, 255, 255, 0.96);
-  border-bottom: 1px solid #e5e7ed;
+  background: color-mix(in srgb, var(--surface-panel) 96%, transparent);
+  border-bottom: 1px solid var(--border-subtle);
   backdrop-filter: blur(12px);
 }
 
@@ -17,7 +17,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.8rem;
-  color: #171a21;
+  color: var(--text-primary);
   font-size: 1.55rem;
   font-weight: 720;
   letter-spacing: -0.025em;
@@ -27,7 +27,7 @@
   width: 2.15rem;
   height: 2.15rem;
   fill: none;
-  stroke: #6a45ea;
+  stroke: var(--accent-agent);
   stroke-width: 1.65;
   stroke-linecap: round;
 }

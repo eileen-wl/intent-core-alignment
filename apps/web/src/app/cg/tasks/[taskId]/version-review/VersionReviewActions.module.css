@@ -31,14 +31,42 @@
   gap: var(--space-3);
 }
 
+/* Truthful action priority: Record Review Note is the one primary
+ * (ICAS Purple) Human action -- see VersionReviewActions.tsx's own doc
+ * comment. Generate/Regenerate stays secondary/neutral; Escalate keeps
+ * its existing restrained-amber "something needs VFX attention"
+ * treatment. Not all three look equally primary. */
+.primaryButton,
+.secondaryButton,
+.escalateButton {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.primaryButton {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--accent-selected-border);
+  background: var(--accent-selected-surface);
+  color: var(--text-primary);
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .secondaryButton {
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-md);
-  border: 1px solid var(--authority-neutral-border);
-  background: var(--authority-neutral-surface);
-  color: var(--authority-neutral-text);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-panel);
+  color: var(--text-primary);
   font-weight: 600;
   cursor: pointer;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  background: var(--surface-muted);
+  border-color: var(--focus-ring-color);
 }
 
 .escalateButton {
@@ -51,6 +79,14 @@
   cursor: pointer;
 }
 
+.primaryButton:focus-visible,
+.secondaryButton:focus-visible,
+.escalateButton:focus-visible {
+  outline: 2px solid var(--focus-ring-color);
+  outline-offset: 2px;
+}
+
+.primaryButton:disabled,
 .secondaryButton:disabled,
 .escalateButton:disabled {
   opacity: 0.6;

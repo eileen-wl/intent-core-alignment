@@ -23,3 +23,65 @@
   border-radius: var(--radius-sm);
   font-size: var(--font-size-sm);
 }
+
+/* Department is a heading + generous vertical space between groups,
+   never a heavy bordered/backgrounded panel and never a full-width
+   divider line -- that language is reserved for the task-to-task
+   hairline below, so the two hierarchy levels stay visually distinct.
+   A single-Task department reads as one small heading and one row,
+   never a large boxed island. */
+.departmentGroup + .departmentGroup {
+  margin-top: var(--space-6);
+}
+
+/* Same group-heading grammar as Artist's `.shotHeading`: a short
+   vertical left accent as the group marker (not a line spanning the
+   group, and not a row separator), identity left / count pushed
+   right via the same flex rhythm. Content stays role-specific --
+   Department has no equivalent of Artist's Project line -- only the
+   alignment/rhythm is shared. */
+.departmentHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  padding-left: var(--space-3);
+  margin-bottom: var(--space-2);
+  border-left: 3px solid var(--border-strong);
+}
+
+.departmentName {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.departmentCount {
+  margin-left: auto;
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+}
+
+/* Restrained task-to-task separator -- a subtle hairline between
+   sibling Task rows only, inset to the row's own content alignment
+   (space-4, matching the row's horizontal padding) rather than
+   spanning the full group width, so it reads as clearly lighter-
+   weight than the group-to-group spacing above. Rendered as a
+   decorative ::before (not a real border on the listitem) so it never
+   shifts or narrows the row content it sits above -- every row stays
+   identically aligned regardless of its position in the list. A
+   single-Task group has no second listitem, so no line is ever
+   added. */
+.taskList [role="listitem"] {
+  position: relative;
+}
+
+.taskList [role="listitem"] + [role="listitem"]::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: var(--space-4);
+  right: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}

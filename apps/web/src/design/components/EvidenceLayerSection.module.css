@@ -5,6 +5,10 @@
   margin-top: var(--space-5);
 }
 
+.layer[data-compact="true"] {
+  margin-top: var(--space-3);
+}
+
 .content {
   display: flex;
   flex-direction: column;

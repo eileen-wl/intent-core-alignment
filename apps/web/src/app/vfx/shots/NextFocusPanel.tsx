@@ -1,7 +1,7 @@
 import type { VfxInboxNextFocusRead } from "@intent-core/contracts";
 import Link from "next/link";
 
-import { Panel } from "@/design";
+import { Panel, PendingLinkContent } from "@/design";
 import styles from "./NextFocusPanel.module.css";
 
 /** Zero-to-two subordinate "Next in this Shot" candidates (Step 7C-1
@@ -31,6 +31,7 @@ export function NextFocusPanel({ items }: { items: VfxInboxNextFocusRead[] }) {
             {item.actionable && item.primary_action_label && (
               <Link href={item.target_route} className={styles.itemAction}>
                 {item.primary_action_label}
+                <PendingLinkContent label={item.primary_action_label} />
               </Link>
             )}
           </li>

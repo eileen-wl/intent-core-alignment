@@ -10,6 +10,7 @@ afterEach(() => {
 const EXPECTED_TEXT: Record<AuthorityLabelVariant, string> = {
   "production-fact": "Production fact",
   "human-intent": "Human intent",
+  "human-authority": "Human authority",
   "human-confirmed": "Human-confirmed",
   "ai-interpretation": "AI interpretation",
   "ai-proposal": "AI proposal",

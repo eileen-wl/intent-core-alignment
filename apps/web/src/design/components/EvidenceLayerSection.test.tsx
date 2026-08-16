@@ -74,4 +74,41 @@ describe("EvidenceLayerSection", () => {
     const section = screen.getByText("Production Evidence").closest("section");
     expect(section?.className).toContain("mainCard");
   });
+
+  it("drops the explanatory question but keeps the heading and content when compact", () => {
+    render(
+      <EvidenceLayerSection kind="human-decision" compact>
+        <p>No Human Decision recorded.</p>
+      </EvidenceLayerSection>,
+    );
+    expect(screen.getByText("Human Decision and Provenance")).toBeVisible();
+    expect(screen.getByText("No Human Decision recorded.")).toBeVisible();
+    expect(
+      screen.queryByText("What did an authorised person decide, and why?"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("marks a compact layer in the DOM via data-compact", () => {
+    render(
+      <EvidenceLayerSection kind="human-decision" compact>
+        <p>content</p>
+      </EvidenceLayerSection>,
+    );
+    const section = screen
+      .getByText("Human Decision and Provenance")
+      .closest("[data-evidence-layer]");
+    expect(section).toHaveAttribute("data-compact", "true");
+  });
+
+  it("does not mark data-compact when compact is not set", () => {
+    render(
+      <EvidenceLayerSection kind="production-evidence">
+        <p>content</p>
+      </EvidenceLayerSection>,
+    );
+    const section = screen
+      .getByText("Production Evidence")
+      .closest("[data-evidence-layer]");
+    expect(section).not.toHaveAttribute("data-compact");
+  });
 });

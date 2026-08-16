@@ -4,9 +4,41 @@ import type { AnchorContextRead } from "@intent-core/contracts";
 import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 
-import { StatusBadge } from "../../components";
+import { Icon, StatusBadge } from "../../components";
 import styles from "./AnchorContextLayer.module.css";
-import { conciseDirection, upstreamState } from "./presentation";
+import {
+  conciseDirection,
+  stripGeneratorLabel,
+  upstreamState,
+} from "./presentation";
+
+/** CG Version Review's "review" variant, collapsed state only: a
+ * presentation-only concise version of the already-`conciseDirection`
+ * -cleaned direction text, budgeted to roughly 1-2 desktop lines. Same
+ * whole-sentence-only technique as the Agent Review takeaway builder
+ * (never slices a sentence in half) -- the full real direction stays
+ * exactly as-is in the expanded state, untouched by this turn. */
+const REVIEW_COLLAPSED_DIRECTION_CHAR_BUDGET = 140;
+
+function deriveConciseReviewDirection(direction: string): string {
+  const sentences = direction.match(/[^.!?]+[.!?]+(?:\s+|$)/g);
+  if (!sentences || sentences.length === 0) return direction.trim();
+
+  let concise = "";
+  for (const rawSentence of sentences) {
+    const sentence = rawSentence.trim();
+    if (concise.length === 0) {
+      concise = sentence;
+      continue;
+    }
+    if (
+      `${concise} ${sentence}`.length > REVIEW_COLLAPSED_DIRECTION_CHAR_BUDGET
+    )
+      break;
+    concise = `${concise} ${sentence}`;
+  }
+  return concise;
+}
 
 const ATTENTION_LABEL = {
   low: "Low attention",
@@ -37,18 +69,6 @@ function contextStateLabel(state: string): string {
   return state.replaceAll("_", " ");
 }
 
-/** Package C follow-up (Anchor Context sticky-scrolling fix): the only
- * text shown in the persistent one-line `.stickySummaryBar` -- deliberately
- * minimal, never the full WHY/HOW/WHAT-TO-DO-NOW content. */
-function stickySummaryText(context: AnchorContextRead): string {
-  const core = context.core_anchor;
-  const execution = context.execution_anchor;
-  if (execution) {
-    return `Core ${revisionLabel(core.confirmed_revision_number)} · Execution ${revisionLabel(execution.confirmed_revision_number)} · ${contextStateLabel(execution.context_state)}`;
-  }
-  return `Core ${revisionLabel(core.confirmed_revision_number)} · ${contextStateLabel(core.lifecycle_state)}`;
-}
-
 function AuthorityChain({ context }: { context: AnchorContextRead }) {
   const core = context.core_anchor;
   const execution = context.execution_anchor;
@@ -61,13 +81,14 @@ function AuthorityChain({ context }: { context: AnchorContextRead }) {
           Core Anchor {revisionLabel(core.confirmed_revision_number)} ·{" "}
           {core.lifecycle_state}
         </strong>
+        {/* `confirmed_by_actor_id` is an internal session/audit id (e.g.
+         * "vfx-1"), never a real display name -- this codebase already
+         * keeps a separate, real display-name field for that purpose
+         * (`DEMO_IDENTITY_NAME` in `demoIdentity.ts`), so the raw id is
+         * presentation-hidden here rather than shown as if it were
+         * meaningful business information. */}
         {core.confirmed_by_human_role && (
-          <small>
-            Confirmed by VFX Supervisor
-            {core.confirmed_by_actor_id
-              ? ` · ${core.confirmed_by_actor_id}`
-              : ""}
-          </small>
+          <small>Confirmed by VFX Supervisor</small>
         )}
       </div>
     );
@@ -101,35 +122,84 @@ function AuthorityChain({ context }: { context: AnchorContextRead }) {
     );
   }
 
+  // Artist Anchor no longer uses `AuthorityChain` at all -- see
+  // `ArtistExpandedAnchor` below, which replaces the former three-
+  // column WHY/WHAT-MUST-PRESERVE/WHAT-TO-DO-NOW composition with a
+  // stable repeated row grammar. This branch is unreachable (the
+  // expanded-state return branches to `ArtistExpandedAnchor` before
+  // `AuthorityChain` is ever called for `role === "artist"`); kept only
+  // so this function's return type stays total over `AnchorContextRead`
+  // rather than assuming a call site guarantee TypeScript can't see.
+  return null;
+}
+
+/** CG Version Review's "review" variant: the Core Anchor -> Execution
+ * Anchor authority relationship as two icon-marked nodes joined by an
+ * arrow, reused identically by both the collapsed guardrail summary
+ * and the expanded state's "Authority relationship" row -- CG-role
+ * context always carries both anchors, so this assumes that shape
+ * rather than branching on `context.role` the way `AuthorityChain`
+ * (used by every other role/variant) does. */
+function ReviewRelationship({ context }: { context: AnchorContextRead }) {
+  const core = context.core_anchor;
+  const execution = context.execution_anchor;
   return (
-    <div className={styles.artistChain}>
-      <div>
-        <span className={styles.eyebrow}>Why</span>
-        <strong>
-          {conciseDirection(core.direction_summary) ??
-            "Core Anchor direction is unavailable."}
-        </strong>
-        <small>
-          Core Anchor {revisionLabel(core.confirmed_revision_number)} ·{" "}
-          {contextStateLabel(core.lifecycle_state)}
-        </small>
+    <div className={styles.reviewRelationship}>
+      <div className={styles.reviewNode}>
+        <span
+          className={`${styles.reviewNodeIcon} ${styles.reviewNodeIconCore}`}
+        >
+          <Icon name="core-anchor" size="region" />
+        </span>
+        <div>
+          <strong>
+            Core Anchor {revisionLabel(core.confirmed_revision_number)}
+          </strong>
+          <small>{contextStateLabel(core.lifecycle_state)}</small>
+        </div>
       </div>
-      <div>
-        <span className={styles.eyebrow}>How</span>
-        <strong>
-          {conciseDirection(execution?.direction_summary) ??
-            "Execution direction is unavailable."}
-        </strong>
-        <small>
-          Execution Anchor{" "}
-          {revisionLabel(execution?.confirmed_revision_number ?? null)} ·{" "}
-          {contextStateLabel(execution?.context_state ?? "missing")}
-        </small>
+      <span className={styles.reviewRelationshipArrow} aria-hidden="true">
+        →
+      </span>
+      <div className={styles.reviewNode}>
+        <span
+          className={`${styles.reviewNodeIcon} ${styles.reviewNodeIconExecution}`}
+        >
+          <Icon name="execution-anchor" size="region" />
+        </span>
+        <div>
+          <strong>
+            {execution?.department ?? "Task"} Execution Anchor{" "}
+            {revisionLabel(execution?.confirmed_revision_number ?? null)}
+          </strong>
+          <small>
+            {contextStateLabel(execution?.lifecycle_state ?? "missing")}
+            {execution?.upstream_relationship_available
+              ? ` · based on Core Anchor R${execution.based_on_core_anchor_revision_number}`
+              : ""}
+          </small>
+        </div>
       </div>
-      <div>
-        <span className={styles.eyebrow}>What to do now</span>
-        <strong>{context.next_action.title}</strong>
-      </div>
+    </div>
+  );
+}
+
+function ReviewAttention({ context }: { context: AnchorContextRead }) {
+  if (context.attention.level === "not_assessed") return null;
+  return (
+    <div className={styles.reviewAttention}>
+      <span
+        className={styles.reviewAttentionHead}
+        data-level={context.attention.level}
+      >
+        <span className={styles.reviewAttentionDot} aria-hidden="true" />
+        {ATTENTION_LABEL[context.attention.level]}
+      </span>
+      {context.attention.summary && (
+        <p className={styles.reviewAttentionDetail}>
+          {stripGeneratorLabel(context.attention.summary)}
+        </p>
+      )}
     </div>
   );
 }
@@ -139,10 +209,18 @@ export function AnchorContextLayer({
   context,
   defaultExpanded = false,
   storageKey,
+  variant = "standard",
 }: {
   context: AnchorContextRead | null;
   defaultExpanded?: boolean;
   storageKey?: string;
+  /** Owner-approved CG Version Review visual reference (Visual
+   * Recomposition pass): a distinct collapsed guardrail summary and
+   * expanded relationship/matrix/rail composition, opt-in only.
+   * Additive -- every existing caller (VFX Alignment, Artist, CG's
+   * other tabs) keeps the unchanged "standard" rendering by not
+   * passing this prop, so none of them are visually affected. */
+  variant?: "standard" | "review";
 }) {
   const contentId = useId();
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -185,203 +263,688 @@ export function AnchorContextLayer({
     execution?.direction_summary ?? core.direction_summary,
   );
   const upstream = upstreamState(context);
+  const hasContextLinks = Boolean(
+    (core.link_target && context.role === "vfx_supervisor") ||
+    context.attention.link_target ||
+    (execution?.link_target && context.role === "cg_supervisor"),
+  );
 
-  return (
-    <>
-      {/* Package C follow-up: the only sticky element is this compact,
-       * one-line summary -- the full block below (collapsed or expanded)
-       * always participates in normal document flow and scrolls away
-       * with the page. */}
-      <div className={styles.stickySummaryBar}>
-        <span className={styles.stickySummaryText}>
-          {stickySummaryText(context)}
-        </span>
-        <button
-          type="button"
-          className={styles.stickySummaryButton}
-          aria-expanded={expanded}
-          aria-controls={contentId}
-          onClick={toggleExpanded}
-        >
-          {expanded ? "Collapse" : "Expand"}
-        </button>
-      </div>
-      <section
-        className={styles.layer}
-        aria-label="Anchor context"
-        data-expanded={expanded}
-      >
-        <div className={styles.disclosure}>
-          <div className={styles.summary}>
-            <AuthorityChain context={context} />
-            <div className={styles.direction}>
-              <span className={styles.eyebrow}>Current direction</span>
-              <span title={direction ?? undefined}>
-                {direction ?? "No concise direction is available yet."}
-              </span>
-            </div>
-            <div className={styles.controls}>
-              <div className={styles.statuses}>
-                {execution && (
-                  <StatusBadge
-                    status={
-                      execution.context_state === "outdated"
-                        ? "attention"
-                        : execution.context_state === "current"
-                          ? "confirmed"
-                          : "unavailable"
-                    }
-                    label={contextStateLabel(execution.context_state)}
-                  />
-                )}
-                <StatusBadge
-                  status={attentionTone(context.attention.level)}
-                  label={ATTENTION_LABEL[context.attention.level]}
-                />
-                {context.role === "artist" && (
-                  <StatusBadge
-                    status={
-                      context.guidance_state === "outdated"
-                        ? "attention"
-                        : context.guidance_state === "current"
-                          ? "confirmed"
-                          : "unavailable"
-                    }
-                    label={GUIDANCE_LABEL[context.guidance_state]}
-                  />
-                )}
-                {upstream && (
-                  <StatusBadge status="attention" label={upstream} />
-                )}
-              </div>
-              <button
-                type="button"
-                className={styles.disclosureButton}
-                aria-expanded={expanded}
-                aria-controls={contentId}
-                onClick={toggleExpanded}
-              >
-                <span>
-                  {expanded
-                    ? "Collapse anchor context"
-                    : "Expand anchor context"}
-                </span>
-                <span className={styles.chevron} aria-hidden="true">
-                  ⌄
-                </span>
-              </button>
-            </div>
+  if (variant === "review") {
+    if (!expanded) {
+      return (
+        <div className={styles.reviewCollapsed}>
+          <span className={styles.reviewKicker}>
+            <Icon name="core-anchor" size="region" />
+            Anchor context
+          </span>
+          <div className={styles.reviewTopRow}>
+            <ReviewRelationship context={context} />
+            <ReviewAttention context={context} />
           </div>
+          <div className={styles.reviewDirection}>
+            <span className={styles.eyebrow}>Current direction</span>
+            <p title={direction ?? undefined}>
+              {direction
+                ? deriveConciseReviewDirection(direction)
+                : "No concise direction is available yet."}
+            </p>
+          </div>
+          <button
+            type="button"
+            className={styles.reviewExpandButton}
+            aria-expanded={false}
+            aria-controls={contentId}
+            onClick={toggleExpanded}
+          >
+            Show full context →
+          </button>
+        </div>
+      );
+    }
 
-          {expanded && (
-            <div className={styles.expanded} id={contentId}>
-              <div>
-                <span className={styles.eyebrow}>Must preserve</span>
-                <p>
-                  {core.must_preserve ??
-                    "No concise must-preserve item is recorded."}
-                </p>
-              </div>
-              <div>
-                <span className={styles.eyebrow}>Allowed to vary</span>
-                <p>
-                  {execution?.allowed_refinement ??
-                    core.allowed_variation ??
-                    "No concise variation boundary is recorded."}
-                </p>
-              </div>
-              {execution?.execution_boundary && (
-                <div>
-                  <span className={styles.eyebrow}>Execution boundary</span>
-                  <p>{execution.execution_boundary}</p>
-                </div>
+    return (
+      <section
+        className={styles.reviewExpanded}
+        aria-label="Anchor context"
+        id={contentId}
+      >
+        <span className={styles.reviewKicker}>
+          <Icon name="core-anchor" size="region" />
+          Anchor context
+        </span>
+        <div className={styles.reviewTopRow}>
+          <ReviewRelationship context={context} />
+          <ReviewAttention context={context} />
+        </div>
+        <div className={styles.reviewDirection}>
+          <span className={styles.eyebrow}>Current direction</span>
+          <p>{direction ?? "No concise direction is available yet."}</p>
+        </div>
+        <div className={styles.guardrailMatrix}>
+          <div className={styles.guardrailCell}>
+            <span className={styles.eyebrow}>Must preserve</span>
+            <p>
+              {stripGeneratorLabel(
+                core.must_preserve ??
+                  "No concise must-preserve item is recorded.",
               )}
-              <div>
-                <span className={styles.eyebrow}>Intent attention</span>
-                <p>
-                  {context.attention.summary ??
-                    context.attention.review_requirement}
-                </p>
-                <small>{context.attention.review_requirement}</small>
-              </div>
-              <div className={styles.nextAction}>
-                <span className={styles.eyebrow}>
-                  {context.next_action.title.startsWith("No immediate")
-                    ? "Role action"
-                    : "Readiness / next action"}
-                </span>
-                <strong>{context.next_action.title}</strong>
-                <p>{context.next_action.why_now}</p>
-                <small>{context.next_action.downstream_effect}</small>
-                {context.next_action.executable &&
-                  context.next_action.target_route &&
-                  context.next_action.action_label && (
-                    <Link href={context.next_action.target_route}>
-                      {context.next_action.action_label} →
-                    </Link>
-                  )}
-              </div>
-              {upstream && (
-                <div className={styles.upstreamState}>
-                  <span className={styles.eyebrow}>Upstream state</span>
-                  <strong>{upstream}</strong>
-                </div>
+            </p>
+          </div>
+          <div className={styles.guardrailCell}>
+            <span className={styles.eyebrow}>May vary</span>
+            <p>
+              {stripGeneratorLabel(
+                execution?.allowed_refinement ??
+                  core.allowed_variation ??
+                  "No concise variation boundary is recorded.",
               )}
-              {(core.newer_draft_exists || core.pending_human_gate_exists) && (
-                <div className={styles.authorityNotice}>
-                  <span className={styles.eyebrow}>Draft distinction</span>
-                  <p>
-                    Core Anchor R{core.confirmed_revision_number ?? "—"} remains
-                    authoritative.
-                    {core.draft_revision_number
-                      ? ` Draft R${core.draft_revision_number} is awaiting human action.`
-                      : ""}
-                  </p>
-                </div>
+            </p>
+          </div>
+          <div className={styles.guardrailCell}>
+            <span className={styles.eyebrow}>Execution boundary</span>
+            <p>
+              {stripGeneratorLabel(
+                execution?.execution_boundary ??
+                  "No execution boundary is recorded.",
               )}
-              {execution?.draft_revision_number && (
-                <div>
-                  <span className={styles.eyebrow}>Current draft source</span>
-                  <p>
-                    {execution.draft_source
-                      ? contextStateLabel(execution.draft_source)
-                      : "Unknown"}
-                  </p>
-                </div>
+            </p>
+          </div>
+          <div className={styles.guardrailCell}>
+            <span className={styles.eyebrow}>Intent attention</span>
+            <p>
+              {stripGeneratorLabel(
+                context.attention.summary ??
+                  context.attention.review_requirement,
               )}
-              <div>
-                <span className={styles.eyebrow}>
-                  Current production context
-                </span>
-                <p>
-                  {context.current_version.name
-                    ? `${context.current_version.name}${context.current_version.version_number ? ` · v${context.current_version.version_number}` : ""}`
-                    : "No current Production Version is recorded."}
-                </p>
-                {context.role === "artist" && (
-                  <small>
-                    Guidance: {GUIDANCE_LABEL[context.guidance_state]}
-                  </small>
-                )}
-              </div>
-              <div className={styles.contextLinks}>
-                <span className={styles.eyebrow}>Related context</span>
-                {core.link_target && context.role === "vfx_supervisor" && (
-                  <Link href={core.link_target}>Open Intent →</Link>
-                )}
-                {context.attention.link_target && (
-                  <Link href={context.attention.link_target}>
-                    Open Alignment →
-                  </Link>
-                )}
-                {execution?.link_target && context.role === "cg_supervisor" && (
-                  <Link href={execution.link_target}>Open Execution →</Link>
-                )}
-              </div>
+            </p>
+          </div>
+        </div>
+        <div className={styles.stateRail}>
+          <div className={styles.stateRailItem}>
+            <span className={styles.eyebrow}>
+              {context.next_action.title.startsWith("No immediate")
+                ? "Role action"
+                : "Readiness / next action"}
+            </span>
+            <strong>{context.next_action.title}</strong>
+            <p>{context.next_action.why_now}</p>
+            <small>{context.next_action.downstream_effect}</small>
+            {context.next_action.executable &&
+              context.next_action.target_route &&
+              context.next_action.action_label && (
+                <Link href={context.next_action.target_route}>
+                  {context.next_action.action_label} →
+                </Link>
+              )}
+          </div>
+          {upstream && (
+            <div className={styles.stateRailItem}>
+              <span className={styles.eyebrow}>Upstream state</span>
+              <strong>{upstream}</strong>
+            </div>
+          )}
+          {(core.newer_draft_exists || core.pending_human_gate_exists) && (
+            <div className={styles.stateRailItem}>
+              <span className={styles.eyebrow}>Draft distinction</span>
+              <p>
+                Core Anchor R{core.confirmed_revision_number ?? "—"} remains
+                authoritative.
+                {core.draft_revision_number
+                  ? ` Draft R${core.draft_revision_number} is awaiting human action.`
+                  : ""}
+              </p>
+            </div>
+          )}
+          {execution?.draft_revision_number && (
+            <div className={styles.stateRailItem}>
+              <span className={styles.eyebrow}>Current draft source</span>
+              <p>
+                {execution.draft_source
+                  ? contextStateLabel(execution.draft_source)
+                  : "Unknown"}
+              </p>
+            </div>
+          )}
+          <div className={styles.stateRailItem}>
+            <span className={styles.eyebrow}>Current production context</span>
+            <p>
+              {context.current_version.name
+                ? `${context.current_version.name}${context.current_version.version_number ? ` · v${context.current_version.version_number}` : ""}`
+                : "No current Production Version is recorded."}
+            </p>
+          </div>
+          {hasContextLinks && (
+            <div className={styles.stateRailItem}>
+              <span className={styles.eyebrow}>Related context</span>
+              {context.attention.link_target && (
+                <Link href={context.attention.link_target}>
+                  Open Alignment →
+                </Link>
+              )}
+              {execution?.link_target && context.role === "cg_supervisor" && (
+                <Link href={execution.link_target}>Open Execution →</Link>
+              )}
             </div>
           )}
         </div>
+        <button
+          type="button"
+          className={styles.reviewCollapseButton}
+          aria-expanded={true}
+          aria-controls={contentId}
+          onClick={toggleExpanded}
+        >
+          Collapse anchor context
+        </button>
       </section>
-    </>
+    );
+  }
+
+  // Owner decision (VFX Alignment interaction refinement): no
+  // persistent/sticky bar in either state, but the collapsed state
+  // reads as a compact, structured "band" -- a kicker + attention
+  // header, then identity/direction with the expand action, inside a
+  // light, non-sticky surface -- not just loose lines of text, and
+  // still substantially lighter than the expanded `.layer` (no strong
+  // border, no shadow, no backdrop blur). Attention only renders when
+  // the backend has a real assessed value (`not_assessed` is honestly
+  // omitted, never rendered as a placeholder chip). Built only from
+  // `core`/`direction`, already real, role-generic fields computed
+  // above -- no VFX-only assumption, since every role's AnchorContextRead
+  // carries a `core_anchor` and a resolved `direction`.
+  if (!expanded) {
+    return (
+      <div className={styles.collapsedRow}>
+        <div className={styles.collapsedHeader}>
+          <span className={styles.eyebrow}>Anchor context</span>
+          {context.attention.level !== "not_assessed" && (
+            <StatusBadge
+              status={attentionTone(context.attention.level)}
+              label={ATTENTION_LABEL[context.attention.level]}
+            />
+          )}
+        </div>
+        <div className={styles.collapsedBody}>
+          <div className={styles.collapsedText}>
+            <p className={styles.collapsedIdentity}>
+              Core Anchor {revisionLabel(core.confirmed_revision_number)} ·{" "}
+              {contextStateLabel(core.lifecycle_state)}
+            </p>
+            <p
+              className={styles.collapsedDirection}
+              title={direction ?? undefined}
+            >
+              {direction ?? "No concise direction is available yet."}
+            </p>
+          </div>
+          <button
+            type="button"
+            className={styles.reopenButton}
+            aria-expanded={false}
+            aria-controls={contentId}
+            onClick={toggleExpanded}
+          >
+            <span>Show anchor context</span>
+            <span className={styles.reopenChevron} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Row-grammar correction (Artist-only, variant-safe): the former
+  // three-column WHY/WHAT-MUST-PRESERVE/WHAT-TO-DO-NOW composition
+  // (and the equal-weight secondary grid beneath it) is replaced by a
+  // stable repeated row grammar -- see `ArtistExpandedAnchor` below.
+  // Branches BEFORE `AuthorityChain`/`.summary` are ever reached for
+  // `role === "artist"`, so vfx_supervisor/cg_supervisor fall through
+  // to the unchanged markup below completely untouched.
+  if (context.role === "artist") {
+    return (
+      <ArtistExpandedAnchor
+        context={context}
+        contentId={contentId}
+        toggleExpanded={toggleExpanded}
+        core={core}
+        execution={execution}
+        direction={direction}
+        upstream={upstream}
+        hasContextLinks={hasContextLinks}
+      />
+    );
+  }
+
+  return (
+    <section
+      className={styles.layer}
+      aria-label="Anchor context"
+      id={contentId}
+    >
+      <span className={styles.kicker}>
+        <Icon name="core-anchor" size="region" />
+        Anchor context
+      </span>
+      <div className={styles.summary}>
+        <AuthorityChain context={context} />
+        <div className={styles.direction}>
+          <span className={styles.eyebrow}>Current direction</span>
+          <span title={direction ?? undefined}>
+            {direction ?? "No concise direction is available yet."}
+          </span>
+        </div>
+        <div className={styles.controls}>
+          <div className={styles.statuses}>
+            {execution && (
+              <StatusBadge
+                status={
+                  execution.context_state === "outdated"
+                    ? "attention"
+                    : execution.context_state === "current"
+                      ? "confirmed"
+                      : "unavailable"
+                }
+                label={contextStateLabel(execution.context_state)}
+              />
+            )}
+            <StatusBadge
+              status={attentionTone(context.attention.level)}
+              label={ATTENTION_LABEL[context.attention.level]}
+            />
+            {upstream && <StatusBadge status="attention" label={upstream} />}
+          </div>
+          <button
+            type="button"
+            className={styles.disclosureButton}
+            aria-expanded={true}
+            aria-controls={contentId}
+            onClick={toggleExpanded}
+          >
+            <span>Collapse anchor context</span>
+            <span className={styles.chevron} aria-hidden="true" />
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.expanded}>
+        <div>
+          <span className={styles.eyebrow}>Must preserve</span>
+          <p>
+            {core.must_preserve ?? "No concise must-preserve item is recorded."}
+          </p>
+        </div>
+        <div>
+          <span className={styles.eyebrow}>Allowed to vary</span>
+          <p>
+            {execution?.allowed_refinement ??
+              core.allowed_variation ??
+              "No concise variation boundary is recorded."}
+          </p>
+        </div>
+        {execution?.execution_boundary && (
+          <div>
+            <span className={styles.eyebrow}>Execution boundary</span>
+            <p>{execution.execution_boundary}</p>
+          </div>
+        )}
+        <div>
+          <span className={styles.eyebrow}>Intent attention</span>
+          <p>
+            {context.attention.summary ?? context.attention.review_requirement}
+          </p>
+          <small>{context.attention.review_requirement}</small>
+        </div>
+        <div className={styles.nextAction}>
+          <span className={styles.eyebrow}>
+            {context.next_action.title.startsWith("No immediate")
+              ? "Role action"
+              : "Readiness / next action"}
+          </span>
+          <strong>{context.next_action.title}</strong>
+          <p>{context.next_action.why_now}</p>
+          <small>{context.next_action.downstream_effect}</small>
+          {context.next_action.executable &&
+            context.next_action.target_route &&
+            context.next_action.action_label && (
+              <Link href={context.next_action.target_route}>
+                {context.next_action.action_label} →
+              </Link>
+            )}
+        </div>
+        {upstream && (
+          <div className={styles.upstreamState}>
+            <span className={styles.eyebrow}>Upstream state</span>
+            <strong>{upstream}</strong>
+          </div>
+        )}
+        {(core.newer_draft_exists || core.pending_human_gate_exists) && (
+          <div className={styles.authorityNotice}>
+            <span className={styles.eyebrow}>Draft distinction</span>
+            <p>
+              Core Anchor R{core.confirmed_revision_number ?? "—"} remains
+              authoritative.
+              {core.draft_revision_number
+                ? ` Draft R${core.draft_revision_number} is awaiting human action.`
+                : ""}
+            </p>
+          </div>
+        )}
+        {execution?.draft_revision_number && (
+          <div>
+            <span className={styles.eyebrow}>Current draft source</span>
+            <p>
+              {execution.draft_source
+                ? contextStateLabel(execution.draft_source)
+                : "Unknown"}
+            </p>
+          </div>
+        )}
+        <div>
+          <span className={styles.eyebrow}>Current production context</span>
+          <p>
+            {context.current_version.name
+              ? `${context.current_version.name}${context.current_version.version_number ? ` · v${context.current_version.version_number}` : ""}`
+              : "No current Production Version is recorded."}
+          </p>
+        </div>
+        {hasContextLinks && (
+          <div className={styles.contextLinks}>
+            <span className={styles.eyebrow}>Related context</span>
+            {core.link_target && context.role === "vfx_supervisor" && (
+              <Link href={core.link_target}>Open Intent →</Link>
+            )}
+            {context.attention.link_target && (
+              <Link href={context.attention.link_target}>Open Alignment →</Link>
+            )}
+            {execution?.link_target && context.role === "cg_supervisor" && (
+              <Link href={execution.link_target}>Open Execution →</Link>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
+/** Compact semantic-block correction (Artist-only, variant-safe):
+ * the prior per-field row grammar ("semantic siblings do not
+ * automatically mean equal-width columns") read as a settings/
+ * database table once every domain field had its own full-width row
+ * and divider -- density, not just column shape, was the actual
+ * problem. Replaced with one Anchor surface made of three compact
+ * reading blocks (Core Anchor, Execution Anchor, Readiness) plus one
+ * supporting-context footer: related facts about the same semantic
+ * object read as one continuous block (an identity line, a primary
+ * paragraph, then inline "Lead-in — text" clauses in the same flow),
+ * not as separate rows/label-columns/cards. Status badges attach to
+ * the block they actually qualify instead of clustering in the
+ * header, which stays a single compact line (kicker + collapse
+ * control only). Entirely separate markup from the shared
+ * `.summary`/`.controls`/`.expanded` below, so vfx_supervisor/
+ * cg_supervisor rendering is completely untouched -- this function is
+ * only ever reached for `role === "artist"`. */
+function ArtistExpandedAnchor({
+  context,
+  contentId,
+  toggleExpanded,
+  core,
+  execution,
+  direction,
+  upstream,
+  hasContextLinks,
+}: {
+  context: AnchorContextRead;
+  contentId: string;
+  toggleExpanded: () => void;
+  core: AnchorContextRead["core_anchor"];
+  execution: AnchorContextRead["execution_anchor"];
+  direction: string | null;
+  upstream: string | null;
+  hasContextLinks: boolean;
+}) {
+  return (
+    <section
+      className={styles.layer}
+      aria-label="Anchor context"
+      id={contentId}
+    >
+      <div className={styles.artistCompactHeader}>
+        <span className={styles.kicker}>
+          <Icon name="core-anchor" size="region" />
+          Anchor context
+        </span>
+        <button
+          type="button"
+          className={styles.disclosureButton}
+          aria-expanded={true}
+          aria-controls={contentId}
+          onClick={toggleExpanded}
+        >
+          <span>Collapse anchor context</span>
+          <span className={styles.chevron} aria-hidden="true" />
+        </button>
+      </div>
+
+      <div className={styles.artistBlocks}>
+        <ArtistCoreAnchorBlock core={core} />
+        <ArtistExecutionAnchorBlock
+          core={core}
+          execution={execution}
+          direction={direction}
+        />
+        <ArtistReadinessBlock context={context} upstream={upstream} />
+      </div>
+
+      <ArtistSupportingFooter
+        context={context}
+        hasContextLinks={hasContextLinks}
+      />
+    </section>
+  );
+}
+
+/** Core Anchor as one compact reading block: identity line, the
+ * creative-intent sentence as the primary paragraph, "Must preserve —"
+ * as an inline clause in the same block (not a separate labelled
+ * row), and draft distinction as quiet supporting metadata only when
+ * a draft/pending gate genuinely exists. */
+function ArtistCoreAnchorBlock({
+  core,
+}: {
+  core: AnchorContextRead["core_anchor"];
+}) {
+  const draftNotice =
+    core.newer_draft_exists || core.pending_human_gate_exists
+      ? `Core Anchor R${core.confirmed_revision_number ?? "—"} remains authoritative.${
+          core.draft_revision_number
+            ? ` Draft R${core.draft_revision_number} is awaiting human action.`
+            : ""
+        }`
+      : null;
+  return (
+    <div className={styles.semanticBlock}>
+      <p className={styles.blockIdentity}>
+        <span className={styles.blockIconCore}>
+          <Icon name="core-anchor" size="micro" />
+        </span>
+        <span>
+          Core Anchor {revisionLabel(core.confirmed_revision_number)} ·{" "}
+          {contextStateLabel(core.lifecycle_state)}
+        </span>
+      </p>
+      <p className={styles.blockBody}>
+        {conciseDirection(core.direction_summary) ??
+          "Core Anchor direction is unavailable."}
+      </p>
+      <p className={styles.blockClause}>
+        <span className={styles.clauseLead}>Must preserve —</span>{" "}
+        {core.must_preserve
+          ? stripGeneratorLabel(core.must_preserve)
+          : "No concise must-preserve item is recorded."}
+      </p>
+      {draftNotice && <p className={styles.blockMeta}>{draftNotice}</p>}
+    </div>
+  );
+}
+
+/** Execution Anchor as one compact reading block, the same shape as
+ * the Core Anchor block above -- identity line, current-direction
+ * paragraph, then "Allowed to vary —"/"Boundary —" as inline clauses
+ * in the same flow, draft source as quiet metadata. `direction` is
+ * the same execution-preferred/core-fallback value already resolved
+ * once for the collapsed state, kept identical here so the fallback
+ * semantics do not silently change. The Core/Execution authority
+ * split itself is never merged -- each block only ever states its own
+ * Anchor's facts. */
+function ArtistExecutionAnchorBlock({
+  core,
+  execution,
+  direction,
+}: {
+  core: AnchorContextRead["core_anchor"];
+  execution: AnchorContextRead["execution_anchor"];
+  direction: string | null;
+}) {
+  const draftSource = execution?.draft_revision_number
+    ? execution.draft_source
+      ? contextStateLabel(execution.draft_source)
+      : "Unknown"
+    : null;
+  return (
+    <div className={styles.semanticBlock}>
+      <p className={styles.blockIdentity}>
+        <span className={styles.blockIconExecution}>
+          <Icon name="execution-anchor" size="micro" />
+        </span>
+        <span>
+          Execution Anchor{" "}
+          {revisionLabel(execution?.confirmed_revision_number ?? null)} ·{" "}
+          {contextStateLabel(execution?.context_state ?? "missing")}
+        </span>
+      </p>
+      <p className={styles.blockBodyQuiet}>
+        {direction ?? "Execution direction is unavailable."}
+      </p>
+      <p className={styles.blockClause}>
+        <span className={styles.clauseLead}>Allowed to vary —</span>{" "}
+        {stripGeneratorLabel(
+          execution?.allowed_refinement ??
+            core.allowed_variation ??
+            "No concise variation boundary is recorded.",
+        )}
+      </p>
+      {execution?.execution_boundary && (
+        <p className={styles.blockClause}>
+          <span className={styles.clauseLead}>Boundary —</span>{" "}
+          {stripGeneratorLabel(execution.execution_boundary)}
+        </p>
+      )}
+      {draftSource && (
+        <p className={styles.blockMeta}>Draft source — {draftSource}</p>
+      )}
+    </div>
+  );
+}
+
+/** Readiness as one compact work-state block: the real attention
+ * badge lives in this block's own header (not a floating cluster),
+ * the next action's title/why-now/link are the primary statement and
+ * its supporting explanation, then "Attention —"/"Downstream —"/
+ * "Upstream —" are inline clauses. Attention deduplication: when
+ * `attention.summary` is absent, or happens to already equal
+ * `review_requirement`, the requirement renders exactly once instead
+ * of twice. Upstream state renders in this one place only -- the
+ * audit-confirmed duplicate (an identical header badge plus a
+ * secondary row repeating the same sentence) is removed; the
+ * underlying `upstreamState(...)` computation itself is unchanged. */
+function ArtistReadinessBlock({
+  context,
+  upstream,
+}: {
+  context: AnchorContextRead;
+  upstream: string | null;
+}) {
+  const attentionSummary = context.attention.summary;
+  const attentionRequirement = context.attention.review_requirement;
+  const showRequirementSecondary =
+    Boolean(attentionSummary) && attentionSummary !== attentionRequirement;
+  return (
+    <div className={styles.semanticBlock}>
+      <div className={styles.readinessHeader}>
+        <span className={styles.blockIdentity}>Readiness / next step</span>
+        <StatusBadge
+          status={attentionTone(context.attention.level)}
+          label={ATTENTION_LABEL[context.attention.level]}
+        />
+      </div>
+      <p className={styles.blockBody}>{context.next_action.title}</p>
+      {context.next_action.why_now && (
+        <p className={styles.blockClause}>{context.next_action.why_now}</p>
+      )}
+      {context.next_action.executable &&
+        context.next_action.target_route &&
+        context.next_action.action_label && (
+          <Link href={context.next_action.target_route}>
+            {context.next_action.action_label} →
+          </Link>
+        )}
+      <div className={styles.readinessSupporting}>
+        <p className={styles.blockClauseQuiet}>
+          <span className={styles.clauseLead}>Attention —</span>{" "}
+          {stripGeneratorLabel(attentionSummary ?? attentionRequirement)}
+        </p>
+        {showRequirementSecondary && (
+          <p className={styles.blockMeta}>{attentionRequirement}</p>
+        )}
+        {context.next_action.downstream_effect && (
+          <p className={styles.blockClauseQuiet}>
+            <span className={styles.clauseLead}>Downstream —</span>{" "}
+            {context.next_action.downstream_effect}
+          </p>
+        )}
+        {upstream && (
+          <p className={styles.blockClauseQuiet}>
+            <span className={styles.clauseLead}>Upstream —</span> {upstream}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Compact supporting-context footer: short inline metadata after the
+ * final restrained divider, not another full-width row per fact.
+ * Guidance state moves here (out of the old header badge cluster);
+ * Related Context keeps its capability in code but stays reserved
+ * only for the real, reachable case -- it renders nothing (not empty
+ * space) when Artist has no valid route, which matches the current
+ * backend contract where `attention.link_target` is only ever
+ * populated for the VFX Supervisor role. */
+function ArtistSupportingFooter({
+  context,
+  hasContextLinks,
+}: {
+  context: AnchorContextRead;
+  hasContextLinks: boolean;
+}) {
+  const guidanceTone =
+    context.guidance_state === "outdated"
+      ? "attention"
+      : context.guidance_state === "current"
+        ? "confirmed"
+        : "unavailable";
+  return (
+    <div className={styles.supportingFooter}>
+      <span className={styles.footerFact}>
+        {context.current_version.name
+          ? `${context.current_version.name}${context.current_version.version_number ? ` · v${context.current_version.version_number}` : ""}`
+          : "No current Production Version is recorded."}
+      </span>
+      <span className={styles.footerState} data-tone={guidanceTone}>
+        {GUIDANCE_LABEL[context.guidance_state]}
+      </span>
+      {hasContextLinks && context.attention.link_target && (
+        <Link href={context.attention.link_target}>Open Alignment →</Link>
+      )}
+    </div>
   );
 }

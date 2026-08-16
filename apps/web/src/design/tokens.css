@@ -1,10 +1,27 @@
 /* ICAS shared design tokens (Step 7B-1).
  *
+ * ICAS is a "Dark Precision Production Workspace" -- a frozen, unconditional
+ * product identity (docs/design/ICAS_DESIGN.md §2.1, §30.1), not a
+ * light-by-default theme that happens to also support dark. Dark visual-
+ * convergence pass (luminance correction): the palette below previously
+ * lived only inside `@media (prefers-color-scheme: dark)`, with the base
+ * `:root` defining a light palette instead. That meant every dark visual
+ * refinement was inert unless the *browser/OS* happened to be set to a dark
+ * preference -- the rendered product stayed light regardless of how the
+ * component-level dark styling was authored. The palette is now the base
+ * `:root` unconditionally; ICAS does not offer a light variant to opt out
+ * of, so there is nothing left to gate behind a media query.
+ *
  * Restrained, professional palette per docs/step-7/06_STEP_7_LOCKED_SOURCE_OF_TRUTH.md
- * §11-12: neutral base, violet Agent accent, blue/teal for production facts
- * and ftrack, amber for attention, red for blocking errors, grey for
- * history, green reserved only for confirmed technical success (never for
- * human-confirmed authority, which stays neutral).
+ * §11-12: neutral base, violet ICAS-purple selection/primary-action accent,
+ * steel-blue Agent/advisory accent, blue/teal for production facts and
+ * ftrack, amber for attention, red for blocking errors, grey for history.
+ * Owner-directed correction (dark visual-convergence, hierarchy pass):
+ * green is used restrained for confirmed / completed / successfully
+ * resolved states -- both technical and human-confirmed authority -- per
+ * the frozen ICAS_DESIGN.md §8.3 color semantics table. An earlier
+ * internal convention on this file reserved green for technical success
+ * only; that convention is superseded by this explicit owner decision.
  *
  * Consumed by CSS Modules in apps/web/src/design/** via var(--token-name).
  * Breakpoint values are documented here for reference but must be repeated
@@ -13,60 +30,89 @@
  */
 
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
 
   /* Surfaces */
-  --surface-page: #f6f7f9;
-  --surface-panel: #ffffff;
-  --surface-elevated: #ffffff;
-  --surface-muted: #edeff3;
+  --surface-page: #16181d;
+  --surface-panel: #1e2129;
+  --surface-elevated: #262a33;
+  --surface-muted: #262a33;
 
   /* Text */
-  --text-primary: #1a1d23;
-  --text-secondary: #464d59;
-  --text-muted: #767f8c;
+  --text-primary: #eef0f3;
+  --text-secondary: #c3c9d3;
+  --text-muted: #8b93a1;
   --text-on-accent: #ffffff;
 
   /* Borders */
-  --border-subtle: #e1e4ea;
-  --border-strong: #c3c9d3;
+  --border-subtle: #323844;
+  --border-strong: #454c5a;
 
-  /* Neutral / human authority (never green -- see --state-success) */
-  --authority-neutral-text: #1a1d23;
-  --authority-neutral-surface: #edeff3;
-  --authority-neutral-border: #9aa2b1;
+  /* Neutral / human authority */
+  --authority-neutral-text: #eef0f3;
+  --authority-neutral-surface: #262a33;
+  --authority-neutral-border: #6b7385;
 
-  /* Violet Agent accent (AI interpretation / AI proposal) */
-  --accent-agent: #6a4fd6;
-  --accent-agent-text: #4c359f;
-  --accent-agent-surface: #f2eefc;
-  --accent-agent-border: #b7a3ea;
+  /* Violet ICAS Purple: current selection / active navigation / Intent
+   * emphasis / primary Human action / intentional focus (ICAS_DESIGN.md
+   * §8.1 -- "Purple does not mean AI"). --accent-agent is the underlying
+   * color source; --accent-selected-* is the name call sites should use
+   * for selection/navigation/primary-action treatments so the token name
+   * itself no longer implies "this is Agent output." */
+  --accent-agent: #a892f0;
+  --accent-agent-text: #cabdf7;
+  --accent-agent-surface: #2a2340;
+  --accent-agent-border: #5b4a99;
+
+  --accent-selected: var(--accent-agent);
+  --accent-selected-text: var(--accent-agent-text);
+  --accent-selected-surface: var(--accent-agent-surface);
+  --accent-selected-border: var(--accent-agent-border);
+
+  /* Steel/cool-slate Agent advisory accent (ai-interpretation, ai-proposal,
+   * and other Agent-authored content). Owner decision (dark
+   * visual-convergence, hierarchy pass): Agent/advisory identity no longer
+   * uses ICAS Purple, since purple is reserved for
+   * current/selected/Intent/primary-Human-action and using it for Agent
+   * output encoded a false "purple = AI" association. Deliberately its own
+   * hue -- not a reuse of --authority-neutral (human-confirmed authority),
+   * --state-historical (superseded/historical), or --accent-fact
+   * (production evidence/ftrack) -- so Agent-advisory content stays
+   * visually distinct from those other categories rather than borrowing a
+   * meaning that already belongs to something else. */
+  --accent-advisory: #93a0b3;
+  --accent-advisory-text: #b8c2d1;
+  --accent-advisory-surface: #232830;
+  --accent-advisory-border: #4a5568;
 
   /* Blue/teal production-fact + ftrack accent */
-  --accent-fact: #146b8c;
-  --accent-fact-text: #0f5670;
-  --accent-fact-surface: #e7f3f7;
-  --accent-fact-border: #9dc7d6;
+  --accent-fact: #6fc0dd;
+  --accent-fact-text: #9fd6ea;
+  --accent-fact-surface: #12313d;
+  --accent-fact-border: #2c5c6e;
 
   /* Amber attention / unresolved */
-  --state-attention: #92600a;
-  --state-attention-surface: #fbf1de;
-  --state-attention-border: #e0b667;
+  --state-attention: #e3ac52;
+  --state-attention-surface: #3a2c12;
+  --state-attention-border: #7a5a20;
 
   /* Red blocking / error */
-  --state-error: #a3271f;
-  --state-error-surface: #fbeceb;
-  --state-error-border: #e3a29c;
+  --state-error: #e2857d;
+  --state-error-surface: #3a1e1c;
+  --state-error-border: #7a352e;
 
   /* Grey historical / muted */
-  --state-historical: #5c636e;
-  --state-historical-surface: #eef0f3;
-  --state-historical-border: #c3c9d3;
+  --state-historical: #a7afbc;
+  --state-historical-surface: #262a33;
+  --state-historical-border: #454c5a;
 
-  /* Green technical success only -- never for human-confirmed authority */
-  --state-success: #1e7b45;
-  --state-success-surface: #e9f5ee;
-  --state-success-border: #9bcdad;
+  /* Green: confirmed / completed / successfully resolved (ICAS_DESIGN.md
+   * §8.3), restrained -- covers both technical success and human-confirmed
+   * authority states (e.g. a confirmed Execution Anchor). Must stay
+   * restrained and never visually dominate a page. */
+  --state-success: #6fc191;
+  --state-success-surface: #16301f;
+  --state-success-border: #2f5c3e;
 
   /* Spacing scale */
   --space-1: 0.25rem;
@@ -85,12 +131,12 @@
   --radius-pill: 999px;
 
   /* Shadow */
-  --shadow-sm: 0 1px 2px rgba(20, 22, 28, 0.06);
-  --shadow-md: 0 4px 12px rgba(20, 22, 28, 0.08);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
 
   /* Focus ring */
-  --focus-ring-color: #2f5fd6;
-  --focus-ring: 0 0 0 3px rgba(47, 95, 214, 0.35);
+  --focus-ring-color: #7fa4ec;
+  --focus-ring: 0 0 0 3px rgba(127, 164, 236, 0.4);
 
   /* Typography */
   --font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -116,56 +162,4 @@
   /* Breakpoints (reference only -- repeat literal px in @media rules) */
   --breakpoint-tablet: 768px;
   --breakpoint-desktop: 1024px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --surface-page: #16181d;
-    --surface-panel: #1e2129;
-    --surface-elevated: #262a33;
-    --surface-muted: #262a33;
-
-    --text-primary: #eef0f3;
-    --text-secondary: #c3c9d3;
-    --text-muted: #8b93a1;
-
-    --border-subtle: #323844;
-    --border-strong: #454c5a;
-
-    --authority-neutral-text: #eef0f3;
-    --authority-neutral-surface: #262a33;
-    --authority-neutral-border: #6b7385;
-
-    --accent-agent: #a892f0;
-    --accent-agent-text: #cabdf7;
-    --accent-agent-surface: #2a2340;
-    --accent-agent-border: #5b4a99;
-
-    --accent-fact: #6fc0dd;
-    --accent-fact-text: #9fd6ea;
-    --accent-fact-surface: #12313d;
-    --accent-fact-border: #2c5c6e;
-
-    --state-attention: #e3ac52;
-    --state-attention-surface: #3a2c12;
-    --state-attention-border: #7a5a20;
-
-    --state-error: #e2857d;
-    --state-error-surface: #3a1e1c;
-    --state-error-border: #7a352e;
-
-    --state-historical: #a7afbc;
-    --state-historical-surface: #262a33;
-    --state-historical-border: #454c5a;
-
-    --state-success: #6fc191;
-    --state-success-surface: #16301f;
-    --state-success-border: #2f5c3e;
-
-    --focus-ring-color: #7fa4ec;
-    --focus-ring: 0 0 0 3px rgba(127, 164, 236, 0.4);
-
-    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
-  }
 }

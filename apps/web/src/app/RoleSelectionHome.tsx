@@ -45,6 +45,7 @@ export function RoleSelectionHome({
               <RoleEntryButton
                 role={card.role}
                 label={`Enter as ${card.title}`}
+                pendingLabel={`Entering as ${card.title}…`}
                 returnTo={matchesReturnTo ? returnTo : null}
               />
             </article>

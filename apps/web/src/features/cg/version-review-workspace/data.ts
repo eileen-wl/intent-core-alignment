@@ -38,6 +38,14 @@ export interface VersionReviewWorkspaceData {
   item: CgInboxItemRead;
   versions: VersionReviewEntry[];
   coreAnchorSummary: string | null;
+  /** Real revision number/status of the same active Core Anchor
+   * revision `coreAnchorSummary` is drawn from -- already present on
+   * `CoreAnchorRevisionRead` from the same `listCoreAnchorRevisions`
+   * call, just not previously surfaced. Lets presentation show a
+   * compact "R2 · Confirmed" identity instead of repeating the long
+   * creative-direction sentence. */
+  coreAnchorRevisionNumber: number | null;
+  coreAnchorStatus: string | null;
   activeExecutionRevision: ExecutionAnchorRevisionRead | null;
   cgSupervisorReviews: CGSupervisorReviewRead[];
 }
@@ -74,13 +82,17 @@ export async function loadVersionReviewWorkspaceData(
   );
 
   let coreAnchorSummary: string | null = null;
+  let coreAnchorRevisionNumber: number | null = null;
+  let coreAnchorStatus: string | null = null;
   if (coreAnchor !== null && coreAnchor.active_revision_id !== null) {
     const coreRevisions: CoreAnchorRevisionRead[] =
       await listCoreAnchorRevisions(item.shot_id);
-    coreAnchorSummary =
-      coreRevisions.find(
-        (revision) => revision.id === coreAnchor.active_revision_id,
-      )?.core_summary ?? null;
+    const activeCoreRevision = coreRevisions.find(
+      (revision) => revision.id === coreAnchor.active_revision_id,
+    );
+    coreAnchorSummary = activeCoreRevision?.core_summary ?? null;
+    coreAnchorRevisionNumber = activeCoreRevision?.revision_number ?? null;
+    coreAnchorStatus = activeCoreRevision?.status ?? null;
   }
 
   const activeExecutionRevision =
@@ -94,6 +106,8 @@ export async function loadVersionReviewWorkspaceData(
     item,
     versions: versionEntries,
     coreAnchorSummary,
+    coreAnchorRevisionNumber,
+    coreAnchorStatus,
     activeExecutionRevision,
     cgSupervisorReviews,
   };

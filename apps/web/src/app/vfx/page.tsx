@@ -9,16 +9,21 @@ import {
   fetchVfxAnchorContextSummaries,
   fetchVfxInbox,
 } from "@/features/vfx/api";
-import { exitRoleView } from "../demo/actions";
 import { VfxWorkspacePage } from "./VfxWorkspacePage";
 
-/** The middleware (src/middleware.ts) is the authoritative route
- * guard; this check is a defense-in-depth double check, not the
- * primary gate (brief §9). */
+/** The role gate itself now lives in `app/vfx/layout.tsx`
+ * (`RoleWorkspaceLayout`), which wraps this page -- by the time this
+ * component runs, `identity.role === "vfx_supervisor"` is already
+ * guaranteed. `resolveIdentity()` is still called directly here (not
+ * threaded down from the layout) since Next.js layouts and pages are
+ * independent Server Components with no prop-passing between them; the
+ * `redirect` below is an unreachable-in-practice defensive fallback
+ * (matching the layout's own check) purely so `identity` narrows to
+ * non-null for `actorHeaders`, not a second real gate. */
 export default async function Page() {
   const identity = await resolveIdentity();
   if (identity?.role !== "vfx_supervisor") {
-    redirect("/demo");
+    redirect("/");
   }
 
   let inbox: VfxInboxRead | null;
@@ -35,11 +40,5 @@ export default async function Page() {
     inbox = null;
   }
 
-  return (
-    <VfxWorkspacePage
-      inbox={inbox}
-      anchorActions={anchorActions}
-      onExitRole={exitRoleView}
-    />
-  );
+  return <VfxWorkspacePage inbox={inbox} anchorActions={anchorActions} />;
 }

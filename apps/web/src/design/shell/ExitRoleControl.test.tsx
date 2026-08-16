@@ -24,4 +24,25 @@ describe("ExitRoleControl", () => {
     );
     expect(onExit).toHaveBeenCalled();
   });
+
+  it("acknowledges the click immediately: disables and relabels itself while pending", async () => {
+    let resolveExit: () => void = () => {};
+    const onExit = vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveExit = resolve;
+        }),
+    );
+    render(<ExitRoleControl onExit={onExit} />);
+
+    const user = userEvent.setup();
+    const button = screen.getByRole("button", { name: "Exit role view" });
+    await user.click(button);
+
+    const pendingButton = screen.getByRole("button", { name: "Exiting…" });
+    expect(pendingButton).toBeDisabled();
+    expect(pendingButton).toHaveAttribute("aria-busy", "true");
+
+    resolveExit();
+  });
 });

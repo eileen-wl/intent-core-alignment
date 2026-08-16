@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
+import { Icon } from "@/design";
 import {
   createReviewNoteAction,
   escalateTaskAction,
@@ -14,7 +15,17 @@ import styles from "./VersionReviewActions.module.css";
  * Note, generate an advisory Agent Execution Review for the active
  * Execution Anchor revision, and escalate to VFX. No fabricated
  * acknowledge/approval state -- `ReviewNote` has no status field to
- * back one. */
+ * back one.
+ *
+ * Truthful action priority (Review Workspace pass): Recording a Review
+ * Note is the Human CG Supervisor's own direct, always-available
+ * response -- the literal "respond" in the Review Archetype's "inspect
+ * and respond" goal -- so it is the one primary (ICAS Purple) action.
+ * Generating/regenerating an Execution Review triggers Agent work, not
+ * a Human response, so it stays secondary/neutral. Escalating is the
+ * conditional "something needs VFX attention" path, kept in its
+ * existing restrained-amber treatment. Not all three are equally
+ * primary. */
 export function VersionReviewActions({
   taskId,
   versionId,
@@ -54,7 +65,7 @@ export function VersionReviewActions({
       <div className={styles.actionRow}>
         <button
           type="button"
-          className={styles.secondaryButton}
+          className={styles.primaryButton}
           disabled={isPending || noteContent.trim().length === 0}
           onClick={() => {
             setError(null);
@@ -72,6 +83,7 @@ export function VersionReviewActions({
             });
           }}
         >
+          <Icon name="review-note" size="standard" />
           {isPending ? "Recording…" : "Record Review Note"}
         </button>
 
@@ -97,6 +109,7 @@ export function VersionReviewActions({
               });
             }}
           >
+            <Icon name="regenerate" size="standard" />
             {isPending
               ? "Generating…"
               : hasCurrentReview
@@ -111,6 +124,7 @@ export function VersionReviewActions({
           disabled={isPending}
           onClick={() => setShowEscalationForm((prev) => !prev)}
         >
+          <Icon name="escalate" size="standard" />
           Escalate to VFX
         </button>
       </div>

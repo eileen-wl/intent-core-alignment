@@ -1,3 +1,5 @@
+export { Icon, type IconName, type IconSize } from "./Icon";
+export { SignalStrip, type SignalStripItem } from "./SignalStrip";
 export { PageHeader } from "./PageHeader";
 export { SectionHeader } from "./SectionHeader";
 export { SummaryCard } from "./SummaryCard";
@@ -8,6 +10,7 @@ export { EmptyState } from "./EmptyState";
 export { ErrorState } from "./ErrorState";
 export { PermissionState } from "./PermissionState";
 export { LoadingSkeleton } from "./LoadingSkeleton";
+export { PendingLinkContent } from "./PendingLinkContent";
 export { ConfirmationDialog } from "./ConfirmationDialog";
 export { WorkingDirectionSection } from "./WorkingDirectionSection";
 export { DetailedContext } from "./DetailedContext";

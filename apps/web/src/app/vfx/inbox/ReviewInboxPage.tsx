@@ -1,24 +1,42 @@
+"use client";
+
+import { useMemo, useState } from "react";
 import type {
   AnchorContextSummaryRead,
+  VfxInboxItemRead,
   VfxInboxRead,
 } from "@intent-core/contracts";
 import Link from "next/link";
 
 import {
-  AppShell,
   Breadcrumbs,
   EmptyState,
   ErrorState,
+  Icon,
   PageHeader,
 } from "@/design";
-import { DEMO_IDENTITY_NAME, ROLE_LABEL } from "@/lib/demoIdentity";
-import { ROLE_SIDEBAR_ITEMS } from "@/lib/roleNavigation";
 import {
   adaptCurrentFocusToWorkItems,
   adaptEscalationWorkItems,
   adaptVersionReviewWorkItems,
+  type ReviewWorkItem,
+  workItemIcon,
 } from "@/features/vfx/review-inbox/workItem";
+import { groupByCategory } from "@/lib/workItemGrouping";
+import { coreAnchorStateLabel } from "../vfxWording";
 import { WorkItemRow } from "../WorkItemRow";
+import styles from "./ReviewInboxPage.module.css";
+
+const ALL_VALUE = "__all__";
+/** Same fixed enum, same order as `ShotsListPage.tsx`'s
+ * `CORE_ANCHOR_STATES` -- every possible state is always offered, not
+ * only the ones present in today's Inbox, matching that page's own
+ * filter semantics. */
+const CORE_ANCHOR_STATES: VfxInboxItemRead["core_anchor_state"][] = [
+  "none",
+  "draft_pending",
+  "confirmed",
+];
 
 /** `/vfx/inbox` -- Review Inbox (Step 7C-1 content-architecture
  * correction). Work-item-first: the primary information object is the
@@ -38,11 +56,9 @@ import { WorkItemRow } from "../WorkItemRow";
 export function ReviewInboxPage({
   inbox,
   anchorContexts = {},
-  onExitRole,
 }: {
   inbox: VfxInboxRead | null;
   anchorContexts?: Record<string, AnchorContextSummaryRead | null>;
-  onExitRole: () => void | Promise<void>;
 }) {
   const workItems = inbox
     ? [
@@ -53,13 +69,7 @@ export function ReviewInboxPage({
     : null;
 
   return (
-    <AppShell
-      name={DEMO_IDENTITY_NAME.vfx_supervisor}
-      role={ROLE_LABEL.vfx_supervisor}
-      onExitRole={onExitRole}
-      sidebarItems={ROLE_SIDEBAR_ITEMS.vfx_supervisor}
-      currentPath="/vfx/inbox"
-    >
+    <>
       <Breadcrumbs items={[{ label: "Review Inbox" }]} />
       <PageHeader
         title="Review Inbox"
@@ -78,22 +88,136 @@ export function ReviewInboxPage({
           action={<Link href="/vfx/shots">Browse Shots →</Link>}
         />
       ) : (
-        <>
-          <p>Showing {workItems.length} items requiring review</p>
-          <div role="list">
-            {workItems.map((item) => (
-              <div role="listitem" key={item.id}>
-                <WorkItemRow
-                  item={item}
-                  anchorContext={
-                    item.shot ? anchorContexts[item.shot.id] : null
-                  }
-                />
-              </div>
-            ))}
-          </div>
-        </>
+        <ReviewInboxContent
+          workItems={workItems}
+          anchorContexts={anchorContexts}
+        />
       )}
-    </AppShell>
+    </>
+  );
+}
+
+/** Chunks the flat work-item collection by each item's own honest
+ * `category` (never a new classification), and adds a Project filter
+ * matching the pattern already established on `ShotsListPage.tsx`.
+ * Group order follows each group's highest-priority item, so the
+ * overall priority ordering is unchanged -- only same-category items
+ * now read together instead of interleaved. */
+function ReviewInboxContent({
+  workItems,
+  anchorContexts,
+}: {
+  workItems: ReviewWorkItem[];
+  anchorContexts: Record<string, AnchorContextSummaryRead | null>;
+}) {
+  const [projectFilter, setProjectFilter] = useState(ALL_VALUE);
+  const [coreAnchorStateFilter, setCoreAnchorStateFilter] = useState(ALL_VALUE);
+
+  const projects = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          workItems
+            .map((item) => item.project?.name)
+            .filter((name): name is string => Boolean(name)),
+        ),
+      ).sort(),
+    [workItems],
+  );
+
+  const filtered = useMemo(
+    () =>
+      workItems.filter((item) => {
+        if (projectFilter !== ALL_VALUE && item.project?.name !== projectFilter)
+          return false;
+        if (
+          coreAnchorStateFilter !== ALL_VALUE &&
+          item.coreAnchorState !== coreAnchorStateFilter
+        )
+          return false;
+        return true;
+      }),
+    [workItems, projectFilter, coreAnchorStateFilter],
+  );
+
+  const groups = useMemo(() => groupByCategory(filtered), [filtered]);
+
+  return (
+    <div>
+      {/* Worklist archetype target hierarchy (ICAS_DESIGN.md §6.1):
+       * current worklist state before filter/scope controls, before the
+       * work-item list. Same real count/wording as before, just
+       * reordered and given a touch more weight than ordinary body
+       * text -- not a dashboard KPI. */}
+      <p className={styles.worklistState}>
+        Showing {filtered.length} items requiring review
+      </p>
+
+      <div className={styles.filters}>
+        <label className={styles.filterLabel}>
+          Project
+          <select
+            className={styles.filterSelect}
+            value={projectFilter}
+            onChange={(event) => setProjectFilter(event.target.value)}
+          >
+            <option value={ALL_VALUE}>All Projects</option>
+            {projects.map((project) => (
+              <option key={project} value={project}>
+                {project}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className={styles.filterLabel}>
+          Core Anchor state
+          <select
+            className={styles.filterSelect}
+            value={coreAnchorStateFilter}
+            onChange={(event) => setCoreAnchorStateFilter(event.target.value)}
+          >
+            <option value={ALL_VALUE}>All states</option>
+            {CORE_ANCHOR_STATES.map((state) => (
+              <option key={state} value={state}>
+                {coreAnchorStateLabel(state)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
+      {filtered.length === 0 ? (
+        <EmptyState title="No items match this filter" />
+      ) : (
+        groups.map((group) => {
+          const icon = workItemIcon(group.category);
+          return (
+            <section
+              key={group.category || group.items[0].id}
+              className={styles.group}
+            >
+              <h2 className={styles.groupHeading}>
+                {icon && <Icon name={icon} size="micro" />}
+                {group.category} — {group.items.length}{" "}
+                {group.items.length === 1 ? "item" : "items"}
+              </h2>
+              <div role="list">
+                {group.items.map((item) => (
+                  <div role="listitem" key={item.id}>
+                    <WorkItemRow
+                      item={item}
+                      anchorContext={
+                        item.shot ? anchorContexts[item.shot.id] : null
+                      }
+                    />
+                  </div>
+                ))}
+              </div>
+            </section>
+          );
+        })
+      )}
+    </div>
   );
 }

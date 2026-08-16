@@ -1,7 +1,7 @@
 import type { VfxInboxItemRead, VfxInboxRead } from "@intent-core/contracts";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { ShotsListPage } from "./ShotsListPage";
 
@@ -53,21 +53,13 @@ function buildInbox(items: VfxInboxItemRead[]): VfxInboxRead {
 }
 
 describe("ShotsListPage", () => {
-  it("marks Shots current in the sidebar", () => {
-    render(<ShotsListPage inbox={buildInbox([])} onExitRole={vi.fn()} />);
-    expect(screen.getByRole("link", { name: "Shots" })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
-  });
-
   it("shows an honest error state when the Inbox failed to load", () => {
-    render(<ShotsListPage inbox={null} onExitRole={vi.fn()} />);
+    render(<ShotsListPage inbox={null} />);
     expect(screen.getByText("Shots is unavailable")).toBeVisible();
   });
 
   it("shows an honest empty state when there are no Shots at all", () => {
-    render(<ShotsListPage inbox={buildInbox([])} onExitRole={vi.fn()} />);
+    render(<ShotsListPage inbox={buildInbox([])} />);
     expect(screen.getByText("No Shots exist yet")).toBeVisible();
   });
 
@@ -83,7 +75,6 @@ describe("ShotsListPage", () => {
             relevant_task_id: null,
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     expect(
@@ -109,7 +100,6 @@ describe("ShotsListPage", () => {
             shot_name: "Shot B",
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     expect(screen.getByText("Showing 2 of 2 Shots")).toBeVisible();
@@ -137,7 +127,6 @@ describe("ShotsListPage", () => {
             core_anchor_state: "none",
           }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
 
@@ -155,7 +144,6 @@ describe("ShotsListPage", () => {
         inbox={buildInbox([
           buildItem({ shot_id: "s1", project_name: "D1 Demo Project" }),
         ])}
-        onExitRole={vi.fn()}
       />,
     );
     const projectSelect = screen.getByLabelText("Project");
@@ -168,14 +156,76 @@ describe("ShotsListPage", () => {
 
   it("opening a row goes to the Shot's own Overview", () => {
     render(
-      <ShotsListPage
-        inbox={buildInbox([buildItem({ shot_id: "s1" })])}
-        onExitRole={vi.fn()}
-      />,
+      <ShotsListPage inbox={buildInbox([buildItem({ shot_id: "s1" })])} />,
     );
     const links = screen.getAllByRole("link");
     expect(
       links.some((link) => link.getAttribute("href") === "/vfx/shots/s1"),
     ).toBe(true);
+  });
+
+  it("omits the meaningless 'No signal' attention line but shows a real attention state", () => {
+    render(
+      <ShotsListPage
+        inbox={buildInbox([
+          buildItem({
+            shot_id: "s1",
+            shot_name: "Shot Quiet",
+            latest_signal_attention_level: null,
+          }),
+          buildItem({
+            shot_id: "s2",
+            shot_name: "Shot Loud",
+            latest_signal_attention_level: "high",
+          }),
+        ])}
+      />,
+    );
+    expect(screen.queryByText("No signal")).not.toBeInTheDocument();
+    expect(screen.getByText("Human review required")).toBeVisible();
+  });
+
+  it("builds the Shot-identity plate from real Shot name and Version identity only", () => {
+    render(
+      <ShotsListPage
+        inbox={buildInbox([
+          buildItem({
+            shot_id: "s1",
+            shot_name: "Shot 010 — Final confrontation",
+            relevant_version_name: "D1_STEP3_VFX_REVIEW_001",
+            relevant_version_number: 1,
+          }),
+        ])}
+      />,
+    );
+    expect(screen.getByText("Shot 010 — Final confrontation")).toBeVisible();
+    expect(screen.getByText("D1_STEP3_VFX_REVIEW_001 (v1)")).toBeVisible();
+  });
+
+  it("renders object-first: no full AnchorContextSummary, no action-oriented CTA", () => {
+    render(
+      <ShotsListPage
+        inbox={buildInbox([
+          buildItem({
+            current_focus: {
+              focus_type: "core_anchor_gate_pending",
+              title: "Core Anchor draft awaiting your confirmation",
+              explanation: "A proposed revision is ready for review.",
+              target_route: "/vfx/shots/s1/intent",
+              primary_action_label: "Review and confirm",
+              actionable: true,
+            },
+          }),
+        ])}
+      />,
+    );
+    expect(
+      screen.queryByText("Anchor context unavailable"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("Core Anchor draft awaiting your confirmation"),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText("Review and confirm")).not.toBeInTheDocument();
+    expect(screen.getByText("Open Shot →")).toBeVisible();
   });
 });

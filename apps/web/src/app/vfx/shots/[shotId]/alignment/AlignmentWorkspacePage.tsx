@@ -1,26 +1,29 @@
 "use client";
 
-import Link from "next/link";
 import type {
-  AnchorContextRead,
   CoreAnchorRevisionRead,
+  CrossRoleAssessmentRead,
   CrossRoleFinding,
   VersionRead,
 } from "@intent-core/contracts";
 
 import {
-  AuthorityBoundary,
   AuthorityLabel,
-  AgentContributionPanel,
-  EmptyState,
-  EvidenceLayerSection,
+  ErrorState,
+  EvidenceProvenanceDrawer,
+  Icon,
   MetadataRow,
+  SignalStrip,
+  type SignalStripItem,
+  StatusBadge,
+  type StatusBadgeStatus,
+  stripGeneratorLabel,
 } from "@/design";
 import { humanRoleLabel } from "@/lib/humanRoleLabel";
 import type { AlignmentWorkspaceData } from "@/features/vfx/alignment-workspace/data";
 import type { EvidenceReferenceLike } from "@/design";
-import { VfxShotWorkspaceFrame } from "../VfxShotWorkspaceFrame";
-import { GenerateAssessmentButton } from "./GenerateAssessmentButton";
+import { DepartmentExecutionStrip } from "./DepartmentExecutionStrip";
+import { HumanAttentionAction } from "./HumanAttentionAction";
 import styles from "./AlignmentWorkspacePage.module.css";
 
 function versionLabel(version: VersionRead | undefined): string {
@@ -33,6 +36,275 @@ function versionLabel(version: VersionRead | undefined): string {
 function revisionLabel(revision: CoreAnchorRevisionRead | undefined): string {
   if (!revision) return "Unknown Core Anchor Revision";
   return `Revision ${revision.revision_number}${revision.core_summary ? ` — ${revision.core_summary}` : ""}`;
+}
+
+/** The deterministic Cross-role Assessment generator writes its
+ * `executive_summary` as a fixed, mechanical sentence encoding exact
+ * finding counts with generator-template pluralization syntax --
+ * "tension(s)", "risk(s)", "dependency(ies)"
+ * (`cross_role_assessment_service.py`'s
+ * `DeterministicCrossRoleAssessmentGenerator.generate`). That is
+ * implementation-facing syntax, not acceptable product copy, and the
+ * embedded numbers are a text snapshot taken at generation time that
+ * can go stale relative to the assessment's own finding arrays -- e.g.
+ * the D1 demo seed's `_recomputed_executive_summary` exists
+ * specifically because department findings get appended to a base
+ * assessment *after* generation via `model_copy`, carrying the
+ * pre-augmentation sentence forward unchanged. Detects only that exact
+ * known sentence shape (ignoring its embedded digits entirely -- see
+ * `crossRoleCountsPhrase` below, which is always given the assessment
+ * object's own real array lengths instead); anything else (including
+ * genuine free-form Agent prose with no embedded counts) has no
+ * verifiable numeric claim to normalize and is shown as recorded. */
+const KNOWN_COUNT_SENTENCE =
+  /^\d+ cross-role tension\(s\), \d+ local-optimum risk\(s\), and \d+ unresolved dependency\(ies\) considered across/;
+
+function countPhrase(count: number, singular: string, plural: string): string {
+  return `${count} ${count === 1 ? singular : plural}`;
+}
+
+function joinNaturally(parts: string[]): string {
+  if (parts.length <= 1) return parts.join("");
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(", ")}, and ${parts[parts.length - 1]}`;
+}
+
+/** Natural-language, correctly-pluralized phrase for a cross-role
+ * assessment's three attention-relevant finding categories, built from
+ * the assessment's own real array lengths (never from digits embedded
+ * in stored text). Zero-count categories are omitted rather than
+ * awkwardly announced ("0 local-optimum risks"), since omitting a
+ * category that has nothing to report doesn't change the meaning. */
+function crossRoleCountsPhrase(
+  output: Pick<
+    CrossRoleAssessmentRead["assessment_output"],
+    "cross_role_tensions" | "local_optimum_risks" | "unresolved_dependencies"
+  >,
+): string {
+  const parts: string[] = [];
+  const tensions = output.cross_role_tensions.length;
+  const risks = output.local_optimum_risks.length;
+  const dependencies = output.unresolved_dependencies.length;
+  if (tensions > 0) {
+    parts.push(
+      countPhrase(tensions, "cross-role tension", "cross-role tensions"),
+    );
+  }
+  if (risks > 0) {
+    parts.push(countPhrase(risks, "local-optimum risk", "local-optimum risks"));
+  }
+  if (dependencies > 0) {
+    parts.push(
+      countPhrase(
+        dependencies,
+        "unresolved dependency",
+        "unresolved dependencies",
+      ),
+    );
+  }
+  if (parts.length === 0) {
+    return "no cross-role tensions, local-optimum risks, or unresolved dependencies";
+  }
+  return joinNaturally(parts);
+}
+
+/** Alignment Signal's primary diagnosis. Only reformats text matching
+ * the known generator-template shape (see `KNOWN_COUNT_SENTENCE`) --
+ * genuine free-form Agent prose passes through unchanged. Always uses
+ * `output`'s own live counts, the same real array lengths the Signal
+ * Strip and Detailed Assessment category headings use elsewhere on
+ * this page. */
+function currentDiagnosisText(
+  executiveSummary: string,
+  output: CrossRoleAssessmentRead["assessment_output"],
+): string {
+  const cleaned = stripGeneratorLabel(executiveSummary);
+  if (!KNOWN_COUNT_SENTENCE.test(cleaned)) {
+    return cleaned;
+  }
+  return (
+    `Current assessment identifies ${crossRoleCountsPhrase(output)} across ` +
+    "the VFX Supervisor, CG Supervisor, and Artist Agent outputs."
+  );
+}
+
+/** CG-validated Signal Strip backport (ICAS_VISUAL_LANGUAGE_V1 §8.5):
+ * three genuinely distinct real-count metrics. `unresolved_dependencies`
+ * is deliberately shown once, labelled "Open questions" -- the same
+ * display name the Detailed Assessment's own category heading already
+ * uses for that exact field -- rather than also listing it under an
+ * "Unresolved dependencies" item, which would represent the same real
+ * number twice under two names. */
+function alignmentSignalStripItems(
+  output: CrossRoleAssessmentRead["assessment_output"],
+): SignalStripItem[] {
+  return [
+    {
+      icon: "coordination",
+      label: "Cross-role tensions",
+      count: output.cross_role_tensions.length,
+    },
+    {
+      icon: "risk",
+      label: "Local-optimum risks",
+      count: output.local_optimum_risks.length,
+    },
+    {
+      icon: "question",
+      label: "Open questions",
+      count: output.unresolved_dependencies.length,
+    },
+  ];
+}
+
+const PREVIEW_SIZE = 2;
+
+/** Owner-approved correction: the "Most decision-relevant findings"
+ * preview answers "what should the VFX Supervisor look at right now?",
+ * not "are there any High-priority records?". Selects from the
+ * highest real priority actually present among the four
+ * attention-relevant categories (never aligned findings, which are
+ * confirmations, not attention items) -- High if any exist, else
+ * Medium, else Low, never inventing a priority or rewriting a
+ * finding's real text. */
+function decisionRelevantFindings(
+  output: CrossRoleAssessmentRead["assessment_output"],
+): CrossRoleFinding[] {
+  const attentionRelevant = [
+    ...output.cross_role_tensions,
+    ...output.local_optimum_risks,
+    ...output.unresolved_dependencies,
+    ...output.human_coordination_priorities,
+  ];
+  for (const priority of ["high", "medium", "low"] as const) {
+    const atPriority = attentionRelevant.filter(
+      (finding) => finding.priority === priority,
+    );
+    if (atPriority.length > 0) {
+      return atPriority.slice(0, PREVIEW_SIZE);
+    }
+  }
+  return [];
+}
+
+const ATTENTION_BADGE_STATUS: Record<
+  "low" | "medium" | "high",
+  StatusBadgeStatus
+> = {
+  low: "confirmed",
+  medium: "attention",
+  high: "blocking",
+};
+
+const ATTENTION_LABEL: Record<"low" | "medium" | "high", string> = {
+  low: "Low attention",
+  medium: "Medium attention",
+  high: "High attention",
+};
+
+const PRIORITY_CLASS: Record<CrossRoleFinding["priority"], string> = {
+  low: "",
+  medium: styles.priorityMedium,
+  high: styles.priorityHigh,
+};
+
+const SEVERITY_RANK: Record<CrossRoleFinding["priority"], number> = {
+  low: 0,
+  medium: 1,
+  high: 2,
+};
+
+/** The single highest-severity signal across a cross-role assessment's
+ * three attention-relevant finding categories -- e.g. "3 high-priority
+ * local-optimum risks". Two assessments can share identical totals (the
+ * D1 Golden Journey's conflict/resolved milestone pair both land on 2
+ * tensions/3 risks/1 dependency) while differing materially in
+ * severity; this surfaces that difference instead of the count alone.
+ * On a tie (two categories reach the same top priority), the earlier
+ * category in cross-role-tensions/local-optimum-risks/unresolved-
+ * dependencies order wins -- a deterministic, arbitrary-but-stable
+ * choice, not a claim that one tied category matters more. `null` only
+ * when every category is empty. */
+function highestSeveritySignal(
+  output: Pick<
+    CrossRoleAssessmentRead["assessment_output"],
+    "cross_role_tensions" | "local_optimum_risks" | "unresolved_dependencies"
+  >,
+): { label: string; priority: CrossRoleFinding["priority"] } | null {
+  const categories: {
+    findings: CrossRoleFinding[];
+    singular: string;
+    plural: string;
+  }[] = [
+    {
+      findings: output.cross_role_tensions,
+      singular: "cross-role tension",
+      plural: "cross-role tensions",
+    },
+    {
+      findings: output.local_optimum_risks,
+      singular: "local-optimum risk",
+      plural: "local-optimum risks",
+    },
+    {
+      findings: output.unresolved_dependencies,
+      singular: "unresolved dependency",
+      plural: "unresolved dependencies",
+    },
+  ];
+  let best: { label: string; priority: CrossRoleFinding["priority"] } | null =
+    null;
+  for (const { findings, singular, plural } of categories) {
+    if (findings.length === 0) continue;
+    const topPriority = findings.reduce<CrossRoleFinding["priority"]>(
+      (acc, finding) =>
+        SEVERITY_RANK[finding.priority] > SEVERITY_RANK[acc]
+          ? finding.priority
+          : acc,
+      "low",
+    );
+    if (!best || SEVERITY_RANK[topPriority] > SEVERITY_RANK[best.priority]) {
+      const noun = findings.length === 1 ? singular : plural;
+      best = {
+        label: `${findings.length} ${topPriority}-priority ${noun}`,
+        priority: topPriority,
+      };
+    }
+  }
+  return best;
+}
+
+/** Assessment History row summary. Replaces a counts-only summary
+ * (which can coincidentally match the current assessment's totals --
+ * see `highestSeveritySignal`'s doc comment) with what actually
+ * distinguishes this historical assessment: its own real attention
+ * level, its own assessed Version, its own highest-severity finding
+ * signal, and whether it carried its own Re-anchor Proposal -- fields
+ * already loaded for every assessment on this page. Never reads
+ * `current`'s values, and never parses the stored (and potentially
+ * stale) `executive_summary` text. Uses the Version's own real display
+ * name as-is (not `versionLabel`'s "(vN)" suffix) -- that suffix is
+ * redundant when the name itself already communicates the version,
+ * e.g. "Compositing Conflict V1". */
+function historySummaryText(
+  assessment: CrossRoleAssessmentRead,
+  versionsById: Map<string, VersionRead>,
+): string {
+  const parts: string[] = [
+    ATTENTION_LABEL[assessment.intent_signal.attention_level],
+  ];
+  const version = versionsById.get(assessment.version_id);
+  if (version) {
+    parts.push(version.name);
+  }
+  const signal = highestSeveritySignal(assessment.assessment_output);
+  if (signal) {
+    parts.push(signal.label);
+  }
+  if (assessment.re_anchor_proposal) {
+    parts.push("Re-anchor proposed");
+  }
+  return parts.join(" · ");
 }
 
 function FindingGroup({
@@ -52,22 +324,27 @@ function FindingGroup({
         {findings.map((finding, index) => (
           // eslint-disable-next-line react/no-array-index-key -- an assessment's findings are an immutable, unindexed array with no id of their own
           <li key={index} className={styles.finding}>
-            <div className={styles.findingHead}>
-              <p className={styles.findingSummary}>{finding.summary}</p>
-              <span
-                className={
-                  finding.priority === "high"
-                    ? `${styles.priority} ${styles.priorityHigh}`
-                    : styles.priority
-                }
-              >
-                {finding.priority}
-              </span>
+            <span className={styles.findingIndex} aria-hidden="true">
+              {String(index + 1).padStart(2, "0")}
+            </span>
+            <div className={styles.findingBody}>
+              <div className={styles.findingHead}>
+                <p className={styles.findingSummary}>
+                  {stripGeneratorLabel(finding.summary)}
+                </p>
+                <span
+                  className={`${styles.priority} ${PRIORITY_CLASS[finding.priority]}`}
+                >
+                  {finding.priority}
+                </span>
+              </div>
+              <p className={styles.findingWhy}>
+                {stripGeneratorLabel(finding.why_it_matters)}
+              </p>
+              <p className={styles.findingRoles}>
+                Affects: {finding.affected_roles.map(humanRoleLabel).join(", ")}
+              </p>
             </div>
-            <p className={styles.findingWhy}>{finding.why_it_matters}</p>
-            <p className={styles.findingRoles}>
-              Affects: {finding.affected_roles.map(humanRoleLabel).join(", ")}
-            </p>
           </li>
         ))}
       </ul>
@@ -75,206 +352,239 @@ function FindingGroup({
   );
 }
 
-/** `/vfx/shots/:shotId/alignment` (Step 7C-3) -- whether the reviewed
- * production work aligns with the active Core Anchor, and where human
- * interpretation is required. Locked order: production-context header
- * -> contextual tabs -> compact human-authority line -> [Current
- * assessment summary] -> [Findings / tensions / risks] -> [Recommended
- * next action] -> [Assessment history]. A Re-anchor Proposal is only
- * ever explained here; "Review proposal" always leads to the real
- * Intent Workspace -- this page never confirms or applies a Core
- * Anchor change itself. */
+/** `/vfx/shots/:shotId/alignment` -- VFX Alignment A+C Decision
+ * Workspace (`docs/design/briefs/VFX_ALIGNMENT_V1.md`). Target order:
+ * Page/Shot context (frame) -> compact Assessment Identity -> Alignment
+ * Signal -> Department Execution Strip -> Current Assessment + Context
+ * Inspector -> Human Attention / Human Action -> Assessment History.
+ * Replaces the previous Production-Evidence/Agent-Interpretation/
+ * Human-Decision long-report layering the brief explicitly retires
+ * (§3) -- the Production Facts/AI Proposal/Human Decision separation
+ * itself is preserved through `AuthorityLabel`/`AuthorityBoundary`
+ * (via `HumanAttentionAction`), not through that specific heading
+ * pattern. A Re-anchor Proposal is only ever explained here; "Review
+ * proposal" always leads to the real Intent Workspace -- this page
+ * never confirms or applies a Core Anchor change itself. */
 export function AlignmentWorkspacePage({
   shotId,
   data,
-  anchorContext,
-  unavailable,
-  onExitRole,
 }: {
   shotId: string;
   data: AlignmentWorkspaceData | null;
-  anchorContext?: AnchorContextRead | null;
-  unavailable: boolean;
-  onExitRole: () => void | Promise<void>;
 }) {
   const current =
     data && data.assessments.length > 0 ? data.assessments[0] : null;
   const history = data ? data.assessments.slice(1) : [];
+  const reassessmentReady = Boolean(
+    data?.item.generation_ready_task_id &&
+    data?.item.generation_ready_version_id,
+  );
+
+  if (!data) {
+    return (
+      <ErrorState
+        title="This page is unavailable"
+        description="The ICAS service could not be reached. Try refreshing the page."
+      />
+    );
+  }
 
   return (
-    <VfxShotWorkspaceFrame
-      item={data?.item ?? null}
-      anchorContext={anchorContext}
-      activeTab="alignment"
-      unavailable={unavailable}
-      onExitRole={onExitRole}
-    >
-      {data && (
+    <>
+      {current && (
+        <div className={styles.assessmentIdentity}>
+          <span>
+            Core Anchor used:{" "}
+            {revisionLabel(
+              data.revisionsById.get(current.core_anchor_revision_id),
+            )}
+          </span>
+          <span className={styles.assessmentIdentityMeta}>
+            Assessed {new Date(current.created_at).toLocaleString()}
+          </span>
+        </div>
+      )}
+
+      {current === null ? (
+        <HumanAttentionAction
+          shotId={shotId}
+          item={data.item}
+          current={null}
+          versionsById={data.versionsById}
+        />
+      ) : (
         <>
-          <div className={styles.authorityLine}>
-            <AuthorityBoundary
-              tone="human"
-              label={<AuthorityLabel variant="human-intent" />}
-              ownerLabel="The Human VFX Supervisor"
-              statement="owns interpretation and confirmation of alignment findings. The Core Agent's cross-role assessment is advisory only."
-            />
-          </div>
-
-          <AgentContributionPanel
-            agent="Core Agent"
-            capability="Cross-role Assessment"
-            state={
-              current
-                ? "completed"
-                : data.item.generation_ready_task_id &&
-                    data.item.generation_ready_version_id
-                  ? "ready"
-                  : "not_ready"
-            }
-            generatedAt={current?.created_at}
-            inputs={
-              current
-                ? [
-                    versionLabel(data.versionsById.get(current.version_id)),
-                    "Confirmed Core Anchor context",
-                  ]
-                : [
-                    "Confirmed Anchor and role outputs",
-                    "Production Version and review evidence",
-                  ]
-            }
-            readiness={
-              current
-                ? [
-                    {
-                      label: "Captured run inputs",
-                      available: Boolean(data.currentSnapshot),
-                    },
-                    {
-                      label: "Captured AgentRun",
-                      available: Boolean(data.currentRun),
-                    },
-                  ]
-                : [
-                    {
-                      label: "Confirmed Core Anchor",
-                      available: data.item.core_anchor_state === "confirmed",
-                    },
-                    {
-                      label: "Qualifying Production Version",
-                      available: Boolean(data.item.relevant_version_id),
-                    },
-                    {
-                      label: "Role review/guidance evidence",
-                      available: Boolean(data.item.generation_ready_task_id),
-                    },
-                  ]
-            }
-            run={data.currentRun}
-            snapshot={data.currentSnapshot}
-            evidence={
-              current
-                ? current.assessment_output.shared_intent_read.evidence.map(
-                    (evidence, index): EvidenceReferenceLike => ({
-                      source_type: evidence.source_type,
-                      source_id: evidence.source_id,
-                      label: `Assessment evidence ${index + 1}`,
-                    }),
-                  )
-                : []
-            }
-            output={
-              <p>
-                {current
-                  ? "Cross-role findings and an Intent Signal are available below."
-                  : "No Cross-role Assessment has been generated for this Shot yet."}
-              </p>
-            }
-            authority="Advisory interpretation only; the VFX Supervisor decides whether to create or revise a Core Anchor."
-            nextAction={
-              current?.re_anchor_proposal
-                ? "Review the Re-anchor Proposal in Intent."
-                : current &&
-                    data.item.generation_ready_task_id &&
-                    data.item.generation_ready_version_id
-                  ? "A newer eligible Version is ready -- generate a new Cross-role Assessment."
-                  : current
-                    ? "Inspect the completed assessment and coordinate any human follow-up."
-                    : data.item.generation_ready_task_id &&
-                        data.item.generation_ready_version_id
-                      ? "Generate the assessment, then review the findings."
-                      : "Complete the current prerequisites before generating a new assessment."
-            }
-          />
-
-          {current === null ? (
-            data.item.generation_ready_task_id &&
-            data.item.generation_ready_version_id ? (
-              <EmptyState
-                title="A new Cross-role Assessment can be generated for this Shot"
-                description={`Role outputs from the VFX Supervisor, CG Supervisor, and Artist Agent are all available for ${versionLabel(
-                  data.versionsById.get(data.item.generation_ready_version_id),
-                )} -- a Cross-role Assessment can now be generated.`}
-                action={
-                  <GenerateAssessmentButton
-                    shotId={shotId}
-                    taskId={data.item.generation_ready_task_id}
-                    versionId={data.item.generation_ready_version_id}
-                  />
-                }
-              />
-            ) : (
-              <EmptyState
-                title="Cross-role Assessment is not ready yet"
-                description={`Prerequisites: ${data.item.core_anchor_state === "confirmed" ? "✓ Confirmed Core Anchor" : "✕ Confirmed Core Anchor missing"}; ${data.item.relevant_version_id ? "✓ Production Version recorded" : "✕ No qualifying Production Version"}. ${data.item.current_focus.explanation}`}
-                action={
-                  data.item.current_focus.target_route !==
-                  `/vfx/shots/${shotId}` ? (
-                    <Link href={data.item.current_focus.target_route}>
-                      {data.item.current_focus.primary_action_label ??
-                        "Open next step"}{" "}
-                      →
-                    </Link>
-                  ) : data.item.relevant_version_id ? (
-                    <Link href={`/vfx/shots/${shotId}/versions`}>
-                      Review production evidence →
-                    </Link>
-                  ) : (
-                    <Link href={`/vfx/shots/${shotId}/versions`}>
-                      Open Versions →
-                    </Link>
-                  )
-                }
-              />
-            )
-          ) : (
-            <>
-              {data.item.generation_ready_task_id &&
-                data.item.generation_ready_version_id && (
-                  <EmptyState
-                    title="A newer eligible Version is ready for reassessment"
-                    description={`Current resolved evidence for ${versionLabel(
-                      data.versionsById.get(
-                        data.item.generation_ready_version_id,
-                      ),
-                    )} is now available -- generating a new Cross-role Assessment keeps the historical Assessment below exactly as it is.`}
-                    action={
-                      <GenerateAssessmentButton
-                        shotId={shotId}
-                        taskId={data.item.generation_ready_task_id}
-                        versionId={data.item.generation_ready_version_id}
-                        label="Generate new Cross-role Assessment"
-                        pendingLabel="Generating new Assessment…"
-                      />
+          <section
+            className={styles.alignmentSignal}
+            aria-label="Alignment Signal"
+          >
+            <span className={styles.regionHeading}>
+              <Icon name="agent" size="region" />
+              Alignment Signal
+            </span>
+            <div className={styles.signalCanvas}>
+              <div className={styles.signalLeft}>
+                <div className={styles.signalHeader}>
+                  <AuthorityLabel variant="ai-interpretation" />
+                  <StatusBadge
+                    status={
+                      ATTENTION_BADGE_STATUS[
+                        current.intent_signal.attention_level
+                      ]
+                    }
+                    label={
+                      ATTENTION_LABEL[current.intent_signal.attention_level]
                     }
                   />
+                </div>
+                {reassessmentReady && (
+                  <p className={styles.staleness}>Historical assessment</p>
                 )}
-
-              <EvidenceLayerSection kind="production-evidence">
-                {data.item.generation_ready_task_id &&
-                  data.item.generation_ready_version_id && (
-                    <p className={styles.empty}>Historical assessment</p>
+                <p className={styles.executiveSummary}>
+                  {currentDiagnosisText(
+                    current.assessment_output.executive_summary,
+                    current.assessment_output,
                   )}
+                </p>
+              </div>
+              <div className={styles.signalRight}>
+                <span className={styles.signalRightHeading}>
+                  Cross-role signal
+                </span>
+                <SignalStrip
+                  items={alignmentSignalStripItems(current.assessment_output)}
+                />
+              </div>
+            </div>
+            <p className={styles.advisoryNote}>
+              Advisory interpretation only; the VFX Supervisor decides whether
+              to create or revise a Core Anchor.
+            </p>
+          </section>
+
+          <DepartmentExecutionStrip
+            shotId={shotId}
+            overview={data.departmentExecutionOverview}
+          />
+
+          <div className={styles.decisionWorkspace}>
+            <div className={styles.assessmentArea}>
+              <h2 className={styles.regionHeading}>
+                <Icon name="review" size="region" />
+                Current Assessment
+              </h2>
+              {(() => {
+                const output = current.assessment_output;
+                const revision = data.revisionsById.get(
+                  current.core_anchor_revision_id,
+                );
+                const driftRisks = revision?.drift_risks ?? [];
+                const decisionRelevant = decisionRelevantFindings(output);
+
+                return (
+                  <>
+                    <div className={styles.decisionRelevant}>
+                      <h3 className={styles.decisionRelevantTitle}>
+                        Most decision-relevant findings
+                      </h3>
+                      {decisionRelevant.length > 0 ? (
+                        <ol className={styles.previewList}>
+                          {decisionRelevant.map((finding, index) => (
+                            // eslint-disable-next-line react/no-array-index-key -- an assessment's findings are an immutable, unindexed array with no id of their own
+                            <li key={index} className={styles.previewItem}>
+                              <span
+                                className={styles.previewIndexFocus}
+                                aria-hidden="true"
+                              >
+                                {String(index + 1).padStart(2, "0")}
+                              </span>
+                              <div className={styles.previewHead}>
+                                <p className={styles.previewSummary}>
+                                  {stripGeneratorLabel(finding.summary)}
+                                </p>
+                                <span
+                                  className={`${styles.priority} ${PRIORITY_CLASS[finding.priority]}`}
+                                >
+                                  {finding.priority}
+                                </span>
+                              </div>
+                            </li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <p className={styles.previewEmpty}>
+                          No attention-relevant findings in this assessment.
+                        </p>
+                      )}
+                    </div>
+
+                    <details className={styles.disclosure}>
+                      <summary className={styles.disclosureSummary}>
+                        <span className={styles.disclosureLabelClosed}>
+                          View detailed assessment →
+                        </span>
+                        <span className={styles.disclosureLabelOpen}>
+                          Collapse detailed assessment ↑
+                        </span>
+                      </summary>
+                      <div className={styles.disclosureContent}>
+                        <FindingGroup
+                          title="Aligned findings"
+                          findings={output.agreements}
+                        />
+                        <FindingGroup
+                          title="Cross-role tensions"
+                          findings={output.cross_role_tensions}
+                        />
+                        <FindingGroup
+                          title="Local-optimum risks"
+                          findings={output.local_optimum_risks}
+                        />
+                        <FindingGroup
+                          title="Open questions"
+                          findings={output.unresolved_dependencies}
+                        />
+                        <FindingGroup
+                          title="Advisory recommendations"
+                          findings={output.human_coordination_priorities}
+                        />
+                        {driftRisks.length > 0 && (
+                          <section className={styles.findingGroup}>
+                            <h3 className={styles.findingGroupTitle}>
+                              Drift risks on the active Core Anchor (
+                              {driftRisks.length})
+                            </h3>
+                            <ul className={styles.plainList}>
+                              {driftRisks.map((risk) => (
+                                <li key={risk.id}>{risk.description}</li>
+                              ))}
+                            </ul>
+                          </section>
+                        )}
+                      </div>
+                    </details>
+                  </>
+                );
+              })()}
+            </div>
+
+            <div className={styles.contextInspector}>
+              <h2 className={styles.regionHeading}>
+                <Icon name="evidence" size="region" />
+                Context
+              </h2>
+              <div className={styles.inspectorGroup}>
+                <h3 className={styles.inspectorGroupTitle}>Core Intent</h3>
+                <p className={styles.inspectorText}>
+                  {revisionLabel(
+                    data.revisionsById.get(current.core_anchor_revision_id),
+                  )}
+                </p>
+              </div>
+              <div className={styles.inspectorGroup}>
+                <h3 className={styles.inspectorGroupTitle}>
+                  Current Production Context
+                </h3>
                 <MetadataRow
                   items={[
                     {
@@ -284,154 +594,78 @@ export function AlignmentWorkspacePage({
                       ),
                     },
                     {
-                      label: "Core Anchor used",
-                      value: revisionLabel(
-                        data.revisionsById.get(current.core_anchor_revision_id),
-                      ),
+                      label: "Task",
+                      value:
+                        data.item.relevant_task_name ?? "No Task recorded yet",
                     },
                   ]}
                 />
-              </EvidenceLayerSection>
-
-              <EvidenceLayerSection kind="agent-interpretation">
-                <section className={styles.summaryCard}>
-                  <div className={styles.summaryHeader}>
-                    <AuthorityLabel variant="ai-interpretation" />
-                  </div>
-                  <p className={styles.executiveSummary}>
-                    {current.assessment_output.executive_summary}
-                  </p>
-                  <MetadataRow
-                    items={[
-                      {
-                        label: "Assessed at",
-                        value: new Date(current.created_at).toLocaleString(),
-                      },
-                      {
-                        label: "Assessor",
-                        value: "Core Agent · cross-role assessment",
-                      },
-                    ]}
-                  />
-                </section>
-
-                <section className={styles.findingsSection}>
-                  <h2 className={styles.sectionTitle}>Findings</h2>
-                  <FindingGroup
-                    title="Aligned findings"
-                    findings={current.assessment_output.agreements}
-                  />
-                  <FindingGroup
-                    title="Cross-role tensions"
-                    findings={current.assessment_output.cross_role_tensions}
-                  />
-                  <FindingGroup
-                    title="Local-optimum risks"
-                    findings={current.assessment_output.local_optimum_risks}
-                  />
-                  <FindingGroup
-                    title="Open questions"
-                    findings={current.assessment_output.unresolved_dependencies}
-                  />
-                  <FindingGroup
-                    title="Advisory recommendations"
-                    findings={
-                      current.assessment_output.human_coordination_priorities
-                    }
-                  />
-
-                  {(() => {
-                    const revision = data.revisionsById.get(
-                      current.core_anchor_revision_id,
+              </div>
+              <div className={styles.inspectorGroup}>
+                <h3 className={styles.inspectorGroupTitle}>
+                  Evidence and provenance
+                </h3>
+                {(() => {
+                  const evidence: EvidenceReferenceLike[] =
+                    current.assessment_output.shared_intent_read.evidence.map(
+                      (item, index) => ({
+                        source_type: item.source_type,
+                        source_id: item.source_id,
+                        label: `Assessment evidence ${index + 1}`,
+                      }),
                     );
-                    const driftRisks = revision?.drift_risks ?? [];
-                    if (driftRisks.length === 0) return null;
+                  if (
+                    data.currentRun ||
+                    data.currentSnapshot ||
+                    evidence.length > 0
+                  ) {
                     return (
-                      <section className={styles.findingGroup}>
-                        <h3 className={styles.findingGroupTitle}>
-                          Drift risks on the active Core Anchor (
-                          {driftRisks.length})
-                        </h3>
-                        <ul className={styles.plainList}>
-                          {driftRisks.map((risk) => (
-                            <li key={risk.id}>{risk.description}</li>
-                          ))}
-                        </ul>
-                      </section>
+                      <EvidenceProvenanceDrawer
+                        evidence={evidence}
+                        run={data.currentRun ?? null}
+                        snapshot={data.currentSnapshot ?? null}
+                      />
                     );
-                  })()}
-                </section>
-
-                <section className={styles.nextActionSection}>
-                  <h2 className={styles.sectionTitle}>
-                    Recommended next action
-                  </h2>
-                  {current.intent_signal.attention_level !== "low" && (
-                    <AuthorityLabel variant="human-review-required" />
-                  )}
-                  <p className={styles.nextActionText}>
-                    {current.intent_signal.signal_output.summary}
-                  </p>
-                  <p className={styles.nextActionMeta} role="status">
-                    {current.intent_signal.attention_level === "low"
-                      ? "No human review is required based on this assessment."
-                      : "Human review is required -- the VFX Supervisor should interpret these findings."}
-                  </p>
-
-                  {current.re_anchor_proposal ? (
-                    <div className={styles.proposalCard}>
-                      <AuthorityLabel variant="ai-proposal" />
-                      <p className={styles.proposalReason}>
-                        {
-                          current.re_anchor_proposal.proposal_output
-                            .reason_for_consideration
-                        }
-                      </p>
-                      <Link
-                        href={`/vfx/shots/${shotId}/intent`}
-                        className={styles.reviewProposalLink}
-                      >
-                        Review proposal →
-                      </Link>
-                    </div>
-                  ) : (
+                  }
+                  return (
                     <p className={styles.empty}>
-                      No Re-anchor Proposal exists for the current assessment.
+                      Detailed Agent provenance is unavailable for this output.
                     </p>
-                  )}
-                </section>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
 
-                {history.length > 0 && (
-                  <section className={styles.historySection}>
-                    <h2 className={styles.sectionTitle}>Assessment history</h2>
-                    <ul className={styles.historyList}>
-                      {history.map((assessment) => (
-                        <li key={assessment.id} className={styles.historyItem}>
-                          <span className={styles.historyTime}>
-                            {new Date(assessment.created_at).toLocaleString()}
-                          </span>
-                          <span className={styles.historySummary}>
-                            {assessment.assessment_output.executive_summary}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                )}
-              </EvidenceLayerSection>
+          <HumanAttentionAction
+            shotId={shotId}
+            item={data.item}
+            current={current}
+            versionsById={data.versionsById}
+          />
 
-              <EvidenceLayerSection kind="human-decision">
-                <p className={styles.empty}>
-                  No Human Decision has been recorded directly against this
-                  assessment. A Re-anchor Proposal, if accepted, is confirmed or
-                  rejected as a new Core Anchor revision on the{" "}
-                  <Link href={`/vfx/shots/${shotId}/intent`}>Intent page</Link>.
-                </p>
-              </EvidenceLayerSection>
-            </>
+          {history.length > 0 && (
+            <section className={styles.historySection}>
+              <h2 className={styles.historySectionTitle}>
+                <Icon name="history" size="standard" />
+                Assessment history
+              </h2>
+              <ul className={styles.historyList}>
+                {history.map((assessment) => (
+                  <li key={assessment.id} className={styles.historyItem}>
+                    <span className={styles.historyTime}>
+                      {new Date(assessment.created_at).toLocaleString()}
+                    </span>
+                    <span className={styles.historySummary}>
+                      {historySummaryText(assessment, data.versionsById)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
           )}
         </>
       )}
-    </VfxShotWorkspaceFrame>
+    </>
   );
 }

@@ -104,6 +104,12 @@ async function requireVfxIdentity(): Promise<
 function revalidateIntentAndOverview(shotId: string, alsoInbox: boolean): void {
   revalidatePath(`/vfx/shots/${shotId}/intent`);
   revalidatePath(`/vfx/shots/${shotId}`);
+  // Also revalidate the persistent Shot layout segment itself (Navigation
+  // Responsiveness Fix, Phase 2): the page-type calls above refresh only
+  // the leaf routes, but `app/vfx/shots/[shotId]/layout.tsx` now owns its
+  // own `fetchVfxAnchorContextOrNull` fetch and is a distinct cached
+  // segment that a page-type revalidation does not reach.
+  revalidatePath(`/vfx/shots/${shotId}`, "layout");
   if (alsoInbox) {
     revalidatePath("/vfx");
   }
