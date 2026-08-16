@@ -81,15 +81,29 @@ export async function loadTaskOverviewData(
       ) ?? null;
   }
 
+  // State/content consistency bug fix: `listArtistGuidancesForVersion`
+  // returns every ArtistAgentGuidance tied to this Version, which is
+  // Shot-level, not Task-level -- a sibling Task on the same Shot can
+  // have its own real guidance for the same Version. The removed
+  // `?? guidances[0]` fallback let a Task with genuinely no guidance
+  // of its own fall through to a *different* Task's guidance, so the
+  // page rendered a populated body while `item.guidance_state`
+  // (`artist_inbox/service.py`'s `_guidance_state`, a strict
+  // `task_id` + `version_id` match) correctly reported "none" -- the
+  // exact contradiction reported in browser. `current-version/data.ts`
+  // already gets this right (`.filter((guidance) => guidance.task_id
+  // === taskId)`, keeping `currentGuidance` truthfully `null` rather
+  // than borrowing another Task's row); this now matches that same
+  // strict-match rule, so `latestGuidance` is `null` whenever no
+  // guidance genuinely belongs to this Task, exactly when
+  // `item.guidance_state` is `"none"`.
   let latestGuidance: ArtistAgentGuidanceRead | null = null;
   if (item.latest_version_id !== null) {
     const guidances = await listArtistGuidancesForVersion(
       item.latest_version_id,
     );
     latestGuidance =
-      guidances.find((guidance) => guidance.task_id === taskId) ??
-      guidances[0] ??
-      null;
+      guidances.find((guidance) => guidance.task_id === taskId) ?? null;
   }
 
   let latestReviewNote: ReviewNoteRead | null = null;

@@ -1,0 +1,128 @@
+.guidanceMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+
+.guidanceSummary {
+  margin: 0 0 var(--space-4);
+  color: var(--text-primary);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-normal);
+}
+
+.guidanceOutdatedNotice {
+  margin: calc(-1 * var(--space-2)) 0 var(--space-4);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}
+
+/* Reading hierarchy, not a dashboard grid: primary working guidance
+   (what must remain fixed, next-iteration priorities) reads first at
+   natural full width; supporting guidance (allowed variation,
+   risks/escalation) follows a subtle divider and its own quiet
+   kicker label. Never equal-width columns, never a card per
+   category -- variable-length narrative content stays continuous
+   vertical prose. */
+.guidanceBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.guidanceTier {
+  display: flex;
+  flex-direction: column;
+}
+
+.guidanceTier + .guidanceTier {
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.guidanceTierLabel {
+  margin: 0 0 var(--space-3);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.guidanceGroup + .guidanceGroup {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.guidanceGroupHeading {
+  margin: 0 0 var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.guidanceList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.guidanceListItem {
+  position: relative;
+  padding-left: var(--space-4);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+}
+
+.guidanceListItem::before {
+  content: "";
+  position: absolute;
+  top: 0.5em;
+  left: 0;
+  width: 0.35rem;
+  height: 0.35rem;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.guidanceEmpty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+.contextRows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.contextRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+}
+
+.contextLabel {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.contextValue {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+}

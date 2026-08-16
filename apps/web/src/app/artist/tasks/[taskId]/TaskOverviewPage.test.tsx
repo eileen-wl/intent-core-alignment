@@ -2,7 +2,7 @@ import type {
   AnchorContextRead,
   ArtistInboxItemRead,
 } from "@intent-core/contracts";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -401,7 +401,12 @@ describe("TaskOverviewPage", () => {
       />,
     );
     expect(screen.getByText("Current Working Direction")).toBeVisible();
-    expect(screen.getByText("AI interpretation")).toBeVisible();
+    const workingDirection = within(
+      screen
+        .getByText("Current Working Direction")
+        .closest("section") as HTMLElement,
+    );
+    expect(workingDirection.getByText("AI interpretation")).toBeVisible();
     expect(
       screen.getByText("Push the rim light slightly warmer."),
     ).toBeVisible();
@@ -448,5 +453,264 @@ describe("TaskOverviewPage", () => {
     expect(
       screen.getByRole("button", { name: "Generate guidance" }),
     ).toBeVisible();
+  });
+
+  it("preserves all four real Guidance categories in the reading hierarchy, marked as advisory AI interpretation", () => {
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data({
+          item: item({ latest_version_id: "v1", latest_version_name: "v001" }),
+          latestGuidance: {
+            id: "g1",
+            project_id: "p1",
+            shot_id: "s1",
+            task_id: "t1",
+            version_id: "v1",
+            execution_anchor_revision_id: "ea1",
+            context_snapshot_id: "cs1",
+            agent_run_id: "run1",
+            guidance_output: {
+              executive_summary: "Push the rim light slightly warmer.",
+              creative_intent_read: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              task_goal: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              current_iteration_read: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              non_negotiables: [
+                {
+                  summary: "Keep the silhouette readable.",
+                  why_it_matters: "w",
+                  priority: "high",
+                  evidence: [],
+                },
+              ],
+              allowed_variations: [
+                {
+                  summary: "Warm tone shift is acceptable.",
+                  why_it_matters: "w",
+                  priority: "low",
+                  evidence: [],
+                },
+              ],
+              feedback_translations: [],
+              iteration_priorities: [
+                {
+                  summary: "Refine the rim highlight next.",
+                  why_it_matters: "w",
+                  priority: "medium",
+                  evidence: [],
+                },
+              ],
+              cross_department_dependencies: [
+                {
+                  summary: "Lighting must confirm before final comp.",
+                  why_it_matters: "w",
+                  priority: "medium",
+                  evidence: [],
+                },
+              ],
+              questions_for_human_supervisor: [
+                "Should the warm shift extend to the background?",
+              ],
+              evidence_gaps: [],
+            },
+            created_at: "2026-07-01T00:00:00Z",
+          },
+        })}
+        anchorContext={artistAnchorContext()}
+      />,
+    );
+
+    expect(screen.getByText("AI interpretation")).toBeVisible();
+    expect(screen.getByText("What must remain fixed")).toBeVisible();
+    expect(screen.getByText("Keep the silhouette readable.")).toBeVisible();
+    expect(screen.getByText("What variation remains allowed")).toBeVisible();
+    expect(screen.getByText("Warm tone shift is acceptable.")).toBeVisible();
+    expect(screen.getByText("Priorities for the next iteration")).toBeVisible();
+    expect(screen.getByText("Refine the rim highlight next.")).toBeVisible();
+    expect(screen.getByText("Risks and when to escalate")).toBeVisible();
+    expect(
+      screen.getByText("Lighting must confirm before final comp."),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Should the warm shift extend to the background?"),
+    ).toBeVisible();
+    // Reading hierarchy, not a dashboard grid: primary guidance
+    // (fixed constraints, next-iteration priorities) is unlabeled;
+    // only the second tier (allowed variation, risks/escalation)
+    // carries the quiet "Supporting guidance" kicker.
+    expect(screen.getByText("Supporting guidance")).toBeVisible();
+  });
+
+  it("strips internal generator labels from the executive summary and every Guidance category, without losing the real text", () => {
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data({
+          item: item({ latest_version_id: "v1", latest_version_name: "v001" }),
+          latestGuidance: {
+            id: "g1",
+            project_id: "p1",
+            shot_id: "s1",
+            task_id: "t1",
+            version_id: "v1",
+            execution_anchor_revision_id: "ea1",
+            context_snapshot_id: "cs1",
+            agent_run_id: "run1",
+            guidance_output: {
+              executive_summary:
+                "[Artist deterministic] Push the rim light slightly warmer.",
+              creative_intent_read: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              task_goal: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              current_iteration_read: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              non_negotiables: [
+                {
+                  summary:
+                    "[Artist deterministic] Keep the silhouette readable.",
+                  why_it_matters: "w",
+                  priority: "high",
+                  evidence: [],
+                },
+              ],
+              allowed_variations: [
+                {
+                  summary:
+                    "[Artist D1 deterministic - R2 combined-intensity ceiling boundary] Warm tone shift is acceptable.",
+                  why_it_matters: "w",
+                  priority: "low",
+                  evidence: [],
+                },
+              ],
+              feedback_translations: [],
+              iteration_priorities: [
+                {
+                  summary:
+                    "[Artist deterministic] Refine the rim highlight next.",
+                  why_it_matters: "w",
+                  priority: "medium",
+                  evidence: [],
+                },
+              ],
+              cross_department_dependencies: [
+                {
+                  summary:
+                    "[Artist deterministic] Lighting must confirm before final comp.",
+                  why_it_matters: "w",
+                  priority: "medium",
+                  evidence: [],
+                },
+              ],
+              questions_for_human_supervisor: [
+                "[Artist deterministic] Should the warm shift extend to the background?",
+              ],
+              evidence_gaps: [],
+            },
+            created_at: "2026-07-01T00:00:00Z",
+          },
+        })}
+        anchorContext={artistAnchorContext()}
+      />,
+    );
+
+    expect(screen.queryByText(/Artist deterministic/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/combined-intensity ceiling boundary/),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Push the rim light slightly warmer."),
+    ).toBeVisible();
+    expect(screen.getByText("Keep the silhouette readable.")).toBeVisible();
+    expect(screen.getByText("Warm tone shift is acceptable.")).toBeVisible();
+    expect(screen.getByText("Refine the rim highlight next.")).toBeVisible();
+    expect(
+      screen.getByText("Lighting must confirm before final comp."),
+    ).toBeVisible();
+    expect(
+      screen.getByText("Should the warm shift extend to the background?"),
+    ).toBeVisible();
+  });
+
+  it("renders long real Guidance text in full, with no arbitrary prose-width cap", () => {
+    const longSummary =
+      "The rim light on the antagonist's silhouette should stay warm and controlled through the final confrontation, never spiking into a triumphant or heroic register, and every department's local refinement must remain subordinate to that restrained read across the full duration of the sequence.";
+    render(
+      <TaskOverviewPage
+        taskId="t1"
+        data={data({
+          item: item({ latest_version_id: "v1", latest_version_name: "v001" }),
+          latestGuidance: {
+            id: "g1",
+            project_id: "p1",
+            shot_id: "s1",
+            task_id: "t1",
+            version_id: "v1",
+            execution_anchor_revision_id: "ea1",
+            context_snapshot_id: "cs1",
+            agent_run_id: "run1",
+            guidance_output: {
+              executive_summary: longSummary,
+              creative_intent_read: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              task_goal: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              current_iteration_read: {
+                summary: "s",
+                why_it_matters: "w",
+                priority: "medium",
+                evidence: [],
+              },
+              non_negotiables: [],
+              allowed_variations: [],
+              feedback_translations: [],
+              iteration_priorities: [],
+              cross_department_dependencies: [],
+              questions_for_human_supervisor: [],
+              evidence_gaps: [],
+            },
+            created_at: "2026-07-01T00:00:00Z",
+          },
+        })}
+        anchorContext={artistAnchorContext()}
+      />,
+    );
+
+    expect(screen.getByText(longSummary)).toBeVisible();
   });
 });
