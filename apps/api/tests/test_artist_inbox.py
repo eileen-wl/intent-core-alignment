@@ -62,14 +62,13 @@ async def _confirm_execution_anchor(client: AsyncClient, task_id: str, **content
     return str(confirmed["id"])
 
 
-async def _create_version(client: AsyncClient, shot_id: str, name: str = "SH010_v001") -> str:
-    version = (
-        await client.post(
-            "/versions",
-            json={"shot_id": shot_id, "name": name, "description": "First pass."},
-            headers=VFX,
-        )
-    ).json()
+async def _create_version(
+    client: AsyncClient, shot_id: str, name: str = "SH010_v001", task_id: str | None = None
+) -> str:
+    payload: dict[str, Any] = {"shot_id": shot_id, "name": name, "description": "First pass."}
+    if task_id is not None:
+        payload["task_id"] = task_id
+    version = (await client.post("/versions", json=payload, headers=VFX)).json()
     return str(version["id"])
 
 
@@ -187,3 +186,52 @@ async def test_no_duplicate_task_rows(client: AsyncClient) -> None:
     task_ids = [item["task_id"] for item in body["items"]]
     assert len(task_ids) == len(set(task_ids))
     assert len(task_ids) == 2
+
+
+async def test_each_task_reports_its_own_latest_version_and_guidance_on_a_shared_shot(
+    client: AsyncClient,
+) -> None:
+    """Regression: two Tasks on one Shot, each with its own Version and
+    Guidance -- a Task's inbox item must never report another Task's
+    latest Version (or, downstream, its guidance_state), even though a
+    single shot-wide "latest Version" query would resolve them all to
+    whichever Task's Version happens to be newest.
+    """
+    _project_id, shot_id = await _create_project_and_shot(client)
+    await _confirm_core_anchor(client, shot_id)
+
+    animation_task_id = await _create_task(client, shot_id, "Animation")
+    await _confirm_execution_anchor(client, animation_task_id, technical_boundaries="animation v1")
+    animation_version_id = await _create_version(
+        client, shot_id, name="Animation V1", task_id=animation_task_id
+    )
+    animation_guidance = await client.post(
+        f"/intent/versions/{animation_version_id}/artist-guidances/generate",
+        json={"task_id": animation_task_id},
+        headers=ARTIST,
+    )
+    assert animation_guidance.status_code == 201
+
+    # Created after Animation's, so a shot-wide "latest by created_at"
+    # query would incorrectly resolve to this Version for both Tasks.
+    lighting_task_id = await _create_task(client, shot_id, "Lighting")
+    await _confirm_execution_anchor(client, lighting_task_id, technical_boundaries="lighting v1")
+    lighting_version_id = await _create_version(
+        client, shot_id, name="Lighting V1", task_id=lighting_task_id
+    )
+    lighting_guidance = await client.post(
+        f"/intent/versions/{lighting_version_id}/artist-guidances/generate",
+        json={"task_id": lighting_task_id},
+        headers=ARTIST,
+    )
+    assert lighting_guidance.status_code == 201
+
+    animation_item = (await client.get(f"/artist/inbox/{animation_task_id}")).json()
+    assert animation_item["latest_version_id"] == animation_version_id
+    assert animation_item["latest_version_name"] == "Animation V1"
+    assert animation_item["guidance_state"] == "current"
+
+    lighting_item = (await client.get(f"/artist/inbox/{lighting_task_id}")).json()
+    assert lighting_item["latest_version_id"] == lighting_version_id
+    assert lighting_item["latest_version_name"] == "Lighting V1"
+    assert lighting_item["guidance_state"] == "current"

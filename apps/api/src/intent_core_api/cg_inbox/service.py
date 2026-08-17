@@ -115,10 +115,17 @@ async def _load_task_related_data(
 
     latest_version = await session.scalar(
         select(Version)
-        .where(Version.shot_id == shot_id)
+        .where(Version.shot_id == shot_id, Version.task_id == task_id)
         .order_by(Version.created_at.desc())
         .limit(1)
     )
+    if latest_version is None:
+        latest_version = await session.scalar(
+            select(Version)
+            .where(Version.shot_id == shot_id, Version.task_id.is_(None))
+            .order_by(Version.created_at.desc())
+            .limit(1)
+        )
 
     version_review_available = False
     if (
